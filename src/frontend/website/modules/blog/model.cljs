@@ -37,3 +37,11 @@
 
 (defn page-count [total size]
   (let [size (page-size size)] (quot (+ total (dec size)) size)))
+
+(defn comment-uploads-pending? [uploads path]
+  (boolean
+    (some (fn [{:keys [form-path cancelled? status image-inserted?]}]
+            (and (= [:write-comment path :text] form-path)
+                 (not cancelled?)
+                 (or (not= :ready status) (not image-inserted?))))
+          (vals uploads))))

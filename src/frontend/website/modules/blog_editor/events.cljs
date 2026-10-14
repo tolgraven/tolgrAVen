@@ -1,4 +1,5 @@
 (ns website.modules.blog-editor.events
+  (:require-macros [website.build.site :refer [when-enabled]])
   (:require [website.react :as r]
             [website.media.schema :as media]
             [website.modules.blog.schema :as schema]
@@ -11,6 +12,13 @@
 (def uploads-path [:state :blog :image-uploads])
 (def text-path [:state :form-field :post-blog :text])
 
+(defn editor-binding [db owner]
+  (get-in db [:state :blog-editor :editors owner]
+          {:form-path [:post-blog :text], :kind :post}))
+
+(defn upload-text-path [upload]
+  (into [:state :form-field] (or (:form-path upload) [:post-blog :text])))
+
 (r/reg-sub :blog-editor/uploads
   :<- [:blog/state [:image-uploads]]
   (fn [uploads query]
@@ -18,28 +26,35 @@
       (vec (sort-by :order (filter #(= owner (:owner %)) (vals uploads)))))))
 
 (r/reg-event-db :blog/editor-mounted
-  {:args [:tuple :string]}
-  (fn [db [_ owner]] (assoc-in db [:state :blog-editor :active-owner] owner)))
+  {:args [:cat :string [:? model/editor-schema]]}
+  (fn [db [_ owner binding]]
+    (let [binding' (or binding {:form-path [:post-blog :text], :kind :post})]
+      (cond-> (assoc-in db [:state :blog-editor :editors owner] binding')
+        (= :post (:kind binding')) (assoc-in [:state :blog-editor :active-owner] owner)))))
 
 (r/reg-event-fx :blog/editor-text-changed
   {:args [:cat :string :string [:maybe [:vector anchors/change-schema]] [:maybe anchors/positions-schema] [:? :?string]]}
   (fn [{:keys [db]} [_ owner text changes positions document-id]]
-    (when (and (= owner (get-in db [:state :blog-editor :active-owner]))
-               (= document-id (get-in db [:state :blog-editor :draft :document-id])))
-    (let [uploads (get-in db uploads-path)
-          changes' (or changes [(anchors/text-change (get-in db text-path) text)])
-          owned (into {} (filter #(= owner (:owner (val %)))) uploads)
-          mapped (if positions
-                   (into {} (keep (fn [[id upload]]
-                                    (if (or (:chip-dismissed? upload) (not (:anchor-attached? upload))) [id upload]
-                                        (when-let [position (get positions id)]
-                                          [id (assoc upload :position position)])))) owned)
-                   (model/map-uploads owned changes'))
-          removed (remove #(contains? mapped %) (keys owned))]
-      (cond-> {:db (-> db (assoc-in text-path text)
-                   (assoc-in uploads-path (merge (apply dissoc uploads (keys owned)) mapped)))
-               :fx (mapv (fn [id] [:blog-editor/settle-upload {:id id, :error "Upload insertion removed"}]) removed)}
-        (seq removed) (assoc :dispatch [:blog/image-upload-next]))))))
+    (let [{:keys [form-path kind] :as binding} (editor-binding db owner)
+          text-path' (into [:state :form-field] form-path)]
+      (when (if (= :comment kind)
+              (= document-id (:document-id binding))
+              (and (= owner (get-in db [:state :blog-editor :active-owner]))
+                   (= document-id (get-in db [:state :blog-editor :draft :document-id]))))
+      (let [uploads (get-in db uploads-path)
+            changes' (or changes [(anchors/text-change (get-in db text-path') text)])
+            owned (into {} (filter #(= owner (:owner (val %)))) uploads)
+            mapped (if positions
+                     (into {} (keep (fn [[id upload]]
+                                      (if (or (:chip-dismissed? upload) (not (:anchor-attached? upload))) [id upload]
+                                          (when-let [position (get positions id)]
+                                            [id (assoc upload :position position)])))) owned)
+                     (model/map-uploads owned changes'))
+            removed (remove #(contains? mapped %) (keys owned))]
+        (cond-> {:db (-> db (assoc-in text-path' text)
+                     (assoc-in uploads-path (merge (apply dissoc uploads (keys owned)) mapped)))
+                 :fx (mapv (fn [id] [:blog-editor/settle-upload {:id id, :error "Upload insertion removed"}]) removed)}
+          (seq removed) (assoc :dispatch [:blog/image-upload-next])))))))
 
 (r/reg-event-db :blog/editor-mode
   {:args [:tuple :string :boolean]}
@@ -104,10 +119,10 @@
                  [:blog/image-upload-response id attempt result])}))
 
 (r/reg-fx :blog/image-upload
-  (fn [{:keys [id file attempt]}]
+  (fn [{:keys [id file attempt kind]}]
     (let [body (doto (js/FormData.) (.append "file" file))]
       (client/authenticated-request!
-        :post "/api/supabase/media" body
+        :post (if (= :comment kind) "/api/supabase/media/comments" "/api/supabase/media") body
         #(accept-response! id attempt %)
         #(r/dispatch [:blog/image-upload-failed id attempt %])
         {:on-upload-progress #(r/dispatch [:blog/image-upload-progress id attempt %])}))))
@@ -126,18 +141,25 @@
   {:args [:tuple [:vector [:map [:id :string] [:name :string] [:file :any] [:owner :string] [:?sdk? :boolean]]]
                  [:int {:min 0}] [:int {:min 0}]]}
   (fn [{:keys [db]} [_ files start end]]
-    (let [{:keys [text uploads]} (model/insert-files (get-in db text-path) start end
-                                                  (get-in db uploads-path) files)]
-      {:db (-> db (assoc-in text-path text) (assoc-in uploads-path uploads))
-       :dispatch [:blog/image-upload-next]})))
+    (when (and (seq files) (apply = (map :owner files)))
+      (let [owner (:owner (first files))
+            binding (editor-binding db owner)
+            text-path' (upload-text-path binding)
+            all-uploads (get-in db uploads-path)
+            owned (into {} (filter #(= owner (:owner (val %)))) all-uploads)
+            files' (mapv #(merge % (select-keys binding [:form-path :kind])) files)
+            {:keys [text uploads]} (model/insert-files (get-in db text-path') start end owned files')]
+        {:db (-> db (assoc-in text-path' text)
+                    (assoc-in uploads-path (merge (apply dissoc all-uploads (keys owned)) uploads)))
+         :dispatch [:blog/image-upload-next]}))))
 
 (r/reg-event-fx :blog/image-upload-next
   {:args [:tuple]}
   (fn [{:keys [db]} _]
-    (when-let [{:keys [id file attempt]} (model/next-upload (get-in db uploads-path))]
+    (when-let [{:keys [id file attempt kind]} (model/next-upload (get-in db uploads-path))]
       (let [attempt' (inc (or attempt 0))]
         {:db (update-in db (conj uploads-path id) assoc :status :uploading :attempt attempt')
-         :blog/image-upload {:id id, :file file, :attempt attempt'}}))))
+         :blog/image-upload {:id id, :file file, :attempt attempt', :kind kind}}))))
 
 (r/reg-event-fx :blog/image-upload-response
   {:args [:tuple :string [:int {:min 1}] media/upload-response]}
@@ -146,15 +168,17 @@
       (when (and upload (= attempt (:attempt upload))
                  (#{:uploading :processing} (:status upload)))
       (case status
-        "ready" {:db (let [text (get-in db text-path)
+        "ready" {:db (let [text-path' (upload-text-path upload)
+                           text (get-in db text-path')
                            text' (model/complete-upload text upload asset)
                            inserted (- (count text') (count (or text "")))
                            uploads (get-in db uploads-path)
                            uploads' (if (:sdk? upload) uploads
                                         (into {} (map (fn [[key item]]
-                                                        [key (if (and (not= key id) (>= (:position item) (:position upload)))
+                                                        [key (if (and (= (:owner upload) (:owner item))
+                                                                      (not= key id) (>= (:position item) (:position upload)))
                                                                (update item :position + inserted) item)])) uploads))]
-                       (-> db (assoc-in text-path text') (assoc-in uploads-path uploads')
+                       (-> db (assoc-in text-path' text') (assoc-in uploads-path uploads')
                          (update-in (conj uploads-path id) #(-> % (assoc :status :ready :asset asset
                                                                        :image-inserted? (not (:sdk? upload)))
                                                                (dissoc :file :error :polls)))))
@@ -241,7 +265,7 @@
   (fn [{:keys [db]} [_ id]]
     (when-let [upload (get-in db (conj uploads-path id))]
       {:db (-> db
-               (update-in text-path model/cancel-upload upload)
+               (update-in (upload-text-path upload) model/cancel-upload upload)
                (update-in uploads-path
                           #(if (and (:sdk? upload) (not (:image-inserted? upload)))
                              ;; The native document owner acknowledges removal;
@@ -263,15 +287,19 @@
 (r/reg-event-fx :blog/image-upload-dispose
   {:args [:tuple :string]}
   (fn [{:keys [db]} [_ owner]]
-    (let [uploads (filter #(= owner (:owner %)) (vals (get-in db uploads-path)))]
+    (let [uploads (filter #(= owner (:owner %)) (vals (get-in db uploads-path)))
+          text-path' (upload-text-path (editor-binding db owner))]
       {:db (-> db
                (cond-> (= owner (get-in db [:state :blog-editor :active-owner]))
                  (update-in [:state :blog-editor] dissoc :active-owner))
-               (update-in text-path #(reduce model/cancel-upload % uploads))
+               (update-in [:state :blog-editor :editors] dissoc owner)
+               (update-in text-path' #(reduce model/cancel-upload % uploads))
                (update-in uploads-path #(apply dissoc % (map :id uploads))))
        :fx (mapv (fn [{:keys [id]}] [:blog-editor/settle-upload {:id id, :error "Editor closed"}]) uploads)
        :dispatch [:blog/image-upload-next]})))
 
+(when-enabled :blog-editor nil
+ (do
 (r/reg-event-fx :blog/init-posting
   {:args (get schema/event-args :blog/init-posting)}
   (fn [_ _] {:dispatch [:user/close-ui]}))
@@ -289,7 +317,9 @@
   {:args (get schema/event-args :blog/submit)}
   (fn [{:keys [db]} [_ input editing]]
     (when-not (or (get-in db [:state :supabase-writes :post])
-                  (model/unresolved? (:text input) (get-in db [:state :blog :image-uploads])))
+                  (model/unresolved? (:text input)
+                                     (into {} (remove #(= :comment (:kind (val %))))
+                                           (get-in db [:state :blog :image-uploads]))))
       {:db (assoc-in db [:state :supabase-writes :post] true)
        :supabase/request {:method :post :uri "/api/supabase/posts"
                           :data (cond-> (select-keys input [:title :text :tags])
@@ -334,3 +364,4 @@
   (fn [db [_ error]]
     (update-in db [:state :blog-editor :library] assoc :pending? false
                :error (or (:message error) "Unable to load images. Retry."))))
+))

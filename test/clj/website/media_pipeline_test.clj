@@ -13,6 +13,8 @@
             [website.media.storage :as storage]
             [website.platform.supabase :as platform]
             [website.schema.dsl :as dsl]
+            [website.site :as site]
+            [website.supabase.auth :as auth]
             [website.store.contract :as contract]
             [website.supabase.operations :as operations]
             [website.supabase.query :as store-query]
@@ -307,3 +309,30 @@
         (is (= vector-asset (get-in enriched [:cv :heading :bg :asset])))
         (is (= (:src original) (get-in enriched [:cv :heading :bg :src])))
         (is (= "Author title" (get-in enriched [:cv :heading :bg :alt])))))))
+
+(deftest comment-image-upload-does-not-grant-library-access
+  (let [file (.toFile (Files/createTempFile "comment-upload-test" ".png" (make-array java.nio.file.attribute.FileAttribute 0)))
+        queued (atom nil)
+        user {:id "commenter"}]
+    (try
+      (with-open [output (io/output-stream file)] (.write output source-bytes))
+      (with-redefs [site/enabled? (constantly true)
+                    pipeline/configured! (constantly nil)
+                    pipeline/roles! (constantly [])
+                    auth/ensure-profile! (constantly "commenter")
+                    pipeline/queue-bytes! (fn [bytes metadata]
+                                            (is (= (seq source-bytes) (seq bytes)))
+                                            (reset! queued metadata)
+                                            {:id "comment-job", :status "queued"})]
+        (is (= {:id "comment-job", :status "queued"}
+               (pipeline/comment-upload! user {:tempfile file, :size (count source-bytes)})))
+        (is (= "commenter" (:owner-id @queued)))
+        (is (= "comment-upload" (get-in @queued [:metadata :purpose])))
+        (is (= 403 (:auth/status (ex-data (try (pipeline/library! user {})
+                                             (catch clojure.lang.ExceptionInfo error error))))))
+        (is (= 400 (:auth/status (ex-data (try (pipeline/comment-upload! user {:tempfile file, :size 0})
+                                             (catch clojure.lang.ExceptionInfo error error)))))))
+      (with-redefs [site/enabled? (constantly false)]
+        (is (= 404 (:auth/status (ex-data (try (pipeline/comment-upload! user {})
+                                             (catch clojure.lang.ExceptionInfo error error)))))))
+      (finally (.delete file)))))

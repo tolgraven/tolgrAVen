@@ -187,6 +187,7 @@
     (let [body (:body (layout/render-home {:uri "/blog/post/24/comment/113"}))]
       (is (.contains body "data-document-target=\"blog-comment-113\""))
       (is (.contains body "data-document-pending=\"true\""))
+      (is (.contains body "#app[data-document-pending][data-document-target],#app[data-document-pending] main{visibility:visible}"))
       (is (< (.indexOf body "id=\"blog-comment-113\"") (.indexOf body "/js/document/entrance.js"))))))
 
 (deftest ordinary-reload-with-a-persistence-cookie-still-renders-the-page

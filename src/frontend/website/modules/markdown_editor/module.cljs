@@ -1,10 +1,14 @@
 (ns website.modules.markdown-editor.module
-  (:require [website.modules.markdown-editor.entry :as entry]))
+  (:require [website.modules.markdown-editor.entry :as entry]
+            [website.modules.blog-editor.schema :as schema]))
 
 ;; Reading and editing share the Markdown parser. Give it one lazy ancestor
 ;; instead of letting Shadow hoist those packages into their common main.
 (def spec
   {:bundle/depends-on #{:main :markdown :markdown-components :highlight}
-   :site/owner :blog-editor
-   :styles ["/css/website/modules/markdown-editor.min.css"]
-   :view {:editor #'entry/<editor>}})
+   :site/owner :blog
+   :styles ["/css/website/modules/markdown-editor.min.css"
+            "/css/website/modules/blog-editor.min.css"]
+   :db-schema schema/upload-sections
+   :view {:editor #'entry/<editor>
+          :composer #'entry/<composer>}})

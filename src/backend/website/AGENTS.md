@@ -1,5 +1,10 @@
 # Server adapters
 
+- Comment image uploads use the registered-account comment endpoint and the
+  existing bounded durable media pipeline. Jobs and polling belong to that
+  account. Image-library listing retains blogger/admin authorization; enabling
+  uploads in comments must not enable library listing or authored site content.
+
 - Successful public SSR documents use `private, no-cache` so native BFcache is
   available without shared HTTP caching. Errors known before headers, client-restoration templates,
   paired private-state documents and existing API privacy headers keep `no-store`.

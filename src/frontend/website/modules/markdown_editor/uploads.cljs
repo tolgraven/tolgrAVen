@@ -111,7 +111,8 @@
   :let [*draft (r/atom nil)
         *open? (r/atom false)
         *fields (r/atom {})]
-  (let [{:keys [uploads upload-query source? render-upload insert-ready! on-anchors on-removed]} (r/use-context context)
+  (let [{:keys [uploads upload-query source? render-upload insert-ready! on-anchors on-removed allow-components?]} (r/use-context context)
+        layout-enabled? (not (false? allow-components?))
         realm (editor/useRealm)
         cells (editor/useCellValues editor/exportVisitors$ editor/jsxComponentDescriptors$
                                     editor/jsxIsAvailable$ editor/toMarkdownExtensions$ editor/toMarkdownOptions$)
@@ -181,22 +182,24 @@
         [:span.md-component-node__chrome
          [:strong "Image"]
          [:button {:type "button", :on-click #(swap! *open? not), :aria-expanded @*open?} "Args"]
-         [resize/<handle> {:target #(.-current node-ref), :geometry geometry, :preview #(reset! *draft %), :commit commit!}]]
+         (when layout-enabled?
+           [resize/<handle> {:target #(.-current node-ref), :geometry geometry, :preview #(reset! *draft %), :commit commit!}])]
         [image/<picture> (cond-> {:src src, :alt (or (:alt attributes) (:name item) "")}
                            (or (:asset item) (get assets src)) (assoc :asset (or (:asset item) (get assets src))))]
-        (for [edge [:left :right :top :bottom]]
+        (when layout-enabled? (for [edge [:left :right :top :bottom]]
           ^{:key edge} [resize/<handle> {:edge edge, :class "md-resize-edge", :target #(.-current node-ref)
-                                       :geometry geometry, :preview #(reset! *draft %), :commit commit!}])
+                                       :geometry geometry, :preview #(reset! *draft %), :commit commit!}]))
         (when @*open?
           [:span.md-component-node__arguments.is-open
-           (for [[field label] [[:src "Source URL"] [:alt "Alternative text"] [:title "Title"] [:layout-width "Width"] [:layout-height "Height"]]]
+           (for [[field label] (cond-> [[:src "Source URL"] [:alt "Alternative text"] [:title "Title"]]
+                                layout-enabled? (into [[:layout-width "Width"] [:layout-height "Height"]]))]
              ^{:key field} [:label label [:input {:type "text", :value (get field-values field (get attributes field ""))
                                                 :on-change #(field! field (.. % -target -value))}]])
-           (for [[field label choices] [[:layout-align "Alignment" ["left" "center" "right"]]
+           (when layout-enabled? (for [[field label choices] [[:layout-align "Alignment" ["left" "center" "right"]]
                                        [:layout-flow "Text flow" ["block" "left" "right"]]]]
              ^{:key field} [:label label [:select {:value (get attributes field (first choices))
                                                   :on-change #(change! {field (.. % -target -value)})}
-                                          (for [choice choices] ^{:key choice} [:option {:value choice} choice])]])])])
+                                          (for [choice choices] ^{:key choice} [:option {:value choice} choice])]]))])])
      (when (and item render-upload (not (:chip-dismissed? item)) (not (:cancelled? item))) (render-upload item))]))
 
 (def pending-react (r/reactify-component (fn [props] [<pending-node> props])))

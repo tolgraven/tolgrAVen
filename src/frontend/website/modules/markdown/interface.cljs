@@ -17,8 +17,9 @@
   [:div.md-rendered
    [<parse-markdown-components>
     (util/md->normal md)
-    {:allow-images? (= :trusted (:trust options))
-     :allow-raw? (= :trusted (:trust options))
+    {:allow-images? (get options :allow-images? (= :trusted (:trust options)))
+     :allow-raw? (get options :allow-raw? (= :trusted (:trust options)))
+     :allow-components? (get options :allow-components? true)
      :image-assets (:image-assets options)
      :image-readiness (:image-readiness options)
      :default-language (:default-language options)

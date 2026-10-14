@@ -20,6 +20,7 @@
    [:?image-assets [:?map-of :string media/asset]]
    [:?image-readiness [:maybe authored-media/readiness-schema]]
    [:?allow-raw? :boolean]
+   [:?allow-components? :boolean]
    [:?default-language :?string]
    [:?auto-languages [:?vector :string]]
    [:?code-options [:maybe code-block/options-schema]]])
@@ -143,7 +144,8 @@
      [:r> (r/context-provider authored-media/asset-context) #js {:value (or image-assets {})}
      [react-markdown
      {:children md-text
-      :remarkPlugins [remarkGfm authored/plugin]
+      :remarkPlugins (cond-> [remarkGfm]
+                       (not (false? (:allow-components? options))) (conj authored/plugin))
       :rehypePlugins (cond-> [mark-markdown-blocks]
                        allow-raw? (conj [rehypeRaw {:passThrough ["tolgravenCodeBlock"]}])
                        true (conj restore-markdown-blocks))

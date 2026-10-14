@@ -6,6 +6,7 @@
             [website.modules.blog-editor.events]
             [website.modules.blog-editor.model :as model]
             [website.modules.blog-editor.files :as files]
+            [website.modules.markdown-editor.features :as features]
             [website.components.content.upload :as upload]))
 
 (defn- enqueue! [files textarea owner]
@@ -67,13 +68,24 @@
   "Canonical form text and upload jobs stay in the posting owner; only the SDK is lazy."
   {:features [:lifecycle]
    :spec true
-   :spec-schema [:map [:owner :string] [:?source? :boolean] [:?exit fn?]]}
-  [{:keys [owner source?]}]
+   :spec-schema [:map
+                 [:owner :string]
+                 [:?form-path [:vector :any]]
+                 [:?kind [:enum :post :comment]]
+                 [:?enabled-features features/schema]
+                 [:?library? :boolean]
+                 [:?source? :boolean]
+                 [:?exit fn?]]}
+  [{:keys [owner source? form-path kind enabled-features library?]
+    :or {form-path [:post-blog :text], kind :post}}]
   :let [*rich? (r/atom (not source?))]
-  (let [text (or @(r/subscribe [:form-field [:post-blog :text]]) "")
-        document-id @(r/subscribe [:state [:blog-editor :draft :document-id]])
+  (let [text-query [:form-field form-path]
+        text (or @(r/subscribe text-query) "")
+        document-id (if (= :post kind)
+                      @(r/subscribe [:state [:blog-editor :draft :document-id]]) owner)
+        library-enabled? (and (= :post kind) (not (false? library?)))
         uploads @(r/subscribe [:blog-editor/uploads owner])
-        library @(r/subscribe [:state [:blog-editor :library]])
+        library (when library-enabled? @(r/subscribe [:state [:blog-editor :library]]))
         assets (->> (concat (:assets library) (keep :asset uploads))
                     (reduce (fn [[seen result] asset]
                               (if (seen (:id asset)) [seen result]
@@ -81,13 +93,16 @@
                     second)
         upload! (r/use-callback #(bridge/upload! owner %) [owner])
         library-action (r/use-callback (fn [action offset]
-                                        (case action
+                                        (when library-enabled?
+                                          (case action
                                           :load (r/dispatch [:blog-editor/library-load offset])
-                                          :view [<library-state>])) [])]
+                                          :view [<library-state>]))) [library-enabled?])]
     (r/use-effect
       (fn []
-        (r/dispatch [:blog/editor-mounted owner])
-        #(r/dispatch [:blog/image-upload-dispose owner])) [owner])
+        (r/dispatch-sync [:blog/editor-mounted owner {:form-path form-path
+                                                     :kind kind
+                                                     :document-id document-id}])
+        #(r/dispatch-sync [:blog/image-upload-dispose owner])) [owner form-path kind document-id])
     [:section.blog-image-editor
      [:nav {:aria-label "Markdown editor mode"}
       [:button {:type "button", :aria-pressed @*rich?, :on-click #(do (r/dispatch-sync [:blog/editor-mode owner true]) (reset! *rich? true))} "Visual editor"]
@@ -95,8 +110,11 @@
      (m/<> {:module :markdown-editor, :view :editor, :load-on :immediate}
              {:text text
               :document-id document-id
+              :enabled-features (if (= :comment kind)
+                                  (disj (or enabled-features features/comment-features) :site-components)
+                                  (or enabled-features features/post-features))
               :source? (not @*rich?)
-              :text-query [:form-field [:post-blog :text]]
+              :text-query text-query
               :uploads uploads
               :uploads-query [:blog-editor/uploads owner]
               :upload-query (r/use-callback (fn [id] [:blog/state [:image-uploads id]]) [])
@@ -116,5 +134,5 @@
               :upload! upload!
               :assets assets
               :image-urls (mapv :src assets)
-              :library library-action})
+              :library (when library-enabled? library-action)})
      [<upload-status> {:owner owner}]]))

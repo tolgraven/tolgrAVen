@@ -125,9 +125,15 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   `blog/presentation.cljc`; the blog page retains shell ownership. Comment action
   links retain native hrefs and use owned hover/focus labels rather than title
   attributes. Text collapse controls require measured truncation.
-  Comment authoring uses a controlled native textarea backed by its existing
-  form subscription/events. The preserved styled-input experiment accepts a
-  text subscription, never the whole comment model.
+  Posts and comments use the Markdown editor's shared composer with explicit
+  enabled tools and a form path. Comment owners allow file uploads but never
+  subscribe to the server library or enable site components. Comment rendering
+  disables authored component parsing and raw HTML, including trusted authors.
+  Each editor lifetime owns its upload anchors and writes only its own form;
+  pending comment uploads block submission without blocking a post draft.
+  Comment links share the original corner action group with Reply/Edit. Preserve
+  the existing layout, typography, spacing and hover appearance when changing
+  navigation or data plumbing.
   `validation/schema.cljs` assembles browser/Node app-db sections from their owners;
   small single-use shell-state contracts stay inline there.
 - Image readiness callbacks use the shared picture lifecycle: notify only a decoded,

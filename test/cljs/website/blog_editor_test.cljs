@@ -592,3 +592,62 @@
                       (set! client/authenticated-request! original)
                       (restore-fixture-db! before)
                       (done)))))))
+
+(deftest comment-composer-shares-tools-and-upload-queue-without-library-or-post-draft-access
+  (async done
+    (let [before @r/*app-db
+          original client/authenticated-request!
+          calls (atom [])
+          element (.createElement js/document "div")
+          owner "comment-rich-test"
+          path [:write-comment [42 "113"] :text]
+          root (atom nil)]
+      (.appendChild (.-body js/document) element)
+      (set! client/authenticated-request!
+            (fn [& [method uri body success failure]]
+              (swap! calls conj {:method method, :uri uri, :success success})))
+      (r/dispatch-sync [:form-field [:post-blog :text] "Keep post draft"])
+      (r/dispatch-sync [:form-field path "Comment text"])
+      (-> (go-promise
+            (let [mounted (await! (support/create-root! element))]
+              (reset! root mounted)
+              (await! (support/render! mounted [editor/<markdown-editor>
+                                                {:owner owner
+                                                 :kind :comment
+                                                 :form-path path
+                                                 :library? false}]))
+              (await! (support/wait-for! #(= "Comment text" (some-> (.querySelector element ".md-editor-content p") .-textContent))))
+              (is (not (.includes (.-textContent element) "Component")))
+              (is (.querySelector element ".md-image-picker") "Images retain the owned upload picker")
+              (.click (.querySelector element ".md-image-picker > button"))
+              (await! (support/settle!))
+              (is (not (.includes (.-textContent element) "Find a server image")))
+              (is (.querySelector element "input[type=file]") "Comment image-file uploads are available")
+              (.click (.querySelector element ".md-image-picker > button"))
+              (is (.querySelector element "[aria-label='Bold']") "Formatting retains the real editor tools")
+              (let [editable (.querySelector element ".md-editor-content")
+                    range (.createRange js/document)
+                    selection (.getSelection js/window)]
+                (.focus editable)
+                (.selectNodeContents range editable)
+                (.collapse range false)
+                (.removeAllRanges selection)
+                (.addRange selection range)
+                (.dispatchEvent js/document (js/Event. "selectionchange"))
+                (await! (support/settle!))
+                (transfer! editable "paste" (js/File. #js ["image"] "comment.png" #js {:type "image/png"}))
+                (await! (support/wait-for! #(seq @calls)))
+                (is (= [[:post "/api/supabase/media/comments"]] (mapv (juxt :method :uri) @calls)))
+                (is (= "Keep post draft" (get-in @r/*app-db [:state :form-field :post-blog :text])))
+                (is (= path (:form-path (first (vals (get-in @r/*app-db [:state :blog :image-uploads]))))))
+                ((:success (first @calls)) {:id "comment-job", :status "ready", :asset asset})
+                (await! (support/wait-for! #(string/includes? (get-in @r/*app-db (into [:state :form-field] path)) (:src asset))))
+                (is (= "Keep post draft" (get-in @r/*app-db [:state :form-field :post-blog :text])))
+                (is (= 1 (count @calls)) "No library reads accompany comment editing or upload"))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @root (support/unmount! @root))
+                      (set! client/authenticated-request! original)
+                      (.remove element)
+                      (restore-fixture-db! before)
+                      (done)))))))

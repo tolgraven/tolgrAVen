@@ -15,6 +15,11 @@
 
 #?(:cljs
    (do
+(when-enabled :blog :comments
+  (r/reg-sub :comments/uploads-pending?
+    :<- [:blog/state [:image-uploads]]
+    (fn [uploads [_ path]] (model/comment-uploads-pending? uploads path))))
+
 (r/reg-sub :blog
   (fn [[_ path]]
     (case (first path)

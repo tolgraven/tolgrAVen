@@ -12,6 +12,7 @@
             [website.listener :as listener]
             [website.modules.blog-editor.editor :as blog-editor]
             [website.modules.blog-editor.views :as blog-views]
+            [website.modules.blog.presentation :as presentation]
             [website.test-support :as support]))
 
 (def initial-source
@@ -33,6 +34,25 @@
   (r/dispatch-sync [:test-editor/initialize])
   (-> (support/create-root! (.getElementById js/document "editor-demo"))
       (.then #(support/render! % [<fixture>]))))
+
+(defc <comment-fixture> []
+  (let [owner (blog-editor/use-owner :comment-demo)
+        text @(r/subscribe [:form-field [:write-comment [42] :text]])]
+    [:main.editor-demo
+     [:h1 "Comment authoring"]
+     [blog-editor/<markdown-editor> {:owner owner
+                                     :kind :comment
+                                     :form-path [:write-comment [42] :text]
+                                     :library? false}]
+     [:h2 "Published comment preview"]
+     [presentation/<comment-markdown> (or text "") {:trust :trusted}]]))
+
+(defn ^:export init-comment! []
+  (r/dispatch-sync [:test-editor/initialize])
+  (r/dispatch-sync [:form-field [:write-comment [42] :text]
+                    "## A comment\n\n**Bold**, *italic*, lists, links and code use the full editor.\n\n- First point\n- Second point\n\n```clojure\n(map inc [1 2 3])\n```"])
+  (-> (support/create-root! (.getElementById js/document "editor-demo"))
+      (.then #(support/render! % [<comment-fixture>]))))
 
 (defc <upload-fixture> []
   [:main.editor-demo

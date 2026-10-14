@@ -39,6 +39,16 @@
                              (response! #(pipeline/upload! (auth/current-user! request)
                                             (get-in request [:parameters :multipart :file]))))}}]))
      (when-enabled :main :media
+       (when-enabled :blog :comments
+         (when-enabled :user nil
+           ["/supabase/media/comments"
+            {:post {:summary "Queue an image owned by a registered commenter, without image-library access"
+                    :parameters {:multipart [:map [:file http-schema/upload]]}
+                    :responses {200 {:body schema/upload-response}}
+                    :handler (fn [request]
+                               (response! #(pipeline/comment-upload! (auth/current-user! request)
+                                              (get-in request [:parameters :multipart :file]))))}}])))
+     (when-enabled :main :media
        (when-enabled :user nil
          ["/supabase/media/:id"
           {:get {:summary "Read an owned upload's durable processing status"

@@ -15,6 +15,8 @@
    [:name :string]
    [:?owner :string]
    [:?sdk? :boolean]
+   [:?form-path [:vector :any]]
+   [:?kind [:enum :post :comment]]
    [:?anchor-attached? :boolean]
    [:?cancelled? :boolean]
    [:order [:int {:min 0}]]
@@ -34,6 +36,12 @@
    [:?preview-attempt [:int {:min 0}]]
    [:?asset media/asset]])
 (def uploads-schema [:map-of :string upload-schema])
+
+(def editor-schema
+  [:map
+   [:form-path [:vector :any]]
+   [:kind [:enum :post :comment]]
+   [:?document-id :?string]])
 
 (defn preview-generations
   "A new upload of an already shown source still requires its own visible acknowledgment."

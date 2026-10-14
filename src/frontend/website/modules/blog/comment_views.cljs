@@ -3,6 +3,8 @@
   (:require [clojure.string :as string]
             [website.react :as r]
             [website.components.timer :as timer]
+            [website.components.portal :as portal]
+            [website.listener :as listener]
             [website.modules.blog.comments :as comments]
             [website.modules.blog.schema :as schema]
             [website.modules.blog.presentation :as presentation]
@@ -12,6 +14,21 @@
             [website.util :as util]))
 
 (declare <add-comment>)
+
+(defc <comment-action-label>
+  "Keep the label outside the comment's existing clipping boundary."
+  [{:keys [id label left top]} close!]
+  (r/use-effect
+    #(listener/listen! :comment-action-label
+       [{:target "window" :event "scroll" :capture? true :handler close!}
+        {:target "window" :event "resize" :handler close!}])
+    [close!])
+  [portal/<portal> js/document.body
+   [:span.blog-comment-action-label
+    {:id id
+     :role "tooltip"
+     :style {:left (str left "rem") :top (str top "rem")}}
+    label]])
 
 (defc <comment-action>
   "Native link or button with an owned hover/focus label, including Escape dismissal."
@@ -25,23 +42,32 @@
   [{:keys [label icon class href on-click]}]
   :let [*hover? (r/atom false)
         *focus? (r/atom false)
-        *dismissed? (r/atom false)]
+        *dismissed? (r/atom false)
+        *anchor (r/atom nil)
+        capture-anchor! (fn [event]
+                          (let [rect (.getBoundingClientRect (.-currentTarget event))
+                                unit (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))]
+                            (reset! *anchor {:left (/ (.-right rect) unit)
+                                             :top (/ (.-bottom rect) unit)})))]
   (let [id (r/use-id)
         open? (and (or @*hover? @*focus?) (not @*dismissed?))]
-    [(if href :a.button.blog-btn.blog-comment-action :button.blog-btn.blog-comment-action)
+    [:<>
+     [(if href :a.button.blog-btn.blog-comment-action.noborder :button.blog-btn.blog-comment-action.noborder)
      {:class class
       :href href
       :type (when-not href "button")
       :aria-label label
       :aria-describedby (when open? id)
       :on-click on-click
-      :on-pointer-enter #(do (reset! *hover? true) (reset! *dismissed? false))
+      :on-pointer-enter #(do (capture-anchor! %) (reset! *hover? true) (reset! *dismissed? false))
       :on-pointer-leave #(reset! *hover? false)
-      :on-focus #(do (reset! *focus? true) (reset! *dismissed? false))
+      :on-focus #(do (capture-anchor! %) (reset! *focus? true) (reset! *dismissed? false))
       :on-blur #(reset! *focus? false)
       :on-key-down #(when (= "Escape" (.-key %)) (reset! *dismissed? true))}
-     [:i {:class (str "fa fa-" icon), :aria-hidden true}]
-     (when open? [:span.blog-comment-action-label {:id id, :role "tooltip"} label])]))
+     [:i {:class (str "fa fa-" icon), :aria-hidden true}]]
+     (when (and open? @*anchor)
+       [<comment-action-label> (assoc @*anchor :id id :label label)
+        #(reset! *dismissed? true)])]))
 
 (defc <preview-comment> "Render the current comment draft as Markdown."
   {:features [[:appear nil]]}
@@ -51,7 +77,7 @@
      {:style {:min-height "7.35rem"}}
      (when title
        [:h3.blog-comment-title title])
-     [presentation/<markdown> text {:trust (presentation/link-trust user)}]]))
+     [presentation/<comment-markdown> text {:trust (presentation/link-trust user)}]]))
 
 (defc <add-comment-btn> "Open or cancel the comment editor."
   [{:keys [parent-path kind] :as spec} :- schema/parent-spec]
@@ -245,7 +271,7 @@
                  :style {:filter (when (neg? score)
                                    (str "brightness(calc(1 + "
                                         (max -0.7 (* 0.1 score)) "))"))}}
-                [presentation/<markdown> text
+                [presentation/<comment-markdown> text
                  {:trust (presentation/link-trust user)}]
                 (when (false? @*full?)
                   [<comment-fade>
@@ -365,6 +391,7 @@
     [:button.blog-btn.noborder
      {:class (when valid? "topborder")
       :disabled (or (not valid?)
+                    @(r/subscribe [:comments/uploads-pending? parent-path])
                     @(r/subscribe [:state [:supabase-writes [:comment parent-path]]]))
       :on-click #(when valid?
                    (r/dispatch [:blog/comment-submit parent-path model editing?]))}
@@ -394,6 +421,16 @@
       :on-blur #(r/dispatch-sync [:form-field [:write-comment parent-path field]
                                   (get model field) :blur])}]))
 
+(defc <comment-editor> [{:keys [parent-path]}]
+  (let [account @(r/subscribe [:user/active-user])
+        editing @(r/subscribe [:blog/state [:editing-comment parent-path]])
+        owner (r/use-memo #(str (random-uuid)) [(:id account) (:id editing)])]
+    (m/<> {:module :markdown-editor, :view :composer, :load-on :immediate}
+           {:owner owner
+            :kind :comment
+            :form-path [:write-comment parent-path :text]
+            :library? false})))
+
 (defc <add-comment> "Edit or submit a comment with a live preview."
   {:features [:error-boundary]}
   [{:keys [parent-path] :as spec} :- schema/parent-spec]
@@ -422,17 +459,7 @@
                           :comment {:user @(r/subscribe [:user/active-user])
                                     :title (:title @*model)
                                     :text (or (:text @*model) "")}}]
-         [:textarea.blog-comment-editor
-          {:aria-label "Comment text"
-           :rows 6
-           :value (or (:text @*model) "")
-           :on-change #(r/dispatch-sync [:form-field [:write-comment parent-path :text]
-                                         (.. % -target -value)])}]
-         ;; Preserve the styled-input alternative; it owns a single text value,
-         ;; while the editor's managed form model also contains title/metadata.
-         #_(m/<> {:module :styled-input, :view :input, :load-on :immediate}
-                 :model (r/subscribe [:form-field [:write-comment parent-path :text]])
-                 :on-change #(r/dispatch-sync [:form-field [:write-comment parent-path :text] %]))
+         [<comment-editor> {:parent-path parent-path}]
          ;; The experimental field could use :style {:opacity 0.1 :z-index 10}.
          ;; Future shortcut: submit on Alt-Enter.
          [<submit-comment-btn> {:parent-path parent-path :model @*model

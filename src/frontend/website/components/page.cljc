@@ -135,12 +135,13 @@
    [common/<footer-full> @(r/subscribe [:content [:footer]])]
    [common/<footer> @(r/subscribe [:content [:footer]])]
    (when-enabled :contact nil
-     (when @(r/subscribe [:state [:contact-form :show?]])
+     (let [open? @(r/subscribe [:state [:contact-form :show?]])]
+       ;; The lazy host owns presence; its panel exists only while open/exiting.
        (m/<> {:module :contact
               :view :popup
-              :load-on :immediate
-              :<before> (fn [] [:span {:role "status"} "Opening contact form…"])}
-             true)))
+              :defer? (not open?)
+              :load-on (if open? :immediate :event)
+              :<loading> (if open? [:span {:role "status"} "Opening contact form…"] [:<>])})))
    [ui-notifications/<hud> (r/subscribe [:hud])]
    [common/<to-top>]
    ; [[:div.ripple-on-click

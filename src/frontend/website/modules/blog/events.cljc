@@ -71,7 +71,8 @@
   (r/reg-event-fx :blog/comment-submit
   {:args (get schema/event-args :blog/comment-submit)} [debug]
   (fn [{:keys [db]} [_ path input editing]]
-    (when-not (get-in db [:state :supabase-writes [:comment path]])
+    (when-not (or (get-in db [:state :supabase-writes [:comment path]])
+                  (model/comment-uploads-pending? (get-in db [:state :blog :image-uploads]) path))
       {:db (assoc-in db [:state :supabase-writes [:comment path]] true)
        :supabase/request
        {:method (if editing :put :post) :uri "/api/supabase/comments"

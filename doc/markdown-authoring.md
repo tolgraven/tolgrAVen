@@ -277,3 +277,14 @@ compiler/root lifecycle while forwarding React's recovery and identifier-prefix
 options, which Reagent 2.0.1 accepts but does not pass through. The release fixture
 uses actual initial styles, checks delayed owner/coercion gates, and verifies a
 deliberate native recovery plus the selected identifier prefix.
+
+The shared composer accepts an owned `:form-path`, a `:kind` (`:post` or
+`:comment`) and `:enabled-features`. Posts retain all current tools, authored
+components and their image library. Comments retain visual/source editing,
+formatting, headings, lists, links, tables, code and image-file uploads, but
+never expose the library or site-component tools. Their reader also disables
+component parsing and raw HTML, so manually pasted component/iframe markup
+cannot become embedded site content. The comment upload endpoint requires a
+registered account and owns its processing jobs; library listing still requires
+a blogger or administrator. Upload anchors, retries and completion target the
+editor's own form, and submission waits for its pending image insertions.

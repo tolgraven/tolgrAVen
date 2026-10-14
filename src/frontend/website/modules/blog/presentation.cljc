@@ -29,6 +29,14 @@
       @(r/subscribe [:user/trusted? id]) :trusted
       :else :user)))
 
+(defc <comment-markdown>
+  "Comments support ordinary Markdown and images, never authored site components or raw HTML."
+  [text & [options]]
+  [<markdown> text (assoc options
+                         :allow-images? true
+                         :allow-raw? false
+                         :allow-components? false)])
+
 (defc <posted-by> "Render author, timestamp, and optional score."
   {:features [[:appear nil]]}
   [{:keys [id user ts score] :or {score 0} :as spec} :- schema/posted-by-spec]

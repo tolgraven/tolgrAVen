@@ -13,9 +13,11 @@
             [website.modules.blog.comments :as comments]
             [website.modules.blog.events]
             [website.modules.blog.subs]
+            [website.modules.blog.presentation :as presentation]
             [website.modules.user.module :as user-module]
             [website.supabase.scoped :as scoped]
             [website.loader :as loader]
+            [website.loader.styles :as styles]
             [shadow.lazy :as lazy]
             [website.events]
             [website.subs]))
@@ -45,6 +47,7 @@
                                 :row row
                                 :root row
                                 :parent {:id 42, :title "Parent post"}})
+                *active-user (r/atom author)
                 modules loader/modules
                 ready (fn [spec]
                         (reify lazy/ILoadable
@@ -52,12 +55,15 @@
                           IDeref
                           (-deref [_] (dissoc spec :content :depends))))]
             (try
+              (.appendChild (.-body js/document) element)
               (r/dispatch-sync [:init/app-db])
               (restore/begin! {})
               (r/dispatch-sync [:set [:common/route]
                                 (assoc (reitit/match-by-path routes/router "/blog/comment/113")
                                        :parameters {:path {:comment-id "113"}, :query {}})])
               (await! (loader/load! {:module :markdown}))
+              (await! (loader/load! {:module :styled-input}))
+              (await! (styles/acquire! :user))
               (r/with-framework-bindings
                 [loader/modules (assoc modules :user (ready user-module/spec))
                  rfe/href (fn [name params query]
@@ -69,18 +75,43 @@
                       :comments/focus-ready? (r/atom true)
                       :comments/focus-state status
                       :user/user (r/atom author)
-                      :user/active-user (r/atom author)
+                      :user/active-user *active-user
                       (subscribe q)))
                    ([q opts] (subscribe q opts)))]
-                (await! (support/render! root [comment-views/<standalone-comment> "113"]))
+                (await! (support/render! root
+                          [:<>
+                           [:link {:rel "stylesheet" :href "/css/website/main.css"}]
+                           [:link {:rel "stylesheet" :href "/css/website/modules/blog.css"}]
+                           [comment-views/<standalone-comment> "113"]]))
+                (await! (support/wait-for!
+                          #(and (= "absolute" (.-position (js/getComputedStyle (.querySelector element ".blog-comment-actions"))))
+                                (not= "" (.getPropertyValue (js/getComputedStyle (.-documentElement js/document)) "--space")))))
+                (await! (.-ready (.-fonts js/document)))
+                (await! (support/settle!))
+                (let [comment (.querySelector element "section.blog-comment")
+                      actions (.querySelector comment ".blog-comment-actions")
+                      bounds (.getBoundingClientRect comment)
+                      controls (.getBoundingClientRect actions)
+                      height (.-height bounds)]
+                  (is (= 4 (.-childElementCount actions)) "Links, Edit and Reply have one corner owner")
+                  (is (every? #(.contains (.-classList %) "noborder") (array-seq (.-children actions))))
+                  (is (< (.-top controls) (+ (.-top bounds) (/ height 2))) "The action group stays in the original top corner")
+                  (reset! *active-user nil)
+                  (await! (support/settle!))
+                  (is (= 2 (.-childElementCount actions)))
+                  (is (= "absolute" (.-position (js/getComputedStyle actions)))
+                      "Authentication keeps the shared actions out of the comment's text flow")
+                  (reset! *active-user author)
+                  (await! (support/settle!)))
                 (.click (.querySelector element ".blog-comment-edit-btn"))
-                (await! (support/wait-for! #(.querySelector element ".blog-adding-comment"))))
+                (await! (support/wait-for! #(.querySelector element ".blog-adding-comment .md-editor-content"))))
               (is (.querySelector element ".blog-adding-comment") "Edit renders a real comment editor")
-              (is (= "Original standalone text" (.-value (.querySelector element "textarea"))))
+              (is (= "Original standalone text" (.-textContent (.querySelector element ".md-editor-content"))))
               (is (= "113" (:id (await! (support/subscription-value! [:blog/state [:editing-comment [42]]])))))
               (is (= "Original standalone text" (:text (await! (support/subscription-value! [:form-field [:write-comment [42]]])))))
               (finally
                 (support/unmount! root)
+                (.remove element)
                 (reset! restore/*context before-context)
                 (restore-db!)))))
         (.catch #(is false (str %)))
@@ -156,14 +187,14 @@
                   (is (nil? (.getAttribute link "title")) "Labels belong to our UI")
                   (.focus link)
                   (await! (support/settle!))
-                  (is (= "Permalink" (.-textContent (.querySelector actions "[role=tooltip]"))))
+                  (is (= "Permalink" (.-textContent (.getElementById js/document (.getAttribute link "aria-describedby")))))
                   (.dispatchEvent link (js/KeyboardEvent. "keydown" #js {:key "Escape", :bubbles true}))
                   (await! (support/settle!))
-                  (is (nil? (.querySelector actions "[role=tooltip]")))
+                  (is (nil? (.querySelector js/document ".blog-comment-action-label")))
                   (.blur link)
                   (.dispatchEvent link (js/PointerEvent. "pointerover" #js {:bubbles true}))
                   (await! (support/settle!))
-                  (is (.querySelector actions "[role=tooltip]") "Hover opens the same custom label")
+                  (is (.querySelector js/document ".blog-comment-action-label") "Hover opens the same custom label")
                   (.dispatchEvent link (js/PointerEvent. "pointerout" #js {:bubbles true}))
                   (reset! *active-user author)
                   (await! (support/settle!))
@@ -206,3 +237,35 @@
                 (reset! restore/*context context)))))
         (.catch #(is false (str %)))
         (.finally done))))
+
+(deftest trusted-comment-markdown-never-renders-site-components-or-iframes
+  (async done
+    (let [element (.createElement js/document "div")
+          restore-db! (r/make-restore-fn)
+          root (atom nil)]
+      (.appendChild (.-body js/document) element)
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            ;; Earlier fixtures restore app-db, including code readiness. Pair
+            ;; this fresh state with fresh acquisition promises, while reusing
+            ;; the actual loaded JavaScript and stylesheet resources.
+            (swap! loader/*loads dissoc :markdown)
+            (swap! loader/*code-loads dissoc :markdown)
+            (await! (loader/load! {:module :markdown}))
+            (let [mounted (await! (support/create-root! element))]
+              (reset! root mounted)
+              (await! (support/render! mounted
+                        [presentation/<comment-markdown>
+                         "**Comment**\n\n![Uploaded image](/img/tolgrav.png)\n\n<iframe src='/private-library'></iframe>\n\n<Component component='website.components.content.markdown/<image>' src='/injected-component.png' />"
+                         {:trust :trusted}]))
+              (await! (support/wait-for! #(.querySelector element "strong")))
+              (is (= "Comment" (.-textContent (.querySelector element "strong"))))
+              (is (nil? (.querySelector element "iframe")))
+              (is (nil? (.querySelector element "[src='/injected-component.png']")))
+              (is (.querySelector element "img[alt='Uploaded image']") "Ordinary uploaded Markdown images remain available")))
+          (.catch #(is false (str % " DOM: " (.-innerHTML element))))
+          (.finally (fn []
+                      (when @root (support/unmount! @root))
+                      (.remove element)
+                      (restore-db!)
+                      (done)))))))

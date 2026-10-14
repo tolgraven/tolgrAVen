@@ -93,17 +93,27 @@
                    (catch Exception _ (storage/fail! 503 "Media queue is busy or unavailable")))]
       (response queued))))
 
-(defn upload! [user {:keys [tempfile size]}]
+(defn- upload-file! [owner {:keys [tempfile size]} purpose]
   (configured!)
-  (let [owner (author! user)]
-    (when-not (and tempfile (integer? size) (<= 1 size storage/max-source-bytes))
-      (storage/fail! 400 "Choose an image smaller than 5 MB"))
-    (with-open [input (io/input-stream tempfile)]
-      (let [bytes (storage/limited-bytes! input storage/max-source-bytes)
-            hash (storage/digest bytes)]
-        (queue-bytes! bytes {:owner-id owner
-                            :source-key (str "upload:" owner ":" hash)
-                            :source-type "upload"})))))
+  (when-not (and tempfile (integer? size) (<= 1 size storage/max-source-bytes))
+    (storage/fail! 400 "Choose an image smaller than 5 MB"))
+  (with-open [input (io/input-stream tempfile)]
+    (let [bytes (storage/limited-bytes! input storage/max-source-bytes)
+          hash (storage/digest bytes)]
+      (queue-bytes! bytes {:owner-id owner
+                          :source-key (str (name purpose) ":" owner ":" hash)
+                          :source-type "upload"
+                          :metadata {:purpose (name purpose)}}))))
+
+(defn upload! [user file]
+  (upload-file! (author! user) file :upload))
+
+(defn comment-upload! [user file]
+  ;; The authenticated route supplies the registered account. Its profile owns
+  ;; this job and polling; this permission does not grant library access.
+  (when-not (site/enabled? :blog :comments)
+    (storage/fail! 404 "Comment uploads are unavailable"))
+  (upload-file! (auth/ensure-profile! user) file :comment-upload))
 
 (defn assets! [sources]
   (if-not (enabled?)

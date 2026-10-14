@@ -5,7 +5,7 @@
             [website.modules.blog-editor.views :as views]))
 
 (def spec
-  {:bundle/depends-on #{:main :blog :highlight}
+  {:bundle/depends-on #{:main :blog :highlight :markdown-editor}
    :site/owner :blog
    :pages pages/spec
    :db-schema schema/sections
