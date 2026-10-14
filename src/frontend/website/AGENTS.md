@@ -172,6 +172,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   class. Network SSR retains the original site/hero entrance in CSS across
   hydration; the document-owned mount container gates it on hero decoding.
   Streamed skeletons remain until that gate opens. Local/history returns stay settled.
+  Loading roots share the lean visibility observer: hidden/offscreen owners keep
+  measured relative geometry while React unmounts their body. A skeleton context
+  avoids per-line observers. CSS pulses only opacity, groups article motion and
+  stops child motion during exit; presence releases the component when it finishes.
 - Shared Markdown, full syntax highlighting and mapping code live in the
   `:markdown`, `:highlight` and `:maps` bundles. Markdown's parser and declared
   node/component mapping live in `modules/markdown/`; eager consumers use its

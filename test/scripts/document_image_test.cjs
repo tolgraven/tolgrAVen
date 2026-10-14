@@ -5,8 +5,8 @@ const test = require('node:test');
 const head = fs.readFileSync('resources/public/js/document/head.js', 'utf8');
 const source = fs.readFileSync('resources/public/js/document/entrance.js', 'utf8');
 function deferred() { let resolve, reject; const promise = new Promise((a,b) => {resolve=a; reject=b;}); return {promise,resolve,reject}; }
-function fixture({pending=true, width=390, dpr=2, same=false, reduced=false, nativeDecode=true, cached=false, direct=false, scale=1, duplicate=false, placeholder=false, previewOmitted=false, managed=false, nativeImage=false}={}) {
-  const frames = new Map(), timers = new Map(); let sequence = 0, observer;
+function fixture({pending=true, width=390, dpr=2, same=false, reduced=false, nativeDecode=true, cached=false, direct=false, scale=1, duplicate=false, placeholder=false, previewOmitted=false, managed=false, nativeImage=false, skeleton=false, complete=true}={}) {
+  const frames = new Map(), timers = new Map(), observers=[]; let sequence = 0, observer, completed=complete;
   class Element extends EventTarget {
     constructor(attrs={}) { super(); this.attrs=new Map(Object.entries(attrs)); this.listeners=new Map(); this.properties=new Map(); this.style={setProperty:(k,v)=>this.properties.set(k,v),removeProperty:k=>this.properties.delete(k)}; }
     querySelectorAll() { return []; }
@@ -19,6 +19,9 @@ function fixture({pending=true, width=390, dpr=2, same=false, reduced=false, nat
     removeEventListener(k,v) { super.removeEventListener(k,v); this.listeners.set(k,(this.listeners.get(k)||0)-1); }
   }
   const root = new Element(pending ? {'data-document-pending':'true'} : {});
+  const body = new Element();
+  const shell = skeleton ? new Element() : null;
+  if (shell) shell.remove=()=>{shell.removed=true;};
   let hero = new Element({'data-preview-width':'400','data-image-sizes':'100vw','data-image-key':'_R_hero'});
   const html = new Element(direct?{'data-image-direct':'true'}:{});
   hero.parentElement=root;
@@ -56,11 +59,11 @@ function fixture({pending=true, width=390, dpr=2, same=false, reduced=false, nat
   hero.querySelector=selector=>nativeImage?null:(selector.includes('preview')?(previewOmitted?null:preview):final);
   hero.matches=()=>nativeImage; hero.querySelectorAll=()=>[];
   const window = new Element();window.matchMedia=()=>({matches:reduced});
-  class Observer {constructor(callback){this.callback=callback;observer=this;} observe(){} disconnect(){this.disconnected=true;}}
-  const context={performance:{getEntriesByType:()=>[{type:direct?'back_forward':'navigate'}]},document:{querySelector:()=>root,documentElement:html}, Event, MutationObserver:Observer, window,
+  class Observer {constructor(callback){this.callback=callback;observer=this;observers.push(this);this.observations=[];} observe(target,options){this.observations.push({target,options});this.target=target;this.options??=options;} disconnect(){this.disconnected=true;}}
+  const context={performance:{getEntriesByType:()=>[{type:direct?'back_forward':'navigate'}]},document:{body,querySelector:selector=>selector==='#app'?root:selector==='#ssr-shell'?shell:selector==='#ssr-complete'&&shell&&completed?{}:null,documentElement:html}, Event, MutationObserver:Observer, window,
     innerWidth:width, devicePixelRatio:dpr, matchMedia:()=>({matches:reduced}),
     DOMMatrixReadOnly:class{constructor(){this.a=scale;}},
-    getComputedStyle:node=>({transitionDuration:'0.15s',opacity:'1',visibility:'visible',transform:node===hero?'matrix(1,0,0,1,0,0)':'none',display:node.hidden?'none':'block'}),
+    getComputedStyle:node=>({animationName:node===shell&&!reduced?'skeleton-dissolve':'none',animationDuration:node===shell&&!reduced?'0.16s':'0s',transitionDuration:'0.15s',opacity:'1',visibility:'visible',transform:node===hero?'matrix(1,0,0,1,0,0)':'none',display:node.hidden?'none':'block'}),
     requestAnimationFrame:callback=>{const n=++sequence;frames.set(n,callback);return n;},
     cancelAnimationFrame:n=>frames.delete(n), setTimeout:callback=>{const n=++sequence;timers.set(n,callback);return n;},clearTimeout:n=>timers.delete(n), Promise};
   vm.runInNewContext(head,context);
@@ -68,9 +71,43 @@ function fixture({pending=true, width=390, dpr=2, same=false, reduced=false, nat
   const flush=async()=>{await Promise.resolve();await Promise.resolve();};
   const frame=async()=>{const current=[...frames.values()];frames.clear();for(const callback of current)callback();await flush();};
   const load=async image=>{image.complete=true;image.naturalWidth=800;image.dispatchEvent(new Event('load'));image.decoding.resolve();await flush();};
-  return {root,hero,preview,final,other,animations,observer,frames,timers,window,flush,frame,load,
+  const completeMarker=()=>{completed=true;for(const o of observers)if(!o.disconnected&&o.observations.some(x=>x.target===body&&x.options.childList))o.callback();};
+  return {root,hero,preview,final,other,shell,animations,observer,observers,frames,timers,window,flush,frame,load,completeMarker,
     phase:()=>root.__progressiveImages.get(hero)?.phase??null};
 }
+test('streamed shell waits for the hero gate then releases its exact animation owner',async()=>{
+  const f=fixture({skeleton:true});
+  const owner=f.observers.find(o=>o.options.attributeFilter.includes('data-document-pending'));
+  assert.equal(f.shell.removed,undefined);
+  await f.load(f.preview);await f.frame();await f.frame();owner.callback();
+  assert.equal(f.root.hasAttribute('data-document-pending'),false);
+  assert.equal(f.shell.removed,undefined,'Keep the shell until its opacity animation ends');
+  const wrong=new Event('animationend');Object.defineProperty(wrong,'animationName',{value:'component-pulse'});
+  f.shell.dispatchEvent(wrong);assert.equal(f.shell.removed,undefined);
+  const end=new Event('animationend');Object.defineProperty(end,'animationName',{value:'skeleton-dissolve'});
+  f.shell.dispatchEvent(end);
+  assert.equal(f.shell.removed,true);assert.equal(owner.disconnected,true);
+  assert.equal(f.shell.listeners.get('animationend'),0);assert.equal(f.shell.listeners.get('animationcancel'),0);
+  assert.equal(f.timers.size,0);
+});
+test('streamed shell removes immediately for reduced motion and bounds missing animation events',async()=>{
+  const reduced=fixture({skeleton:true,reduced:true,pending:false});
+  assert.equal(reduced.shell.removed,true);
+  const timed=fixture({skeleton:true,pending:false});
+  assert.equal(timed.shell.removed,undefined);
+  for(const callback of [...timed.timers.values()]) callback();
+  assert.equal(timed.shell.removed,true);
+  assert.equal(timed.shell.listeners.get('animationend'),0);
+});
+test('a hero gate opening before the final stream marker cannot strand the shell',async()=>{
+  const f=fixture({skeleton:true,complete:false,reduced:true});
+  const owner=f.observers.find(o=>o.options.attributeFilter.includes('data-document-pending'));
+  await f.load(f.preview);await f.frame();await f.frame();owner.callback();
+  assert.equal(f.root.hasAttribute('data-document-pending'),false);
+  assert.equal(f.shell.removed,undefined);
+  f.completeMarker();
+  assert.equal(f.shell.removed,true);assert.equal(owner.disconnected,true);
+});
 test('decoded SSR preview releases clock; final overlaps under the same native owner',async()=>{
   const f=fixture(); await f.load(f.preview); assert.equal(f.phase(),'waiting');
   await f.frame();await f.frame();assert.equal(f.root.hasAttribute('data-document-pending'),false);await f.frame();

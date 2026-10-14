@@ -78,8 +78,10 @@
     ;; otherwise awaits the receiver before invoking .catch.
     (let [test! (fn [root element]
                   (go-promise
-                    (await! (render! root [loading/<rendered>
-                                          {:form [markdown/<md->div> "# Sample heading\n\nSample paragraph"]}]))
+                    (await! (render! root
+                                    [:div {:style {:position "fixed" :top "1rem" :left "1rem" :width "20rem"}}
+                                     [loading/<rendered>
+                                      {:form [markdown/<md->div> "# Sample heading\n\nSample paragraph"]}]]))
                     (is (some? (.querySelector element ".component-render-skeleton .md-rendered h1")))
                     (is (= "Sample paragraph" (.-textContent (.querySelector element "p"))))
                     (is (.hasAttribute (.querySelector element ".component-render-skeleton") "inert"))))]

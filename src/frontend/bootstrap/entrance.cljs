@@ -1,5 +1,6 @@
 (ns bootstrap.entrance
-  "Native image/decode staging before application code, with document-only writes.")
+  "Native image/decode staging before application code, with document-only writes."
+  (:require [bootstrap.skeleton :as skeleton]))
 
 (defn- direct? [] (.hasAttribute (.-documentElement js/document) "data-image-direct"))
 (defn- reduced-motion? [] (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)")))
@@ -225,6 +226,7 @@
 
 (defn init! []
   (when-let [root (.querySelector js/document "#app")]
+    (skeleton/watch! root)
     (let [owners (js/WeakMap.)
           entries #js []
           bindings #js []

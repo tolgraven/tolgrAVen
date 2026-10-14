@@ -5,10 +5,10 @@
             [website.component.registry]
             [website.macros :refer-macros [defc]]))
 
-(defn setup [{:keys [event callback once? threshold root-margin delay-ms]
+(defn setup [{:keys [event callback on-change once? threshold root-margin delay-ms]
               :or {once? true threshold 0.5 root-margin "0px" delay-ms 0}}]
-  (when (and (or event callback) (exists? js/window))
-    (let [fire! (or callback #(r/dispatch event))
+  (when (and (or event callback on-change) (exists? js/window))
+    (let [fire! (or callback (when event #(r/dispatch event)))
           *observer (atom nil)
           *timer (atom nil)
           *active? (atom true)
@@ -18,17 +18,20 @@
                        (if (exists? js/IntersectionObserver)
                          (let [observer (js/IntersectionObserver.
                                           (fn [entries observer]
-                                            (when (and @*active? (or (not once?) (not @*fired?))
-                                                       (some #(and (.-isIntersecting %)
-                                                                   (>= (.-intersectionRatio %) threshold))
-                                                             (array-seq entries)))
-                                              (reset! *fired? true)
-                                              (when once? (.disconnect observer))
-                                              (fire!)))
+                                            (when @*active?
+                                              (doseq [entry (array-seq entries)]
+                                                (let [visible? (and (.-isIntersecting entry)
+                                                                    (>= (.-intersectionRatio entry) threshold))]
+                                                  (when on-change (on-change visible?))
+                                                  (when (and visible? (or (not once?) (not @*fired?)))
+                                                    (reset! *fired? true)
+                                                    (when once? (.disconnect observer))
+                                                    (when fire! (fire!)))))))
                                           (clj->js {:threshold threshold :rootMargin root-margin}))]
                            (reset! *observer observer)
                            (.observe observer element))
-                         (fire!))))]
+                         (do (when on-change (on-change true))
+                             (when fire! (fire!))))))]
       {:mount! (fn [element]
                  (if (pos? delay-ms)
                    (reset! *timer (js/setTimeout #(observe! element) delay-ms))

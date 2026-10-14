@@ -8,24 +8,23 @@
     color-mix(in srgb, currentColor 22%, transparent) 48%,
     color-mix(in srgb, currentColor 22%, transparent) 50%,
     transparent 59%);
-  background-size: 260% 100%;
   border-radius: .2rem;
-  animation: component-shimmer 2.8s ease-in-out infinite,
-             component-pulse 2.8s ease-in-out infinite alternate;
+  animation: component-pulse 2.4s ease-in-out infinite alternate;
 }
 .component-skeleton--text { width: 12ch; height: 1em; }
 .component-skeleton--heading { display: block; width: 65%; height: 1.2em; }
 .component-skeleton--box { display: block; width: 100%; min-height: 8rem; }
 .component-skeleton--avatar { width: 3rem; height: 3rem; border-radius: 50%; }
-.component-skeleton-lines { display: grid; gap: .5rem; }
-.component-skeleton-lines > .component-skeleton { width: 100%; }
+.component-skeleton-lines { display: grid; gap: .5rem; animation: component-pulse 2.4s ease-in-out infinite alternate; }
+.component-skeleton-lines > .component-skeleton { width: 100%; animation: none; }
 .component-skeleton-lines > :last-child { width: 75%; }
 @keyframes component-spin { to { transform: rotate(360deg); } }
 @keyframes component-pulse { from { opacity: .7; } to { opacity: 1; } }
-@keyframes component-shimmer { from { background-position: 140% 0; } to { background-position: -140% 0; } }
 
 .component-skeleton-article {
   width: 100%; min-width: 0;
+  animation: component-pulse 2.4s ease-in-out infinite alternate;
+  :is(.component-skeleton, .component-skeleton-lines) { animation: none; }
   &__header { display: flex; gap: var(--space); align-items: flex-start; margin-bottom: 1.75rem; }
   &__header > .component-skeleton--avatar { flex: 0 0 3rem; margin-top: .6rem; }
   &__identity { flex: 1; min-width: 0; }
@@ -49,19 +48,19 @@
   pointer-events: none;
   user-select: none;
   color: transparent;
+  animation: component-pulse 2.4s ease-in-out infinite alternate;
   * { color: transparent !important; text-shadow: none !important; caret-color: transparent; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
   .appear-wrapper { opacity: 1 !important; transform: none !important; animation: none !important; }
   img, video, svg { visibility: hidden; }
   :is(h1, h2, h3, h4, h5, h6, p, em, .blog-info, .blog-tag-link, .user-avatar) {
     border-radius: .2rem;
     background: linear-gradient(110deg, var(--bg-2-2), color-mix(in srgb, var(--fg-2) 18%, var(--bg-2-2)), var(--bg-2-2));
-    background-size: 240% 100%;
-    animation: component-shimmer 1.8s ease-in-out infinite, component-pulse 1.8s ease-in-out infinite alternate;
   }
   a, button { pointer-events: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .component-render-skeleton * { animation: none !important; }
+  :is(.component-render-skeleton, .component-skeleton-article, .component-skeleton-lines) { animation: none; }
 }
 
 body:has(#ssr-complete):not(:has(#app[data-document-pending])) #ssr-shell { display: none; }
@@ -74,12 +73,12 @@ body:has(#ssr-complete):not(:has(#app[data-document-pending])) #ssr-shell { disp
     z-index: 110;
     pointer-events: none;
     animation: skeleton-dissolve .16s ease-out both;
-    backdrop-filter: blur(.3125rem);
+    *, *::before, *::after { animation: none !important; transition: none !important; }
   }
 }
 @keyframes skeleton-dissolve {
-  from { opacity: 1; backdrop-filter: blur(.3125rem); }
-  to { opacity: 0; backdrop-filter: blur(0); visibility: hidden; }
+  from { opacity: 1; }
+  to { opacity: 0; visibility: hidden; }
 }
 @media (max-width: 30em) {
   .component-skeleton-article {
@@ -114,13 +113,15 @@ body:has(#ssr-complete):not(:has(#app[data-document-pending])) #ssr-shell { disp
   &__exit {
     position: absolute;
     inset: 0;
-    animation: skeleton-dissolve .4s ease-out both;
-    backdrop-filter: blur(.3125rem);
+    animation: skeleton-dissolve .16s ease-out both;
+    *, *::before, *::after { animation: none !important; transition: none !important; }
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .component-loading-reveal__exit { animation: none; backdrop-filter: none; }
+  .component-loading-reveal__exit { animation: none; }
 }
+
+[data-skeleton-hidden] { animation: none !important; }
 
 // Temporary proximity markers reserve no permanent module wrapper.
 .module-load-trigger { display: block; height: .0625rem; pointer-events: none; }
