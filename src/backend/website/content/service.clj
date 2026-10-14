@@ -98,23 +98,55 @@
     (merge (select-keys warm ks)
            (when (seq missing) (contract/normalize-content (load-content! missing))))))
 
+(defn- acquire-sections! [source ks now]
+  ;; Only cache/promise ownership is serialized. CMS and media I/O must never
+  ;; hold this lock: disjoint sections belong to independent module consumers.
+  (locking *cache
+    (reduce
+      (fn [requests k]
+        (let [entry (get-in @*cache [source k])]
+          (if (<= (- now (get entry :at 0)) 30000)
+            (assoc-in requests [:content k] (:value entry))
+            (if-let [pending (:pending entry)]
+              (assoc-in requests [:waiting k] pending)
+              (let [pending' (promise)]
+                (swap! *cache assoc-in [source k :pending] pending')
+                (-> requests
+                    (assoc-in [:owned k] pending')
+                    (assoc-in [:waiting k] pending')))))))
+      {:content {}, :owned {}, :waiting {}} ks)))
+
+(defn- load-sections! [source owned ks now]
+  (when (seq owned)
+    (try
+      (let [fresh (read-content! ks)]
+        (locking *cache
+          (swap! *cache update source merge
+                 (into {} (map (fn [[k v]] [k {:at now, :value v}])) fresh)))
+        (doseq [[k pending] owned] (deliver pending {:value (get fresh k)})))
+      (catch Throwable error
+        (locking *cache
+          (doseq [k (keys owned)]
+            (swap! *cache update-in [source k] dissoc :pending)))
+        ;; Release every shared waiter on failure; later requests can retry.
+        (doseq [[_ pending] owned] (deliver pending {:error error}))))))
+
 (defn bundle!
   ([] (bundle! nil))
   ([requested]
    (let [ks (contract/validate-keys requested)
          source (:url (settings))
-         now (System/currentTimeMillis)]
-     (locking *cache
-       (let [cached (get @*cache source {})
-             missing (filterv #(> (- now (get-in cached [% :at] 0)) 30000) ks)]
-         (when (seq missing)
-           (let [fresh (read-content! missing)]
-             (swap! *cache update source merge
-                    (into {} (map (fn [[k v]] [k {:at now :value v}])) fresh)))))
-       {:version contract/version
-        :content (merge (into {} (map (fn [k] [k (get-in @*cache [source k :value])])) ks)
-                        (when (= source (:source @*immediate))
-                          (select-keys (:content @*immediate) ks)))}))))
+         now (System/currentTimeMillis)
+         {:keys [content owned waiting]} (acquire-sections! source ks now)]
+     (load-sections! source owned (filterv #(contains? owned %) ks) now)
+     {:version contract/version
+      :content (merge content
+                      (into {} (map (fn [[k pending]]
+                                      (let [{:keys [value error]} @pending]
+                                        (when error (throw error))
+                                        [k value]))) waiting)
+                      (when (= source (:source @*immediate))
+                        (select-keys (:content @*immediate) ks)))})))
 
 (defn for-route! [route] (bundle! (contract/keys-for-route route)))
 

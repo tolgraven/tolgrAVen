@@ -11,6 +11,9 @@ private documents.
 The backend uses `STRAPI_URL` and `STRAPI_READ_TOKEN` to call the token-protected
 CMS bundle. Both variables stay server-side. Responses contain only the public
 content contract, use bounded HTTP timeouts, and cache each section for 30 seconds.
+Concurrent readers share an in-flight read per section. Cache locking never
+covers upstream/media I/O, so an unavailable section cannot stall unrelated
+content requests. Failed reads release their waiters for retry.
 Reload after an edit to see it, allowing for this cache. With no CMS configured,
 local development uses `resources/content-seed.json` on the backend. A configured
 CMS failure returns 503 and never silently restores the original seed.

@@ -114,3 +114,60 @@
         (is (= "Building experiences" (get-in response [:body :content :intro :title])))
         (is (= [contract/sections] @calls))
         (is (= (:body response) (contract/checked-bundle (:body response) contract/sections)))))))
+
+(deftest slow-unavailable-section-does-not-block-healthy-content
+  (let [started (promise)
+        release (promise)
+        *calls (atom [])]
+    (with-redefs [content/settings (constantly {:url "https://isolated.test"})
+                  http/get (fn [_ options]
+                             (let [key (get-in options [:query-params "keys"])]
+                               (swap! *calls conj key)
+                               (if (= "docs" key)
+                                 (do (deliver started true)
+                                     (deref release 5000 nil)
+                                     {:status 400})
+                                 {:status 200
+                                  :body {:version contract/version
+                                         :content {:intro {:title "Healthy"}}}})))]
+      (let [failed (future (content/response [:docs]))]
+        (try
+          (is (= true (deref started 1000 :timeout)))
+          (let [healthy (future (content/response [:intro]))
+                response (deref healthy 1000 :timeout)]
+            (is (= 200 (:status response)))
+            (is (= "Healthy" (get-in response [:body :content :intro :title]))))
+          (finally (deliver release true)))
+        (is (= 503 (:status (deref failed 1000 {}))))
+        (is (= ["docs" "intro"] @*calls))))))
+
+(deftest concurrent-section-consumers-share-one-read-and-retry-after-failure
+  (let [started (promise)
+        release (promise)
+        *calls (atom 0)
+        *fail? (atom true)]
+    (with-redefs [content/settings (constantly {:url "https://shared.test"})
+                  http/get (fn [& _]
+                             (swap! *calls inc)
+                             (deliver started true)
+                             (deref release 5000 nil)
+                             (if @*fail?
+                               {:status 400}
+                               {:status 200
+                                :body {:version contract/version
+                                       :content {:intro {:title "Recovered"}}}}))]
+      (let [first-read (future (content/response [:intro]))]
+        (is (= true (deref started 1000 :timeout)))
+        ;; Claim the same pending section synchronously so the sharing assertion
+        ;; does not depend on the second future's scheduling.
+        (let [claimed (#'content/acquire-sections! "https://shared.test" [:intro] (System/currentTimeMillis))
+              pending (get-in claimed [:waiting :intro])]
+          (try
+            (is (empty? (:owned claimed)))
+            (is (= 1 @*calls))
+            (finally (deliver release true)))
+          (is (= 503 (:status (deref first-read 1000 {}))))
+          (is (:error (deref pending 1000 {})))))
+      (reset! *fail? false)
+      (is (= "Recovered" (get-in (content/response [:intro]) [:body :content :intro :title])))
+      (is (= 2 @*calls)))))
