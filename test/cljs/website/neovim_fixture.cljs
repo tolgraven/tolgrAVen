@@ -263,6 +263,15 @@
                      assert(vim.fn.sha256(f:read('*a')) == '8b9c16dd4d3e76ae000de41bd045b613abc273b65a28ff48e20be0be49f5bd7e', 'Bulk UTF-8 source bytes changed'); f:close()
                      return true" []])))
         (.then (fn [_]
+                 (reduce
+                  (fn [pending columns]
+                    (.then pending
+                           #(-> (runtime/request! transport-session "nvim_ui_try_resize" [columns 20])
+                                (.then (fn [_]
+                                         (runtime/request! transport-session "nvim_exec_lua"
+                                           ["local wins = vim.api.nvim_list_wins(); assert(#wins == 2); assert(vim.wait(1000, function() return math.abs(vim.api.nvim_win_get_width(wins[1]) - vim.api.nvim_win_get_width(wins[2])) <= 1 end, 10), 'Resized diff panes are unequal'); return true" []]))))))
+                  (js/Promise.resolve nil) [54 120])))
+        (.then (fn [_]
                  (-> ready (.then (fn [session]
                    (-> (document/open! #(runtime/request! session %1 %2)
                          {:mode :diff
@@ -283,7 +292,7 @@
                    (-> (document/open! #(runtime/request! session %1 %2)
                          {:mode :patch, :files [{:path "commit.patch", :text "@@ -1 +1 @@\n-old\n+new\n"}]})
                        (.then #(runtime/request! session "nvim_exec_lua"
-                                 ["assert(#vim.api.nvim_list_wins() == 1); assert(vim.bo.filetype == 'diff'); assert(vim.bo.readonly and not vim.bo.modifiable); return 'PASS: native split diff, absolute line numbers, immutable buffers, equal panes, bulk UTF-8 file bytes and patch view'" []]))))))))
+                                 ["assert(#vim.api.nvim_list_wins() == 1); assert(#vim.api.nvim_get_autocmds({group = 'WebsiteReadonlyDocument'}) == 0, 'Diff resize owner leaked into patch view'); assert(vim.bo.filetype == 'diff'); assert(vim.bo.readonly and not vim.bo.modifiable); return 'PASS: native split diff, absolute line numbers, immutable buffers, equal panes through narrow/wide resizing, bulk UTF-8 file bytes and patch view'" []]))))))))
         (.then #(reset! *diff %))
         (.catch #(reset! *diff (str "FAIL: " (.-message %) "; unread input: " (.-pendingInputBytes (.diagnostics transport-session)))))
         (.finally stop!))))

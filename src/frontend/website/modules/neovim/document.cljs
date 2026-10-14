@@ -25,6 +25,14 @@
    -- Viewers use absolute line numbers even after numbertoggle's WinEnter hook.
    vim.g.relativemode = 0
    vim.opt.equalalways = true
+   -- Native UI resizing preserves the old split width. Equalize only this
+   -- read-only document session, and clear its owner when changing to patch.
+   local resize_group = vim.api.nvim_create_augroup('WebsiteReadonlyDocument', {clear = true})
+   if mode == 'diff' then
+     vim.api.nvim_create_autocmd('VimResized', {group = resize_group, callback = function()
+       vim.cmd('silent wincmd =')
+     end})
+   end
    vim.opt.diffopt = {'internal', 'filler', 'closeoff', 'algorithm:histogram', 'indent-heuristic'}
    for index, path in ipairs(paths) do
      if index == 2 then vim.cmd('silent rightbelow vnew') end
