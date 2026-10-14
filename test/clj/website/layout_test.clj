@@ -238,7 +238,11 @@
         (is (not-any? #(.contains % (str "modules/" absent ".min.css")) links))
         (is (< (.indexOf body (str "modules/" present ".min.css")) (.indexOf body "<body")))
         (is (.contains body "id=\"module-styles\""))
-        (is (= [(str "/css/website/modules/" absent ".min.css")]
+        (is (= (case absent
+                 "blog" ["/css/website/modules/blog.min.css"
+                         "/css/website/modules/monospace.min.css"
+                         "/css/website/modules/markdown.min.css"]
+                 [(str "/css/website/modules/" absent ".min.css")])
                (get (json/read-str
                       (second (re-find #"<script[^>]*id=\"module-styles\"[^>]*>(.*?)</script>" body))) absent)))))))
 
