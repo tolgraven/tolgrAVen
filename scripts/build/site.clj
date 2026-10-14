@@ -41,7 +41,8 @@
         resources (plan/schema-resources tables server comments?)]
     {:config settings
      :style-reference {:path "resources/scss/shell/_vars.scss"
-                       :source (slurp (io/resource "scss/shell/_vars.scss"))}
+                       :source-base64 (.encodeToString (java.util.Base64/getEncoder)
+                                                       (.getBytes (slurp (io/resource "scss/shell/_vars.scss")) "UTF-8"))}
      :pages (page-names all)
      :available-modules (mapv (fn [{:keys [id entry content depends-on server]}]
                                 {:id id

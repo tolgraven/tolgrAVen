@@ -141,7 +141,9 @@ try {
             $site=$input['site'];
             cmsEnv($service,'CMS_SITE_MANIFEST',json_encode(['config'=>$site['config'],
                 'availableModules'=>$site['available-modules'],'pages'=>$site['pages'],
-                'styleReference'=>$site['style-reference'] ?? null]));
+                'styleReference'=>isset($site['style-reference']) ? [
+                    'path'=>$site['style-reference']['path'],
+                    'sourceBase64'=>$site['style-reference']['source-base64']] : null]));
         }
         cmsWireActions($service, $web, $environment->project->team, $input['webhooks'] ?? []);
         cmsEnv($service,'CMS_ADMIN_EMAIL',$input['admin_email']);

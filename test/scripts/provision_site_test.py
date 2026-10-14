@@ -100,7 +100,7 @@ class ManifestSafetyTest(unittest.TestCase):
         self.assertEqual(provision.capacity_budget(state, ['supabase-db-stage', 'webstage', 'cms-isolated']), 0)
 
     def test_full_site_up_preserves_scss_reference(self):
-        reference = {'path': 'resources/scss/shell/_vars.scss', 'source': ':root { --space: 1.2rem; }'}
+        reference = {'path': 'resources/scss/shell/_vars.scss', 'source-base64': 'OnJvb3QgeyAtLXNwYWNlOiAxLjJyZW07IH0='}
         selected = {'config': {'modules': {}, 'pages': {}}, 'available-modules': [],
                     'pages': [], 'modules': [], 'tables': [], 'content': [], 'style-reference': reference}
         with patch.object(sys, 'argv', ['provision-site', 'up', str(ROOT / 'deploy/coolify/site.example.json')]), \
