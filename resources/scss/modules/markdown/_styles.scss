@@ -157,6 +157,7 @@ div > pre[class*="language-"] {
 
   > button, .code-edit-controls > button {
     margin: 0;
+    padding: 0.25em;
     opacity: 0;
     pointer-events: none;
     min-width: 2rem;
@@ -225,7 +226,7 @@ div > pre[class*="language-"] {
     padding: 1em !important;
     min-height: 3.5em;
     overflow: hidden !important;
-    tab-size: 2;
+    tab-size: 8;
     font-size: inherit;
   }
   .code-block-highlight code {
@@ -269,7 +270,7 @@ div > pre[class*="language-"] {
     font-weight: normal;
     line-height: 1.5;
     letter-spacing: normal;
-    tab-size: 2;
+    tab-size: 8;
     color: transparent;
     -webkit-text-fill-color: transparent;
     caret-color: var(--fg-1);
