@@ -25,6 +25,10 @@ or display through ordinary root props/classes. It does not clip the children.
 Do not put opacity or a filter on a surrounding element merely to change the
 glass: doing so can establish a new backdrop root and also fade its content.
 
+![Refractive glass and the native frosted fallback](screenshots/liquid-glass-wide.jpg)
+
+[Narrow layout](screenshots/liquid-glass-narrow.jpg).
+
 ## Spec
 
 All keys are optional. The public contract is `glass/spec-schema`, composed with
@@ -91,6 +95,9 @@ directly: `scale * (channel - .5)`. Its channel correction makes encoded neutral
 - Image generation runs in a cancellable idle task (timer fallback), only when
   optical geometry changes. There is no animation loop, pointer listener,
   scroll polling or recurrent idle timer.
+- Polygon edges are prepared once into a transient native numeric buffer for
+  raster generation; per-pixel work avoids repeated point destructuring and
+  invariant edge arithmetic. Public specs and geometry remain Clojure data.
 - The cache retains at most 12 maps and 8 MiB of encoded PNG URL text. Native
   raster buffers are not retained. Sample count and longest side are capped even
   for extremely thin or large surfaces. Increasing budgets increases CPU, memory
@@ -146,3 +153,29 @@ watched application assets. The standalone test driver is
 the corresponding isolated build output and current `npm run build` output.
 Production consumers import the component's owning namespace and use the normal
 shared shell stylesheet, which includes its small reusable layout rules.
+
+
+## Foreground reflection: feasibility for a later implementation
+
+The [CSS backdrop definition](https://drafts.csswg.org/filter-effects-2/#backdrop-root)
+includes content painted before the filtered element. Its input cannot also
+provide arbitrary content painted in front of the glass. This implementation
+therefore provides refraction and synthetic rim light, without scene reflection.
+
+An explicit reflection texture or an authored SVG scene is a feasible next
+prototype: [feImage](https://drafts.csswg.org/filter-effects/#feImageElement)
+can supply an independent image or SVG graphics fragment. A separate normal-based
+map could warp that texture, blur it, and blend a low-opacity, angle-weighted
+reflection over the refracted backdrop. It should have its own source/intensity/
+transform settings and share the existing visibility, size and raster budgets.
+These are design options, not currently supported spec keys.
+
+Automatically reflecting arbitrary live HTML would require another rendering or
+capture mechanism. Native canvas [drawImage](https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage)
+accepts image/video/canvas sources, not an arbitrary HTML subtree. Keeping such
+captures current for scrolling, animation, fonts, and controls adds substantial
+work and creates feedback if glass surfaces capture one another. Duplicating
+interactive child components would also duplicate their state/lifecycles.
+A deliberately supplied image or shared declarative scene is the practical first
+experiment; general automatic DOM reflection needs a separate performance and
+browser-compatibility investigation.

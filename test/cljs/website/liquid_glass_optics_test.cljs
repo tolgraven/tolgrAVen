@@ -52,7 +52,10 @@
     (is (pos? (first (optics/polygon-distance square 50 20))))
     (is (neg? (first (optics/polygon-distance square 110 20))))
     (is (neg? (first (optics/polygon-distance notch 50 30))))
-    (is (pos? (first (optics/polygon-distance notch 20 30))))))
+    (is (pos? (first (optics/polygon-distance notch 20 30))))
+    (doseq [x [-5 0 1 25 50 99 100 105], y [-5 0 1 15 20 39 40 45]]
+      (is (< (abs (- (first (optics/polygon-distance square x y))
+                     (first (optics/rounded-distance 100 40 0 x y)))) 0.00001)))))
 
 (deftest bounded-raster-allocations
   (doseq [[width height] [[1 1] [800 220] [10000 10000] [1000000000 1] [1 1000000000]]

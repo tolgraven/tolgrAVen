@@ -210,3 +210,30 @@
     (is (<= (:bytes (maps/cache-info)) maps/cache-byte-budget))
     (is (not (some #{key} (:order (maps/cache-info)))))
     (maps/clear-cache!)))
+
+
+(deftest default-budget-map-generation-and-reuse
+  (let [points (mapv (fn [index]
+                       (let [angle (* 2 js/Math.PI (/ index 32))]
+                         [(+ 0.5 (* 0.5 (js/Math.cos angle)))
+                          (+ 0.5 (* 0.5 (js/Math.sin angle)))]))
+                     (range 32))]
+    (doseq [shape [:rounded-rect :ellipse :polygon]]
+      (maps/clear-cache!)
+      (let [key (assoc fixtures/base-field :shape shape :points points
+                                         :width 800 :height 220 :resolution 0.5)
+            samples (mapv (fn [index]
+                            (let [start (.now js/performance)
+                                  result (maps/acquire! (assoc key :light-angle index) true)]
+                              (is (<= (:pixels result) 65536))
+                              (- (.now js/performance) start)))
+                          (range 3))
+            start (.now js/performance)
+            result (maps/acquire! (assoc key :light-angle 2) true)
+            elapsed (- (.now js/performance) start)]
+        (js/console.info "GLASS_BUDGET_TIMING"
+                         (js/JSON.stringify (clj->js {:shape shape
+                                                     :generation-ms samples
+                                                     :cache-hit-ms elapsed
+                                                     :pixels (:pixels result)})))))
+    (maps/clear-cache!)))

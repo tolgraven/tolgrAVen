@@ -78,29 +78,50 @@
             length (js/Math.hypot gx gy)]
         [(/ (- 1 radial) length) (- (/ gx length)) (- (/ gy length))]))))
 
-(defn polygon-distance [points x y]
-  (loop [index 0, inside? false, nearest-distance js/Infinity, nx 0, ny 0]
-    (if (= index (count points))
-      (let [length (js/Math.sqrt nearest-distance)
-            sign (if inside? 1 -1)]
-        [(* sign length) (* sign nx) (* sign ny)])
+(defn- polygon-edges [points]
+  ;; This native numeric buffer belongs only to raster generation, beside the
+  ;; ImageData buffers. Profiling a 32-point lens exposed repeated persistent-
+  ;; vector destructuring and edge arithmetic in every pixel as the hot path.
+  ;; Specs/points remain Clojure data; prepare these invariant edges once per map.
+  (let [edges (js/Float64Array. (* 7 (count points)))]
+    (doseq [index (range (count points))]
       (let [[ax ay] (nth points index)
             [bx by] (nth points (mod (inc index) (count points)))
             dx (- bx ax)
             dy (- by ay)
-            denominator (+ (* dx dx) (* dy dy))
+            offset (* 7 index)]
+        (doseq [[slot value] (map-indexed vector [ax ay bx by dx dy (+ (* dx dx) (* dy dy))])]
+          (aset edges (+ offset slot) value))))
+    edges))
+
+(defn- edge-distance [edges x y]
+  (loop [offset 0, inside? false, nearest-distance js/Infinity, nx 0, ny 0]
+    (if (= offset (.-length edges))
+      (let [length (js/Math.sqrt nearest-distance)
+            sign (if inside? 1 -1)]
+        [(* sign length) (* sign nx) (* sign ny)])
+      (let [ax (aget edges offset)
+            ay (aget edges (+ offset 1))
+            bx (aget edges (+ offset 2))
+            by (aget edges (+ offset 3))
+            dx (aget edges (+ offset 4))
+            dy (aget edges (+ offset 5))
+            denominator (aget edges (+ offset 6))
             fraction (if (pos? denominator)
                        (clamp 0 1 (/ (+ (* (- x ax) dx) (* (- y ay) dy)) denominator)) 0)
             vx (- x (+ ax (* fraction dx)))
             vy (- y (+ ay (* fraction dy)))
             squared (+ (* vx vx) (* vy vy))
             nearer? (< squared nearest-distance)
-            length (max 0.000001 (js/Math.sqrt squared))
+            length (if nearer? (max 0.000001 (js/Math.sqrt squared)) 1)
             crosses? (and (not= (> ay y) (> by y))
                           (< x (+ ax (/ (* (- y ay) dx) (- by ay)))))]
-        (recur (inc index) (if crosses? (not inside?) inside?)
+        (recur (+ offset 7) (if crosses? (not inside?) inside?)
                (if nearer? squared nearest-distance)
                (if nearer? (/ vx length) nx) (if nearer? (/ vy length) ny))))))
+
+(defn polygon-distance [points x y]
+  (edge-distance (polygon-edges points) x y))
 
 (defn raster-size [width height resolution max-pixels max-side]
   (when-not (and (finite? width) (finite? height) (pos? width) (pos? height))
@@ -122,9 +143,10 @@
         displacement-data (js/Uint8ClampedArray. (* w h 4))
         highlight-data (js/Uint8ClampedArray. (* w h 4))
         polygon (mapv (fn [[x y]] [(* x width) (* y height)]) points)
+        edges (when (= shape :polygon) (polygon-edges polygon))
         distance! (case shape
                     :ellipse #(ellipse-distance width height %1 %2)
-                    :polygon #(polygon-distance polygon %1 %2)
+                    :polygon #(edge-distance edges %1 %2)
                     #(rounded-distance width height (if (= shape :capsule) (/ (min width height) 2) radius) %1 %2))
         angle (* light-angle (/ js/Math.PI 180))
         light-x (js/Math.cos angle)
