@@ -93,7 +93,10 @@
                    :aria-activedescendant (when (and open? (<= 0 selected') (seq suggestions))
                                             (str list-id "-" selected'))
                    :max-length 200}
-     :on-change #(r/dispatch [:search/query %])
+     ;; Controlled inputs must accept the value before React restores the DOM;
+     ;; match the shared input adapter's synchronous event boundary. Transport
+     ;; remains debounced by the registered query event.
+     :on-change #(r/dispatch-sync [:search/query %])
      :on-key-down #(key-down! % suggestions selected' inline?)]))
 
 (m/defc <suggestions> [{:keys [id open?]}]

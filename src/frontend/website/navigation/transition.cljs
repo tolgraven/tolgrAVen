@@ -65,7 +65,7 @@
   "Restore against committed layout, releasing only after mounted code/data,
    layout-affecting images/fonts and two measured frames agree on the target.
    User input/navigation cancels immediately; the timeout only bounds failure."
-  [position & [resolve-position behavior]]
+  [position & [resolve-position behavior position-animations]]
   (when-let [cleanup! @*restore-cleanup] (cleanup!))
   (set! (.-scrollRestoration js/history) "manual")
   (reset! *restored-position position)
@@ -105,7 +105,8 @@
                                _ (do (when-not smooth?
                                        (.scrollTo js/window #js {:top position' :left 0 :behavior "instant"}))
                                      (reset! *restored-position position'))
-                               animations (vec (layout-animations))
+                               animations (vec (concat (layout-animations)
+                                                       (when position-animations (position-animations))))
                                main (.getElementById js/document "main")
                                images (array-seq (.querySelectorAll (or main js/document) "img"))
                                assets-ready? (and (not= "loading" (some-> js/document .-fonts .-status))
@@ -256,11 +257,22 @@
               (restore-position! (.-scrollY js/window))))))
       (when resolve! (resolve!)))))
 
-(defn- layout-top [element]
-  ;; Match native document positioning: entrance transforms affect client
-  ;; rectangles, while offset coordinates describe the settled document layout.
-  (loop [node element, top 0]
-    (if node (recur (.-offsetParent node) (+ top (.-offsetTop node))) top)))
+(defn- anchor-animations [element]
+  ;; The native document can hold its entrance clock during hydration. Keep the
+  ;; initial position until these ancestor transforms finish; client rectangles
+  ;; then give the precise final coordinate, including fractional layout units.
+  (when (.-getAnimations element)
+    (mapcat (fn [node]
+              (filter (fn [animation]
+                        (let [effect (.-effect animation)]
+                          (and effect
+                               (not (#{"finished" "idle"} (.-playState animation)))
+                               (js/isFinite (.-endTime (.getComputedTiming effect)))
+                               (some #(some #{"transform" "translate" "scale" "rotate"}
+                                            (array-seq (js/Object.keys %)))
+                                     (array-seq (.getKeyframes effect))))))
+                      (array-seq (.getAnimations node))))
+            (take-while some? (iterate #(.-parentElement %) element)))))
 
 (defn restore-anchor!
   "Follow a committed component while ancestor rows, code or fonts settle."
@@ -280,8 +292,10 @@
             (.removeAttribute root "data-document-positioned"))
           (when-let [target (.getElementById js/document id)]
             (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle target)))]
-              (- (layout-top target) (if (js/isNaN margin) 0 margin)))))
-        "smooth"))))
+              (- (+ (.-top (.getBoundingClientRect target)) (.-scrollY js/window))
+                 (if (js/isNaN margin) 0 margin)))))
+        "smooth"
+        #(when-let [target (.getElementById js/document id)] (anchor-animations target))))))
 
 (defn use-ready!
   "Complete navigation after React commits the subscribed route and its shell.

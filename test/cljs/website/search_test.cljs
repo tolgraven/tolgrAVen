@@ -132,6 +132,15 @@
               (let [input (.querySelector element "input")]
                 (is (= "C++" (.-value input)))
                 (is (= "combobox" (.getAttribute input "role")))
+                (let [setter (.-set (.getOwnPropertyDescriptor js/Object (.-prototype js/HTMLInputElement) "value"))]
+                  (doseq [text ["f" "fe" "fea" "feat" "featu" "featur" "feature" "features"]]
+                    (.call setter input text)
+                    (.dispatchEvent input (js/Event. "input" #js {:bubbles true}))
+                    (is (= text (get-in @r/*app-db [:search :query]))
+                        "Native typing accepts every character before the next event")))
+                (r/dispatch-sync [:search/query "C++"])
+                (r/dispatch-sync [:search/received (get-in @r/*app-db [:search :generation]) "C++" (response "C++")])
+                (await! (support/settle!))
                 (.dispatchEvent input (js/KeyboardEvent. "keydown" #js {:key "ArrowUp", :bubbles true, :cancelable true}))
                 (await! (support/settle!))
                 (is (= 1 (await! (support/subscription-value! [:search/selected]))))

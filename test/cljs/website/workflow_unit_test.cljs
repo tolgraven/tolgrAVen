@@ -1178,9 +1178,12 @@
                   (set! (.-currentTime entrance) 0)
                   (.setAttribute element "data-document-positioned" "native-component-anchor")
                   (page-transition/restore-anchor! "native-component-anchor")
-                  (await! (wait-for! #(nil? @page-transition/*restore-cleanup)))
+                  (await! (support/settle!))
+                  (is (some? @page-transition/*restore-cleanup)
+                      "Paused native entrance transforms retain the position owner")
                   (.play entrance)
                   (await! (.-finished entrance))
+                  (await! (wait-for! #(nil? @page-transition/*restore-cleanup)))
                   (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle target)))]
                     (is (<= (js/Math.abs (- margin (.-top (.getBoundingClientRect target)))) 1)
                         "Entrance transforms must not become the settled scroll offset"))
