@@ -6,6 +6,9 @@
     [website.modules.blog.model :as model]
     [website.modules.blog.schema :as schema]
     [website.component.storage :as storage]
+    [website.page :as page]
+    [website.supabase.scoped :as scoped]
+    [website.util :as util]
     [website.interceptors :refer [debug]] )))
 
 #?(:cljs
@@ -135,6 +138,32 @@
   {:args (get schema/event-args :blog/expand-comment-thread)}
   (fn [{:keys [db]} [_ comment-path expanded?]]
     (persist-comment-state db :comment-thread-expanded comment-path expanded?))))
+
+(when-enabled :blog :comments
+  (r/reg-event-fx :blog/navigate-comment
+  {:args [:tuple comments/comment-id]}
+  (fn [{:keys [db]} [_ id]]
+    (let [selection (page/selection (:common/route db))
+          key (scoped/query-key (comments/comment-query id (:post-id selection)))
+          row (some-> (get-in db [:store :scoped key]) util/normalize-store-result vals first)
+          expanded (get-in db [:state :blog :comment-thread-expanded])
+          expanded' (when row
+                      (if (:standalone-comment? selection)
+                        (assoc expanded [(:parent-post row) (:id row)] true)
+                        (comments/focus-expansion expanded row)))]
+      (when (and (= id (:comment-id selection)) row)
+        (cond-> {:dispatch-n [[:scroll/component-target
+                              (if (:standalone-comment? selection) "standalone-comment" (str "blog-comment-" id))
+                              (get-in db [:common/route :path])]
+                             (when (not= expanded expanded') [:blog/cache-state-changed])]}
+          (not= expanded expanded')
+          (assoc :db (-> db
+                 (assoc-in [:state :blog :comment-thread-expanded] expanded')
+                 (update-in [:state :blog :restore-edits] (fnil into #{})
+                            (mapv #(vector :comment-thread-expanded %)
+                                  (if (:standalone-comment? selection)
+                                    [[(:parent-post row) (:id row)]]
+                                    (comments/ancestor-paths row))))))))))))
 
 (when-enabled :blog :comments
   (r/reg-event-fx :blog/adding-comment

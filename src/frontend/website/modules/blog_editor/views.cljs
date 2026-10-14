@@ -4,7 +4,7 @@
             [website.components.ui.controls :as controls]
             [website.components.ui.inputs :as inputs]
             [website.components.ui.layout :as layout]
-            [website.modules.blog.views :as blog]
+            [website.modules.blog.presentation :as blog]
             [website.modules.blog-editor.editor :as editor]
             [website.modules.blog-editor.draft :as draft]
             [website.modules.blog-editor.model :as editor-model]))

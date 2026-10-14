@@ -8,6 +8,7 @@
     [website.schema.common :as c]
     #?(:feature/blog-comments [website.modules.blog.comments :as comments])
     [website.modules.blog.data :as data]
+    [website.page :as page]
     [website.supabase.scoped :as scoped]
     [website.util :as util]
     [clojure.string :as string] )))
@@ -206,6 +207,34 @@
   (fn [limits [_ id]] (data/comment-limit limits id))))
 
 (when-enabled :blog :comments
+  (r/reg-sub-raw :comments/focus-state
+  {:args schema/selected-id-args, :result schema/focus-state}
+  (fn [_ [_ post-id]]
+    (r/make-reaction
+      (fn []
+        (let [selection (page/selection @(r/subscribe [:common/route]))
+              selected? (and (:comment-id selection)
+                             (or (= post-id (:post-id selection))
+                                 (and (nil? post-id) (:standalone-comment? selection))))]
+          (when selected?
+            (let [{:keys [ready? values]} @(r/subscribe [:store/plan data/plan
+                                                        (assoc selection
+                                                               :size @(r/subscribe [:blog/posts-per-page])
+                                                               :comment-limits @(r/subscribe [:blog/state [:comment-limit]])
+                                                               :thread-expanded @(r/subscribe [:blog/state [:comment-thread-expanded]]))])]
+              {:ready? ready?
+               :comment-id (:comment-id selection)
+               :row (first (:focus values))
+               :root (comments/focus-root values)
+               :parent (first (:posts values))}))))))))
+
+(when-enabled :blog :comments
+  (r/reg-sub :comments/focus-ready?
+  {:args [:tuple [:maybe c/id] comments/comment-id], :result :boolean}
+  (fn [[_ post-id _]] (r/subscribe [:comments/focus-state post-id]))
+  (fn [state [_ _ id]] (and (= id (:comment-id state)) (true? (:ready? state))))))
+
+(when-enabled :blog :comments
   (r/reg-sub-raw :comments/root-page
   {:args schema/selected-id-args, :result schema/root-page}
   (fn [_ [_ id]]
@@ -222,8 +251,10 @@
                                                   [size (util/normalize-store-result result)]))
                                               (reverse (range comments/page-size amount comments/page-size))))
                rows (->> (vals (or value cached)) (sort-by (juxt :ts :id)) reverse)
-               ids (set (map :id (take (if value amount (or cached-amount 0)) rows)))]
-           {:records (when (or value cached) (into {} (filter (fn [[_ row]] (ids (:id row)))) (or value cached)))
+               ids (set (map :id (take (if value amount (or cached-amount 0)) rows)))
+               focus @(r/subscribe [:comments/focus-state id])
+               records (when (or value cached) (into {} (filter (fn [[_ row]] (ids (:id row)))) (or value cached)))]
+           {:records (cond-> records (:root focus) (assoc (keyword (str (:id (:root focus)))) (:root focus)))
             :loading? (nil? value)
             :more? (or (nil? value) (> (count rows) amount))})))))))
 
@@ -274,10 +305,12 @@
     ;; children. An authoritative empty map still replaces stale cached rows.
     (if (some? live) live cached))))
 
-;; Reserved for direct comment lookup; keep the unfinished subscription visible.
 (when-enabled :blog :comments
   (r/reg-sub :comments/for-id
-  (fn [db [_ comment-id]])))
+  {:args [:cat c/id [:? c/id]], :result [:maybe schema/displayed-comment]}
+  (fn [[_ comment-id post-id]]
+    (r/subscribe [:<-store-q (comments/comment-query comment-id post-id)]))
+  (fn [records _] (first (vals records)))))
 
 (when-enabled :blog :comments
   (r/reg-sub :comments/thread-expanded?

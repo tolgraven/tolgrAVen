@@ -87,7 +87,7 @@
         prefixes (cond-> (mapv #(str % "/") disabled)
                    (or (= false (get-in config [:modules :blog :enabled]))
                        (= false (get-in config [:modules :blog :comments])))
-                   (conj "website/modules/blog/comments"))
+                   (conj "website/modules/blog/comments" "website/modules/blog/comment_views"))
         excluded? (fn [path] (some #(string/starts-with? path %) prefixes))
         aot (->> ["src/backend" "src/cljc" "src/frontend" "env/prod/clj"]
                  (map io/file)

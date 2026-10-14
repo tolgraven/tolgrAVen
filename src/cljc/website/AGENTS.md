@@ -10,6 +10,9 @@ implementation in `src/frontend/website/modules/<module>/`, also on the JVM sour
   Portable `routes.cljc` fragments can declare component destinations. Mount them
   with `navigation/component-routes` under a named host page; retain typed native
   parameters and complete matching instead of parsing unmatched URL prefixes.
+  `:document-target` declares a constant target ID or a prefix plus selection
+  parameter for positioning cold SSR before its document entrance. It is data,
+  consumed by `page/document-target` and the standalone native document gate.
 - Public data plans are adapter-independent. Server reads and managed browser
   subscriptions consume the same filters, projections, batching and row shape.
 - Preserve EDN keys/types in persistence contracts. JSON is converted and normalized

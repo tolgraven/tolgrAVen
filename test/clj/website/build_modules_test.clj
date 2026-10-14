@@ -38,6 +38,20 @@
     (is (seq (modules/select-declarations declarations
                {:modules {:link-preview {:enabled false}}})))))
 
+(deftest comment-views-are-an-optional-source-boundary
+  (doseq [path ["src/frontend/website/modules/blog/views.cljc"]]
+    (doseq [comments? [false true]]
+      (with-open [reader (java.io.PushbackReader. (io/reader path))]
+        (let [features (cond-> #{:cljs} comments? (conj :feature/blog-comments))
+              namespace (read {:read-cond :allow, :features features} reader)
+              symbols (set (filter symbol? (tree-seq coll? seq namespace)))]
+          (is (= comments? (contains? symbols 'website.modules.blog.comment-views)))))))
+  (with-redefs [site/settings (constantly {:modules {:blog {:comments false}}})]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Disabled capability"
+                         (modules/check-site-sources
+                           {:build-sources [:comments]
+                            :sources {:comments {:resource-name "website/modules/blog/comment_views.cljs"}}})))))
+
 (deftest standalone-user-does-not-require-markdown-or-previews
   (let [all (modules/all-declarations)
         retained #{:main :coercion :user :supabase}

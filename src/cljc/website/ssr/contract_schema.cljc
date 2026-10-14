@@ -13,6 +13,9 @@
                 {:kind c/named :content content/content :posts [:sequential (or (when-enabled :blog nil store/post) :map)]
                  :summaries [:sequential (or (when-enabled :blog nil store/post) :map)] :comments [:sequential (or (when-enabled :blog :comments store/comment-record) :map)]
                  :page [:maybe c/positive] :post-id [:maybe c/id] :shell? :boolean :missing? :?boolean
+                 :comment-id :?string
+                 :standalone-comment? :boolean
+                 :missing-comment? :?boolean
                  :route-parameters (c/optional-map {:path c/query-params :query c/query-params})
                  :app-db-edn :string :module-views module-views :query-params c/query-params :document-title :string
                  :trusted-author-ids [:?sequential c/id]}))))

@@ -1,6 +1,7 @@
 (ns bootstrap.entrance
   "Native image/decode staging before application code, with document-only writes."
-  (:require [bootstrap.skeleton :as skeleton]))
+  (:require [bootstrap.skeleton :as skeleton]
+            [bootstrap.destination :as destination]))
 
 (defn- direct? [] (.hasAttribute (.-documentElement js/document) "data-image-direct"))
 (defn- reduced-motion? [] (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)")))
@@ -232,6 +233,8 @@
           bindings #js []
           ^js gate #js {:hero (.querySelector root "#top-banner")
                        :pending (.hasAttribute root "data-document-pending")
+                       :positioned false
+                       :heroReady false
                        :revealed (not (.hasAttribute root "data-document-pending"))
                        :disposed false}]
       (aset root "__progressiveImages" owners)
@@ -244,7 +247,8 @@
                                        (.removeEventListener (aget binding 0) "load" (aget binding 1))
                                        (.removeEventListener (aget binding 0) "error" (aget binding 2))))))
               (reveal! []
-                (when-not (.-revealed gate)
+                (set! (.-heroReady gate) true)
+                (when (and (.-positioned gate) (not (.-revealed gate)))
                   (set! (.-revealed gate) true)
                   (js/clearTimeout (.-deadline gate))
                   (js/requestAnimationFrame
@@ -254,6 +258,10 @@
                        ;; Mark preview paint in a following frame, after reveal.
                        (js/requestAnimationFrame #(.forEach entries (fn [^js entry] (.previewPainted entry))))
                        (cleanup!)))))))]
+        (if (and (.-pending gate) (not (direct?)))
+          (destination/await! root #(do (set! (.-positioned gate) true)
+                                        (when (.-heroReady gate) (reveal!))))
+          (set! (.-positioned gate) true))
         (set! (.-deadline gate) (js/setTimeout reveal! 10000))
         (.forEach (.querySelectorAll root ".progressive-image, img[data-image-placeholder]")
                   #(acquire! root owners entries gate reveal! %))

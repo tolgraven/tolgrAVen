@@ -105,6 +105,16 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Coerced controllers activate the normal module loader after route commit;
   loaded actions and committed target scrolling reject obsolete paths. See
   `doc/component-routes.md`.
+  Focused blog comments use the shared public plan to reveal ancestry and roots
+  outside the paged window. Standalone comment routes acquire only their subtree
+  and a parent summary; quoted instances never claim a navigation target's DOM ID.
+  Subscription dependencies read already satisfied bindings synchronously, so
+  supplied SSR data and first hydration do not wait for browser acquisition.
+  Blog comment UI lives in `modules/blog/comment_views.cljs`, required only by
+  the `:feature/blog-comments` reader feature. Posts and comments share
+  `blog/presentation.cljc`; the blog page retains shell ownership. Comment action
+  links retain native hrefs and use owned hover/focus labels rather than title
+  attributes. Text collapse controls require measured truncation.
   `validation/schema.cljs` assembles browser/Node app-db sections from their owners;
   small single-use shell-state contracts stay inline there.
 - Image readiness callbacks use the shared picture lifecycle: notify only a decoded,

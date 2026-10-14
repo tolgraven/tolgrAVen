@@ -111,6 +111,13 @@
                   (or (:hydrating? options) (:server? options)
                       (:remembered? options) (restore/skip-enter?))))))
 
+(defn- document-entrance? [options]
+  ;; Persisted seen state must not erase the original network SSR clock during
+  ;; hydration. Later remembered mounts on that same URL stay settled as usual.
+  (and (skip-enter? options) (restore/document-enter?)
+       (or (:hydrating? options) (:server? options) (restore/skip-enter?))
+       (:appear options) (not (:seen options))))
+
 (defn- stop! [state id]
   (when-let [cleanup! (get @(:stops state) id)]
     (swap! (:stops state) dissoc id)
@@ -230,9 +237,7 @@
             (let [skip? (skip-enter? options)]
               {:options options
                :skip-enter? skip?
-               :document-enter? (and skip? (restore/document-enter?)
-                                     (:appear options) (not (:seen options))
-                                     (not (:remembered? options)))
+               :document-enter? (document-entrance? options)
                :observe-document? (and skip? (restore/document-enter?) (:seen options)
                                       (not (:remembered? options)))
                :visible? (r/atom skip?)
@@ -261,9 +266,7 @@
                    document-enter? (if state (and (:document-enter? state) (:appear options)
                                                   (not @(:settled-offscreen? state))
                                                   (not (:seen options)) (not @(:viewport-enter? state)))
-                                     (and (skip-enter? options) (restore/document-enter?)
-                                          (:appear options) (not (:seen options))
-                                     (not (:remembered? options))))
+                                     (document-entrance? options))
                    base (attrs form)
                    classes (string/join " " (remove string/blank?
                                                   [(class-text (:class base))

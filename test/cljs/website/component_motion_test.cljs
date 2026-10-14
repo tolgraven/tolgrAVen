@@ -462,6 +462,36 @@
   []
   [:div {:data-remembered true} "Previously visible"])
 
+(deftest remembered-state-preserves-network-ssr-clock-including-selective-hydration
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture))
+                context @restore/*context
+                restore-db! (r/make-restore-fn)]
+            (try
+              (r/dispatch-sync [:component-motion/seen :motion-test/remembered])
+              (restore/begin! {:hydrate? true})
+              (await! (render! root [<remembered-item>]))
+              (let [node (.querySelector element "[data-remembered]")]
+                (is (= "true" (.getAttribute node "data-document-appear")))
+                (restore/hydrated!)
+                (await! (render! root [<remembered-item>]))
+                (is (identical? node (.querySelector element "[data-remembered]")))
+                (is (= "true" (.getAttribute node "data-document-appear"))))
+              (await! (render! root nil))
+              (await! (render! root
+                         [:r> (r/context-provider restore/hydrating-context) #js {:value true}
+                          [<remembered-item>]]))
+              (is (= "true" (.getAttribute (.querySelector element "[data-remembered]") "data-document-appear"))
+                  "A retained nested SSR boundary still has the original document clock")
+              (await! (render! root nil))
+              (await! (render! root [<remembered-item>]))
+              (is (nil? (.getAttribute (.querySelector element "[data-remembered]") "data-document-appear"))
+                  "A later remembered SPA mount stays settled")
+              (finally (close!) (reset! restore/*context context) (restore-db!)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
 (deftest remembered-content-is-visible-on-its-next-mount
   (async done
     (-> (go-promise

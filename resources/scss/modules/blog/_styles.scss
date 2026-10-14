@@ -225,11 +225,6 @@
         overflow: auto;
       }
       
-      &:hover {
-        .blog-comment-actions { 
-          right: -0%;
-        }
-      }
     }
     .blog-comment-reply {
       border: 0;
@@ -300,21 +295,13 @@
       }
     }
     .blog-comment-actions {
-      z-index: 0;
-      text-align: end;
-      position: absolute;
-      display: grid;
-      right: calc(0.5 * var(--space));
-      top: calc(0.5 * var(--space));
-      transition: right 0.3s ease;
-      opacity: 0.8;
-      
-      > button {
-        margin: 0;
-        &:hover {
-          opacity: 1.0;
-        }
-      }
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 0.25rem;
+      clear: both;
+      padding: 0.35rem 0.25rem 0;
     }
   }
 }
@@ -370,7 +357,7 @@
   .blog-comment-view-full-btn, .blog-comment-view-less-btn {
     border: 0;
     position: absolute;
-    font-size: 2rem;
+    font-size: 1.15rem;
     bottom: 0.0em;
     right: 5%;
     z-index: 20;
@@ -468,8 +455,47 @@
 .blog-add-comment-btn {
 }
 .blog-comment-actions {
-  > * {
-    opacity: 0;
+  .blog-comment-action {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    margin: 0;
+    padding: 0.45rem;
+    border: 0;
+    border-radius: 0.2rem;
+    color: var(--fg-3);
+    text-decoration: none;
+    background: transparent;
+    opacity: 0.8;
+
+    &:hover, &:focus-visible {
+      color: var(--fg-1);
+      background: var(--bg-4);
+      opacity: 1;
+    }
+    &:focus-visible {
+      outline: 0.1rem solid var(--fg-6);
+      outline-offset: 0.1rem;
+    }
+    .blog-comment-action-label {
+      position: absolute;
+      inset: auto 0 calc(100% + 0.2rem) auto;
+      z-index: 30;
+      width: max-content;
+      max-width: 14rem;
+      padding: 0.35rem 0.55rem;
+      border: 0.05rem solid var(--bg-4);
+      border-radius: 0.25rem;
+      background: var(--bg-1);
+      color: var(--fg-1);
+      box-shadow: 0 0.2rem 0.6rem rgb(0 0 0 / 25%);
+      font-size: 0.8rem;
+      line-height: 1.3;
+      pointer-events: none;
+    }
   }
 }
 

@@ -3,9 +3,13 @@
   (:require [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
+            [reitit.frontend :as reitit]
+            [reitit.frontend.easy :as rfe]
+            [website.navigation.routes :as routes]
             [website.test-support :as support]
             [website.component.restore :as restore]
             [website.modules.blog.views :as blog]
+            [website.modules.blog.comment-views :as comment-views]
             [website.modules.blog.comments :as comments]
             [website.modules.blog.events]
             [website.modules.blog.subs]
@@ -28,6 +32,7 @@
                 subscribe (r/subscribe-function)
                 modules loader/modules
                 author {:id "writer", :name "Writer"}
+                *active-user (r/atom nil)
                 comment (fn [id parent]
                           {:id id
                            :parent-post 42
@@ -41,6 +46,7 @@
             (.appendChild (.-body js/document) element)
             (try
               (restore/begin! {:hydrate? false, :back? false})
+              (r/dispatch-sync [:set [:common/route] (reitit/match-by-path routes/router "/blog/post/42")])
               (await! (loader/load! {:module :markdown}))
               (doseq [[parent rows] [["root" [replies]] ["reply" [grandchild]] ["grandchild" []]]]
                 (r/dispatch-sync [:store/scoped (scoped/query-key (comments/thread-query 42 parent))
@@ -51,6 +57,9 @@
                           (ready? [_] true)
                           IDeref
                           (-deref [_] (dissoc user-module/spec :content :depends))))
+                 rfe/href (fn [name params query]
+                            (some-> (reitit/match-by-name routes/router name params)
+                                    (reitit/match->path query)))
                  r/subscribe
                  (fn
                    ([q]
@@ -60,18 +69,48 @@
                             (subscribe [:store/scoped (scoped/query-key (second q))]))
                           (r/atom {:docs []}))
                       :user/user (r/atom author)
-                      :user/active-user (r/atom nil)
+                      :user/active-user *active-user
                       :comments/adding? (r/atom false)
                       (subscribe q)))
                    ([q opts] (subscribe q opts)))]
                 (await! (support/render! root
                          [:section {:style {:position "fixed", :top "0", :width "50vw"}}
-                          [blog/<comment-post> {:path [42 "root"]
+                          [comment-views/<comment-post> {:path [42 "root"]
+                                                :focused-id "root"
                                                 :comment (comment "root" nil)}]]))
                 (await! (tick! 250))
                 (is (= 3 (.-length (.querySelectorAll element ".blog-comment-around"))))
                 (is (= 3 (count (re-seq #"Reply body" (.-textContent element))))
                     "The real Markdown bodies render, rather than dependency error fallbacks")
+                (is (nil? (.querySelector element ".blog-comment-view-less-btn"))
+                    "Focusing short text does not invent a collapse arrow")
+                (let [actions (.querySelector element ".blog-comment-actions")
+                      link (.querySelector actions ".blog-comment-permalink")]
+                  (is (= 2 (.-length (.querySelectorAll actions ".blog-comment-action"))))
+                  (is (= "/blog/post/42/comment/root" (.getAttribute link "href")))
+                  (is (= "Permalink" (.getAttribute link "aria-label")))
+                  (is (nil? (.getAttribute link "title")) "Labels belong to our UI")
+                  (.focus link)
+                  (await! (support/settle!))
+                  (is (= "Permalink" (.-textContent (.querySelector actions "[role=tooltip]"))))
+                  (.dispatchEvent link (js/KeyboardEvent. "keydown" #js {:key "Escape", :bubbles true}))
+                  (await! (support/settle!))
+                  (is (nil? (.querySelector actions "[role=tooltip]")))
+                  (.blur link)
+                  (.dispatchEvent link (js/PointerEvent. "pointerover" #js {:bubbles true}))
+                  (await! (support/settle!))
+                  (is (.querySelector actions "[role=tooltip]") "Hover opens the same custom label")
+                  (.dispatchEvent link (js/PointerEvent. "pointerout" #js {:bubbles true}))
+                  (reset! *active-user author)
+                  (await! (support/settle!))
+                  (is (= 4 (.-length (.querySelectorAll actions ".blog-comment-action")))
+                      "Own comments retain both navigation links, Reply and Edit")
+                  (reset! *active-user {:id "reader", :name "Reader"})
+                  (await! (support/settle!))
+                  (is (= 3 (.-length (.querySelectorAll actions ".blog-comment-action"))))
+                  (is (nil? (.querySelector actions ".blog-comment-edit-btn")))
+                  (reset! *active-user nil)
+                  (await! (support/settle!)))
                 (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared)")))
                     "Initial child transforms cannot trap visible replies")
                 ;; Each pair finishes open, including reversals before the

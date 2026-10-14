@@ -6,6 +6,7 @@
             [website.react :as r]
             [website.component.data :as data]
             [website.component.storage :as storage]
+            [website.render-context :as context]
 
             [website.service-status :as status]
             [website.content.client :as content]
@@ -101,7 +102,19 @@
 ;; not transport requests. Dispose only our reaction, never a shared subscription.
 (data/register-source!
  :subscription
- {:load! (fn [{:keys [query timeout-ms]}]
+ {:read (fn [{:keys [query]}]
+          ;; A supplied public snapshot can already satisfy this binding.
+          ;; SSR and first hydration must read it without waiting on a Promise.
+          (if context/*server?*
+            ;; The renderer owns and releases these request-local readers.
+            (let [value @(r/subscribe query)]
+              {:ready? (true? value), :value value})
+            (let [*value (r/make-reaction #(deref (r/subscribe query)) :auto-run true)]
+              (try
+                (let [value @*value]
+                  {:ready? (true? value), :value value})
+                (finally (r/dispose! *value))))))
+  :load! (fn [{:keys [query timeout-ms]}]
            (let [*value (r/make-reaction #(deref (r/subscribe query)) :auto-run true)]
              (-> (data/wait-for! *value
                                 #(let [value @*value] {:ready? (true? value) :value value})

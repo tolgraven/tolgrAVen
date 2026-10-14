@@ -79,6 +79,8 @@
    [:?controllers [:sequential :map]]
    [:?component-route component-routes/target]
    [:?page-route :keyword]
+   [:?page-selection-keys [:vector :keyword]]
+   [:?document-target [:or :string [:map [:prefix :string] [:parameter :keyword]]]]
    [:?data-plan data-plan]
    [:?snapshot fn?]
    [:?document-title fn?]])

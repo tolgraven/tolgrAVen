@@ -38,3 +38,15 @@
     (is (= "abcdef123456" (get-in match [:parameters :path :sha])))
     (is (nil? (pages/match "/github/commits/abcdef123456/unknown")))
     (is (thrown? Exception (pages/request-match "/github/commits/invalid" {})))))
+
+(deftest component-tails-retain-the-typed-host-page-identity
+  (let [post (pages/request-match "/blog/post/title-24" {})
+        comment (pages/request-match "/blog/post/24/comment/113" {})
+        other (pages/request-match "/blog/post/25/comment/113" {})]
+    (is (components/same-page? post comment)
+        "Slug and numeric links name the same typed post")
+    (is (components/same-page? comment (pages/request-match "/blog/post/24/comment/114" {})))
+    (is (not (components/same-page? comment other)))
+    (is (not (components/same-page? comment (pages/request-match "/blog/comment/113" {}))))
+    (is (components/same-page? (pages/request-match "/" {})
+                              (pages/request-match "/github/commits/abcdef1" {})))))

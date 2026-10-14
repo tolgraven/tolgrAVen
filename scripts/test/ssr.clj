@@ -4,7 +4,10 @@
             [babashka.fs :as fs]
             [util.process :refer [shell]]
             [cheshire.core :as json]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [website.modules.blog.data :as blog-data]
+            [website.supabase.plan :as plan]
+            [website.supabase.query :as query]))
 
 (defn check! [condition message]
   (when-not condition (throw (ex-info message {}))))
@@ -29,6 +32,35 @@
 
 (defn contains-all? [html strings] (every? #(str/includes? html %) strings))
 
+(defn comment-snapshot [blog standalone?]
+  (let [post (dissoc (first (:posts blog)) :author :date)
+        comment (fn [id parent path ts text replies]
+                  {:id id
+                   :parent-post (:id post)
+                   :parent-comment parent
+                   :path path
+                   :ts ts
+                   :user (:user post)
+                   :text text
+                   :reply-count replies})
+        root (comment "old-root" nil [42] 0 "Old root outside the first page" 1)
+        child (comment "old-child" "old-root" [42 "old-root"] 1 "Deep ancestor" 1)
+        target (comment "113" "old-child" [42 "old-root" "old-child"] 2 "Selected comment body" 1)
+        descendant (comment "114" "113" [42 "old-root" "old-child" "113"] 3 "Selected descendant body" 0)
+        neighbors (mapv #(comment (str "neighbor-" %) nil [42] (+ 100 %) "Neighboring comment" 0) (range 20))
+        contract {"blog-posts" {42 post}
+                  "blog-comments" (into {} (map (juxt :id identity)) (concat [root child target descendant] neighbors))
+                  "users" {(:user post) (:author (first (:posts blog)))}}
+        selection (cond-> {:comment-id "113"}
+                    standalone? (assoc :standalone-comment? true)
+                    (not standalone?) (assoc :post-id 42))
+        result (plan/evaluate blog-data/plan selection
+                 #(mapv (fn [opts] (or (query/query-contract contract opts) {:docs []})) %))]
+    (check! (:ready? result) "Comment fixture plan did not finish")
+    (merge (select-keys blog [:renderer-version :kind :content])
+           (blog-data/snapshot result 1000)
+           {:path (if standalone? "/blog/comment/113" "/blog/post/42/comment/113")})))
+
 (defn -main [& args]
   (let [{:keys [worker]} (cli/parse-opts args {:spec {:worker {:default "target/ssr/site.js"}}})
         blog (json/parse-string (slurp "test/browser/blog-ssr-input.json") true)
@@ -49,6 +81,9 @@
         code-blog (update-in blog [:posts 0 :text]
                              str "\n\nInline `42`, `(inc 1)` and `echo \"$HOME\"`.\n\n```\n(defn untagged [x] (inc x))\n```\n\n```clojure\n(defn greet [name] (str \"Hello \" name))\n```\n\n```cpp\n// Retain the language during hydration\nint answer = 42;\n```\n")
         [code-html] (render! worker [code-blog])
+        focused-comment (comment-snapshot blog false)
+        standalone-comment (comment-snapshot blog true)
+        [focused-html standalone-html] (render! worker [focused-comment standalone-comment])
         authored-blog (assoc-in blog [:posts 0 :text]
                                (str "Before authored content\n\n"
                                     "<Component component=\"website.components.content.box/<highlight-box>\" text=\"SSR authored note\" tone=\"tip\" layout-width=\"20rem\" layout-flow=\"right\" />\n\n"
@@ -94,6 +129,13 @@
             "Markdown must not wrap a code block in another pre")
     (check! (not (str/includes? (:html first) "code-block"))
             "Plain blog content must not require the highlighter")
+    (check! (contains-all? (:html focused-html)
+                          ["Old root outside the first page" "Deep ancestor" "Selected comment body" "id=\"blog-comment-113\""])
+            "A focused old thread must render with its ancestors before hydration")
+    (check! (and (contains-all? (:html standalone-html)
+                               ["Selected comment body" "Selected descendant body" "all its comments" "/blog/post/server-rendered-42"])
+                 (not (re-find #"Neighboring comment|Deep ancestor|Old root outside|This <strong>article" (:html standalone-html))))
+            "Standalone comment SSR must contain its subtree and parent link without neighbors or full post text")
     (check! (every? #(not (str/includes? (:html %) "component-error")) shells) "A page shell violated its contract")
     (check! (str/includes? (:html (nth shells 0)) "background-image:linear-gradient(to bottom, #")
             "Initial landing skeleton must paint sampled colors before image requests finish")
@@ -108,6 +150,8 @@
     (doseq [[name snapshot response] [["blog" blog first] ["landing" home landing]
                                       ["cv" cv cv-html] ["docs" docs docs-html] ["missing" missing missing-html]
                                       ["code-blog" code-blog code-html] ["authored-blog" authored-blog authored-html]
+                                      ["focused-comment" focused-comment focused-html]
+                                      ["standalone-comment" standalone-comment standalone-html]
                                       ["authored-config" authored-config authored-config-html]]]
       (fixture! name snapshot response))
     (println "Node SSR: all page kinds, escaping, request isolation, missing permalink and shells passed; hydration fixtures generated.")))

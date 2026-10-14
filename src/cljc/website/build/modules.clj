@@ -282,7 +282,9 @@
             :when (and resource-name
                        (or (some #(string/starts-with? resource-name %) disabled)
                            (and comments-disabled?
-                                (string/starts-with? resource-name "website/modules/blog/comments."))))]
+                                (some #(string/starts-with? resource-name %)
+                                      ["website/modules/blog/comments."
+                                       "website/modules/blog/comment_views."]))))]
       (throw (ex-info "Disabled capability entered the source graph"
                       (select-keys source [:ns :resource-name]))))
     state))

@@ -188,7 +188,11 @@
                     (set! loader/acquire-code! old-acquire) (set! resources/after-page! old-after-page)
                     (reset! r/*app-db before) (reset! context/*snapshot before-snapshot)
                     (reset! context/*interactive? before-interactive) (reset! restore/*context before-restore)
-                    (done))))))
+                    ;; Reader disposal can queue a drain while this fixture's
+                    ;; dispatch is muted. Release that queue through its owner
+                    ;; after restoring dispatch, before the next test acquires it.
+                    (r/dispatch [:store/drain-readers])
+                    (-> (support/settle!) (.then (fn [_] (done)))))))))
 
 (deftest ordinary-blog-markup-hydrates-without-replacing-content
   (async done (check-hydration! "blog"
@@ -198,6 +202,14 @@
 (deftest ordinary-landing-markup-hydrates-without-replacing-content
   (async done (check-hydration! "landing"
                 ["header" "main" "#intro h1" ".intro-title-letter" "#logo-top" "#top-banner" "#about" "#gallery" "footer"] done)))
+
+(deftest focused-old-comment-hydrates-with-its-visible-ancestors
+  (async done (check-hydration! "focused-comment"
+                ["main" ".blog-post" "#blog-comment-old-root" "#blog-comment-old-child" "#blog-comment-113"] done)))
+
+(deftest standalone-comment-subtree-hydrates-without-a-post-or-neighbors
+  (async done (check-hydration! "standalone-comment"
+                ["main" "#standalone-comment" "#blog-comment-113" "#blog-comment-114"] done)))
 
 (deftest highlighted-code-hydrates-without-replacing-its-native-roots
   (async done (check-hydration! "code-blog"

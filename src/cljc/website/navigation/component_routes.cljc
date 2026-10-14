@@ -1,6 +1,7 @@
 (ns website.navigation.component-routes
   "Mount component paths as complete native Reitit routes under their page owner.
-   Component actions run only after route coercion and module acquisition.")
+   Component actions run only after route coercion and module acquisition."
+  (:require [website.page :as page]))
 
 (def target
   [:map
@@ -33,7 +34,10 @@
     (let [root? (= "/" path)
           parent-path (if root? "" path)
           page-path (if root? "/" "")
-          parent-data (assoc (dissoc data :name) :page-route (:name data))
+          parent-data (assoc (dissoc data :name)
+                             :page-route (:name data)
+                             :page-selection-keys (vec (distinct (concat (keys (:selection data))
+                                                                         (keys (:ssr-parameters data))))))
           page-data (select-keys data [:name])]
       (into [parent-path parent-data [page-path page-data]]
             (concat children (map terminal-route component-routes))))))
@@ -43,3 +47,14 @@
   [match]
   (when-let [dispatch (get-in match [:data :component-route :action])]
     (dispatch (:parameters match))))
+
+(defn same-page?
+  "Component tails change intent while the typed host-page selection stays put."
+  [left right]
+  (let [identity (fn [match]
+                   (let [data (:data match)]
+                     [(or (:page-route data) (:name data))
+                      (:module data)
+                      (:page data)
+                      (select-keys (page/selection match) (:page-selection-keys data))]))]
+    (and (some? left) (some? right) (= (identity left) (identity right)))))

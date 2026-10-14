@@ -113,13 +113,15 @@
     ;; Native Reitit controllers start as the page route commits. Reading the
     ;; accepted match here avoids racing a native transition's async update.
     (when-let [match (when (get-in db [:common/route :data :component-route]) (:common/route db))]
-      {:dispatch [:loader/activate (select-keys (get-in match [:data :component-route]) [:module :view])]
+      {:dispatch [:loader/activate (select-keys (get-in match [:data :component-route]) [:module])]
        :navigation/load-component match})))
 
 (r/reg-fx :navigation/load-component
   (fn [match]
     (let [target (get-in match [:data :component-route])
-          options (select-keys target [:module :view])]
+          ;; The mounted host supplies the target view's arguments and data.
+          ;; Acquiring its code must not invoke that view with an empty argv.
+          options (select-keys target [:module])]
       (-> (l/load-code! options)
           (.then (fn [_] (r/dispatch [:navigation/component-loaded match])))
           (.catch (fn [_] (r/dispatch [:navigation/component-failed match])))))))
