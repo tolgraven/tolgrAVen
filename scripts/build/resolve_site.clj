@@ -7,7 +7,9 @@
             [website.build.site :as site]))
 
 (def snapshot "resources/site.overrides.edn")
+(def styles-snapshot "resources/site.overrides.css")
 (def max-bytes 262144)
+(def max-style-bytes 65536)
 
 (defn endpoint [origin]
   (let [url (java.net.URI. origin)
@@ -20,9 +22,9 @@
       (throw (ex-info "STRAPI_URL must be an HTTPS origin; local tests may use HTTP" {})))
     (str (string/replace origin #"/+$" "") "/api/site-config")))
 
-(defn resolve-config! [origin token]
+(defn resolve-site! [origin token]
   (if (string/blank? origin)
-    {:modules {}}
+    {:config {:modules {}}, :styles ""}
     (let [url (endpoint origin)]
       (when (string/blank? token)
         (throw (ex-info "Configured Strapi resolution requires STRAPI_READ_TOKEN" {})))
@@ -34,22 +36,30 @@
                        (catch Exception _ (throw (ex-info "Strapi site config request could not complete" {}))))
             status (:status response)]
         (cond
-          (= status 404) {:modules {}}
+          (= status 404) {:config {:modules {}}, :styles ""}
           (not= status 200) (throw (ex-info "Strapi site config request failed" {:status status}))
           :else
           (let [body (:body response)]
             (when (> (count (.getBytes body "UTF-8")) max-bytes)
               (throw (ex-info "Strapi site config exceeds the size limit" {})))
-            (let [{:keys [version config]} (try (json/parse-string body true)
+            (let [{:keys [version config styles]} (try (json/parse-string body true)
                                             (catch Exception _
                                               (throw (ex-info "Strapi site config is not valid JSON" {}))))]
               (when-not (= version 1) (throw (ex-info "Unsupported site config version" {})))
-              (site/validate! (merge {:modules {}} config)))))))))
+              (when-not (or (nil? styles)
+                            (and (string? styles) (<= (count (.getBytes styles "UTF-8")) max-style-bytes)))
+                (throw (ex-info "Site CSS overrides must be text up to 64 KiB" {})))
+              {:config (site/validate! (merge {:modules {}} config))
+               :styles (or styles "")})))))))
+
+(defn- write-snapshot! [file value]
+  (let [temporary (str file ".tmp")]
+    (spit temporary value)
+    (java.nio.file.Files/move (.toPath (io/file temporary)) (.toPath (io/file file))
+                             (into-array java.nio.file.CopyOption [java.nio.file.StandardCopyOption/REPLACE_EXISTING]))))
 
 (defn -main [& _]
-  (let [config (resolve-config! (System/getenv "STRAPI_URL") (System/getenv "STRAPI_READ_TOKEN"))
-        temporary (str snapshot ".tmp")]
-    (spit temporary (pr-str config))
-    (java.nio.file.Files/move (.toPath (io/file temporary)) (.toPath (io/file snapshot))
-                             (into-array java.nio.file.CopyOption [java.nio.file.StandardCopyOption/REPLACE_EXISTING]))
-    (println "Resolved site capability overrides; credentials are never stored in the snapshot.")))
+  (let [{:keys [config styles]} (resolve-site! (System/getenv "STRAPI_URL") (System/getenv "STRAPI_READ_TOKEN"))]
+    (write-snapshot! snapshot (pr-str config))
+    (write-snapshot! styles-snapshot styles)
+    (println "Resolved site capability and CSS overrides; credentials are never stored in the snapshots.")))

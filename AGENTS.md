@@ -192,7 +192,12 @@ Read-only questions and investigations do not require artificial code changes or
   It also writes a source-map-based `report.html`/`report.json` identifying each
   source's actual optimized contribution.
 - `npm run build`: produce shared CSS, a development-only inspector sheet, a
-  compressed icon selector/font-face sheet, and independent feature sheets. Module
+  compressed icon selector/font-face sheet, and independent feature sheets.
+  `bb site:resolve` snapshots CMS variable CSS beside capability selections.
+  Parse it as plain custom-property CSS before output writes and append it only
+  after the shell defaults; keep it in style freshness/watch inputs and out of
+  tracked SCSS, feature sheets and runtime source packaging. See `doc/styles.md`.
+  Module
   specs infer an existing `/css/website/modules/<id>.min.css` when `:styles`
   is absent; matching SCSS establishes ownership before generated output exists.
   Explicit `:styles` replaces that default, including `[]` to opt out.
@@ -214,6 +219,10 @@ Read-only questions and investigations do not require artificial code changes or
 - `make hooks`: install the tracked pre-commit hook; staged public JPG/PNG images
   generate staged WebP/AVIF variants without including unstaged source edits.
 - Live re-frame debugging: read the installed `re-frame-pair` skill, then run `bb pair discover-app` before inspecting the runtime. See `doc/re-frame-pair.md`; the wrapper selects `:app-dev` and Lein's nREPL port.
+
+The CMS provisioning manifest also carries the actual `_vars.scss` as a read-only,
+searchable variable reference; refresh it when provisioning the editor. Do not
+maintain a duplicate handwritten variable catalog.
 
 ## Dependency ownership
 

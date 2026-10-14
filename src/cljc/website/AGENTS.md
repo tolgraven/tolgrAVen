@@ -117,6 +117,8 @@ server format handlers retain their native JVM Java-time support.
 - Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
   Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
   Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.
+- Packaging excludes both generated `site.overrides.edn` and `site.overrides.css`;
+  only the validated, compiled shell CSS carries CMS variable overrides at runtime.
 
 - Automatically eligible large catalog entries default to progressive display;
   the shared dimensions/bytes predicate excludes cheap originals. Explicit

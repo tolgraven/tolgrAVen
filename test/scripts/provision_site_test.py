@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import sys
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -97,6 +98,18 @@ class ManifestSafetyTest(unittest.TestCase):
                  'application_uuid': 'webstage', 'cms_container': 'cms-isolated'}}}
         self.assertEqual(provision.capacity_budget(state, []), 3840)
         self.assertEqual(provision.capacity_budget(state, ['supabase-db-stage', 'webstage', 'cms-isolated']), 0)
+
+    def test_full_site_up_preserves_scss_reference(self):
+        reference = {'path': 'resources/scss/shell/_vars.scss', 'source-base64': 'OnJvb3QgeyAtLXNwYWNlOiAxLjJyZW07IH0='}
+        selected = {'config': {'modules': {}, 'pages': {}}, 'available-modules': [],
+                    'pages': [], 'modules': [], 'tables': [], 'content': [], 'style-reference': reference}
+        with patch.object(sys, 'argv', ['provision-site', 'up', str(ROOT / 'deploy/coolify/site.example.json')]), \
+             patch.object(provision, 'site_schema', return_value=selected), \
+             patch.object(provision, 'remote', side_effect=RuntimeError('prepare checkpoint')) as remote:
+            with self.assertRaisesRegex(RuntimeError, 'prepare checkpoint'):
+                provision.main()
+        self.assertEqual(remote.call_args.args[0]['site']['style-reference'], reference)
+        self.assertEqual(remote.call_args.args[1], 'prepare')
 
     def test_cms_uses_each_environments_own_web_application(self):
         import base64

@@ -42,7 +42,7 @@ RUN if ! cmp -s package-lock.json /opt/prefab-package-lock.json \
         || ! cmp -s package.json /opt/prefab-package.json; then npm ci --no-audit --no-fund; fi
 COPY . .
 ARG STRAPI_URL
-# Provisioning forces a fresh build so unchanged source still observes CMS edits.
+# Snapshot capabilities and CSS once; same-source redeploys observe CMS edits.
 RUN --mount=type=secret,id=STRAPI_URL,env=STRAPI_URL \
     --mount=type=secret,id=STRAPI_READ_TOKEN,env=STRAPI_READ_TOKEN \
     bb -cp scripts:src/cljc:resources -m build.resolve-site

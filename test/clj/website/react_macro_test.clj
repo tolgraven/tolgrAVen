@@ -1,7 +1,8 @@
 (ns website.react-macro-test
   (:require [cljs.env :as env]
             [clojure.test :refer [deftest is testing]]
-            [website.react]))
+            [website.react]
+            [website.react.targets :as targets]))
 
 (defn- expand [options form]
   (binding [env/*compiler* (atom {:options options})]
@@ -45,3 +46,9 @@
     (is (contains? nodes 'website.validation.bindings/register!))
     (is (contains? nodes 'website.validation.bindings/event-interceptor))
     (is (contains? nodes 're-frame.core/reg-event-db))))
+
+(deftest target-adapter-is-loadable-and-inert-on-the-jvm
+  (is (nil? targets/render-to-string))
+  (is (nil? targets/render-to-static-markup))
+  (is (nil? targets/kind->id->handler))
+  (is (nil? targets/query->reaction)))
