@@ -64,7 +64,8 @@
 (m/defc <add-entry> [context :- cv-schema/zoom-context count :- :int]
   (let [editor @(r/subscribe [:get :state :content-editor])]
     [:button.cv-add-entry
-     {:disabled (or (fields/busy? editor) (some? (:cv-entry editor)) (>= count 1000))
+     {:disabled (or (fields/busy? editor) (some? (:cv-entry editor)) (>= count 1000)
+                    (> (:column context) 100) (not (#{"education" "work" "life"} (:category context))))
       :title (when (>= count 1000) "This timeline has reached its entry limit.")
       :on-click (fn [event]
                   (.stopPropagation event)

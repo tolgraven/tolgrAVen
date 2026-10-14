@@ -1,4 +1,7 @@
-(ns website.modules.cv.schema)
+(ns website.modules.cv.schema
+  (:require [website.schema.common :as c]))
+
+(def state (c/optional-map {:visited :boolean}))
 
 (def zoom-context
   [:map
@@ -6,7 +9,7 @@
    [:?column-id [:maybe :int]]
    [:category :string]
    [:parents [:vector {:max 7} [:int {:min 0}]]]
-   [:parent-keys [:vector {:max 7} [:string {:max 500}]]]])
+   [:parent-keys [:vector {:max 7} :string]]])
 
 (def bounds
   [:map
