@@ -233,20 +233,34 @@
 
 (defc <footer> "The sticky footer visible at load or when scrolling up."
   [content]
-  [:footer#footer-sticky.footer-sticky
-   {:class (str (when @(r/subscribe [:state [:hidden :footer]])
-                  "hide ")
-                (when @(r/subscribe [:state [:scroll :at-bottom]])
-                  "bottomed ")
-                (when @(r/subscribe [:fullscreen/any?])
-                   "adjust-for-fullscreen"))}
-   [<footer-content> content]])
+  (let [hidden? @(r/subscribe [:state [:hidden :footer]])
+        at-bottom? @(r/subscribe [:state [:scroll :at-bottom]])
+        inactive? (or hidden? at-bottom?)]
+    [:footer#footer-sticky.footer-sticky
+     {:aria-hidden (when inactive? true)
+      :inert (when inactive? true)
+      :class (str (when hidden? "hide ")
+                  (when at-bottom? "bottomed ")
+                  (when @(r/subscribe [:fullscreen/any?])
+                    "adjust-for-fullscreen"))}
+     [<footer-content> content]]))
 
 (defc <footer-full> "Render the full footer at bottom of page"
+  {:features [[:on-seen {:threshold 0
+                        :once? false
+                        ;; Native observer margins use CSS pixels; retain the
+                        ;; existing 100-pixel handover on initial/resize checks.
+                        :root-margin "0px 0px 100px 0px"
+                        :on-change #(r/dispatch [:scroll/at-bottom %])}]]}
   [content]
-  (let [[restored?] (r/use-state #(restore/local-document?))]
+  (let [[restored?] (r/use-state #(restore/local-document?))
+        at-bottom? @(r/subscribe [:state [:scroll :at-bottom]])]
     [:footer#footer-end.footer-full
      {:class "full"
+      ;; The shared scroll state activates this footer just before it enters
+      ;; the viewport, at the same point that it retires the sticky copy.
+      :aria-hidden (when-not at-bottom? true)
+      :inert (when-not at-bottom? true)
       :data-restored-motion restored?}
      [<footer-content> content]
      [<post-footer> @(r/subscribe [:content [:post-footer]])]]))
