@@ -7,6 +7,7 @@
    [:value :string]
    [:?status [:enum :draft :saving :uploading :error]]
    [:?error :string]
+   [:?conflict? :boolean]
    [:?upload-id :string]])
 (def state
   [:map
@@ -14,4 +15,5 @@
    [:?enabled? :boolean]
    [:?settings [:map [:admin-url [:maybe :string]] [:writable? :boolean]]]
    [:?error :string]
-   [:?fields [:map-of :string draft]]])
+   [:?fields [:map-of :string draft]]
+   [:?queue [:vector :string]]])

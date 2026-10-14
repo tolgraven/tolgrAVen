@@ -10,7 +10,8 @@ typography and pictures retain their pixels with a corner replacement control.
 The toolbar stays available after closing the account panel. **Save changes**
 publishes the changed fields; **Discard changes** restores their loaded values.
 Failed saves retain the draft and show the actual recovery message. Conflicts
-require reloading the field from Strapi before making another edit.
+install the latest public value while keeping the draft; **Use latest value**
+discards only that field's draft so it can be reviewed and edited again.
 
 `:content/view` wraps the existing managed content subscription, preserving its
 Clojure values and adding field path/mode metadata to maps and vectors. Renderers
@@ -30,7 +31,7 @@ configuration is missing, public content continues normally and the account
 panel explains why inline editing is unavailable.
 
 The CMS endpoint allows specific text/image leaves, compares their loaded values,
-serializes section writes, and updates only the owning stored field. Component IDs,
+serializes section writes inside a database transaction, and updates only the owning stored field. Component IDs,
 unrelated properties and media relations survive edits. Replacing an image clears
 the old relation so it cannot override the replacement source. The site's existing
 durable media pipeline converts/uploads still images before a replacement becomes
@@ -40,7 +41,9 @@ the shared cache/shell immediately and win over older pending refreshes.
 
 The Strapi image must include `/api/site-content/field` before enabling the web
 write token. Disabling that token turns off inline writes without changing public
-content or requiring a content migration.
+content or requiring a content migration. The browser saves fields sequentially
+and installs each response before the next write, preventing old section responses
+from replacing later saves.
 
 The web app's public `:content` comes from the Clojure backend. Static editorial
 content has moved out of `db.cljs`; only UI state, routes and options remain there.

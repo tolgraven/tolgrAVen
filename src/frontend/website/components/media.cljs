@@ -152,7 +152,7 @@
         [:div#moneyshot {:class "section-with-media-bg-wrapper parallax-wrapper covering stick-up"
           :ref #(observer %)}
          [img/<media-as-bg> ; TODO try it as background-image instead of separate div, see if calms down...
-          (merge bg {:class "darken-8 parallax-bg origin-toptop" ;origin-toptop
+          (merge (fields/media content [:bg]) {:class "darken-8 parallax-bg origin-toptop" ;origin-toptop
                      :style (merge (when (pos? @frac)
                                      {:opacity 1.0})
                                    #_{:transform (str "scale(1.125) translateZ(" (* @frac -0.5) "px)")})})] ; need to be above 1.1 or goes jumpy weirdshit clip UGH why
