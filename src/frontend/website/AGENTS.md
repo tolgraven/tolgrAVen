@@ -520,7 +520,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   settings and Codex profile content currently have no request dependencies;
   preserve their readers and unavailable views until those CMS sections exist.
   See `doc/strapi-content.md`.
-- Client startup acquires shell/current-route content, not every enabled module.
+- Client startup acquires only shared shell content, not every enabled module.
   Optional modules own their dependency failures and retries. Failed shared CMS
   batches isolate section requests before rejecting consumers; keep successful
   section caches and unrelated module acquisition intact.

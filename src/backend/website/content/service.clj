@@ -66,12 +66,34 @@
 (defonce *immediate (atom nil))
 
 (defn refresh-immediate!
-  "Publish a complete shell snapshot atomically; a failed refresh keeps the last good value."
-  []
-  (let [ks (pages/immediate-keys)
-        value (contract/normalize-content (load-content! ks))]
-    (reset! *immediate {:source (:url (settings)) :content value})
-    value))
+  "Publish required shell content atomically. Optional module warmup failures
+   keep their last good sections without preventing other modules from loading."
+  ([] (refresh-immediate! true))
+  ([include-module-content?]
+   (let [source (:url (settings))
+         ks (pages/immediate-keys)
+         shell-keys (set contract/shell-content)
+         required (filterv shell-keys ks)
+         optional (filterv (complement shell-keys) ks)
+         previous (when (= source (:source @*immediate)) (:content @*immediate))
+         shell (contract/normalize-content (load-content! required))
+         modules (when include-module-content?
+                   (reduce (fn [content k]
+                             (try (merge content (contract/normalize-content (load-content! [k])))
+                                  (catch InterruptedException error
+                                    (.interrupt (Thread/currentThread))
+                                    (throw error))
+                                  (catch Exception error
+                                    (if (.isInterrupted (Thread/currentThread))
+                                      (throw error)
+                                      (do (log/warn "Module startup content unavailable" (name k))
+                                          content)))))
+                           (select-keys previous optional) optional))
+         value (merge (select-keys previous ks) shell modules)]
+     (when (.isInterrupted (Thread/currentThread))
+       (throw (InterruptedException. "Module startup content refresh interrupted")))
+     (reset! *immediate {:source source, :content value})
+     value)))
 
 (defn immediate-content []
   (let [{:keys [source content]} @*immediate]
@@ -81,15 +103,15 @@
 
 (mount/defstate startup-content
   :start (do
-           ;; Startup readiness includes CMS availability. Refresh failures later
-           ;; keep serving the last successful public snapshot.
-           (refresh-immediate!)
+           ;; Only the shared shell gates HTTP readiness. The owned refresh
+           ;; worker warms module headings after this initial snapshot.
+           (refresh-immediate! false)
            (let [executor (java.util.concurrent.Executors/newSingleThreadScheduledExecutor)
                  interval (max 1 (long (get-in config/env [:ssr :shell-refresh-seconds] 120)))]
              (.scheduleWithFixedDelay executor
                ^Runnable (fn [] (try (refresh-immediate!)
                                     (catch Exception _ (log/warn "Page shell refresh failed; retaining loaded content"))))
-               interval interval java.util.concurrent.TimeUnit/SECONDS)
+               0 interval java.util.concurrent.TimeUnit/SECONDS)
              executor))
   :stop (when startup-content (.shutdownNow ^java.util.concurrent.ExecutorService startup-content)))
 
