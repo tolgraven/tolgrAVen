@@ -1,4 +1,8 @@
 # Shared declarations and contracts
+- `content/editor_contract.cljc` owns bounded field-write paths and expected values.
+  Enriched media carries its public original `:cms-src` for editing conflicts;
+  picture adapters strip it before native markup. Native values stay unchanged
+  under the browser's metadata-based presentation binding.
 
 Keep this guide current. Shared platform data shapes, schema infrastructure,
 query constructors and normalization belong here so CLJ and CLJS use the same

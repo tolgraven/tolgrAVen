@@ -53,6 +53,11 @@ Read-only questions and investigations do not require artificial code changes or
    completed request unmerged or ask whether to finish these routine steps.
 
 ## Current architecture
+- Administrator inline CMS editing uses `:content/view` bindings, which retain
+  native values and attach field paths/mode as metadata. The lazy `content-editor`
+  owns account-bound drafts and effects; server writes verify current administrator
+  roles and use a separate private CMS write token. Configuration and section
+  ordering stay in Strapi admin. See `doc/strapi-content.md`.
 - Keep the full-featured `defc` based on upstream `reagent.core/defc`. Hooks delegate
   to upstream `reagent.hooks` through the existing shim; dependency collections
   use Clojure equality and equal state updates retain identity. Adapter review

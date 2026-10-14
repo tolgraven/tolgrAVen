@@ -1,4 +1,9 @@
 # Verification workflows
+- CMS visual comparisons use `editor-visual.html` and the original commit's
+  components, identical seed data/assets and viewport dimensions. Capture actual
+  viewports and separate scrolled sections; full-page capture can repaint filtered
+  media beyond the active viewport. Inspect edit-mode control geometry separately.
+  The fixture's seed URL reads `resources/content-seed.json` directly.
 
 - Editor build checks validate the pinned public-entry selection and reject
   unknown/private SDK exports. Production audits reject CodeMirror, Lezer and

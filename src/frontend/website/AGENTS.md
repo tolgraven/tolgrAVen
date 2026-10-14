@@ -16,6 +16,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   do not mount an empty module view with a section-shaped pending placeholder.
 
 ## Implementation priority: Reagent and re-frame
+- Editable CMS presentation consumers use `:content/view`. `content/fields.cljs`
+  preserves native view elements and carries paths/mode in Clojure metadata;
+  preserve it when merging media props. The lazy `content-editor` owns account-bound
+  drafts, authenticated writes and media status events. Keep configuration and
+  arbitrary field changes in Strapi admin.
 
 - Activity calendar tooltips mount only during hover/focus and release their
   portal, managed day dependency and scoped listeners immediately on exit.
