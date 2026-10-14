@@ -428,6 +428,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   UI selection, capture options and bounded records use re-frame; native window,
   measurement and WeakMap ownership adapters must release their lifecycle resources.
   Source/stack and actual-value details stay behind `:dev` reader boundaries.
+  The console's deferred/module host uses the development-only
+  `instrumentation/without-profiling` subtree boundary; retain instance metadata,
+  but never capture its inclusive commits back into its own record subscriptions.
+  Ancestors outside that boundary must also omit timing callbacks.
   See `doc/dev-console.md` for capture, source links and diagnostic limitations.
 
 - Missing scoped-state and installed-data subscriptions return `:present? false`

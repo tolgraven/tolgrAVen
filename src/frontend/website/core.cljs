@@ -6,6 +6,7 @@
     [website.loader :as loader]
     [website.render-context :as context]
     [website.component.data :as component-data]
+    [website.component.instrumentation :as instrumentation]
     [website.component.storage :as storage]
     [website.modules.main.module :as main-module]
 
@@ -72,11 +73,12 @@
                          (when (and ^boolean goog.DEBUG
                                     @context/*interactive?
                                     (contains? loader/modules :dev-console))
-                           [browser-resources/<deferred>
-                            (m/<> {:module :dev-console
-                                   :view :console
-                                   :load-on :immediate
-                                   :<loading> [:<>]})])))
+                           (instrumentation/without-profiling
+                             [browser-resources/<deferred>
+                              (m/<> {:module :dev-console
+                                     :view :console
+                                     :load-on :immediate
+                                     :<loading> [:<>]})]))))
 
 (defn render []
   (if @root
