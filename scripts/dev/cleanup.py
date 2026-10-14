@@ -61,9 +61,12 @@ def active_processes(target):
                     tail = args[marker + 2:]
                     # Only launcher options before the command delimiter own checkout.
                     options = tail[:tail.index('--')] if '--' in tail else tail
+                    supplied = next((arg.split('=', 1)[1] for arg in options if arg.startswith('--checkout=')), None)
                     if '--checkout' in options:
                         index = options.index('--checkout')
-                        requested = cpu.within(Path(options[index + 1]).resolve(), [target])
+                        supplied = options[index + 1]
+                    if supplied is not None:
+                        requested = cpu.within(Path(supplied).resolve(), [target])
             except (OSError, RuntimeError, ValueError, IndexError):
                 pass
         if requested or cpu.within(directory, [target]):

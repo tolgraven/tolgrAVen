@@ -87,6 +87,9 @@ class CleanupTests(unittest.TestCase):
                                   str(self.target), '--shadow-cache', 'off', '--', 'echo', 'fixture']
         with mock.patch.object(cleanup.cpu, 'MacProcesses', return_value=proc):
             self.assertEqual(cleanup.active_processes(self.target)[0]['pid'], 123)
+            proc.argv.return_value = ['python3', '/fixture/cpu_controls.py', 'run',
+                                      '--checkout=' + str(self.target), '--', 'echo', 'fixture']
+            self.assertEqual(cleanup.active_processes(self.target)[0]['pid'], 123)
 
     def test_cross_checkout_build_without_cache_is_protected_by_legacy_container_mount(self):
         record = {'name': 'owned-build', 'token': 'token', 'endpoint': 'unix:///fixture',
