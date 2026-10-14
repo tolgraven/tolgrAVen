@@ -82,7 +82,6 @@
   "Prepare the current classpath's released assets into an explicit resource root."
   [root]
   (let [get-assets (requiring-resolve 'website.middleware/get-assets)
-        source-maps (requiring-resolve 'website.middleware/module-source-maps)
         browser-modules ((requiring-resolve 'website.layout/browser-modules))
         _ (when-not (re-matches #"main\.[a-fA-F0-9]{32}\.js"
                                 (get-in browser-modules [:main :output-name] ""))
@@ -91,8 +90,12 @@
                :site @(requiring-resolve 'website.site/config)
                :styles @(requiring-resolve 'website.loader.style-catalog/stylesheet-bundles)}
         loaded (vec (strategies/guard-against-duplicate-assets (get-assets)))
-        assets (vec (optimize (source-maps loaded) {}))
-        file (write-prepared! root build (map #(str "public" (:path %)) loaded) assets)]
+        assets (vec (optimize loaded {}))
+        ;; Main is served directly, but its exact released bytes remain part of
+        ;; startup's prepared-source validation rather than escaping that check.
+        sources (conj (mapv #(str "public" (:path %)) loaded)
+                      (str "public/js/compiled/out/" (get-in browser-modules [:main :output-name])))
+        file (write-prepared! root build sources assets)]
     (println "Prepared" (count assets) "assets in" (str file))
     file))
 

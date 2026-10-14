@@ -28,6 +28,26 @@
                                      (constantly inventory) (fn [files _] files) {})
               {:request-method :get, :uri path})))
 
+(deftest shell-bundle-keeps-feature-styles-separate-and-text-fonts-local
+  (let [source-assets (assets/load-bundle "public" "styles.css" ["/css/website/main.min.css"])
+        optimized (vec (build/optimize source-assets {}))
+        shell (first (filter #(= "styles.css" (:bundle %)) optimized))
+        css (:contents shell)
+        faces (re-seq #"@font-face\s*\{[^}]+\}" css)
+        text-faces (filter #(re-find #"font-family:\s*[\"']Open Sans[\"'];" %) faces)
+        font-paths (map second (re-seq #"url\([\"']?(/webfonts/[^)\"']+)" css))
+        inventory-paths (set (map :path optimized))]
+    (is (= 9 (count faces)) "Eight Unicode subsets and the metrics-only system fallback")
+    (is (= 8 (count text-faces)))
+    (is (every? #(re-find #"font-weight:\s*300 800;" %) text-faces)
+        "Each verified variable file supplies the full existing weight range")
+    (is (not-any? #(re-find #"https?://" %) faces))
+    (is (not (re-find #"OpenSans-Regular\.ttf" css)))
+    (is (= 8 (count font-paths)))
+    (is (every? inventory-paths font-paths) "Every face resolves to its prepared local asset")
+    (doseq [feature-selector [".mdxeditor" ".leaflet-container" ".link-preview__bar"]]
+      (is (not (.contains css feature-selector)) feature-selector))))
+
 (deftest prepared-inventory-preserves-style-font-urls-headers-and-binary-bytes
   (let [root (temporary-directory)
         build-id (assoc build-settings
@@ -88,6 +108,21 @@
           (spit (io/file (:resource (first imported))) "corrupt body")
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"body is corrupt"
                                 (manifest/read-prepared! prepared build-settings resolve-resource)))))
+      (finally (delete-tree! root)))))
+
+(deftest unbundled-main-remains-a-validated-prepared-source
+  (let [root (temporary-directory)
+        path "public/js/compiled/out/main.hash.js"
+        source (io/file root path)
+        source-resolver (resolver root)]
+    (try
+      (io/make-parents source)
+      (spit source "released main bytes")
+      (let [prepared (build/write-prepared! root build-settings [path] [] source-resolver)]
+        (is (empty? (manifest/read-prepared! prepared build-settings source-resolver)))
+        (spit source "unexpected main bytes")
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"missing or stale"
+                              (manifest/read-prepared! prepared build-settings source-resolver))))
       (finally (delete-tree! root)))))
 
 (deftest prepared-manifest-fails-clearly-when-missing-invalid-or-incomplete

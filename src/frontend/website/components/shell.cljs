@@ -86,7 +86,7 @@
 
 
 (defc <header> {:features [:error-boundary]
-                 :icons ["solid/cog" "solid/pen-fancy"]}
+                 :icons ["solid/cog" "solid/pen-fancy" "solid/user"]}
   [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   (let [menu-open? @(r/subscribe [:state [:menu]])
         initial-menu (r/use-ref menu-open?)
@@ -147,7 +147,17 @@
                                         :alt   "Search"
                                         :style {:width  "1.2em" :height "1.2em"
                                                 :filter "var(--light-to-dark)"}}]])})
-      (m/<> :user/btn)
+      (when-enabled :user nil
+       (if @(r/subscribe [:user/active-user])
+        (m/<> :user/btn)
+        (m/<> {:module :user
+               :view :btn
+               :<before> (fn []
+                           [:a.button.user-btn.noborder
+                            {:href @(r/subscribe [:href-add-query {:userBox true}])
+                             :aria-label "User account"
+                             :title "User account"}
+                            [:i.user-btn.fa.fa-user]])})))
       [:label.burger {:for "nav-menu-open"}]]]
 
      [:div.fill-side-top

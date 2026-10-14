@@ -6,6 +6,7 @@
     [website.component.registry]
     [clojure.string :as string]
     [website.react :as r]
+    [website.loader :as loader]
     [website.macros :as m :refer-macros [defc]]
 
     [website.components.timer :as anim]
@@ -97,10 +98,7 @@
           [:li
            (when-enabled :icon-catalog nil
              (when (and (seq icon-name) (not (icon-catalog/names icon-name)))
-               (m/<> {:module :icon-catalog
-                      :view :empty
-                      :load-on :immediate
-                      :<loading> [:<>]})))
+               [loader/<trigger> {:module :icon-catalog :lead-pages 0.25}]))
            [icon/<icon> "fas" icon-name {}] [:h2.service-title title]]]
          (for [line lines] ^{:key (str "service-" title "-" line)} [:li line]))])
 
@@ -127,10 +125,7 @@
                [:li
                 (when-enabled :icon-catalog nil
                   (when (and (seq icon-name) (not (icon-catalog/names icon-name)))
-                    (m/<> {:module :icon-catalog
-                           :view :empty
-                           :load-on :immediate
-                           :<loading> [:<>]})))
+                    [loader/<trigger> {:module :icon-catalog :lead-pages 0.25}]))
                 [icon/<icon> "fas" icon-name {}]
                 [:h3 title]]]
               (for [line lines] ^{:key (str "service-" title "-" line)}

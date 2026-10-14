@@ -237,7 +237,7 @@
     (let [response (layout/render-home {:uri "/blog/post/test-1"})
           html (:body response)]
       (is (= 200 (:status response)))
-      (is (= "no-store" (get-in response [:headers "Cache-Control"])))
+      (is (= "private, no-cache" (get-in response [:headers "Cache-Control"])))
       (is (string/includes? html "data-hydrate=\"true\""))
       (is (string/includes? html "data-document-pending=\"true\""))
       (is (string/includes? html "/js/document/entrance.js")

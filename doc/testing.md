@@ -133,6 +133,9 @@ and Optimus asset loading. Missing files report `bb prod:build` and their paths;
 a development browser manifest is rejected instead of serving the reconnect HUD.
 The prepared manifest validates the selected build and source digests when the
 handler is constructed; missing or stale output never triggers runtime rebuilding.
+The released main script remains a validated source, but is served at Shadow's
+hashed URL directly. Page preloads/scripts and the rendering worker share that
+URL; Optimus must not create a second main bundle or rewrite its source-map URL.
 Agent builds use the
 [CPU controls](resource-controls.md); copy their generated `target/production`
 directory back from the reported isolated checkout before starting the server.

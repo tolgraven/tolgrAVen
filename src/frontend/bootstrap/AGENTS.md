@@ -12,6 +12,9 @@
   Avoid native browser-global names as namespace roots. Primitive DOM comparisons
   use native identity; keep the generated head small rather than acquiring a runtime.
 - Change only document-root attributes/custom properties. React owns image nodes.
+  The sole removal exception is `#ssr-shell`: this unhydrated document-owned
+  wrapper lives outside React's `#app`. Remove it at its opacity animation end
+  after the hero gate opens, immediately for reduced motion, with bounded cleanup.
   Exact wrapper/source owners retain decode/fade through terminal adoption and clean
   native listeners, observers, frames and timeouts. History Back suppresses lazy
   previews before discovery; later SPA navigation clears the shared return policy.

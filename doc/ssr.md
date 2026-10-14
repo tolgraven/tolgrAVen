@@ -127,7 +127,12 @@ so blocking Ring middleware and HTTP clients do not occupy Undertow workers.
 Independent graph nodes execute in concurrent waves, and CMS/configuration reads
 run alongside Supabase data acquisition. Upstream work is capped at eight active
 calls; the request and distinct-page queues are bounded at 64. Whole HTTP responses
-are `no-store`: CSRF and request-specific layout data are never cached with public HTML.
+use `private, no-cache` for successful public SSR documents, including streams:
+CSRF and request-specific layout data stay out of shared HTTP caches, and normal
+HTTP reuse requires revalidation. Native BFcache can retain the live document.
+Errors known before headers, client-restoration templates and paired private-state
+documents retain `no-store`; API privacy headers are independent of the public
+document. A late error in an already flushed stream cannot change its HTTP headers.
 
 ## Shared data declarations
 

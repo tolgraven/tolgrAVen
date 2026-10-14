@@ -77,8 +77,10 @@ Strapi delivery, Storage publication, or deployment state.
 `website.build.assets` explicitly prepares `resources/optimus/assets.edn` from
 real production Shadow outputs and built styles. Its optional `--build-styles`
 argument runs the existing npm style build first. The tool keeps Optimus's current
-URL inventory, independent bundles, CSS reference rewriting and legacy fallback
-image transformation. Shadow owns JS minification; CSS imports are rejected rather
+URL inventory, independent stylesheet/document bundles, CSS reference rewriting
+and legacy fallback image transformation. Shadow owns app JS URLs and minification;
+the page and rendering worker share its hashed main URL without an Optimus copy.
+Main's released bytes remain part of prepared-source validation. CSS imports are rejected rather
 than silently incorporating another module's sheet.
 
 The EDN artifact records the selected site, stylesheet and browser inventories,
@@ -90,7 +92,7 @@ then returns the existing Optimus asset shape. Missing, stale or corrupt artifac
 fail clearly; importing never discovers or transforms assets.
 
 `scripts/test/prepared_assets.clj` runs inside the CPU controller's disposable snapshot.
-Its `source` mode records exact bundle paths, metadata and body signatures; `jar`
+Its `source` mode records exact bundle paths, canonical main URL/digest, metadata and body signatures; `jar`
 mode compares the actual packaged resources against that record without loading
 minification or image transformation namespaces. Production imports this artifact
 at handler construction, once. Development loads declared CSS/JS bundles and their references through a two-second TTL; it
@@ -99,6 +101,6 @@ Docker frontend stage prepare the inventory after production Shadow/CSS outputs.
 Docker copies it into the final JAR alongside public resources. These checks
 establish artifact compatibility; stack/build checks verify those entry points.
 
-The current Optimus bundle names and second JS fingerprints remain intentional:
-layout, preloads and lazy style consumers still use that URL contract. Removing
-that extra naming layer requires a separate proven consumer migration.
+Optimus bundle names remain the shared stylesheet and standalone document-script
+contract. App entry/chunks retain Shadow's existing URLs and relative source-map
+references; layout, preload hints and worker imports must never rename those files.

@@ -30,6 +30,13 @@ The highlighter shares Markdown's code/control sheet too, so standalone code con
 The common shell contains neither. Browsers acquire the font URL only when a rendered consumer uses
 its glyphs; do not preload it merely because a Markdown module is loaded.
 
+Open Sans uses eight local Unicode subsets in `public/css/opensans.css`, each
+covering the font's native variable weight axis (300–800). Preserve those ranges
+when refreshing the files so unused scripts do not download on Latin pages. The
+shell preloads the existing Latin WOFF2 URL; its other subsets load only for their
+glyphs. Keep remote Google font URLs and duplicate static TTF faces out of the
+shell. The original Open Sans OFL notice accompanies the local files.
+
 A module with no `:styles` entry automatically uses
 `/css/website/modules/<id>.min.css` when that generated file or its matching SCSS entry exists. Build CSS
 before compiling module inventories. Matching SCSS establishes ownership even

@@ -10,6 +10,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   and public exports when upgrading. Adding/removing a native SDK export requires
   restarting that watch; the compile guard reports this explicitly. Ordinary
   edits using existing exports retain HMR. See `doc/markdown-authoring.md`.
+  Its bundle depends on Markdown so shared parsing packages remain in that lazy
+  ancestor rather than main. Dynamic Home service icons use the acquisition-only
+  loader trigger with a quarter-viewport lead for their fallback catalog/font;
+  do not mount an empty module view with a section-shaped pending placeholder.
 
 ## Implementation priority: Reagent and re-frame
 
@@ -172,12 +176,20 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   class. Network SSR retains the original site/hero entrance in CSS across
   hydration; the document-owned mount container gates it on hero decoding.
   Streamed skeletons remain until that gate opens. Local/history returns stay settled.
+  Loading roots share the lean visibility observer: hidden/offscreen owners keep
+  measured relative geometry while React unmounts their body. A skeleton context
+  avoids per-line observers. CSS pulses only opacity, groups article motion and
+  stops child motion during exit; presence releases the component when it finishes.
 - Shared Markdown, full syntax highlighting and mapping code live in the
   `:markdown`, `:highlight` and `:maps` bundles. Markdown's parser and declared
   node/component mapping live in `modules/markdown/`; eager consumers use its
   `interface.cljs` entry. Highlight owns the shared code-block controls; the data
   inspector uses that component directly. Module-owned implementations do not belong in
   `components/` or hidden shared UI forwarding entries.
+  Home owns only its own styles; actual lazy consumers acquire Markdown and
+  monospace sheets. Anonymous account controls keep a native shell link until
+  intent; an open account query or authenticated avatar activates User. Closed
+  account UI is absent from initial SSR exports and style ownership.
   Keep the full highlighter out of
   Markdown so link previews do not acquire every language. Node renders highlighted
   code inside completed React Suspense boundaries. Copy/wrapping and the page

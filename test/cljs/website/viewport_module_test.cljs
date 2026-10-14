@@ -143,7 +143,8 @@
               (.click (.-firstElementChild element))
               (await! (support/settle!))
               (is (empty? @(:started transport)))
-              (is (empty? @(:observers observers)))
+              (is (every? #(.matches @(:element %) ".component-skeleton") @(:observers observers))
+                  "Only the loading fallback observes visibility; the module stays manual")
               ;; Existing externally defined controls still use the normal event.
               (r/dispatch [:scope/init module])
               (await! (support/wait-for! #(seq @(:started transport)) "SSR intent did not start assets"))

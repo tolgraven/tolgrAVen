@@ -83,9 +83,6 @@
     (assets/load-bundle "public" "styles.css" ["/css/website/main.min.css"])
     (assets/load-bundles "public" styles/stylesheet-bundles)
     (assets/load-bundle "public" "icons.css" ["/css/website/icons.min.css"])
-    (assets/load-bundle "public" "main.js"
-      [(str "/js/compiled/out/"
-            (or (get-in (layout/browser-modules) [:main :output-name]) "main.js"))])
     ;; Unrelated asset requests may realize the dev inventory before release.
     ;; Never retain bytes from an old unoptimized document build in that cache.
     (when (if-let [ready? (:document-ready? defaults)] (ready?) true)
@@ -107,21 +104,10 @@
    :styles styles/stylesheet-bundles})
 
 
-(defn module-source-maps
-  "Keep Shadow maps reachable when Optimus relocates a module into /bundles/."
-  [loaded-assets]
-  (map (fn [{:keys [path contents] :as asset}]
-         (if (and (string? contents) (string/starts-with? (or path "") "/js/compiled/out/"))
-           (update asset :contents string/replace
-                   #"(?m)(//# sourceMappingURL=)([^/\s]+\.js\.map)$"
-                   "$1/js/compiled/out/$2")
-           asset)) loaded-assets))
-
 (defn optimize-all
   "Compatibility entry point for build/audit callers; never invoked at startup."
   [assets options]
-  ((requiring-resolve 'website.build.assets/optimize)
-   (module-source-maps assets) options))
+  ((requiring-resolve 'website.build.assets/optimize) assets options))
 
 (defn serve-live-assets-maybe-autorefresh
   "Refresh a realized development inventory with a bounded TTL, without a watcher."
