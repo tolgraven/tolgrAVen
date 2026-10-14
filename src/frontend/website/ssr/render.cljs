@@ -2,6 +2,8 @@
   "Synchronous, isolated rendering of the ordinary Reagent tree. This adapter
    owns request-local subscriptions; it never replaces the running app's db."
   (:require [website.react :as r]
+            ;; with-framework-bindings also replaces the facade runtime owners.
+            [website.react.runtime]
             [website.component.public-catalog :as public-catalog]
             [website.validation.runtime :as validation]
             [website.schema.app-db :as app-db]
