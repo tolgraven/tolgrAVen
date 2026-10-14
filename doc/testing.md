@@ -243,6 +243,9 @@ watched app assets are untouched. `sources.edn` records module ownership and
 renderer/highlighting implementations in `:main`. It keeps the normal production
 entry/profile, optimizations and reader features. Total bytes measure every
 bundle, not the initial route's network cost; lazy code remains part of that total.
+Public reading bundles also reject editor implementations and SDKs. The portable
+`modules/blog_editor/pages.cljc` route declaration is allowed in the eager router;
+its authoring implementation remains in the deferred editor module.
 
 To run the route checks against those actual advanced-compiled files while keeping
 the HTTP/data server unchanged:
