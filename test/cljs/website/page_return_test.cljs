@@ -12,6 +12,7 @@
             [website.test-support :as support]
             [website.components.shell :as shell]
             [website.modules.blog.views :as blog]
+            [website.modules.blog.comment-views :as comment-views]
             [website.modules.blog.comments :as comments]
             [website.modules.user.module :as user]
             [website.loader :as loader]
@@ -84,7 +85,7 @@
                            [["root" nil] ["child" "root"] ["grandchild" "child"]
                             ["deep" "grandchild"] ["leaf" "deep"]])
                 module (dissoc user/spec :content :depends)
-                form [blog/<comments-section> {:post {:id 42}}]]
+                form [comment-views/<comments-section> {:post {:id 42}}]]
             (set! (.-id element) "app")
             (.setAttribute element "data-page-build" "test-build")
             (.appendChild (.-body js/document) element)

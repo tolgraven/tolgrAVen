@@ -3,6 +3,7 @@
     [website.react :as r]
 
     [website.navigation.transition :as page-transition]
+    [website.navigation.component-routes :as component-routes]
     [clojure.string :as string]
     [website.util :as util]))
 
@@ -26,6 +27,19 @@
  (fn [id]
    (util/scroll-to id)))
 
+(r/reg-event-fx :scroll/component-target
+  {:args [:tuple :string :string]}
+  (fn [{:keys [db]} [_ id path]]
+    (when (and (= path (get-in db [:common/route :path]))
+               (not= {:path path, :scroll? false} (get-in db [:state :scroll :component-focus])))
+      {:scroll/component-target id})))
+
+(r/reg-fx :scroll/component-target
+  (fn [id]
+    ;; A committed component destination supersedes the page's earlier anchor
+    ;; restoration; keep the normal layout-settlement and user-cancel behavior.
+    (page-transition/restore-anchor! id)))
+
 (r/reg-event-fx :scroll/px
  (fn [db [_ px delay-ms]]
    (if delay-ms
@@ -41,12 +55,16 @@
   (fn [{:keys [db]} [_ path nav-count completion]]
     (let [first-nav? (zero? nav-count)
           browser-nav? (get-in db [:state :browser-nav :got-nav])
+          component-only? (and (not first-nav?) (not browser-nav?)
+                               (get-in db [:common/route :data :component-route])
+                               (component-routes/same-page? (:common/route-last db) (:common/route db)))
           restore? (or first-nav? browser-nav?)
           saved-pos (get-in db [:state :scroll-position path])]
       {:db (cond-> db browser-nav? (assoc-in [:state :browser-nav :got-nav] false))
-       :dispatch-n [[:hide-header-footer false false]
-                    (when-not restore? [:scroll/past-top false])
-                    [:page/ready (when (and (not first-nav?) (or (not restore?) (number? saved-pos)))
+       :dispatch-n [(when-not component-only? [:hide-header-footer false false])
+                    (when-not (or restore? component-only?) [:scroll/past-top false])
+                    [:page/ready (when (and (not component-only?) (not first-nav?)
+                                           (or (not restore?) (number? saved-pos)))
                                    (if restore? saved-pos "main"))
                      completion]]})))
 

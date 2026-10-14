@@ -4,6 +4,7 @@
     [website.react :as r]
     [website.modules.main.layout :as layout]
     [website.modules.home.sections :as home]
+    [website.modules.home.routes :as routes]
     [website.components.media :as media]
     [website.components.oembed :as oembed]
     [website.loader :as l]
@@ -79,9 +80,18 @@
   {:depends section-dependencies :loading-tag :section :loading-prefab :text}
   [id section-map]
   (let [{:keys [module <comp> <loading> content args dep init]} section-map
+        route @(r/subscribe [:common/route])
+        target (get routes/targets id)
         arguments (cond-> []
                     content (conj @(r/subscribe [:content/view [content]]))
                     args (conj args))]
+    ;; The managed content dependency has resolved before this body mounts.
+    ;; Its native section root exists after commit, including a delayed SPA load.
+    (r/use-effect
+      (fn []
+        (when (and target (= target (get-in route [:data :document-target])))
+          (r/dispatch [:scroll/component-target target (:path route)])))
+      [target (:path route)])
     [:<>
      (when (and init (not module))
        [<run-init> id init dep])

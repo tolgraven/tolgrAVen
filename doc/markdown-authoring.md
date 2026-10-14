@@ -1,10 +1,12 @@
 # Markdown authoring
 
 The saved document remains Markdown. `/blog/new-post` belongs to `:blog-editor`,
-which owns the posting form, media-library UI and serialized attachment queue.
+which owns the posting form, private drafts and media-library UI. The shared
+Markdown editor owns the serialized attachment queue.
 The reusable visual SDK, its toolbar and rich help live in the independently lazy
-`:markdown-editor` bundle. `blog-editor` declares `:site/owner :blog`, and `markdown-editor` follows
-`blog-editor`; disabled parents prune child code, routes and packaged assets.
+`:markdown-editor` bundle. `blog-editor` and `markdown-editor` both declare `:site/owner :blog`.
+The shared Markdown editor remains available to comments when post authoring is
+disabled; disabling Blog prunes both owners, their routes and packaged assets.
 Attachment rows show measured upload bytes, an indeterminate conversion phase,
 and success/error surfaces with retry/remove. Byte callbacks retain the transport
 auth owner and queue attempt guards; cancelled and replaced attempts cannot update
@@ -301,3 +303,33 @@ compiler/root lifecycle while forwarding React's recovery and identifier-prefix
 options, which Reagent 2.0.1 accepts but does not pass through. The release fixture
 uses actual initial styles, checks delayed owner/coercion gates, and verifies a
 deliberate native recovery plus the selected identifier prefix.
+
+The shared composer accepts an owned `:form-path`, a `:kind` (`:post` or
+`:comment`) and `:enabled-features`. Posts retain all current tools, authored
+components and their image library. Comments retain visual/source editing,
+formatting, headings, lists, links, tables, code and image-file uploads, but
+never expose the library or site-component tools. Their reader also disables
+component parsing and raw HTML, so manually pasted component/iframe markup
+cannot become embedded site content. The comment upload endpoint requires a
+registered account and owns its processing jobs; library listing still requires
+a blogger or administrator. Upload anchors, retries and completion target the
+editor's own form, and submission waits for its pending image insertions.
+
+Shared composition, image queue/state, anchor helpers and styles belong to the
+Markdown editor module. Blog Editor supplies post draft identity and privileged
+library controls, while comments supply their own form path without that owner.
+Disabling Blog Editor therefore excludes its entire source and stylesheet subtree
+without disabling comment composition.
+
+Run `tolgraven-cpu run -- bash scripts/test/comment-authoring.sh` to compile
+the actual browser graph with post authoring disabled and check the resolved
+source manifest and selected stylesheet inventory. The script changes only
+the isolated build snapshot and restores its selection on exit.
+
+Comment upload intake is `POST /api/supabase/comment-media`; owned-job polling
+uses the existing media status endpoint. Its implementation and route are both
+pruned when User or blog comments are disabled. The actual post/comment preview
+shares owner-scoped decoded-image acknowledgments, keeping successful notices
+until the final image visibly paints and exposing preview failures for retry.
+Attribute-free underline, subscript and superscript marks remain supported in
+comments; this does not enable arbitrary HTML or authored components.

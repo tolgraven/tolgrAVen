@@ -4,10 +4,11 @@
             [website.components.ui.controls :as controls]
             [website.components.ui.inputs :as inputs]
             [website.components.ui.layout :as layout]
-            [website.modules.blog.views :as blog]
+            [website.modules.blog.presentation :as blog]
             [website.modules.blog-editor.editor :as editor]
             [website.modules.blog-editor.draft :as draft]
-            [website.modules.blog-editor.model :as editor-model]))
+            [website.modules.markdown-editor.model :as editor-model]
+            [website.modules.markdown-editor.preview :as preview]))
 
 (defc <preview-blog> "Render new post preview"
   [{{:keys [title text image-assets]} :post :keys [owner] :as spec}]
@@ -18,15 +19,7 @@
         generations (editor-model/preview-generations uploads)
         ;; Status acknowledgments must not replace the adapted image component:
         ;; only its source generation or owner changes these callback identities.
-        readiness (r/use-memo
-                    (fn []
-                      (let [acknowledge! (fn [event src]
-                                           (doseq [[id attempt generation] (get generations src)]
-                                             (r/dispatch [event id attempt src owner generation])))]
-                        {:ready! #(acknowledge! :blog/image-preview-ready %)
-                         :failed! #(acknowledge! :blog/image-preview-failed %)
-                         :generations generations}))
-                    [owner generations])
+        readiness (r/use-memo #(preview/readiness owner generations) [owner generations])
         trust (cond (nil? user-id) :untrusted
                     @(r/subscribe [:user/trusted? user-id]) :trusted
                     :else :user)]

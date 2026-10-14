@@ -11,7 +11,7 @@
             [website.modules.highlight.views :as highlight-view]
             [website.modules.markdown.views :as code]
             [website.modules.markdown.interface :as markdown]
-            [website.modules.blog.views :as blog]
+            [website.modules.blog.presentation :as blog]
             [website.component.restore :as restore]
             [website.test-support :as support]
             [website.render-context :as context]))

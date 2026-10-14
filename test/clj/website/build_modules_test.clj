@@ -6,6 +6,7 @@
             [website.build.modules :as modules]
             [website.build.site :as site]
             [website.loader.code :as code]
+            [website.loader.style-catalog :as styles]
             [website.build.packaging :as packaging]
             [clojure.java.io :as io]
             [clojure.string :as string]))
@@ -26,6 +27,23 @@
     (is (= #{:main} (get-in by-id [:link-preview :depends-on])))
     (is (= (set (keys by-id)) (set (keys (modules/bundles)))))))
 
+(deftest search-acquires-its-input-styles-without-making-them-eager
+  (let [manifest (into {} (map (fn [[id spec]] [id (:paths spec)])) styles/modules)
+        required #{"/css/website/modules/monospace.min.css"
+                   "/css/website/modules/styled-input.min.css"}]
+    (is (every? (set (styles/initial-paths manifest :search)) required))
+    (is (not-any? required (styles/initial-paths manifest :main)))))
+
+(deftest search-previews-require-both-owning-capabilities
+  (let [all (modules/all-declarations)
+        selected (fn [settings] (set (map :id (modules/select-declarations all settings))))]
+    (is ((selected {:modules {}}) :blog-preview))
+    (doseq [settings [{:modules {:search {:enabled false}}}
+                     {:modules {:blog {:enabled false}}}]]
+      (is (not ((selected settings) :blog-preview))))
+    (is (not ((selected {:modules {:search {:enabled false}}}) :github-preview)))
+    (is (not ((selected {:modules {:search {:enabled false}}}) :home-preview)))))
+
 (deftest early-packaging-and-compiler-discovery-share-conventions
   (let [packaged (into {} (map (juxt :id identity)) (#'packaging/declarations))]
     (doseq [declaration (modules/all-declarations modules/root)
@@ -40,6 +58,20 @@
       (is (not (contains? (get-in by-id [id :depends-on]) :link-preview))))
     (is (seq (modules/select-declarations declarations
                {:modules {:link-preview {:enabled false}}})))))
+
+(deftest comment-views-are-an-optional-source-boundary
+  (doseq [path ["src/frontend/website/modules/blog/views.cljc"]]
+    (doseq [comments? [false true]]
+      (with-open [reader (java.io.PushbackReader. (io/reader path))]
+        (let [features (cond-> #{:cljs} comments? (conj :feature/blog-comments))
+              namespace (read {:read-cond :allow, :features features} reader)
+              symbols (set (filter symbol? (tree-seq coll? seq namespace)))]
+          (is (= comments? (contains? symbols 'website.modules.blog.comment-views)))))))
+  (with-redefs [site/settings (constantly {:modules {:blog {:comments false}}})]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Disabled capability"
+                         (modules/check-site-sources
+                           {:build-sources [:comments]
+                            :sources {:comments {:resource-name "website/modules/blog/comment_views.cljs"}}})))))
 
 (deftest standalone-user-does-not-require-markdown-or-previews
   (let [all (modules/all-declarations)
@@ -205,10 +237,16 @@
   (doseq [config [{:modules {:supabase {:enabled false}}}
                   {:modules {:missing {:enabled true}}}
                   {:modules {:blog {:comment false}}}
-                  {:modules {:user {:enabled false}}}
-                  {:modules {:blog {:enabled false}}}]]
+                  {:modules {:user {:enabled false}}}]]
     (is (thrown? clojure.lang.ExceptionInfo
                  (modules/select-declarations (modules/all-declarations) config)))))
+
+(deftest search-remains-available-without-blog-sources
+  (let [selected (modules/select-declarations (modules/all-declarations)
+                                             {:modules {:blog {:enabled false}}})
+        ids (set (map :id selected))]
+    (is (ids :search))
+    (is (not (some ids [:blog :blog-editor :markdown-editor])))))
 
 (deftest local-capture-requires-its-renderer-without-a-browser-bundle-dependency
   (let [declarations (modules/all-declarations)
@@ -227,11 +265,11 @@
         by-id (into {} (map (juxt :id identity)) all)
         settings {:modules {:blog {:enabled false}}}]
     (is (= :blog (:site/owner (get by-id :blog-editor))))
-    (is (= :blog-editor (:site/owner (get by-id :markdown-editor))))
+    (is (= :blog (:site/owner (get by-id :markdown-editor))))
     (is (not (packaging/owner-enabled? settings by-id :blog-editor)))
     (is (not (packaging/owner-enabled? settings by-id :markdown-editor)))
     (is (packaging/owner-enabled? settings by-id :markdown-components))
-    (is (not (packaging/owner-enabled? {:modules {:blog-editor {:enabled false}}} by-id :markdown-editor)))
+    (is (packaging/owner-enabled? {:modules {:blog-editor {:enabled false}}} by-id :markdown-editor))
     (is (packaging/owner-enabled? {:modules {}} by-id :markdown-editor))))
 (deftest source-graph-checks-use-one-fresh-settings-snapshot-per-build
   (let [*reads (atom 0)

@@ -1,8 +1,8 @@
-(ns website.modules.blog-editor.model
+(ns website.modules.markdown-editor.model
   "Pure draft attachment transformations. Upload files and status are transient."
   (:require [clojure.string :as string]
             [website.components.content.upload-schema :as upload-schema]
-            [website.modules.blog-editor.anchors :as anchors]
+            [website.modules.markdown-editor.anchors :as anchors]
             [website.media.schema :as media]))
 
 (def uploading-statuses #{:queued :uploading :processing})
@@ -15,6 +15,8 @@
    [:name :string]
    [:?owner :string]
    [:?sdk? :boolean]
+   [:?form-path [:vector :any]]
+   [:?kind [:enum :post :comment]]
    [:?anchor-attached? :boolean]
    [:?cancelled? :boolean]
    [:order [:int {:min 0}]]
@@ -34,6 +36,12 @@
    [:?preview-attempt [:int {:min 0}]]
    [:?asset media/asset]])
 (def uploads-schema [:map-of :string upload-schema])
+
+(def editor-schema
+  [:map
+   [:form-path [:vector :any]]
+   [:kind [:enum :post :comment]]
+   [:?document-id :?string]])
 
 (defn preview-generations
   "A new upload of an already shown source still requires its own visible acknowledgment."

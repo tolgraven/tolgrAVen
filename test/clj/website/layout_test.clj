@@ -179,6 +179,17 @@
       (is (not (.contains body "id=\"ssr-shell\"")))
       (is (.contains body "data-hydrate=\"true\"")))))
 
+(deftest cold-comment-route-declares-positioning-before-document-entrance
+  (with-redefs [config/env {:dev true :ssr {:streaming false}}
+                ssr/page! (fn [& _] {:html "<main><article id=\"blog-comment-113\">Selected comment</article></main>"
+                                   :snapshot {:posts [] :content {}}})
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (let [body (:body (layout/render-home {:uri "/blog/post/24/comment/113"}))]
+      (is (.contains body "data-document-target=\"blog-comment-113\""))
+      (is (.contains body "data-document-pending=\"true\""))
+      (is (.contains body "#app[data-document-pending][data-document-target],#app[data-document-pending] main{visibility:visible}"))
+      (is (< (.indexOf body "id=\"blog-comment-113\"") (.indexOf body "/js/document/entrance.js"))))))
+
 (deftest ordinary-reload-with-a-persistence-cookie-still-renders-the-page
   (let [*calls (atom 0)]
     (with-redefs [config/env {:dev true :ssr {:streaming false}}
@@ -258,7 +269,8 @@
         (is (= (case absent
                  "blog" ["/css/website/modules/blog.min.css"
                          "/css/website/modules/monospace.min.css"
-                         "/css/website/modules/markdown.min.css"]
+                         "/css/website/modules/markdown.min.css"
+                         "/css/website/modules/icons-blog.min.css"]
                  [(str "/css/website/modules/" absent ".min.css")])
                (get (json/read-str
                       (second (re-find #"<script[^>]*id=\"module-styles\"[^>]*>(.*?)</script>" body))) absent)))))))

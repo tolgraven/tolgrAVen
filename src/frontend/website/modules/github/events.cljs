@@ -1,6 +1,8 @@
 (ns website.modules.github.events
   (:require [website.react :as r]
-            [website.modules.github.message :as message]
+            [website.modules.github.model :as model]
+            [website.modules.github.routes :as routes]
+            [website.modules.github.diff :as diff]
             [clojure.string :as string]))
 
 (defn current-request? [db user repo generation]
@@ -8,34 +10,66 @@
     (and (= [user repo] (:target state)) (= generation (:generation state)))))
 
 (defn- begin-query [db target query]
-  ;; Feed queries own their search/page cache, while immutable revision viewers
-  ;; can already be opening when the module's configuration finishes loading.
-  (-> db
-      (assoc-in [:state :github]
-                (merge (select-keys (get-in db [:state :github]) [:diff-view :diff-attempt])
-                       {:target target
-                        :generation (inc (get-in db [:state :github :generation] 0))
-                        :query query}))
-      (assoc-in [:content :github] (select-keys (get-in db [:content :github]) [:diff-view]))))
+  ;; Feed queries reset their page state; immutable detail and revision viewers
+  ;; retain their independent caches while the managed configuration initializes.
+  (let [same-target? (= target (get-in db [:state :github :target]))
+        cached (merge (select-keys (get-in db [:content :github]) [:diff-view])
+                      (when same-target? (select-keys (get-in db [:content :github]) [:commit :commit-errors])))]
+    (-> db
+        (assoc-in [:state :github]
+                  (merge (select-keys (get-in db [:state :github]) [:diff-view :diff-attempt])
+                         {:target target
+                          :generation (inc (get-in db [:state :github :generation] 0))
+                          :query query
+                          :commits-fetched (if same-target? (get-in db [:state :github :commits-fetched] []) [])}))
+        (assoc-in [:content :github] cached))))
+
+(r/reg-event-fx :github/navigate-commit
+  {:args [:tuple routes/commit-sha]}
+  (fn [{:keys [db]} [_ sha]]
+    (when (= (string/lower-case sha) (:sha (model/route-target (:common/route db))))
+      {:dispatch [:github/init]})))
+
+(r/reg-event-fx :github/open-diff
+  {:args [:tuple diff/revision-schema]}
+  (fn [_ [_ revision]]
+    (when-let [href (diff/page-url revision)] {:github/open-document href})))
+
+(r/reg-fx :github/open-document
+  ;; The shared-memory viewer needs document isolation headers. A row intent
+  ;; uses this native boundary; its individual links retain ordinary hrefs.
+  (fn [href] (.assign js/location href)))
 
 (r/reg-event-fx :github/init
   (fn [{:keys [db]} _]
     (let [{:keys [user repo]} (get-in db [:module :github :configuration :settings])
           target [user repo]
-          db' (if (= target (get-in db [:state :github :target])) db
-                  (begin-query db target (or (get-in db [:state :form-field :github :search]) "")))]
+          focus (model/route-target (:common/route db))
+          query (or (:sha focus) (get-in db [:state :form-field :github :search]) "")
+          state (get-in db [:state :github])
+          db' (cond-> (if (and (= target (:target state)) (= query (:query state))) db
+                         (begin-query db target query))
+                focus (assoc-in [:state :form-field :github :search] query))]
       (when (and (seq user) (seq repo))
         {:db db'
-         :dispatch [:github/fetch-commits user repo 1 (get-in db' [:state :github :generation])]}))))
+         :dispatch-n [[:github/fetch-commits user repo 1 (get-in db' [:state :github :generation])]
+                      (when focus [:github/fetch-commit user repo (:sha focus)])]}))))
 
 (r/reg-event-fx :github/search
+  {:args [:tuple [:string {:max 300}]]}
   (fn [{:keys [db]} [_ query]]
-    (let [[user repo :as target] (get-in db [:state :github :target])]
-      (when (and user repo (not= query (get-in db [:state :github :query])))
-        (let [db' (-> (begin-query db target query) (assoc-in [:state :form-field :github :search] query))]
-          {:db db'
-           :dispatch-later [{:ms 180
-                             :dispatch [:github/fetch-commits user repo 1 (get-in db' [:state :github :generation])]}]})))))
+    (let [[user repo :as target] (get-in db [:state :github :target])
+          query' (string/lower-case (string/trim query))]
+      (when (and user repo)
+        (let [changed? (not= query (get-in db [:state :github :query]))
+              db' (-> (if changed? (begin-query db target query) db)
+                      (assoc-in [:state :form-field :github :search] query))]
+          (cond-> {:db db'}
+            changed?
+            (assoc :dispatch-later [{:ms 180
+                                     :dispatch [:github/fetch-commits user repo 1 (get-in db' [:state :github :generation])]}])
+            (re-matches #"[a-f0-9]{7,40}" query')
+            (assoc :dispatch [:github/fetch-commit user repo query'])))))))
 
 (r/reg-event-fx :github/refresh
   (fn [{:keys [db]} _]
@@ -48,14 +82,16 @@
 (r/reg-event-fx :github/fetch-commits
   (fn [{:keys [db]} [_ user repo page generation]]
     (let [state (get-in db [:state :github])
-          generation' (or generation (:generation state))]
+          generation' (or generation (:generation state))
+          cursor (get-in db [:content :github :next-cursor])]
       (when (and (current-request? db user repo generation') page
+                 (or (= page 1) cursor)
                  (not (some #{page} (:pages-fetched state)))
                  (not (contains? (:pages-pending state) page)))
         {:db (update-in db [:state :github :pages-pending] (fnil conj #{}) page)
          :dispatch [:http/get {:uri "/api/github/commits"
                               :url-params (cond-> {:user user, :repo repo, :q (or (:query state) "")}
-                                            (> page 1) (assoc :cursor (get-in db [:content :github :next-cursor])))}
+                                            (> page 1) (assoc :cursor cursor))}
                     [:github/save-commits user repo generation' page]
                     [:github/request-failed user repo generation' :page page]]}))))
 
@@ -63,17 +99,9 @@
   (fn [{:keys [db]} [_ user repo generation page {:keys [commits total complete next-cursor]}]]
     (when (and (current-request? db user repo generation)
                (contains? (get-in db [:state :github :pages-pending]) page))
-      (let [commits' (mapv (fn [{:keys [commit sha] :as item}]
-                             (let [ts (get-in commit [:author :date])
-                                   [date clock] (string/split (or ts "") "T")]
-                               (assoc item :date date :clock clock :ts ts
-                                           :message (message/parse-message (:message commit))
-                                           :sha7 (subs sha 0 (min 7 (count sha)))))) commits)]
+      (let [commits' (mapv model/normalize-commit commits)]
         {:db (-> db
-                 (update-in [:content :github :commits]
-                   (fn [existing]
-                     (let [known (set (map :sha existing))]
-                       (into (vec existing) (remove #(contains? known (:sha %))) commits'))))
+                 (update-in [:content :github :commits] model/merge-commits commits')
                  (assoc-in [:content :github :total] total)
                  (assoc-in [:content :github :next-cursor] next-cursor)
                  (assoc-in [:content :github :complete?] complete)
@@ -90,21 +118,37 @@
 (r/reg-event-fx :github/fetch-commit
   (fn [{:keys [db]} [_ user repo sha]]
     (when (and (= [user repo] (get-in db [:state :github :target])) sha
+               (not (contains? (get-in db [:state :github :commits-pending]) sha))
                (not (some #{sha} (get-in db [:state :github :commits-fetched]))))
-      {:dispatch [:http/get {:uri (str "https://api.github.com/repos/" user "/" repo "/commits/" sha)
-                            :headers {"Accept" "application/vnd.github.v3+json"}}
+      {:db (-> db
+               (update-in [:state :github :commits-pending] (fnil conj #{}) sha)
+               (update-in [:content :github :commit-errors] (fnil dissoc {}) sha))
+       :dispatch [:http/get {:uri (str "/api/github/commits/" sha)
+                            :url-params {:user user, :repo repo}}
                   [:github/save-commit user repo (get-in db [:state :github :generation]) sha]
                   [:github/request-failed user repo (get-in db [:state :github :generation]) :commit sha]]})))
 
-(r/reg-event-db :github/save-commit
-  (fn [db [_ user repo generation sha data]]
-    (if (current-request? db user repo generation)
-      (-> db (assoc-in [:content :github :commit sha] data)
-             (update-in [:state :github :commits-fetched] (fnil conj []) sha)) db)))
+(r/reg-event-fx :github/save-commit
+  (fn [{:keys [db]} [_ user repo generation sha data]]
+    (when (and (current-request? db user repo generation)
+               (contains? (get-in db [:state :github :commits-pending]) sha))
+      (if (and (map? data) (string? (:sha data))
+               (string/starts-with? (string/lower-case (:sha data)) (string/lower-case sha)))
+        {:db (-> db
+                 (assoc-in [:content :github :commit sha] data)
+                 (assoc-in [:content :github :commit (:sha data)] data)
+                 (update-in [:content :github :commits] model/merge-commits [(model/normalize-commit data)])
+                 (update-in [:state :github :commits-pending] disj sha)
+                 (update-in [:state :github :commits-fetched]
+                            #(vec (distinct (conj % sha (:sha data))))))}
+        {:dispatch [:github/request-failed user repo generation :commit sha
+                    {:status 502, :status-text "GitHub returned an invalid commit"}]}))))
 
 (r/reg-event-fx :github/request-failed
-  (fn [{:keys [db]} [_ user repo generation kind page error]]
+  (fn [{:keys [db]} [_ user repo generation kind id error]]
     (when (current-request? db user repo generation)
       {:db (cond-> (assoc-in db [:content :github :errors] error)
-             (= kind :page) (update-in [:state :github :pages-pending] disj page))
+             (= kind :page) (update-in [:state :github :pages-pending] disj id)
+             (= kind :commit) (update-in [:state :github :commits-pending] disj id)
+             (= kind :commit) (assoc-in [:content :github :commit-errors id] error))
        :dispatch [:default-http-error error]})))

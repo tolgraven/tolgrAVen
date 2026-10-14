@@ -1,13 +1,21 @@
 (ns website.modules.blog.pages
   "Page declarations independent of the module implementation."
+  #?(:cljs (:require-macros [website.build.site :refer [when-enabled]]))
   (:require #?(:cljs [website.react :as r])
+            #?(:clj [website.build.site :refer [when-enabled]])
             [clojure.string :as string]
+            [website.navigation.component-routes :as component-routes]
+            #?(:feature/blog-comments [website.modules.blog.comments :as comments])
             [website.modules.blog.data :as data]
             [website.page :as page]
             [website.schema.http :as schemas]))
 
+#?(:clj (when-enabled :blog :comments
+           (require '[website.modules.blog.comments :as comments])))
+
 (def page-extension
-  [:map [:?selection [:map [:?page [:int {:min 1}]]]]])
+  [:map [:?selection (into [:map [:?page [:int {:min 1}]]]
+                          (when-enabled :blog :comments [[:?standalone-comment? :boolean]]))]])
 
 #?(:cljs (def controllers
   {:blog [{:start (fn [_]
@@ -33,6 +41,7 @@
 
 
 (def spec
+  (mapv (fn [[path data & children]] (into [path data] (remove nil? children)))
   ;; Native Reitit routes, with shared data inherited by each child page.
   [["/blog" {:schema page-extension :module :blog :transition-key :blog
               :shell {:heading [:blog :heading]
@@ -58,10 +67,35 @@
     ["/page/:nr" {:parameters {:path schemas/blog-page} :name :blog-page :page :page :ssr true
                   :ssr-parameters {:page {:from :nr :type :page-number}}
                   #?@(:cljs [:controllers (:blog-page controllers)])}]
-    ["/post/:permalink" {:parameters {:path schemas/blog-post} :name :blog-post :page :post :ssr true
+    (component-routes/mount
+      ["/post/:permalink" {:parameters {:path schemas/blog-post} :name :blog-post :page :post :ssr true
                         :ssr-parameters {:post-id {:from :permalink :type :trailing-id}}
                         #?@(:cljs [:controllers (:blog-post controllers)])}]
+      (or (when-enabled :blog :comments
+            [["/comment/:comment-id"
+              {:name :blog-post-comment
+               :document-target {:prefix "blog-comment-", :parameter :comment-id}
+               :parameters {:path [:merge schemas/blog-post [:map [:comment-id comments/comment-id]]]}
+               :ssr-parameters {:comment-id {:from :comment-id :type :document}}
+               :component-route {:module :blog
+                                 :view :comments
+                                 :action (fn [{:keys [path]}] [:blog/navigate-comment (:comment-id path)])}
+               #?@(:cljs [:controllers [{:parameters {:path [:permalink :comment-id]}
+                                        :start (fn [_] (r/dispatch [:navigation/activate-component]))}]])}]])
+          []))
+    (when-enabled :blog :comments
+      ["/comment/:comment-id"
+       {:name :blog-comment
+        :document-target "standalone-comment"
+        :page :comment
+        :ssr true
+        :selection {:standalone-comment? true}
+        :parameters {:path [:map [:comment-id comments/comment-id]]}
+        :ssr-parameters {:comment-id {:from :comment-id :type :document}}
+        #?@(:cljs [:controllers [{:parameters {:path [:comment-id]}
+                                 :start (fn [{:keys [path]}]
+                                          (r/dispatch [:blog/navigate-comment (:comment-id path)]))}]])}])
     ["/archive" {:name :blog-archive :page :archive}]
     ["/tag/:tag" {:parameters {:path schemas/blog-tag} :name :blog-tag :page :tag
                  #?@(:cljs [:controllers (:blog-tag controllers)])}]
-]])
+]]))

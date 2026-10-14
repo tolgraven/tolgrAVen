@@ -82,19 +82,21 @@
         document-enter? (restore/document-enter?)
         debug @(r/subscribe [:state [:debug]])
         click-evt @(r/subscribe [:state [:global-clicked]])
+        route @(r/subscribe [:common/route])
+        chrome? (not= false (get-in route [:data :shell :chrome?]))
         page @(r/subscribe [:common/page])
         previous @(r/subscribe [:common/page :last])
         layers (use-page-crossfade
                  (when page [(component/resolve-view page)])
                  (when previous [(component/resolve-view previous)])
-                 @(r/subscribe [:common/route]) @(r/subscribe [:common/route :last])
+                 route @(r/subscribe [:common/route :last])
                  (and (not ext-back?) (get-in commit [:completion :fallback?]))
                  (get-in commit [:completion :transition-id])
                  (get-in commit [:completion :outgoing-top]))]
   [:<>
    [l/<loaded-assets> (:assets spec)]
 
-   [common/<header> @(r/subscribe [:content/view [:header]])]
+   (when chrome? [common/<header> @(r/subscribe [:content/view [:header]])])
    [:a {:name "linktotop" :id "linktotop"}]
 
    [ui-overlays/<zoom-to-modal> :fullscreen]
@@ -121,7 +123,8 @@
                   {:min-height (str height "px")})
          :data-debug-hydrated (when @(r/subscribe [:state [:debug :hydration-token]]) true)
          :data-restored (when (and ext-back? (not document-enter?)) true)
-         :class (str (when (or document-enter?
+         :class (str (when-not chrome? "main-content--bare ")
+                     (when (or document-enter?
                                  (and (not ext-back?)
                                       (= (:page @restore/*context) (restore/page-key))))
                             "animate ")
@@ -132,8 +135,10 @@
 
    [:div#error-portal]
 
-   [common/<footer-full> @(r/subscribe [:content/view [:footer]])]
-   [common/<footer> @(r/subscribe [:content/view [:footer]])]
+   (when chrome?
+     [:<>
+      [common/<footer-full> @(r/subscribe [:content/view [:footer]])]
+      [common/<footer> @(r/subscribe [:content/view [:footer]])]])
    (when-enabled :contact nil
      (let [open? @(r/subscribe [:state [:contact-form :show?]])]
        ;; The lazy host owns presence; its panel exists only while open/exiting.
@@ -147,7 +152,7 @@
      (let [editor @(r/subscribe [:get :state :content-editor])]
        (when (or (:enabled? editor) (seq (:fields editor)))
          (m/<> {:module :content-editor :view :toolbar :load-on :immediate}))))
-   [common/<to-top>]
+   (when chrome? [common/<to-top>])
    ; [[:div.ripple-on-click
    ;    {:class (when click-evt "ripple")
    ;     :style {:left (str "calc(" (if click-evt

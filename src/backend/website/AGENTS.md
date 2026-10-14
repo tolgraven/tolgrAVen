@@ -8,6 +8,16 @@
   New page requests use the new revision; older in-flight renders cannot replace
   its cache entry. Keep that identity server-only, outside public snapshots.
 
+- Search delivery reads module-owned public projections through the private
+  durable queue. Keep Typesense credentials server-only; acknowledge only each
+  successful matching revision/worker. Scope failures omit that source, retaining
+  unrelated public hits. Operational migration and replay are in `doc/search.md`.
+
+- Comment image uploads use the registered-account comment endpoint and the
+  existing bounded durable media pipeline. Jobs and polling belong to that
+  account. Image-library listing retains blogger/admin authorization; enabling
+  uploads in comments must not enable library listing or authored site content.
+
 - Successful public SSR documents use `private, no-cache` so native BFcache is
   available without shared HTTP caching. Errors known before headers, client-restoration templates,
   paired private-state documents and existing API privacy headers keep `no-store`.
@@ -237,6 +247,11 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   commits. Database leases and page/checkpoint transactions make retries safe;
   unchanged branch heads skip acquisition. Per-day breakdowns use the public
   unauthenticated timeline on hover, independently of repository history.
+  Commit details, paged changed-file metadata, patches and immutable file reads
+  use the same fixed-origin server provider and optional server-only token.
+  Match current repository settings and check public visibility before every
+  delivery, including cache hits; recheck after fresh reads. Keep the bounded
+  promise cache and consumed-field projections; never proxy arbitrary URLs.
 
 - Optional module-service startup failures remain local: log the module ID,
   continue starting sibling services, and retain their cleanup handles. Missing

@@ -5,7 +5,7 @@
             [website.react :as r]
             [website.modules.markdown-editor.source-model :as model]
             [website.modules.markdown-editor.uploads :as uploads]
-            [website.modules.blog-editor.files :as files]
+            [website.modules.markdown-editor.files :as files]
             ["@mdxeditor/editor" :as editor]
             ["lexical" :refer [$getRoot $getNodeByKey SKIP_DOM_SELECTION_TAG]]))
 

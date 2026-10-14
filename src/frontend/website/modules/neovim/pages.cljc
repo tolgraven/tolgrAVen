@@ -7,4 +7,5 @@
                :page :page
                :ssr true
                :streaming false
+               :shell {:chrome? false}
                :depends []}]])

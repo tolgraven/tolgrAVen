@@ -1,4 +1,4 @@
-(ns website.modules.blog-editor.anchors
+(ns website.modules.markdown-editor.anchors
   "Pending insertion points belong to the upload queue, never the Markdown text.")
 
 (def positions-schema [:map-of :string [:int {:min 0}]])

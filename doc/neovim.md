@@ -3,7 +3,11 @@
 The lazy `:neovim` module exposes `:editor` and `:page`. `/neovim` serves the page
 with COOP `same-origin` and COEP `require-corp`, required by the official WASM
 build's SharedArrayBuffer transport. No Neovim bytes or isolation headers are
-acquired by ordinary pages. The return worker shares the module-owned header
+acquired by ordinary pages. Dedicated editor routes declare `:shell {:chrome? false}`
+to omit the site header, both footers and back-to-top control. The editor keeps one
+compact Menu disclosure for navigation, repository tools, imports, buffer export,
+restart and help; GitHub diffs place revision/file controls and commit details there
+too. Loading and failure messages remain visible outside the menu. The return worker shares the module-owned header
 policy so a synthesized `/neovim` document remains isolated. Links crossing the
 isolation boundary in either direction use full document navigation. Routes with
 the same isolation requirements retain ordinary SPA navigation.
@@ -24,6 +28,10 @@ shared memory under COOP/COEP, but the actual browser context must expose it.
    :rows 24
    :on-save #(r/dispatch [:my-editor/accept-buffer %])})
 ```
+
+`:menu-content` accepts extra Hiccup content inside the editor menu, without
+changing or restarting the native session. Escape closes the menu and returns focus
+to its summary; moving focus out closes it too.
 
 `:cols` defaults to 80 (20–240), `:rows` to 24 (8–80). Width adapts to the
 component's container through an owned ResizeObserver. `:initial-text` is bounded
@@ -235,6 +243,11 @@ node test/scripts/neovim_profile_test.cjs
 ## GitHub commit diffs
 
 Commit rows open `/neovim/github/:user/:repo/:sha` as a new isolated document. Crossing into or out of isolation uses document navigation, so normal pages recover their normal media policy.
+Metadata, patches and immutable before/after source reads go through the site's
+GitHub API endpoints for the currently configured public repository. The optional
+server GitHub token remains private; binary/size checks and changed-file
+pagination remain part of the viewer. See `doc/activity-panels.md` for delivery,
+visibility, cache and provider failure contracts.
 The GitHub module owns this route, data and controls; it is omitted when Neovim
 is disabled, preserving the existing basic commit viewer. Before/after uses one
 native Neovim process with vertical diff windows, absolute line numbers and

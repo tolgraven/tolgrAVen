@@ -29,6 +29,16 @@
  (fn [db [_]]
    (true? (get-in db [:state :search :open?]))))
 
+(doseq [field [:query :selected :pending? :error :response]]
+  (r/reg-sub (keyword "search" (name field))
+    (fn [db _] (get-in db [:search field]))))
+
+(r/reg-sub :search/suggestions
+  :<- [:search/query]
+  :<- [:search/response]
+  (fn [[query response] _]
+    (if (= query (:query response)) (:suggestions response) [])))
+
 (r/reg-sub :search/results-open?
  (fn [db [_]]
    (get-in db [:state :search :results-open?])))

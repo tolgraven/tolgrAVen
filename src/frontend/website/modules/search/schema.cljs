@@ -1,6 +1,7 @@
 (ns website.modules.search.schema
   "Consumed provider fields and UI state; provider extension fields remain open."
-  (:require [website.schema.common :as c]))
+  (:require [website.schema.common :as c]
+            [website.modules.search.model :as model]))
 
 (def state (c/optional-map {:open? :boolean, :results-open? :boolean}))
 
@@ -13,7 +14,19 @@
                           [:map
                            [:document :map]
                            [:?highlights [:sequential :map]]]]}))
+(def initial
+  {:query ""
+   :generation 0
+   :pending? false
+   :response nil
+   :error nil
+   :selected -1})
+
 (def results
-  (c/optional-map {:query [:map-of c/named :?string]
-                   :previous-query [:map-of c/named :?string]
-                   :results [:map-of c/named [:map-of :string search-result]]}))
+  [:map
+   [:query [:string {:max 200}]]
+   [:generation c/nonnegative]
+   [:pending? :boolean]
+   [:response [:maybe model/result]]
+   [:error :?string]
+   [:selected [:int {:min -1}]]])

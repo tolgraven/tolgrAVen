@@ -28,6 +28,15 @@
      (or (:selection data) (when-let [kind (:kind data)] {:kind kind}) {})
      (:ssr-parameters data {}))))
 
+(defn document-target
+  "Resolve a declared cold-load destination from the native route's selection."
+  [{:keys [data] :as match}]
+  (let [target (:document-target data)]
+    (if (string? target)
+      target
+      (when-let [value (get (selection match) (:parameter target))]
+        (str (:prefix target) value)))))
+
 (defn immediate-keys [spec]
   (->> (dependencies spec)
        (filter #(and (= :strapi (:source %)) (= :startup (:availability %))))

@@ -21,6 +21,7 @@
     [website.supabase.query :as supabase-query]
     [website.store.contract :as store-contract]
     [reitit.core :as reitit]
+    [reitit.frontend :as frontend]
     [reitit.frontend.easy :as rfe]
     [website.navigation.routes :as routes]
     [website.loader :as loader]
@@ -54,6 +55,7 @@
     [website.modules.blog.model :as blog-model]
     [website.modules.blog.comments :as comments]
     [website.modules.blog.views :as blog-views]
+    [website.modules.blog.comment-views :as comment-views]
     [website.modules.link-preview.module]
     [website.modules.cv.module]
     [website.modules.docs.module]
@@ -357,7 +359,7 @@
                    (try (await!
                           (support/render!
                             root
-                            [blog-views/<vote-btn>
+                            [comment-views/<vote-btn>
                              {:user "author", :active-user "voter", :path [1 "c"], :vote :up}]))
                         (is (false? (.-disabled (.querySelector element "button"))))
                         (reset! pending true)
@@ -825,7 +827,7 @@
                              [:common/navigate shell completion])]
     (is (= page (dissoc (get-in (:db replacement) [:common/route]) :controllers)))
     (is (not (contains? stale :db)) "The stale shell must not replace the real page")
-    (is (= [:page/ready nil completion] (:dispatch stale))
+    (is (some #{[:page/ready nil completion]} (:dispatch-n stale))
         "The original transition still receives completion")
     (is (= shell (page-transition/latest-match shell {:transition-id 6} pending))
         "An old transition cannot borrow a newer generation")
@@ -1036,6 +1038,37 @@
     (is (nil? (get-in (event-effects :page/transition-finished {:db db} [:page/transition-finished 9])
                      [:db :page/commit :completion :outgoing-height])))))
 
+(deftest same-post-comment-intent-does-not-reset-scroll-or-header
+  (let [post (reitit/match-by-path routes/router "/blog/post/title-24")
+        comment (reitit/match-by-path routes/router "/blog/post/24/comment/113")
+        db {:common/route-last post
+            :common/route comment}
+        effects (event-effects :scroll/on-navigate {:db db} [:scroll/on-navigate (:path comment) 2 nil])]
+    (is (= [nil nil [:page/ready nil nil]] (:dispatch-n effects)))
+    (let [other (reitit/match-by-path routes/router "/blog/post/25/comment/113")
+          effects' (event-effects :scroll/on-navigate {:db (assoc db :common/route other)}
+                                 [:scroll/on-navigate (:path other) 3 nil])]
+      (is (= "main" (get-in effects' [:dispatch-n 2 1]))))))
+
+(deftest history-component-mounts-cannot-replace-saved-scroll-and-explicit-intent-can-refocus
+  (let [route (reitit/match-by-path routes/router "/blog/post/24/comment/113")
+        path (:path route)
+        db {:common/route route
+            :state {:browser-nav {:got-nav true}
+                    :scroll-position {path 730}}}
+        intent (event-effects :page/navigate {:db db} [:page/navigate route])
+        committed (event-effects :scroll/on-navigate {:db (:db intent)} [:scroll/on-navigate path 3 nil])
+        target (event-effects :scroll/component-target {:db (:db committed)} [:scroll/component-target "blog-comment-113" path])]
+    (is (= 730 (get-in committed [:dispatch-n 2 1])))
+    (is (nil? target) "A late target commit cannot cancel the saved-position owner")
+    (let [explicit (event-effects :page/navigate {:db (:db committed)} [:page/navigate route])
+          target' (event-effects :scroll/component-target {:db (:db explicit)} [:scroll/component-target "blog-comment-113" path])]
+      (is (= {:scroll/component-target "blog-comment-113"} target')
+          "Repeating a permalink is a new focus intent even at the same URL"))
+    (let [cold (event-effects :page/navigate {:db {:state {:browser-nav {:nav-type 2}}}} [:page/navigate route])]
+      (is (false? (get-in cold [:db :state :scroll :component-focus :scroll?]))
+          "A native history document also retains the browser's saved position"))))
+
 (deftest history-scroll-waits-for-layout-animation-completion
   (async done
     (-> (go-promise
@@ -1059,6 +1092,133 @@
               (finally
                 (when-let [cleanup! @page-transition/*restore-cleanup] (cleanup!))
                 (support/unmount! root) (.remove element)
+                (set! (.-scrollRestoration js/history) original-mode)
+                (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest component-anchor-follows-growing-ancestors-and-respects-header-clearance
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                original-position (.-scrollY js/window)
+                original-mode (.-scrollRestoration js/history)]
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root
+                        [:section
+                         [:div {:style {:height "100vh"}}]
+                         [:div#anchor-growing-row {:style {:height "24rem"}}]
+                         [:div#moving-component-anchor {:style {:height "4rem", :scroll-margin-top "5rem"}}
+                          "Selected comment"]
+                         [:div {:style {:height "100vh"}}]]))
+              (let [row (.querySelector element "#anchor-growing-row")
+                    target (.querySelector element "#moving-component-anchor")
+                    animation (.animate row #js [#js {:height "0rem"} #js {:height "24rem"}]
+                                        #js {:duration 220})]
+                (page-transition/restore-anchor! "moving-component-anchor")
+                (await! (support/settle!))
+                (is (some? @page-transition/*restore-cleanup)
+                    "A reachable component does not release its anchor while ancestors expand")
+                (is (<= (js/Math.abs (- original-position (.-scrollY js/window))) 1)
+                    "The page does not jump to a moving target before intrinsic layout settles")
+                (await! (.-finished animation))
+                (await! (wait-for! #(nil? @page-transition/*restore-cleanup)))
+                (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle target)))]
+                  (is (<= (js/Math.abs (- margin (.-top (.getBoundingClientRect target)))) 1)
+                      "The final comment remains below the sticky header after layout growth")))
+              (is (empty? @restore/*layout-listeners))
+              (finally
+                (when-let [cleanup! @page-transition/*restore-cleanup] (cleanup!))
+                (support/unmount! root)
+                (.remove element)
+                (set! (.-scrollRestoration js/history) original-mode)
+                (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest native-positioned-component-keeps-tracking-layout-through-hydration
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                original-position (.-scrollY js/window)
+                original-mode (.-scrollRestoration js/history)]
+            (.setAttribute element "id" "app")
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root
+                        [:section
+                         [:div {:style {:height "100vh"}}]
+                         [:div#native-anchor-row {:style {:height "24rem"}}]
+                         [:div#native-component-anchor {:style {:height "4rem", :scroll-margin-top "5rem"}} "Comment"]
+                         [:div {:style {:height "100vh"}}]]))
+              (let [row (.querySelector element "#native-anchor-row")
+                    target (.querySelector element "#native-component-anchor")]
+                (.scrollIntoView target #js {:block "start", :behavior "instant"})
+                (.setAttribute element "data-document-positioned" "native-component-anchor")
+                (let [animation (.animate row #js [#js {:height "24rem"} #js {:height "8rem"}]
+                                          #js {:duration 180, :fill "forwards"})]
+                  (page-transition/restore-anchor! "native-component-anchor")
+                  (await! (support/settle!))
+                  (is (some? @page-transition/*restore-cleanup)
+                      "The native position is an initial offset, not permission to stop following layout")
+                  (await! (.-finished animation))
+                  (await! (wait-for! #(nil? @page-transition/*restore-cleanup)))
+                  (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle target)))]
+                    (is (<= (js/Math.abs (- margin (.-top (.getBoundingClientRect target)))) 1)))
+                  (.cancel animation))
+                (let [entrance (.animate (.querySelector element "section")
+                                        #js [#js {:transform "translateY(3rem)"}
+                                             #js {:transform "translateY(0)"}]
+                                        #js {:duration 180, :fill "forwards"})]
+                  ;; The document holds its entrance clock while hydration mounts.
+                  (.pause entrance)
+                  (set! (.-currentTime entrance) 0)
+                  (.setAttribute element "data-document-positioned" "native-component-anchor")
+                  (page-transition/restore-anchor! "native-component-anchor")
+                  (await! (support/settle!))
+                  (is (some? @page-transition/*restore-cleanup)
+                      "Paused native entrance transforms retain the position owner")
+                  (.play entrance)
+                  (await! (.-finished entrance))
+                  (await! (wait-for! #(nil? @page-transition/*restore-cleanup)))
+                  (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle target)))]
+                    (is (<= (js/Math.abs (- margin (.-top (.getBoundingClientRect target)))) 1)
+                        "Entrance transforms must not become the settled scroll offset"))
+                  (.cancel entrance)))
+              (finally
+                (when-let [cleanup! @page-transition/*restore-cleanup] (cleanup!))
+                (support/unmount! root)
+                (.remove element)
+                (set! (.-scrollRestoration js/history) original-mode)
+                (.scrollTo js/window #js {:top original-position, :behavior "instant"})))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest disappearing-component-anchor-releases-restoration
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                original-position (.-scrollY js/window)
+                original-mode (.-scrollRestoration js/history)]
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root [:div#vanishing-component-anchor {:style {:height "24rem"}}]))
+              (let [animation (.animate (.querySelector element "#vanishing-component-anchor")
+                                        #js [#js {:height "0rem"} #js {:height "24rem"}]
+                                        #js {:duration 220})]
+                (page-transition/restore-anchor! "vanishing-component-anchor")
+                (await! (support/render! root [:div "Destination changed"]))
+                (await! (wait-for! #(nil? @page-transition/*restore-cleanup)))
+                (.cancel animation))
+              (is (empty? @restore/*layout-listeners))
+              (finally
+                (when-let [cleanup! @page-transition/*restore-cleanup] (cleanup!))
+                (support/unmount! root)
+                (.remove element)
                 (set! (.-scrollRestoration js/history) original-mode)
                 (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
         (.catch #(is false (str %)))
@@ -1336,6 +1496,7 @@
                                         :github/commit-count 0
                                         :github/website-url "https://github.com/owner/repo"
                                         :github/commits []
+                                        :github/more? true
                                         nil)))
                               ([_ _] (r/atom nil)))]
     (let [html (r/render-to-string [github-views/<commits>])]
@@ -1380,6 +1541,16 @@
             (.appendChild (.-body js/document) element)
             (let [root (await! (support/create-root! element))]
               (try
+                ;; This test exercises an already loaded parser. Without an
+                ;; explicit warmup it depends on earlier tests acquiring it,
+                ;; and can instead observe the readable preformatted fallback.
+                (await! (loader/load! {:module :markdown}))
+                (is (loader/ready? :markdown))
+                ;; Other isolated tests reset app-db while retaining the real
+                ;; shared acquisition promise. Restore this fixture's matching
+                ;; readiness only after actual code and styles have loaded.
+                (r/dispatch-sync [:loader/code-ready :markdown])
+                (r/dispatch-sync [:scope/init :markdown])
                 (await! (support/render! root ^{:key :feed} [<article>]))
                 (await! (support/render! root nil))
                 (await! (support/render! root ^{:key :permalink} [<article>]))
@@ -1601,6 +1772,7 @@
                             ["deep" "grandchild"] ["leaf" "deep"]])]
             (try
               (restore/begin! {:back? true})
+              (r/dispatch-sync [:set [:common/route] (reitit/match-by-path routes/router "/blog/post/42")])
               (r/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] true])
               (doseq [parent [nil "root" "child" "grandchild" "deep"]]
                 (let [query (if parent (comments/thread-query 42 parent)
@@ -1615,8 +1787,11 @@
                             {:user (reify lazy/ILoadable
                                      (ready? [_] true)
                                      IDeref
-                                     (-deref [_] (dissoc user-module/spec :content :depends)))}]
-                (await! (support/render! root [blog-views/<comments-section> {:post {:id 42}}])))
+                                     (-deref [_] (dissoc user-module/spec :content :depends)))}
+                                         rfe/href (fn [name params query]
+                                                    (some-> (reitit/match-by-name routes/router name params)
+                                                            (frontend/match->path query)))]
+                (await! (support/render! root [comment-views/<comments-section> {:post {:id 42}}])))
               (is (= 5 (.-length (.querySelectorAll element ".blog-comment-title")))
                   (str "All restored depths render together, through real subscriptions: " (.-textContent element)))
               (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared)"))))

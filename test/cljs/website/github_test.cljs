@@ -277,6 +277,7 @@
 (deftest calendar-popup-hover-focus-and-cleanup
   (async done
     (let [container (.createElement js/document "div")
+          *loaded? (atom false)
           detail (fn [date] [:ul [:li (str "3 commits on " date)]])]
       (.appendChild (.-body js/document) container)
       (-> (go-promise
@@ -284,9 +285,12 @@
               (try
                 (await! (support/render! root
                           [:div {:style {:width "18rem"}}
-                           [:link {:rel "stylesheet", :href "/css/website/modules/github.css"}]
+                           [:link {:rel "stylesheet"
+                                   :href "/css/website/modules/github.css"
+                                   :on-load #(reset! *loaded? true)}]
                            [activity/<calendar> [{:date "2026-10-11", :count 0, :level 0}
                                                  {:date "2026-10-12", :count 3, :level 1}] [detail]]]))
+                (await! (support/wait-for! #(true? @*loaded?)))
                 (let [day (.querySelector container "[data-date='2026-10-12']")
                       empty-day (.querySelector container "[data-date='2026-10-11']")]
                   (is (nil? (.querySelector js/document ".activity-calendar__popup")))

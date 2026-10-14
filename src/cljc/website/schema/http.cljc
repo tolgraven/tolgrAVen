@@ -59,7 +59,6 @@
      [:?transforms [:and :string [:re #"(?:fit-in/)?[1-9][0-9]{0,3}x[1-9][0-9]{0,3}|"]]]]))
 (when-enabled :search nil
   (def search-query
-    [:map [:collection (into [:enum "blog-posts"] (when-enabled :blog :comments ["blog-comments"]))]
-     [:q [:string {:min 1 :max 200}]]
+    [:map [:q [:string {:min 1 :max 200}]]
      [:?page [:int {:min 1 :max 10000}]]
      [:?per_page [:int {:min 1 :max 100}]]]))

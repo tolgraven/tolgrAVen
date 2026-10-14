@@ -15,13 +15,14 @@
   (when-not (and (user? user) (repo? repo)) (throw (ex-info "Invalid repository" {:status 400})))
   (str "/repos/" user "/" repo))
 
-(defn request! [method path options]
-  (when-not (re-matches #"/repos/[A-Za-z0-9-]+/[A-Za-z0-9_.-]+(?:/branches|/tags|/commits(?:/[a-fA-F0-9]{40,64})?|/compare/[a-fA-F0-9]{40,64}\.\.\.[a-fA-F0-9]{40,64})?" path)
+(defn- request-body! [method path options body-limit accept]
+  (when-not (re-matches #"/repos/[A-Za-z0-9-]+/[A-Za-z0-9_.-]+(?:/branches|/tags|/commits(?:/[a-fA-F0-9]{7,64})?|/compare/[a-fA-F0-9]{40,64}\.\.\.[a-fA-F0-9]{40,64}|/contents/(?:[A-Za-z0-9_.~/-]|%[0-9A-Fa-f]{2})+)?" path)
     (throw (ex-info "Invalid GitHub API path" {:status 400})))
   (let [response (http/request
-                   (merge {:method method
+                   (merge options
+                          {:method method
                            :url (str "https://api.github.com" path)
-                           :headers (cond-> {"Accept" "application/vnd.github+json"
+                           :headers (cond-> {"Accept" accept
                                              "X-GitHub-Api-Version" "2022-11-28"
                                              "User-Agent" "website-github-archive"}
                                       (seq (token)) (assoc "Authorization" (str "Bearer " (token))))
@@ -29,11 +30,10 @@
                            :follow-redirects false
                            :throw-exceptions false
                            :conn-timeout 3000
-                           :socket-timeout 10000}
-                          options))
+                           :socket-timeout 10000}))
         body (with-open [stream ^InputStream (:body response)]
-               (let [bytes (.readNBytes stream 4194305)]
-                 (when (> (alength bytes) 4194304)
+               (let [bytes (.readNBytes stream (inc body-limit))]
+                 (when (> (alength bytes) body-limit)
                    (throw (ex-info "GitHub response exceeds limit" {:status 503, :reason :body-limit})))
                  (String. bytes StandardCharsets/UTF_8)))
         status (:status response)]
@@ -44,6 +44,12 @@
                        {:status 503
                         :upstream-status status
                         :retry-at (max (+ 60 (quot (System/currentTimeMillis) 1000)) reset-at)}))))
-    (let [value (json/read-str body :key-fn keyword)]
-      (when (seq (:errors value)) (throw (ex-info "GitHub query unavailable" {:status 503})))
-      value)))
+    body))
+
+(defn request! [method path options]
+  (let [value (json/read-str (request-body! method path options 4194304 "application/vnd.github+json") :key-fn keyword)]
+    (when (seq (:errors value)) (throw (ex-info "GitHub query unavailable" {:status 503})))
+    value))
+
+(defn request-patch! [path]
+  (request-body! :get path {} 1048576 "application/vnd.github.patch"))

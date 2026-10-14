@@ -1,7 +1,7 @@
 (ns website.modules.markdown-editor.source-model
   "Literal source transformations and the narrow native document/selection boundary."
   (:require [website.modules.markdown-editor.upload-tree :as tree]
-            [website.modules.blog-editor.anchors :as anchors]
+            [website.modules.markdown-editor.anchors :as anchors]
             ["lexical" :refer [$getRoot $getSelection $isRangeSelection $isElementNode
                               $createRangeSelection $setSelection]]))
 

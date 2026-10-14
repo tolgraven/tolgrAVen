@@ -43,7 +43,8 @@
             icon-dependencies (:icons spec)
             ssr-styles (:ssr-styles spec)
             dependencies (get spec :bundle/depends-on #{:main})
-            owner (:site/owner spec)]
+            owner (:site/owner spec)
+            required-owners (:site/requires spec)]
         (when-not (and (= 'ns (first ns-form)) (symbol? (second ns-form)) (map? spec)
                        (keyword? id) (set? dependencies) (every? keyword? dependencies))
           (throw (ex-info "Module needs a namespace, literal spec map, optional literal :id and keyword :bundle/depends-on"
@@ -68,15 +69,22 @@
                           {:file (str file)})))
         (when (and owner (not (keyword? owner)))
           (throw (ex-info "Module :site/owner must be a literal capability keyword" {:file (str file)})))
+        (when (and required-owners (not (and (set? required-owners) (every? keyword? required-owners))))
+          (throw (ex-info "Module :site/requires must be a literal set of capability keywords" {:file (str file)})))
         (cond-> {:id id :entry (second ns-form) :depends-on dependencies}
           owner (assoc :site/owner owner)
+          required-owners (assoc :site/requires required-owners)
           (seq content) (assoc :content content)
           (seq styles) (assoc :styles styles)
           (seq icon-dependencies) (assoc :icons icon-dependencies)
-          server (assoc :server (reduce (fn [value key]
+          server (assoc :server (cond-> (reduce (fn [value key]
                                           (cond-> value
                                             (seq? (get value key)) (update key second)))
-                                        server [:routes :start]))
+                                        server [:routes :start])
+                                  (:search server)
+                                  (update :search #(mapv (fn [source]
+                                                          (cond-> source
+                                                            (seq? (:filter source)) (update :filter second))) %))))
           pages (assoc :pages (symbol (str (get aliases (symbol (namespace pages))
                                                (namespace pages))) (name pages)))
           storage (assoc :storage (symbol (str (get aliases (symbol (namespace storage))
@@ -224,7 +232,12 @@
     (track-declarations! &env declarations)
     (list 'quote
           (into {} (keep (fn [{:keys [id server pages]}]
-                          (when (or server pages) [id (cond-> server pages (assoc :pages pages))])))
+                          (when (or server pages)
+                            [id (cond-> server
+                                  (:search server) (update :search #(filterv (fn [source]
+                                                                            (or (nil? (:feature source))
+                                                                                (site/enabled? id (:feature source)))) %))
+                                  pages (assoc :pages pages))])))
                 declarations))))
 
 (defn configure-site
@@ -286,7 +299,9 @@
             :when (and resource-name
                        (or (some #(string/starts-with? resource-name %) disabled)
                            (and comments-disabled?
-                                (string/starts-with? resource-name "website/modules/blog/comments."))))]
+                                (some #(string/starts-with? resource-name %)
+                                      ["website/modules/blog/comments."
+                                       "website/modules/blog/comment_views."]))))]
       (throw (ex-info "Disabled capability entered the source graph"
                       (select-keys source [:ns :resource-name]))))
     state))
@@ -313,8 +328,18 @@
                                   (filter #(or (nil? (:feature %)) (enabled? id (:feature %)))
                                           (storage-data module)))) all)
         table-ids (set (map :table enabled-tables))
-        all-sql (distinct (concat (keep :sql tables) (mapcat #(get-in % [:server :sql]) all)))
+        all-sql (distinct (concat (keep :sql tables)
+                                 (mapcat #(get-in % [:server :sql]) all)
+                                 (mapcat #(keep :sql (get-in % [:server :search])) all)))
         enabled-sql (distinct (concat (keep :sql enabled-tables)
+                                      (when (enabled? :search)
+                                        (for [{:keys [id server]} all
+                                              :when (enabled? id)
+                                              source (:search server)
+                                              :when (or (nil? (:feature source)) (enabled? id (:feature source)))
+                                              :let [resource (:sql source)]
+                                              :when resource]
+                                          resource))
                                       (mapcat (fn [{:keys [id server]}]
                                                 (when (enabled? id)
                                                   (if (and (:sql-without-comments server)

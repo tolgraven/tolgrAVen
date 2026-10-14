@@ -1,6 +1,6 @@
 (ns website.blog-editor-anchors-test
   (:require [cljs.test :refer-macros [deftest is]]
-            [website.modules.blog-editor.anchors :as anchors]))
+            [website.modules.markdown-editor.anchors :as anchors]))
 
 (deftest anchors-follow-text-without-authored-markers
   (let [before "Hello end"

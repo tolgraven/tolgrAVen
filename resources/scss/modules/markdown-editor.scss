@@ -1,3 +1,5 @@
+@use "markdown-editor/authoring";
+
 // The build prepends editor vendor rules scoped to this owner, with relative units.
 .site-md-editor {
   color: var(--fg-1);
@@ -9,12 +11,14 @@
 
   .mdxeditor { font-family: inherit; color: inherit; }
   .md-editor-content { min-height: 20rem; padding: var(--space); line-height: inherit; }
-  [role="toolbar"] { flex-wrap: wrap; gap: 0.2em; border-block-end: var(--line-width) solid var(--line-color); }
+  // The toolbar already wraps. Its SDK horizontal scroller clips our menus;
+  // anchor those menus to the full toolbar so they also fit narrow screens.
+  [role="toolbar"] { flex-wrap: wrap; gap: 0.2em; overflow: visible; border-block-end: var(--line-width) solid var(--line-color); }
   button { color: inherit; }
   input, select, textarea { color: var(--fg-1); background: var(--bg-1); }
 }
 
-.md-component-picker { position: relative; }
+.md-component-picker { position: static; }
 .md-component-picker__menu {
   position: absolute;
   z-index: 5;
@@ -122,11 +126,11 @@
 }
 .md-component-node > .content-widget { margin-block: 0; }
 
-.md-image-picker { position: relative; }
+.md-image-picker { position: static; }
 .md-image-picker__menu {
   position: absolute;
   inset-block-start: 100%;
-  inset-inline-start: 0;
+  inset-inline-end: 0;
   z-index: 20;
   width: min(34rem, 85vw);
   max-height: 70vh;

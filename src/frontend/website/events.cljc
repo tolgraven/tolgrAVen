@@ -89,7 +89,8 @@
            [[:later/dispatch {:ms       200                 ; obv too much. but maybe scroll issues partly from swapper bs?
                               :dispatch [:scroll/to fragment]}]
             [:page/ready nil complete!]]}
-          {:dispatch [:page/ready nil complete!]}))))))
+          {:dispatch-n [(when (get-in new-match [:data :component-route]) [:navigation/activate-component])
+                        [:page/ready nil complete!]]}))))))
 
 (r/reg-fx :common/navigate-fx!
   (fn [[k & [params query]]]

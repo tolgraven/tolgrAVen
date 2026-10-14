@@ -21,14 +21,15 @@
        set-caret (fn [target]
                    (reset! caret (.-selectionStart target))
                    (reset! selection-end (.-selectionEnd target))) ]
-   (fn [& {:keys [on-enter placeholder
+   (fn [& {:keys [on-enter placeholder model controlled? animate? text-fn input-attrs on-key-down
                   width height open?
                   suggestions
                   id class
                   on-change on-enter on-esc]
-           :or {height "2em"
+           :or {height "2em", animate? true
                 open? true}}]
-     (let [input-id (or id "styled-input")
+     (let [value (if controlled? (or @model "") @internal-model)
+           input-id (or id "styled-input")
            suggestion-str (string/join " " (:match suggestions))
            suggestion (first suggestions)
            caret-pos (str (* char-width @caret) "em")
@@ -39,7 +40,8 @@
     {:class (when-not open? "closed")}
 
     [:div.styled-query-visible
-     {:style {:height height }}
+     {:aria-hidden true
+      :style {:height height }}
 
      [:label.styled-caret.nomargin.nopadding
       {:id    (if id (str id "-caret") "styled-caret")
@@ -60,18 +62,21 @@
                             "unset")}}
       "_"]
 
-     (when-not (string/blank? @internal-model)
+     (if text-fn
+       [text-fn value open?]
+     (when-not (string/blank? value)
        [:span {:style {:white-space :pre-wrap
                        :display :inline-flex}}
-        (for [[i letter] (map-indexed vector @internal-model)] ; causes issues with spacing? nice lil zoom effect though, figure out.
+        (for [[i letter] (map-indexed vector value)] ; causes issues with spacing? nice lil zoom effect though, figure out.
           ^{:key i}
-          [<styled-letter> letter open?])])
+          (if animate? [<styled-letter> letter open?] [:div [:span.styled-letter letter]]))]))
 
      (when completion-fn
-       [completion-fn @internal-model suggestion height])]
+       [completion-fn value suggestion height])]
 
      [:input.styled-input ;problem if multiple search boxes on same page tho
-      {:type "textarea"
+      (merge input-attrs
+      {:type "text"
        :id   input-id
        :class class
        :style {:opacity 0
@@ -84,15 +89,17 @@
        :placeholder (or placeholder "🔎")
        :autoComplete "off"
        :max 40
-       :value      @internal-model
+       :value      value
        :ref         #(when % (reset! div-ref %))
        :on-change (fn [e] ; XXX needs debounce I guess
                     (let [new-val (-> e .-target .-value)]
-                      (reset! internal-model new-val)
+                      (when-not controlled? (reset! internal-model new-val))
                       (and (some? on-change) (on-change new-val)))
                     (set-caret (.-target e)))
 
-       :on-key-down (fn [e] (set-caret (.-target e)))
+       :on-key-down (fn [e]
+                      (set-caret (.-target e))
+                      (when on-key-down (on-key-down e)))
        :on-click (fn [e] (set-caret (.-target e)))
        :on-touch-start (fn [e] (set-caret (.-target e)))
        :on-touch-move (fn [e]
@@ -101,12 +108,13 @@
                        (reset! selection-end (-> e .-target .-selectionEnd)))
        ; how handle moving caret using mobile keyboard tap and hold and swipe on spacebar?
        :on-key-up (fn [e]
-                    (case (.-key e)
+                    (when-not on-key-down
+                     (case (.-key e)
                       "Enter" (when (and (not= "" @internal-model)
                                          (some? on-enter))
                                 (on-enter @internal-model))
                       "Escape" (do (.stopPropagation e) ; can't seem to stop it from blanking query hmm
                                    (.preventDefault e)
                                    (and (some? on-esc) (on-esc @internal-model)))
-                      true)
-                    (fn [e] (set-caret (.-target e))))}]]))))
+                      true))
+                    (set-caret (.-target e)))})]]))))
