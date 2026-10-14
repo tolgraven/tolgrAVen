@@ -1,6 +1,5 @@
 (ns website.modules.github.subs
-  (:require [clojure.string :as string]
-            [website.react :as r]))
+  (:require [website.react :as r]))
 
 (r/reg-sub :github/get-from
  :<- [:content [:github-settings]]
@@ -19,27 +18,18 @@
    (:commits github)))
 
 (r/reg-sub :github/commit-count
- :<- [:content [:github :repo-headers]]
- :<- [:github/commits]
- (fn [[headers commits] _]
-   (if headers
-     (if-let [page (some->> (:link headers)
-                           (re-find #"[?&]page=(\d+)>; rel=\"last\"") second)]
-       (js/parseInt page)
-       (count commits))
-     "Loading")))
+ :<- [:content [:github :total]]
+ (fn [total _] (if (some? total) total "Loading")))
+
+(r/reg-sub :github/archive-complete?
+ :<- [:content [:github :complete?]]
+ (fn [complete? _] (true? complete?)))
+
+(r/reg-sub :github/more?
+ :<- [:content [:github :next-cursor]]
+ (fn [cursor _] (some? cursor)))
 
 (r/reg-sub :github/commit
  :<- [:content [:github]]
  (fn [github [_ sha]]
    (get-in github [:commit sha])))
-
-(r/reg-sub :github/filter-by
- :<- [:github/commits]
- :<- [:form-field [:github :search]]
- (fn [[commits search] [_ override]]
-   (let [search (or override search)]
-     (cond->> commits
-       (not (string/blank? search)) (filter #(re-find (re-pattern search)
-                                                      (string/join (:message %))))))))
-

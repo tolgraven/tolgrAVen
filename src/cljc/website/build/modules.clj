@@ -72,7 +72,10 @@
           (seq content) (assoc :content content)
           (seq styles) (assoc :styles styles)
           (seq icon-dependencies) (assoc :icons icon-dependencies)
-          server (assoc :server (update server :routes #(if (seq? %) (second %) %)))
+          server (assoc :server (reduce (fn [value key]
+                                          (cond-> value
+                                            (seq? (get value key)) (update key second)))
+                                        server [:routes :start]))
           pages (assoc :pages (symbol (str (get aliases (symbol (namespace pages))
                                                (namespace pages))) (name pages)))
           storage (assoc :storage (symbol (str (get aliases (symbol (namespace storage))

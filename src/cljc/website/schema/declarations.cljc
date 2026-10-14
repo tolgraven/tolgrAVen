@@ -57,6 +57,7 @@
    [:?features [:sequential feature]]
    [:?depends [:or dependencies fn?]]
    [:?loading-prefab :keyword]
+   [:?data-error vector?]
    [:?loading-tag :keyword]
    [:?loading-props :map]
    [:?module :keyword]])
@@ -92,6 +93,7 @@
    [:?content [:vector :keyword]]
    [:?server [:map
                              [:?routes :symbol]
+                             [:?start :symbol]
                              [:?requires [:set :keyword]]
                              [:?requires-features [:map-of :keyword [:set :keyword]]]
                              [:?sql c/strings]

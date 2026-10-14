@@ -297,6 +297,9 @@ produce a visible alert with **Retry data**, plus the existing service
 notification/log. Identical in-flight descriptors share requests, including
 preloads and later mounts. One failing dependency does not prevent the others
 from starting. Retry invalidates those dependencies and starts a new attempt.
+For compact noninteractive surfaces, `:data-error` may supply replacement Hiccup;
+the managed failure and service notification/retry remain active. Use it instead
+of rendering unusable recovery controls inside a pointer-transparent tooltip.
 
 Built-in sources:
 

@@ -2,6 +2,7 @@
   (:require
     [website.handler :as handler]
     [website.content.service :as content]
+    [website.module-services :as module-services]
     [website.routes.home :as home]
     [website.nrepl :as nrepl]
     [luminus.http-server :as http]
@@ -19,6 +20,7 @@
   :start
   (do
     content/startup-content
+    module-services/running
     (http/start
      (-> env
         (update :io-threads #(or % (* 2 (.availableProcessors (Runtime/getRuntime))))) 
