@@ -2,6 +2,7 @@
   (:require [cljs.test :refer-macros [deftest is]]
             [website.modules.github.diff :as diff]
             [website.modules.github.diff-events :as events]
+            [website.modules.github.events]
             [re-frame.registrar :as registrar]))
 
 (def parent (apply str (repeat 40 "a")))
@@ -37,6 +38,24 @@
   ;; Invoke only the registered handler interceptor, before the effect executor.
   (:effects ((:before (last (registrar/get-handler :event (first event))))
              {:coeffects {:db db, :event event}})))
+
+(deftest feed-initialization-and-query-resets-preserve-independent-diff-ownership
+  (let [revision ["u" "r" sha]
+        db {:module {:github {:configuration {:settings {:user "u", :repo "r"}}}}
+            :state {:github {:diff-attempt 7}}
+            :content {:github {:diff-view {(diff/key-for revision) {:commit commit}}
+                               :commits [commit]}}}
+        opening (:db (event-effects db [:github/diff-open revision]))
+        initialized (:db (event-effects opening [:github/init]))
+        searched (:db (event-effects initialized [:github/search "new search"]))
+        refreshed (:db (event-effects searched [:github/refresh]))]
+    (doseq [state [initialized searched refreshed]]
+      (is (= :diff (get-in state (events/state-path revision :mode))))
+      (is (= :loading (get-in state (events/state-path revision :metadata :status))))
+      (is (= 7 (get-in state [:state :github :diff-attempt])))
+      (is (= commit (get-in state (events/content-path revision :commit))))
+      (is (nil? (get-in state [:content :github :commits]))))
+    (is (= 3 (get-in refreshed [:state :github :generation])))))
 
 (deftest cached-pairs-and-asynchronous-sides-remain-distinct
   (let [revision ["u" "r" sha]
