@@ -220,6 +220,10 @@ Read-only questions and investigations do not require artificial code changes or
   generate staged WebP/AVIF variants without including unstaged source edits.
 - Live re-frame debugging: read the installed `re-frame-pair` skill, then run `bb pair discover-app` before inspecting the runtime. See `doc/re-frame-pair.md`; the wrapper selects `:app-dev` and Lein's nREPL port.
 
+The CMS provisioning manifest also carries the actual `_vars.scss` as a read-only,
+searchable variable reference; refresh it when provisioning the editor. Do not
+maintain a duplicate handwritten variable catalog.
+
 ## Dependency ownership
 
 - Timbre owns JVM logging configuration in `website.log`; tools.logging and

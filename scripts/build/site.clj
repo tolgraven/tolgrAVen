@@ -40,6 +40,8 @@
                        (not= false (get-in settings [:modules :blog :comments])))
         resources (plan/schema-resources tables server comments?)]
     {:config settings
+     :style-reference {:path "resources/scss/shell/_vars.scss"
+                       :source (slurp (io/resource "scss/shell/_vars.scss"))}
      :pages (page-names all)
      :available-modules (mapv (fn [{:keys [id entry content depends-on server]}]
                                 {:id id

@@ -140,7 +140,8 @@ try {
         if (isset($input['site'])) {
             $site=$input['site'];
             cmsEnv($service,'CMS_SITE_MANIFEST',json_encode(['config'=>$site['config'],
-                'availableModules'=>$site['available-modules'],'pages'=>$site['pages']]));
+                'availableModules'=>$site['available-modules'],'pages'=>$site['pages'],
+                'styleReference'=>$site['style-reference'] ?? null]));
         }
         cmsWireActions($service, $web, $environment->project->team, $input['webhooks'] ?? []);
         cmsEnv($service,'CMS_ADMIN_EMAIL',$input['admin_email']);
