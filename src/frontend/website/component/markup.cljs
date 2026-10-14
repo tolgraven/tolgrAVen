@@ -4,7 +4,7 @@
 
 (def spec-keys
   #{:props :classes :features :depends :appear :seen :on-seen :exit :presence
-    :loading :loading-prefab :loading-tag :loading-props :loading-args :skeleton
+    :loading :loading-prefab :loading-tag :loading-props :loading-args :data-error :skeleton
     :font :page :module :spec :profile :capture-root? :init :state})
 
 (defn attrs [tag value]

@@ -217,3 +217,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Keep release failure/timeout explicit rather than serving stale unoptimized JS.
 
 - `/api/deployment` exposes only validated container metadata. GitHub calendar reads use a fixed origin, bounded body/time/cache and no redirects; see `doc/activity-panels.md`.
+- GitHub's module-owned service archives only public repository metadata and
+  commits. Database leases and page/checkpoint transactions make retries safe;
+  unchanged branch heads skip acquisition. Per-day breakdowns use server-only
+  GitHub credentials on hover, independently of repository history.

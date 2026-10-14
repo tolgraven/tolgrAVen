@@ -437,11 +437,12 @@
                                                        (current-spec definition args))))]
       (cond
         (= :error status)
+        (or (:data-error (merge (:options definition) (current-spec definition args)))
         [error/<failure> (:ns definition) (:name definition)
          {:title "This component's data could not be loaded"
           :message "Check your connection and try loading this content again."
           :error (data/failure resources)}
-         #(data/retry-background! resources)]
+         #(data/retry-background! resources)])
         (and rendered? (not skeleton?))
         [<loading-reveal> {:ready? (= :ready status) :form form
                           :skeleton (when-not (= :ready status) (loading-form definition args))}]

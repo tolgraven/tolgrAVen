@@ -140,17 +140,16 @@
             (r/dispatch-sync [:content [:github-settings] {:user "first-user", :repo "first-repo"}])
             (r/dispatch-sync [:github/init])
             (await! (support/settle!))
-            (is (some #(= "https://api.github.com/repos/first-user/first-repo/commits" (:uri %)) @*requests))
+            (is (some #(= {:user "first-user", :repo "first-repo", :q ""} (:url-params %)) @*requests))
             (r/dispatch-sync [:content [:github-settings] {:user "second-user", :repo "second-repo"}])
             (r/dispatch-sync [:github/init])
             (await! (support/settle!))
-            (r/dispatch-sync [:github/save-headers "first-user" "first-repo" 1 {:link "old"}])
-            (r/dispatch-sync [:github/save-commits "first-user" "first-repo" 1 1 []])
+            (r/dispatch-sync [:github/save-commits "first-user" "first-repo" 1 1 {:commits [], :total 99, :complete false}])
             (r/dispatch-sync [:github/save-commit "first-user" "first-repo" 1 "old" {:sha "old"}])
             (is (= {} (await! (support/state-at! [:content :github]))))
             (is (= ["second-user" "second-repo"] (await! (support/subscription-value! [:github/get-from]))))
             (is (= "https://github.com/second-user/second-repo" (await! (support/subscription-value! [:github/website-url]))))
-            (r/dispatch-sync [:github/save-headers "second-user" "second-repo" 2 {}])
+            (r/dispatch-sync [:github/save-commits "second-user" "second-repo" 2 1 {:commits [], :total 0, :complete true}])
             (is (= 0 (await! (support/subscription-value! [:github/commit-count])))))
           (.catch #(is false (str %)))
           (.finally (fn [] (restore!) (done)))))))
@@ -167,21 +166,21 @@
             (await! (support/settle!))
             (r/dispatch-sync [:github/init])
             (await! (support/settle!))
-            (is (= 2 (count @*requests)) "Pending page and count reads are deduplicated")
+            (is (= 1 (count @*requests)) "One archive response supplies both rows and the full count")
             (doseq [request @*requests]
               (r/dispatch-sync (conj (:on-failure request) {:status 503, :status-text "Unavailable"})))
             (await! (support/settle!))
             (r/dispatch-sync [:github/init])
             (await! (support/settle!))
-            (is (= 4 (count @*requests)) "Both failed initial reads retry")
-            (doseq [request (drop 2 @*requests)]
+            (is (= 2 (count @*requests)) "A failed initial archive read retries")
+            (doseq [request (drop 1 @*requests)]
               (r/dispatch-sync (conj (:on-success request)
-                                     (if (get-in request [:url-params :per_page]) {} []))))
+                                     {:commits [], :total 0, :complete true})))
             (await! (support/settle!))
             (is (= [1] (vec (:pages-fetched (await! (support/state-at! [:state :github]))))))
             (r/dispatch-sync [:github/init])
             (await! (support/settle!))
-            (is (= 4 (count @*requests)) "Successfully loaded empty pages are retained"))
+            (is (= 2 (count @*requests)) "Successfully loaded empty pages are retained"))
           (.catch #(is false (str %)))
           (.finally (fn [] (restore!) (done)))))))
 
@@ -196,20 +195,20 @@
               (r/dispatch-sync [:content [:github-settings] {:user user, :repo "repo"}])
               (r/dispatch-sync [:github/init])
               (await! (support/settle!)))
-            (is (= 6 (count @*requests)))
+            (is (= 3 (count @*requests)))
             (let [commits [{:sha "fresh"
                             :commit {:message "fix: current generation"
                                      :author {:date "2026-10-12T12:00:00Z"}}}]]
-              (doseq [request (take-last 2 @*requests)]
+              (doseq [request (take-last 1 @*requests)]
                 (r/dispatch-sync (conj (:on-success request)
-                                       (if (get-in request [:url-params :per_page]) {:link "fresh"} commits))))
+                                       {:commits commits, :total 1, :complete true})))
               (await! (support/settle!))
-              (doseq [request (take 4 @*requests)]
+              (doseq [request (take 2 @*requests)]
                 (r/dispatch-sync (conj (:on-success request)
-                                       (if (get-in request [:url-params :per_page]) {:link "obsolete"} commits))))
+                                       {:commits commits, :total 99, :complete false})))
               (await! (support/settle!))
               (is (= ["fresh"] (mapv :sha (await! (support/subscription-value! [:github/commits])))))
-              (is (= {:link "fresh"} (await! (support/state-at! [:content :github :repo-headers]))))
+              (is (= 1 (await! (support/state-at! [:content :github :total]))))
               (is (= [1] (vec (:pages-fetched (await! (support/state-at! [:state :github]))))))))
           (.catch #(is false (str %)))
           (.finally (fn [] (restore!) (done)))))))
@@ -270,3 +269,144 @@
                       (.remove container)
                       (restore!)
                       (done)))))))
+
+(deftest calendar-popup-hover-focus-and-cleanup
+  (async done
+    (let [container (.createElement js/document "div")
+          detail (fn [date] [:ul [:li (str "3 commits on " date)]])]
+      (.appendChild (.-body js/document) container)
+      (-> (go-promise
+            (let [root (await! (support/create-root! container))]
+              (try
+                (await! (support/render! root
+                          [:div {:style {:width "18rem"}}
+                           [:link {:rel "stylesheet", :href "/css/website/modules/github.css"}]
+                           [activity/<calendar> [{:date "2026-10-11", :count 0, :level 0}
+                                                 {:date "2026-10-12", :count 3, :level 1}] [detail]]]))
+                (let [day (.querySelector container "[data-date='2026-10-12']")
+                      empty-day (.querySelector container "[data-date='2026-10-11']")]
+                  (is (nil? (.querySelector js/document ".activity-calendar__popup")))
+                  (.dispatchEvent day (js/PointerEvent. "pointerover" #js {:bubbles true}))
+                  (await! (support/wait-for! #(.querySelector js/document ".activity-calendar__popup")))
+                  (let [popup (.querySelector js/document ".activity-calendar__popup")
+                        rect (.getBoundingClientRect popup)]
+                    (is (string/includes? (.-textContent popup) "3 commits on 2026-10-12"))
+                    (is (= (.getAttribute day "aria-describedby") (.-id popup)))
+                    (let [edge (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))]
+                      (is (>= (.-left rect) (dec edge)))
+                      (is (<= (.-right rect) (inc (- (.-innerWidth js/window) edge))))))
+                  (.dispatchEvent day (js/PointerEvent. "pointerout" #js {:bubbles true}))
+                  (await! (support/wait-for! #(nil? (.querySelector js/document ".activity-calendar__popup"))))
+                  (.focus day #js {:preventScroll true})
+                  (await! (support/wait-for! #(.querySelector js/document ".activity-calendar__popup")))
+                  (.dispatchEvent day (js/KeyboardEvent. "keydown" #js {:key "ArrowUp", :bubbles true}))
+                  (await! (support/settle!))
+                  (is (identical? empty-day (.-activeElement js/document)) "Arrow keys navigate the single-tab-stop grid")
+                  (.focus day #js {:preventScroll true})
+                  (.dispatchEvent day (js/KeyboardEvent. "keydown" #js {:key "Escape", :bubbles true}))
+                  (await! (support/wait-for! #(nil? (.querySelector js/document ".activity-calendar__popup"))))
+                  (.focus empty-day #js {:preventScroll true})
+                  (await! (support/wait-for! #(.querySelector js/document ".activity-calendar__popup")))
+                  (is (not (string/includes? (.-textContent (.querySelector js/document ".activity-calendar__popup")) "commits on")))
+                  (.blur empty-day)
+                  (await! (support/wait-for! #(nil? (.querySelector js/document ".activity-calendar__popup")))))
+                (finally (support/unmount! root) (.remove container)))))
+          (.catch #(is false (str %)))
+          (.finally done)))))
+
+(deftest search-queries-complete-history-and-rejects-stale-responses
+  (async done
+    (let [restore! (r/make-restore-fn)
+          *requests (atom [])
+          *delayed (atom [])]
+      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :dispatch-later #(swap! *delayed into %))
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            (r/dispatch-sync [:content [:github-settings] {:user "test-user", :repo "repo"}])
+            (r/dispatch-sync [:github/init])
+            (await! (support/settle!))
+            (r/dispatch-sync [:github/search "nested theme"])
+            (r/dispatch-sync [:github/search "archive"])
+            (doseq [{:keys [dispatch]} @*delayed] (r/dispatch-sync dispatch))
+            (await! (support/settle!))
+            (is (= 2 (count @*requests)) "Only the current debounced query is acquired")
+            (is (= "archive" (get-in (last @*requests) [:url-params :q])))
+            (is (= "archive" (await! (support/subscription-value! [:form-field [:github :search]]))))
+            (r/dispatch-sync (conj (:on-success (first @*requests)) {:commits [], :total 999, :complete false}))
+            (r/dispatch-sync (conj (:on-success (last @*requests)) {:commits [], :total 0, :complete true}))
+            (await! (support/settle!))
+            (is (= 0 (await! (support/subscription-value! [:github/commit-count]))))
+            (r/dispatch-sync [:github/fetch-commits-next "test-user" "repo"])
+            (await! (support/settle!))
+            (is (= 2 (count @*requests)) "Exhausted searches do not request extra pages"))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
+
+(deftest failed-day-detail-stays-compact-and-truthful
+  (async done
+    (let [restore! (r/make-restore-fn)
+          original-source (get @data/*sources :url)
+          resources (set (views/day-dependencies "detail-failure-test" "2026-10-12"))
+          *requests (atom [])
+          container (.createElement js/document "div")]
+      (data/invalidate! resources)
+      (data/register-source! :url {:load! (fn [{:keys [url]}]
+                                          (swap! *requests conj url)
+                                          (js/Promise.reject (js/Error. "Token unavailable")))})
+      (.appendChild (.-body js/document) container)
+      (-> (go-promise
+            (let [root (await! (support/create-root! container))]
+              (try
+                (await! (support/render! root [activity/<calendar>
+                                               [{:date "2026-10-12", :count 42, :level 4}]
+                                               [views/<day-details> "detail-failure-test"]]))
+                (is (empty? @*requests) "No day requests before user intent")
+                (.focus (.querySelector container "[data-date]") #js {:preventScroll true})
+                (await! (support/wait-for! #(some-> (.querySelector js/document ".activity-calendar__popup")
+                                                             .-textContent
+                                                             (string/includes? "Breakdown temporarily unavailable."))))
+                (let [popup (.querySelector js/document ".activity-calendar__popup")]
+                  (is (string/includes? (.-textContent popup) "42 contributions"))
+                  (is (= 1 (count @*requests)))
+                  (is (zero? (.-length (.querySelectorAll popup "button, details, summary")))))
+                (finally (support/unmount! root) (.remove container)))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (data/register-source! :url original-source)
+                      (data/invalidate! resources)
+                      (restore!)
+                      (done)))))))
+
+(deftest keyboard-calendar-navigation-reveals-offscreen-days-without-page-scroll
+  (async done
+    (let [container (.createElement js/document "div")
+          days (mapv (fn [index]
+                       {:date (subs (.toISOString (js/Date. (+ (.parse js/Date "2026-01-01") (* index 86400000)))) 0 10)
+                        :count 0
+                        :level 0}) (range 210))]
+      (.appendChild (.-body js/document) container)
+      (-> (go-promise
+            (let [root (await! (support/create-root! container))]
+              (try
+                (await! (support/render! root
+                          [:div {:style {:position "fixed", :top "1rem", :left "1rem", :width "18rem"}}
+                           [:link {:rel "stylesheet", :href "/css/website/modules/github.css"}]
+                           [activity/<calendar> days]]))
+                (let [first-day (.querySelector container "[data-date]")
+                      last-day (last (array-seq (.querySelectorAll container "[data-date]")))
+                      scroller (.querySelector container ".activity-calendar__scroll")
+                      page-y (.-scrollY js/window)]
+                  (.focus first-day #js {:preventScroll true})
+                  (.dispatchEvent first-day (js/KeyboardEvent. "keydown" #js {:key "End", :bubbles true}))
+                  (await! (support/settle!))
+                  (let [target-rect (.getBoundingClientRect last-day)
+                        scroll-rect (.getBoundingClientRect scroller)]
+                    (is (identical? last-day (.-activeElement js/document)))
+                    (is (>= (.-left target-rect) (.-left scroll-rect)))
+                    (is (<= (.-right target-rect) (inc (.-right scroll-rect))))
+                    (is (= page-y (.-scrollY js/window))))
+                  (is (= 1 (.-length (.querySelectorAll container "[data-date][tabindex='0']")))))
+                (finally (support/unmount! root) (.remove container)))))
+          (.catch #(is false (str %)))
+          (.finally done)))))

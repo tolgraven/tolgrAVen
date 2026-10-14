@@ -6,7 +6,7 @@
   (c/optional-map {:target [:tuple :string :string]
                    :generation c/nonnegative
                    :pages-pending [:set :int]
-                   :headers-pending? :boolean
+                   :query :string
                    :pages-fetched [:sequential :int]
                    :commits-fetched c/strings}))
 (def options (c/optional-map {:user :string, :repo :string}))
@@ -34,5 +34,7 @@
   (c/optional-map {:commits [:sequential commit]
                    :repo [:sequential commit]
                    :commit [:map-of :string commit]
-                   :repo-headers :map
+                   :total c/nonnegative
+                   :next-cursor :?string
+                   :complete? :boolean
                    :errors :any}))

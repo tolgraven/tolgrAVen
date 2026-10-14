@@ -15,7 +15,7 @@
   (with-redefs [config/env {}]
     (is (= #{:site_users :auth_roles :blog_posts :blog_comments :chat_messages
              :service_configs :store_documents :site_media} (set (platform/table-order))))
-    (is (= #{:comment_votes :user_documents}
+    (is (= #{:comment_votes :user_documents :github_repositories :github_commits}
            (set (remove (set (platform/table-order)) (platform/delete-order)))))
     (doseq [{:keys [table references]} (platform/table-definitions)
             dependency references]

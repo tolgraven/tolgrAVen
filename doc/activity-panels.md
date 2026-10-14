@@ -71,3 +71,74 @@ subset. Redirects are disabled, response bodies and timeouts are bounded, four
 requests may run concurrently, and shared in-flight results use the existing
 bounded cache. Successful reads last fifteen minutes; failures last one minute.
 Provider errors use the managed component dependency retry UI.
+
+Hovering or focusing a calendar day mounts a compact viewport-contained popup
+with the original daily count/date. Nonempty GitHub days acquire their typed
+breakdown only then, through the shared managed URL dependency. Commits, issues,
+pull requests, reviews, new repositories and restricted contribution counts stay
+separate. Zero days and the CMS-owned Codex calendar do not request GitHub data.
+Escape, blur, pointer exit, scrolling and resize close and unmount the popup.
+
+`GET /api/github/activity/day?user=…&date=YYYY-MM-DD` uses GitHub GraphQL's
+single-day contributions collection. Configure a server-only `GITHUB_TOKEN`
+(`:github-token`, or nested `:github :token`) with public-read access for this
+endpoint; without it the total remains usable and the managed detail dependency
+reports unavailable. No repository names, issue bodies or private content are
+returned by the day endpoint. Date and user validation precede acquisition;
+requests, body size, concurrency and caches are bounded.
+
+## Complete repository archive
+
+The selected GitHub module declares `github_repositories` and `github_commits`
+through its ordinary storage catalog. Apply the module's SQL using the existing
+Supabase provisioner before enabling its service. `:server :start` returns a
+cleanup owned by the mounted module-services lifecycle. With server Supabase
+settings, it starts asynchronously; `:github {:sync-enabled false}` disables it.
+It uses the CMS-selected repository, traversing every current public branch and tag's
+reachable history, not only commits attributed to the configured owner. Removed
+branch commits already archived remain searchable. Unreachable/deleted GitHub
+objects cannot be discovered through the branches/tags APIs.
+
+Each branch head is pinned to an immutable SHA while paging 100 commits at a
+time. Unchanged completed heads skip traversal. Later heads use fully paginated
+`BASE..HEAD` comparisons against an already archived immutable head, preserving
+all new ancestry without re-reading shared history. Unrelated/unavailable bases
+or oversized comparison diffs restart a complete pinned-head walk. Provider
+visibility is checked both before acquisition and before publishing its rows. One
+repository lease works across app instances, and one transaction writes the
+commit page and its next checkpoint. A crash or failed page is retried without
+skipping data or creating duplicates. The worker performs at most eight steps
+per minute, checks again after fifteen minutes when caught up, and respects
+GitHub rate-limit reset times. A public-read GitHub token avoids the low
+unauthenticated request limit. Startup never waits for the backfill.
+
+`GET /api/github/commits?user=…&repo=…&q=…&cursor=…` reads only the selected
+repository from Supabase, with indexed full-text matching over the complete
+stored message/body, author name/login and hash. Each response includes 30 rows,
+matching total, next cursor and whether a complete scan has finished. The cursor
+uses immutable commit time/SHA ordering, so inserts between requests do not repeat
+earlier pages or hide the existing tail. The widget debounces
+search with re-frame events, rejects late responses after repository/query
+changes, and stops pagination at the explicit end cursor. SHA deduplication also prevents
+duplicate rows/React keys. While initially backfilling, it
+states that coverage is partial and provides an explicit refresh action.
+
+Public roles may read only published archive columns for public repositories;
+writes, checkpoints, leases and job RPCs remain service-role only. Author email,
+provider tokens and raw provider payloads are not stored. The stable
+`(owner, repo, sha)` identity, complete message, category/subcategory and indexed
+UTC timestamp provide the source for the later Typesense export. This change
+does not install a second search service or change the top-of-page search.
+
+For an explicit initial import or recovery, the server-side command uses the
+same leased checkpoints (it never falls back from a failing CMS):
+
+```sh
+lein run -m website.modules.github.sync owner repository
+```
+
+Omit the two arguments to use the CMS selection. The command stops when the
+scan completes, a retry delay is reached, another worker holds the lease, or its
+bounded step budget is used. Re-running resumes rather than starting over.
+Calendar days use one tab stop; arrow keys navigate by day/week, with Home/End
+for the first/last day.

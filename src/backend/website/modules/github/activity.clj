@@ -1,6 +1,9 @@
 (ns website.modules.github.activity
   "Read GitHub's public calendar from a fixed origin with bounded time and cache."
   (:require [clojure.string :as string]
+            [website.modules.github.provider :as provider]
+            [website.components.activity-schema :as schema]
+            [website.validation :as validation]
             [website.cache.inflight :as inflight])
   (:import [org.jsoup Jsoup]
            [java.util.concurrent Semaphore]))
@@ -63,3 +66,53 @@
             (inflight/shorten! *cache user entry (+ now 60000)))
           (deliver (:value entry) response)))
       (if entry (deref (:value entry) 8000 (unavailable)) (unavailable)))))
+
+(defonce ^:private *day-cache (atom {}))
+
+(defn valid-date? [date]
+  (try
+    (and (string? date) (re-matches #"\d{4}-\d{2}-\d{2}" date)
+         (not (.isAfter (java.time.LocalDate/parse date) (java.time.LocalDate/now java.time.ZoneOffset/UTC))))
+    (catch Exception _ false)))
+
+(def day-query
+  "query($user:String!,$from:DateTime!,$to:DateTime!){user(login:$user){contributionsCollection(from:$from,to:$to){totalCommitContributions totalIssueContributions totalPullRequestContributions totalPullRequestReviewContributions totalRepositoryContributions restrictedContributionsCount}}}")
+
+(defn fetch-day! [user date]
+  (when-not (seq (provider/token)) (throw (ex-info "Contribution detail token unavailable" {})))
+  (let [value (provider/request! :post "/graphql"
+                {:content-type :json
+                 :form-params {:query day-query
+                               :variables {:user user
+                                           :from (str date "T00:00:00Z")
+                                           :to (str date "T23:59:59Z")}}})
+        collection (get-in value [:data :user :contributionsCollection])
+        result {:date date
+                :types (into {} (map (fn [[kind field]] [kind (get collection field)]))
+                             {:commits :totalCommitContributions
+                              :issues :totalIssueContributions
+                              :pull-requests :totalPullRequestContributions
+                              :reviews :totalPullRequestReviewContributions
+                              :repositories :totalRepositoryContributions
+                              :restricted :restrictedContributionsCount})}]
+    (validation/check! "GitHub day detail" schema/breakdown result)
+    result))
+
+(defn day-response! [user date]
+  (if-not (and (provider/user? user) (valid-date? date))
+    {:status 400, :body {:error "Invalid GitHub activity day"}}
+    (let [now (System/currentTimeMillis)
+          key [user date]
+          [owner? entry] (inflight/acquire! *day-cache key now 900000 512)]
+      (when owner?
+        (let [response (if (.tryAcquire slots)
+                         (try {:status 200
+                               :headers {"Cache-Control" "public, max-age=300"}
+                               :body (fetch-day! user date)}
+                              (catch Exception _ (unavailable))
+                              (finally (.release slots)))
+                         (unavailable))]
+          (when-not (= 200 (:status response))
+            (inflight/shorten! *day-cache key entry (+ now 60000)))
+          (deliver (:value entry) response)))
+      (if entry (deref (:value entry) 12000 (unavailable)) (unavailable)))))
