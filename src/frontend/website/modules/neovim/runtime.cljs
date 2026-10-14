@@ -3,6 +3,7 @@
   (:require ["./transport.js" :as transport]
             [clojure.string :as string]
             [website.modules.neovim.model :as model]
+            [website.modules.neovim.files :as files]
             [website.modules.neovim.document :as document]
             [website.modules.neovim.profile :as profile]))
 
@@ -46,9 +47,10 @@
                               (let [[path text] (js->clj payload)]
                                 (if (and (string? path) (<= (count path) 1024)
                                          (string? text) (<= (count text) 4194304))
-                                  (on-write {:path path, :text text})
-                                  (fail! (js/Error. "Written buffer exceeds the supported bounds")))))))]
-    (-> (request! session "nvim_get_api_info" [])
+                                  (try (on-write {:path path, :text text})
+                                       (catch :default error (fail! error)))
+                                  (fail! (js/Error. "Written buffer exceeds the supported bounds")))))))
+        ready (-> (request! session "nvim_get_api_info" [])
         (.then (fn [info]
                  (when @*active?
                    (request! session "nvim_exec_lua"
@@ -56,18 +58,20 @@
                        vim.api.nvim_create_autocmd('BufWritePost', {
                          group = vim.api.nvim_create_augroup(group, {clear = true}),
                          callback = function(args)
-                           local text = table.concat(vim.api.nvim_buf_get_lines(args.buf, 0, -1, true), '\\n')
-                           if vim.bo[args.buf].endofline then text = text .. '\\n' end
-                           vim.rpcnotify(channel, event, vim.api.nvim_buf_get_name(args.buf), text)
+                           local path = vim.api.nvim_buf_get_name(args.buf)
+                           local file = assert(io.open(path, 'rb'))
+                           local text = file:read('*a'); file:close()
+                           vim.rpcnotify(channel, event, path, text)
                          end})"
                       [(aget info 0) group write-event]]))))
-        (.catch #(when @*active? (fail! %))))
-    (fn []
+        (.catch #(when @*active? (fail! %))))]
+    {:ready ready
+     :stop! (fn []
       (reset! *active? false)
       (release!)
       (-> (request! session "nvim_exec_lua"
             ["local group = ...; pcall(vim.api.nvim_del_augroup_by_name, group)" [group]])
-          (.catch (fn [_] nil))))))
+          (.catch (fn [_] nil))))}))
 
 (defn start! [{:keys [cols rows initial-text initial-file filetype document]} redraw! status!]
   (let [*active? (atom true)
@@ -95,9 +99,11 @@
                             initial-file
                             (request! session "nvim_exec_lua"
                               ["local path = ...; assert(not path:match('^/') and not path:find('..', 1, true), 'Invalid initial file'); vim.cmd('hide edit ' .. vim.fn.fnameescape('/workspace/tolgrAVen/' .. path))" [initial-file]])
-                            :else (-> (request! session "nvim_buf_set_lines"
-                                        [0 0 -1 true (string/split (or initial-text "") #"\n" -1)])
-                                      (.then #(request! session "nvim_buf_set_name" [0 "/workspace/buffer"]))))))
+                            :else (-> (files/write! (fn [method params] (request! session method params))
+                                        {:path "buffer", :file (js/Blob. #js [(or initial-text "")])})
+                                      (.then #(files/open! (fn [method params] (request! session method params)) "buffer"))))))
+                  (.then #(when-not document
+                            (request! session "nvim_set_option_value" ["fixendofline" false {:buf 0}])))
                   (.then #(when-not document
                             (request! session "nvim_set_option_value"
                               ["filetype" filetype {:buf 0}])))

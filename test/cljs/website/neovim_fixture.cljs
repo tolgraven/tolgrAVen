@@ -13,6 +13,7 @@
 (defonce *alternate? (r/atom false))
 (defonce *saved (r/atom ""))
 (defonce *written (r/atom nil))
+(defonce *write-checks (r/atom "Not run"))
 (defonce *live (r/atom "Not run"))
 (defonce *plugins (r/atom "Not run"))
 (defonce *workspace (r/atom "Not run"))
@@ -279,6 +280,45 @@
         (.catch #(reset! *diff (str "FAIL: " (.-message %) "; unread input: " (.-pendingInputBytes (.diagnostics transport-session)))))
         (.finally stop!))))
 
+(defn check-written-text! [text]
+  (let [{:keys [session ready stop!]} (runtime/start! {:cols 40
+                                                    :rows 12
+                                                    :initial-text text
+                                                    :filetype "clojure"}
+                                                   (fn [_]) (fn [_ _]))
+        *release (atom nil)
+        *result (atom nil)
+        *failure (atom nil)]
+    (-> ready
+        (.then (fn [value]
+                 (assert value "WASM startup failed")
+                 (let [watch (runtime/watch-writes! session #(reset! *result %) #(reset! *failure %))]
+                   (reset! *release (:stop! watch))
+                   (:ready watch))))
+        (.then #(runtime/request! session "nvim_command" ["write"]))
+        (.then (fn [_]
+                 (assert (nil? @*failure))
+                 (assert (= text (:text @*result)) "Native writes must preserve exact input bytes")
+                 (@*release)
+                 (let [watch (runtime/watch-writes! session
+                               (fn [_] (throw (js/Error. "Consumer rejected this write")))
+                               #(reset! *failure %))]
+                   (reset! *release (:stop! watch))
+                   (:ready watch))))
+        (.then #(runtime/request! session "nvim_command" ["write"]))
+        (.then (fn [_]
+                 (assert (= "Consumer rejected this write" (some-> @*failure .-message)))
+                 (runtime/request! session "nvim_buf_get_lines" [0 0 -1 true])))
+        (.then (fn [lines] (assert (pos? (.-length lines)) "Consumer failure must keep RPC usable")))
+        (.finally (fn [] (when-let [release! @*release] (release!)) (stop!))))))
+
+(defn write-checks! []
+  (reset! *write-checks "Running…")
+  (-> (reduce (fn [pending text] (.then pending #(check-written-text! text)))
+              (js/Promise.resolve nil) ["hello\n" "" "hello" "λ\n" "hello\n\n" "hello\r\n"])
+      (.then #(reset! *write-checks "PASS: exact native writes for empty, Unicode, LF, CRLF and missing EOF; consumer failures preserve RPC"))
+      (.catch #(reset! *write-checks (str "FAIL: " (.-message %))))))
+
 (defn <fixture> []
   [:main {:style {:max-width "65rem", :margin "2rem auto", :padding "1rem"}}
    [:h1 "Neovim WASM component"]
@@ -300,6 +340,8 @@
    [:p {:id "settings-results"} @*settings]
    [:button {:disabled (not (runtime/available?)), :on-click workspace-checks!} "Run workspace checks"]
    [:p {:id "workspace-results"} @*workspace]
+   [:button {:disabled (not (runtime/available?)), :on-click write-checks!} "Run write checks"]
+   [:p {:id "write-results"} @*write-checks]
    (when @*startup-ms [:p {:id "startup-ms"} (str "Whole worker startup: " @*startup-ms " ms")])
    (when @*show?
      [views/<editor> (merge {:filetype "clojure"
