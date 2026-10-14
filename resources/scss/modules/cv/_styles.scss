@@ -337,7 +337,21 @@
   .cv-what { margin-top: 1rem; }
   > p, .cv-mini-timeline > p { margin-inline: 0; }
   .cv-mini-timeline .cv-detail p { margin: 0.3em 0.6em; }
+  .cv-mini-timeline .cv-detail .cv-from { position: static; }
   .cv-how i { margin-left: 0; margin-right: 0.5em; }
+  .cv-how:has(.content-edit-field) {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5em;
+    > i { flex: none; margin: 0; }
+    > span { flex: 1; min-width: 0; margin: 0; }
+  }
+  > .content-edit-image.cv-logo-picture {
+    position: relative;
+    float: right;
+    width: 5em;
+    margin: 1rem 0 0;
+  }
   .cv-where { position: relative; margin-top: 1rem; }
   button { color: inherit; border-color: currentColor; }
   .cv-zoom-back { margin: 0 0 1rem; padding: 0.6em 0.9em; font: inherit; }
