@@ -28,7 +28,10 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - Feature-owned server adapters live under `modules/<feature>/`; shared platform
   adapters retain their `content/`, `supabase/`, and `ssr/` ownership.
   Landing routes come from `modules/home/pages.cljc`; their code/CSS assets use
-  the same lazy `:home` bundle as SPA navigation.
+  the same lazy `:home` bundle as SPA navigation. Ring document endpoints derive
+  exact templates from the selected native page router; do not add a second
+  prefix allowlist for page or component routes. Page request coercion runs
+  before SSR; unmatched tails remain ordinary 404s.
 - Use shared CLJC data contracts and page declarations. Generic SSR must not grow
   page-specific SQL/REST predicates or duplicate component markup.
 - Public snapshot acquisition owns a bounded Supabase connection pool across
