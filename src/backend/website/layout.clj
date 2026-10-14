@@ -392,7 +392,10 @@
                                          (when fetchpriority (str "; fetchpriority=" fetchpriority))))))
     (:error? ssr) (assoc :status (:status ssr))
     (get-in ssr [:snapshot :missing?]) (assoc :status 404)
-    (or ssr returning?) (assoc-in [:headers "Cache-Control"] "no-store"))))
+    (or ssr returning?) (assoc-in [:headers "Cache-Control"]
+                                 (if (or (:error? ssr) returning?)
+                                   "no-store"
+                                   "private, no-cache")))))
 
 (defn- render-home-complete [request]
   (update (home-response request) :body render-document))
@@ -420,7 +423,7 @@
         (update (complete false) :body render-document)
         (-> shell-response
           (assoc-in [:headers "X-Accel-Buffering"] "no")
-          (assoc-in [:headers "Cache-Control"] "no-store")
+          (assoc-in [:headers "Cache-Control"] "private, no-cache")
           (assoc :body
                  (streaming/html-document
                    (:body shell-response)

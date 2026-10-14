@@ -138,6 +138,8 @@
         (is (.contains first-chunk "Ready CMS heading"))
         (is (.contains first-chunk "id=\"ssr-shell\""))
         (is (not (.contains first-chunk "id=\"ssr-bootstrap\"")))
+        (is (= "private, no-cache" (get-in response [:headers "Cache-Control"]))
+            "Public streamed HTML permits BFcache without shared HTTP caching")
         (.complete pending {:html "<article>Completed page</article>"
                             :snapshot {:posts [] :content {}}})
         (let [rest (slurp input)]
@@ -157,7 +159,9 @@
                 ssr/page! (fn [& _] {:html "<main data-stream-enter=\"true\">Cached page</main>"
                                      :snapshot {:posts [] :content {}}})
                 ohtml/link-to-js-bundles (fn [& _] nil)]
-    (let [body (:body (layout/render-home {:uri "/blog/post/28"}))]
+    (let [response (layout/render-home {:uri "/blog/post/28"})
+          body (:body response)]
+      (is (= "private, no-cache" (get-in response [:headers "Cache-Control"])))
       (is (string? body))
       (is (.contains body "Cached page"))
       (is (not (.contains body "id=\"ssr-shell\"")))
