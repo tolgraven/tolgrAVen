@@ -10,6 +10,7 @@ SITE = ROOT / 'resources/site.edn'
 CONFIGS = {
     'default': '{}',
     'posts-only': '{:blog {:comments false}}',
+    'no-previews': '{:link-preview {:enabled false}}',
     'no-blog': '{:blog {:enabled false} :search {:enabled false}}',
     'anonymous': '{:blog {:enabled false} :search {:enabled false} :user {:enabled false} :chat {:enabled false} :gpt {:enabled false}}',
     'home-only': None,
@@ -85,6 +86,10 @@ def main():
                 emitted = (ROOT/'resources/public/js/compiled/out/manifest.edn').read_text()
                 (directory/'browser.edn').write_text(emitted)
                 assert ('website.modules.blog.module' in emitted) == ('blog' in manifest['modules']), label
+                if label == 'no-previews':
+                    assert 'link-preview' not in manifest['modules'], label
+                    assert 'website.modules.link-preview' not in emitted, label
+                    assert 'website/modules/link_preview/' not in emitted, label
                 assert ('website.modules.supabase.module' in emitted) == ('supabase' in manifest['modules']), label
                 if 'supabase' not in manifest['modules']:
                     assert '@supabase/' not in emitted and 'supabase/client.cljs' not in emitted, label
