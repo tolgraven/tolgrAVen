@@ -19,6 +19,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 
 - Activity calendar tooltips mount only during hover/focus and release their
   portal, managed day dependency and scoped listeners immediately on exit.
+  GitHub configuration uses its module's managed `/api/github/settings` URL
+  dependency, installed at `[:module :github :configuration]` before init.
   GitHub search is debounced through events and queries the backend's complete
   Supabase archive; never filter only the browser's loaded subset.
 

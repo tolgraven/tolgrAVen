@@ -75,28 +75,58 @@
          (not (.isAfter (java.time.LocalDate/parse date) (java.time.LocalDate/now java.time.ZoneOffset/UTC))))
     (catch Exception _ false)))
 
-(def day-query
-  "query($user:String!,$from:DateTime!,$to:DateTime!){user(login:$user){contributionsCollection(from:$from,to:$to){totalCommitContributions totalIssueContributions totalPullRequestContributions totalPullRequestReviewContributions totalRepositoryContributions restrictedContributionsCount}}}")
+(def ^:private day-headings
+  [[:commits #"^Created ([0-9,]+) commits? in "]
+   [:issues #"^(?:Opened|Created) ([0-9,]+|an?) (?:other )?issues?(?: in |$)"]
+   [:pull-requests #"^(?:Opened|Created) ([0-9,]+|a) (?:other )?pull requests?(?: in |$)"]
+   [:reviews #"^Reviewed ([0-9,]+|a) pull requests?(?: in |$)"]
+   [:repositories #"^Created ([0-9,]+|a) repositor(?:y|ies)(?: |$)"]
+   [:restricted #"^([0-9,]+) contributions? in private repositor(?:y|ies)(?: |$)"]])
+
+(defn parse-day
+  "Read only public timeline category headings; verify against the calendar total.
+   Featured items and 'other' rollups are disjoint. Never count nested repo lists."
+  [html date]
+  (let [document (Jsoup/parse html)
+        day (first (filter #(= date (:date %)) (:days (parse-calendar html))))
+        timeline (.selectFirst document ".contribution-activity-listing")
+        range (.selectFirst document "form.js-show-more-timeline-form[data-from][data-to]")
+        types (reduce
+                (fn [counts item]
+                  (let [heading (some-> (.selectFirst item "summary, h4, span.f4") .text)
+                        [kind amount] (some (fn [[kind pattern]]
+                                              (when-let [[_ amount] (re-find pattern (or heading ""))]
+                                                [kind (if (#{"a" "an"} amount) 1
+                                                          (Long/parseLong (string/replace amount "," "")))]))
+                                            day-headings)]
+                    (when-not kind (throw (ex-info "Public activity heading unavailable" {})))
+                    (update counts kind + amount)))
+                (zipmap (map first day-headings) (repeat 0))
+                (.select document ".contribution-activity-listing .TimelineItem-body"))
+        result {:date date, :types types}]
+    (when-not (and day timeline range
+                   (= date (.attr range "data-from") (.attr range "data-to"))
+                   (= (:count day) (reduce + (vals types))))
+      (throw (ex-info "Public activity breakdown unavailable" {})))
+    (validation/check! "GitHub day detail" schema/breakdown result)))
 
 (defn fetch-day! [user date]
-  (when-not (seq (provider/token)) (throw (ex-info "Contribution detail token unavailable" {})))
-  (let [value (provider/request! :post "/graphql"
-                {:content-type :json
-                 :form-params {:query day-query
-                               :variables {:user user
-                                           :from (str date "T00:00:00Z")
-                                           :to (str date "T23:59:59Z")}}})
-        collection (get-in value [:data :user :contributionsCollection])
-        result {:date date
-                :types (into {} (map (fn [[kind field]] [kind (get collection field)]))
-                             {:commits :totalCommitContributions
-                              :issues :totalIssueContributions
-                              :pull-requests :totalPullRequestContributions
-                              :reviews :totalPullRequestReviewContributions
-                              :repositories :totalRepositoryContributions
-                              :restricted :restrictedContributionsCount})}]
-    (validation/check! "GitHub day detail" schema/breakdown result)
-    result))
+  (when-not (and (provider/user? user) (valid-date? date))
+    (throw (ex-info "Invalid GitHub activity day" {:status 400})))
+  (-> (Jsoup/connect (str "https://github.com/" user
+                         "?action=show&controller=profiles&tab=contributions&user_id=" user
+                         "&from=" date "&to=" date))
+      ;; GitHub's public include-fragment URL returns the populated timeline
+      ;; only for an HTML fragment request; an ordinary navigation stays lazy.
+      (.header "Accept" "text/html")
+      (.header "X-Requested-With" "XMLHttpRequest")
+      (.header "Accept-Language" "en")
+      (.timeout 7000)
+      (.maxBodySize 1048576)
+      (.followRedirects false)
+      (.get)
+      (.outerHtml)
+      (parse-day date)))
 
 (defn day-response! [user date]
   (if-not (and (provider/user? user) (valid-date? date))

@@ -16,8 +16,7 @@
   (str "/repos/" user "/" repo))
 
 (defn request! [method path options]
-  (when-not (or (= path "/graphql")
-                (re-matches #"/repos/[A-Za-z0-9-]+/[A-Za-z0-9_.-]+(?:/branches|/tags|/commits(?:/[a-fA-F0-9]{40,64})?|/compare/[a-fA-F0-9]{40,64}\.\.\.[a-fA-F0-9]{40,64})?" path))
+  (when-not (re-matches #"/repos/[A-Za-z0-9-]+/[A-Za-z0-9_.-]+(?:/branches|/tags|/commits(?:/[a-fA-F0-9]{40,64})?|/compare/[a-fA-F0-9]{40,64}\.\.\.[a-fA-F0-9]{40,64})?" path)
     (throw (ex-info "Invalid GitHub API path" {:status 400})))
   (let [response (http/request
                    (merge {:method method

@@ -16,7 +16,7 @@
 
 (r/reg-event-fx :github/init
   (fn [{:keys [db]} _]
-    (let [{:keys [user repo]} (get-in db [:content :github-settings])
+    (let [{:keys [user repo]} (get-in db [:module :github :configuration :settings])
           target [user repo]
           db' (if (= target (get-in db [:state :github :target])) db
                   (begin-query db target (or (get-in db [:state :form-field :github :search]) "")))]

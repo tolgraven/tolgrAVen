@@ -4,8 +4,7 @@
             [mount.core :as mount]
             [clojure.string :as string]
             [website.config :as config]
-            [website.content.service :as content]
-            [website.content.contract :as contract]
+            [website.modules.github.settings :as settings]
             [website.modules.github.provider :as provider]
             [website.modules.github.message :as message]
             [website.modules.github.archive-schema :as schema]
@@ -15,10 +14,8 @@
            [java.util.concurrent Executors ExecutorService TimeUnit]))
 
 (defn target! []
-  (when (some #{:github-settings} contract/sections)
-    (let [{:keys [user repo]} (get-in (content/bundle! [:github-settings]) [:content :github-settings])]
-      (when (and (provider/user? user) (provider/repo? repo))
-        {:owner (string/lower-case user), :repo (string/lower-case repo)}))))
+  (when-let [{:keys [user repo]} (settings/selection!)]
+    {:owner (string/lower-case user), :repo (string/lower-case repo)}))
 
 (defn commit-row [item]
   (let [{:keys [sha commit author html_url]} item
