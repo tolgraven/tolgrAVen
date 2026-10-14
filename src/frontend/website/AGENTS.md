@@ -10,6 +10,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   and public exports when upgrading. Adding/removing a native SDK export requires
   restarting that watch; the compile guard reports this explicitly. Ordinary
   edits using existing exports retain HMR. See `doc/markdown-authoring.md`.
+  Its bundle depends on Markdown so shared parsing packages remain in that lazy
+  ancestor rather than main. Dynamic Home service icons use the acquisition-only
+  loader trigger with a quarter-viewport lead for their fallback catalog/font;
+  do not mount an empty module view with a section-shaped pending placeholder.
 
 ## Implementation priority: Reagent and re-frame
 
