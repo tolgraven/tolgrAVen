@@ -146,7 +146,9 @@
   (when (and element (:appear options) (nil? @(:viewport-enter? state)))
     ;; Preserve first-screen document timing and settled local/history returns.
     ;; A new offscreen entrance uses the existing observer path, once visible.
-    (let [defer? (and (not (:force (config (:appear options))))
+    (let [appearance (config (:appear options))
+          defer? (and (not= false (:viewport? appearance))
+                     (not (:force appearance))
                      (not (in-viewport? element))
                      (or (not (:skip-enter? state)) (:document-enter? state)))]
       (reset! (:viewport-enter? state) defer?)
