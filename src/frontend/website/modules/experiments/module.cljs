@@ -4,5 +4,5 @@
 (def spec
   {:bundle/depends-on #{:main :maps}
    :id :test
-   :styles ["test"]
+   :styles ["/css/website/modules/test.min.css"]
    :view {:page #'views/<test-page>}})
