@@ -53,7 +53,7 @@
                    (or to "current"))]
        [:p.cv-what [fields/<text> :strong all [:what]]]
        (if expanded?
-         (for [[i item] (map-indexed vector how)]
+         (for [[i item] (map-indexed vector (if (and (fields/editing? all) (empty? how)) [nil] how))]
            ^{:key i} [:p.cv-how [:i.fas.fa-arrow-right]
                      (if (fields/editing? all) [fields/<text> :span all [:how i]] item)])
          [fields/<text> :p.cv-position all [:position]])

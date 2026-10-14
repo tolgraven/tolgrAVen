@@ -4,7 +4,8 @@
   clips fixed descendants. The portal owns bounds/focus, cancellable frame and
   transition cleanup; declarative styles animate from the source to viewport
   center and back. Container boxes render a separate mini timeline with child
-  logo/color glyphs; regular boxes render their own details.
+  logo/color glyphs; regular boxes render their own details. Empty details expose
+  a first editable line only in edit mode, using the existing scalar write path.
 
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/ssr.md`, and `doc/dev-console.md`.

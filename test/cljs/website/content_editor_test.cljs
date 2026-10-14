@@ -26,6 +26,14 @@
   (is (= "https://example.test/canonical.png"
          (cv/logo-src "img/logo.png" {:src "https://example.test/canonical.png"}))))
 
+(deftest empty-cv-details-expose-an-editor-without-changing-public-markup
+  (let [entry {:from 2020, :to 2021, :what "New entry", :how []}
+        edit-html (r/render-to-string [cv/<box-content>
+                                     (fields/annotate entry [:cv :cv :timeline 0 :things 0] :edit) true nil])
+        view-html (r/render-to-string [cv/<box-content> entry true nil])]
+    (is (re-find #"cv-how" edit-html))
+    (is (not (re-find #"cv-how" view-html)))))
+
 (deftest route-overrides-do-not-write-static-cms-fields
   (let [content (fields/annotate {:title "CMS", :bg {:src "/photo.png"}} [:blog :heading] :edit)
         overridden (fields/overridden content {:title "Route title"})]

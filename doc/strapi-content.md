@@ -53,7 +53,8 @@ role, course or other individual entry; choose **Timeline container** for a
 grouping. Containers have their own title, description and main logo, plus child
 logo/color tiles. Opening one shows a mini timeline using the same box types and
 date axis as the main timeline. Every new container starts with a regular
-**New entry** child that can be edited immediately. **Zoom back out**, Escape or
+**New entry** child that can be edited immediately, including a first detail line
+when its body is empty. **Zoom back out**, Escape or
 the surrounding backdrop returns to the containing timeline.
 
 Expanded boxes stay centered in the viewport. The owned portal measures the
