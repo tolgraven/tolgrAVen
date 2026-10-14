@@ -8,7 +8,12 @@
             [website.page-router :as pages]
             [website.content.service :as content]))
 
-(use-fixtures :each (fn [f] (reset! content/*cache {}) (f) (reset! content/*cache {})))
+(use-fixtures :each
+  (fn [f]
+    (reset! content/*cache {})
+    (reset! content/*inflight {})
+    (try (f)
+         (finally (reset! content/*cache {}) (reset! content/*inflight {})))))
 
 (deftest backend-seed-replaces-all-former-static-content
   (with-redefs [content/settings (constantly {})]
@@ -161,9 +166,9 @@
         ;; Claim the same pending section synchronously so the sharing assertion
         ;; does not depend on the second future's scheduling.
         (let [claimed (#'content/acquire-sections! "https://shared.test" [:intro] (System/currentTimeMillis))
-              pending (get-in claimed [:waiting :intro])]
+              pending (:pending claimed)]
           (try
-            (is (empty? (:owned claimed)))
+            (is (false? (:owned? claimed)))
             (is (= 1 @*calls))
             (finally (deliver release true)))
           (is (= 503 (:status (deref first-read 1000 {}))))
@@ -171,3 +176,26 @@
       (reset! *fail? false)
       (is (= "Recovered" (get-in (content/response [:intro]) [:body :content :intro :title])))
       (is (= 2 @*calls)))))
+
+(deftest failed-bundle-does-not-own-healthy-subset-requests
+  (let [started (promise)
+        release (promise)]
+    (with-redefs [content/settings (constantly {:url "https://overlapping.test"})
+                  http/get (fn [_ options]
+                             (if (= "intro,docs" (get-in options [:query-params "keys"]))
+                               (do (deliver started true)
+                                   (deref release 5000 nil)
+                                   {:status 400})
+                               {:status 200
+                                :body {:version contract/version
+                                       :content {:intro {:title "Independent"}}}}))]
+      (let [failed (future (content/response [:intro :docs]))]
+        (try
+          (is (= true (deref started 1000 :timeout)))
+          (let [healthy (future (content/response [:intro]))
+                response (deref healthy 1000 :timeout)]
+            (is (= 200 (:status response)))
+            (is (= "Independent" (get-in response [:body :content :intro :title]))))
+          (finally (deliver release true)))
+        (is (= 503 (:status (deref failed 1000 {}))))
+        (is (empty? (get @content/*inflight "https://overlapping.test")))))))

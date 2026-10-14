@@ -225,6 +225,6 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - Optional module-service startup failures remain local: log the module ID,
   continue starting sibling services, and retain their cleanup handles. Missing
   unpublished CMS settings do not initiate provider/content work.
-- CMS cache locking covers only section/promise ownership. Keep upstream and
-  media I/O outside the shared lock; overlapping consumers share section reads,
+- CMS cache locking covers only request/promise ownership. Keep upstream and
+  media I/O outside the shared lock; identical missing-section requests share reads,
   independent sections proceed concurrently, and failure releases all waiters.
