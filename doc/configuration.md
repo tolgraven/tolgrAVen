@@ -25,7 +25,7 @@ is ignored and is not searched by the config loader.
 | `:analytics` | Production sites that want Google Analytics | Optional. No script without `:google-id`, or set `{:enabled false}`. Current prod defaults contain this site's ID; use your own for another site. |
 | `:ssr` | Override server-rendering settings | Enabled with two workers and the local Node build by default; see below. |
 | `:strapi-url`, `:strapi-read-token` | Read content from an external CMS | Without a CMS URL, public content comes from the local seed. A configured CMS needs its server read token. |
-| `:github-user`, `:github-repo` | Explicit public GitHub selection | Supply both to override only `github-settings` for the browser, SSR and archive. Omit both to use the CMS. |
+| `:github-user`, `:github-repo` | Explicit public GitHub selection | Supply both for the module's managed settings binding and archive. Absent values keep the module unconfigured unless the build declares published CMS settings. |
 | `:github-token` | Optional GitHub REST rate limit upgrade | Public calendar, daily breakdown and commit history work without authentication. Tokens stay server-only. |
 | `:supabase-public-url`, `:supabase-anon-key`, `:supabase-service-key` | Enabled modules using Supabase | No credential defaults. The public key is for browser access; the service key stays on the server. |
 | `:openai-api-key` | Requests to the enabled GPT module | No default; `OPENAI_API_KEY` can supply it. |

@@ -1,10 +1,14 @@
 (ns website.modules.github.subs
   (:require [website.react :as r]))
 
+(r/reg-sub :github/configuration
+ (fn [db _]
+   (get-in db [:module :github :configuration :settings])))
+
 (r/reg-sub :github/get-from
- :<- [:content [:github-settings]]
- (fn [github]
-   [(:user github) (:repo github)]))
+ :<- [:github/configuration]
+ (fn [{:keys [user repo]}]
+   [user repo]))
 
 (r/reg-sub :github/website-url
  :<- [:github/get-from]

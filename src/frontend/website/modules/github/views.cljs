@@ -193,7 +193,7 @@
      [:h2 [:a {:href (str "https://github.com/" user)} (str user " on GitHub")]]
      [activity/<calendar> days [<day-details> user]]]))
 
-(defc <repository> "List Github commits for the CMS-selected repository"
+(defc <repository> "List Github commits for the configured public repository"
   {:features [:lifecycle]}
   [spec]
   (let [from (r/subscribe [:github/get-from])
@@ -261,4 +261,4 @@
       [:<>
        ^{:key (str user "/" repo)} [<repository> {:init (fn [_] (r/dispatch [:github/init]))}]
        ^{:key user} [<activity> user]]
-      [:section.github-commits.covering-2 [:h2 "GitHub"] [:p "Configure a user and repository in the CMS."]])))
+      [:section.github-commits.covering-2 [:h2 "GitHub"] [:p "Configure a GitHub user and repository in the server settings."]])))

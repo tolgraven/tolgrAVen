@@ -19,6 +19,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 
 - Activity calendar tooltips mount only during hover/focus and release their
   portal, managed day dependency and scoped listeners immediately on exit.
+  GitHub configuration uses its module's managed `/api/github/settings` URL
+  dependency, installed at `[:module :github :configuration]` before init.
   GitHub search is debounced through events and queries the backend's complete
   Supabase archive; never filter only the browser's loaded subset.
 
@@ -514,4 +516,14 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   byte callbacks and remains attempt/owner guarded in transient module state.
   Server-ready media stays visible in the status list until the published preview
   acknowledges visible decoded content; keyed presence owns row exit and cleanup.
-- GitHub settings and Codex profile content use declared Strapi dependencies. Shared activity markup renders provider counts; absent profile days remain unavailable. See `doc/activity-panels.md`.
+- Declare module `:content` dependencies only for published CMS sections. GitHub
+  settings and Codex profile content currently have no request dependencies;
+  preserve their readers and unavailable views until those CMS sections exist.
+  See `doc/strapi-content.md`.
+- Client startup acquires shell/current-route content, not every enabled module.
+  Optional modules own their dependency failures and retries. Failed shared CMS
+  batches isolate section requests before rejecting consumers; keep successful
+  section caches and unrelated module acquisition intact.
+- Managed source adapters may declare a default `:timeout-ms`; an explicit
+  dependency timeout takes precedence. The CMS adapter budgets both transport
+  attempts plus queue settlement so isolation cannot strand a healthy module.

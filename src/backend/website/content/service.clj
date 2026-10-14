@@ -12,19 +12,10 @@
             [website.content.contract :as contract]))
 
 (defonce *cache (atom {}))
+(defonce *inflight (atom {}))
 (defn settings []
-  (let [github (select-keys (if (map? config/env) config/env {}) [:github-user :github-repo])
-        overrides (when (and (some #{:github-settings} contract/sections) (seq github))
-                    {:github-settings {:user (:github-user github), :repo (:github-repo github)}})]
-    (when overrides
-      (contract/checked-bundle {:version contract/version, :content overrides} [:github-settings]))
-    {:url (or (System/getenv "STRAPI_URL") (:strapi-url config/env))
-     :token (or (System/getenv "STRAPI_READ_TOKEN") (:strapi-read-token config/env))
-     :overrides overrides}))
-
-(defn- content-source []
-  (let [{:keys [url overrides]} (settings)]
-    [url overrides]))
+  {:url (or (System/getenv "STRAPI_URL") (:strapi-url config/env))
+   :token (or (System/getenv "STRAPI_READ_TOKEN") (:strapi-read-token config/env))})
 
 (defn- image-sources [value]
   (set (filter #(and (string? %)
@@ -53,7 +44,7 @@
                  (assoc enriched :image-assets owned)
                  enriched)])))))
 
-(defn- load-remote-content! [ks]
+(defn- load-content! [ks]
   (let [{:keys [url token]} (settings)]
     (if (seq url)
       (let [response (http/get (str (string/replace url #"/+$" "") "/api/site-content")
@@ -72,13 +63,6 @@
                               {:version contract/version
                                :content (select-keys (json/read-str (slurp (io/resource "content-seed.json")) :key-fn keyword) ks)} ks)) ks)))))
 
-(defn- load-content! [ks]
-  (let [overrides (select-keys (:overrides (settings)) ks)
-        remaining (filterv #(not (contains? overrides %)) ks)]
-    ;; Explicit public configuration selects its source before any CMS request.
-    ;; A configured CMS failure for other sections must still fail visibly.
-    (merge (when (seq remaining) (load-remote-content! remaining)) overrides)))
-
 (defonce *immediate (atom nil))
 
 (defn refresh-immediate!
@@ -86,12 +70,12 @@
   []
   (let [ks (pages/immediate-keys)
         value (contract/normalize-content (load-content! ks))]
-    (reset! *immediate {:source (content-source) :content value})
+    (reset! *immediate {:source (:url (settings)) :content value})
     value))
 
 (defn immediate-content []
   (let [{:keys [source content]} @*immediate]
-    (when-not (and content (= source (content-source)))
+    (when-not (and content (= source (:url (settings))))
       (throw (ex-info "Page shell has not been initialized" {:status 503})))
     content))
 
@@ -110,26 +94,57 @@
   :stop (when startup-content (.shutdownNow ^java.util.concurrent.ExecutorService startup-content)))
 
 (defn- read-content! [ks]
-  (let [warm (when (= (:source @*immediate) (content-source)) (:content @*immediate))
+  (let [warm (when (= (:source @*immediate) (:url (settings))) (:content @*immediate))
         missing (filterv #(not (contains? warm %)) ks)]
     (merge (select-keys warm ks)
            (when (seq missing) (contract/normalize-content (load-content! missing))))))
+
+(defn- acquire-sections! [source ks now]
+  ;; Only cache/request ownership is serialized. Disjoint requests cannot wait
+  ;; behind CMS I/O. Share identical missing sets, not overlapping bundles:
+  ;; a bundle containing a bad section must not reject a healthy subset reader.
+  (locking *cache
+    (let [cached (get @*cache source {})
+          missing (filterv #(> (- now (get-in cached [% :at] 0)) 30000) ks)
+          request-key (vec (sort missing))
+          pending (get-in @*inflight [source request-key])
+          owned? (and (seq missing) (nil? pending))
+          pending' (when (seq missing) (or pending (promise)))]
+      (when owned? (swap! *inflight assoc-in [source request-key] pending'))
+      {:content (into {} (map (fn [k] [k (get-in cached [k :value])])) (remove (set missing) ks))
+       :missing missing
+       :request-key request-key
+       :pending pending'
+       :owned? (boolean owned?)})))
 
 (defn bundle!
   ([] (bundle! nil))
   ([requested]
    (let [ks (contract/validate-keys requested)
-         source (content-source)
-         now (System/currentTimeMillis)]
-     (locking *cache
-       (let [cached (get @*cache source {})
-             missing (filterv #(> (- now (get-in cached [% :at] 0)) 30000) ks)]
-         (when (seq missing)
-           (let [fresh (read-content! missing)]
-             (swap! *cache update source merge
-                    (into {} (map (fn [[k v]] [k {:at now :value v}])) fresh)))))
+         source (:url (settings))
+         now (System/currentTimeMillis)
+         {:keys [content missing request-key pending owned?]} (acquire-sections! source ks now)]
+     (when owned?
+       (try
+         (let [fresh (read-content! missing)]
+           (locking *cache
+             (swap! *cache update source
+                    (fn [cached]
+                      (reduce-kv (fn [entries k value]
+                                   ;; A newer overlapping read may have finished
+                                   ;; first. Do not overwrite its cached snapshot.
+                                   (if (> (get-in entries [k :at] 0) now)
+                                     entries (assoc entries k {:at now, :value value})))
+                                 (or cached {}) fresh))))
+           (deliver pending {:content fresh}))
+         (catch Throwable error (deliver pending {:error error}))
+         (finally
+           (locking *cache
+             (swap! *inflight update source dissoc request-key)))))
+     (let [result (when pending @pending)]
+       (when-let [error (:error result)] (throw error))
        {:version contract/version
-        :content (merge (into {} (map (fn [k] [k (get-in @*cache [source k :value])])) ks)
+        :content (merge content (:content result)
                         (when (= source (:source @*immediate))
                           (select-keys (:content @*immediate) ks)))}))))
 
@@ -143,23 +158,11 @@
    :content (read-content! (contract/validate-keys requested))})
 
 (defn response [requested]
-  (try
-    (let [bundle (bundle! requested)
-          {:keys [url overrides]} (settings)
-          sections (keys (:content bundle))
-          configured (filter #(contains? overrides %) sections)
-          origin (if (seq url) "strapi" "seed")]
-      {:status 200
-       :headers {"Cache-Control" "public, max-age=120"
-                 "X-Content-Source" (cond
-                                      (and (seq configured) (= (count configured) (count sections))) "config"
-                                      (seq configured) (str origin "+config")
-                                      :else origin)}
-       :body bundle})
-    ;; No upstream exceptions or credentials in browser errors.
-    (catch Exception error
-      {:status (or (:status (ex-data error)) 503)
-       :body {:error "Content is temporarily unavailable"}})))
+  (try {:status 200 :headers {"Cache-Control" "public, max-age=120"
+                               "X-Content-Source" (if (seq (:url (settings))) "strapi" "seed")} :body (bundle! requested)}
+       ;; No upstream exceptions or credentials in browser errors.
+       (catch Exception error {:status (or (:status (ex-data error)) 503)
+                               :body {:error "Content is temporarily unavailable"}})))
 
 (defn hydration-json [bundle]
   ;; Safe inside a non-executable script element, even for editor-provided text.

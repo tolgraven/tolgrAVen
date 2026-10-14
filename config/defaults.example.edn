@@ -10,7 +10,7 @@
 
  :nrepl-bind "127.0.0.1"
  :nrepl-port 7000                  ; Optional standalone app nREPL; omit to disable.
- ;; Optional explicit public selection; supply both, or omit both to use Strapi.
+ ;; Optional explicit public selection; supply both. No unpublished CMS request if absent.
  ;; :github-user "your-user"       ; GITHUB_USER through cprop.
  ;; :github-repo "your-repo"       ; GITHUB_REPO through cprop.
  ;; Public GitHub reads work without a token. Optional server-only REST rate limit upgrade:

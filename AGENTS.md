@@ -307,6 +307,9 @@ These are required principles for new code and changes to existing code. Follow 
 - Keep subscription computations and event-db handlers pure. Put HTTP, Supabase, Strapi, localStorage, timers, and other external side effects in registered effects or dedicated lifecycle adapters. Pass results back through events that update app-db; components then observe them through subscriptions.
 - Use the existing subscription-backed Supabase and Strapi bindings. A subscription may acquire an existing managed data source; the source adapter owns the read, deduplication, result events, and cleanup. Do not perform network reads inside a subscription's derived-value computation or component render.
 - Declare content dependencies in component, module, or page specifications. Preloading must acquire the same managed subscriptions/data bindings that the rendered component uses. Do not add a parallel imperative preparation namespace, duplicate query definitions, or fetch content directly from a page/view to avoid using the normal data flow.
+- Missing configuration for an enabled optional module must fail within that
+  module and expose its local error/retry state; it must not gate unrelated
+  modules or the shared shell. Startup loads shell/current-route dependencies.
 - Batch and deduplicate pending data loads and persistence operations through the shared queues. Distinguish pending, successfully loaded empty, failed, and cached data. Preserve usable cached content during refresh and report real failures through the established notification/retry system.
 - Release subscriptions, watches, listeners, and live connections when their owning lifecycle ends. Retain app-db content caches for reuse; temporary preloading must not dispose a subscription still owned by a mounted component.
 - Use the scoped subscription/update helpers for persistent component, module, page, and shared state. Reserve local Reagent state for transient component-owned state; do not introduce a second application store or bypass event-driven persistence.
@@ -446,10 +449,11 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   capabilities follow their selected parent in discovery and packaging. Public
   blog reading stays independent of `:blog-editor` and the lazy visual SDK.
 
-- GitHub editor settings live in the CMS `github-settings` section; explicit
-  server `:github-user` / `:github-repo` values override that section through the
-  same checked public content binding. Supply both or neither; unrelated CMS
-  failures remain errors. Provider caches stay separate. Public GitHub reads
+- GitHub's managed `/api/github/settings` dependency and archive share one
+  validated server selection. Explicit `:github-user` / `:github-repo` values
+  take priority; supply both or neither. Unpublished CMS settings stay omitted;
+  partial/invalid GitHub configuration cannot gate unrelated content or startup.
+  Provider caches stay separate. Public GitHub reads
   require no token; an optional server token raises the REST archive rate limit.
   Deployment identity and calendar contracts are documented in `doc/activity-panels.md`.
 - Modules may declare a server `:start` symbol returning an optional cleanup

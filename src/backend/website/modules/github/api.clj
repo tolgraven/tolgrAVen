@@ -3,10 +3,15 @@
             [website.modules.github.provider :as provider]
             [website.modules.github.archive :as archive]
             [website.modules.github.archive-schema :as archive-schema]
+            [website.modules.github.settings :as settings]
+            [website.modules.github.configuration-schema :as configuration-schema]
             [website.components.activity-schema :as schema]))
 
 (defn routes []
-  [["/github/activity"
+  [["/github/settings"
+    {:get {:responses {200 {:body configuration-schema/result}}
+           :handler (fn [_] (settings/response))}}]
+   ["/github/activity"
     {:get {:parameters {:query [:map [:user activity/user-schema]]}
            :responses {200 {:body schema/result}}
            :handler (fn [{{{:keys [user]} :query} :parameters}]

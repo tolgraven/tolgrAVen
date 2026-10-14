@@ -108,8 +108,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   expose only public origins/keys and allowed options.
   `/api/browser-resources` projects only `:analytics :google-id`; `:enabled false`
   disables that script. Keep these settings out of SSR markup and snapshots.
-- Explicit GitHub user/repo configuration overrides only its managed public
-  content section before CMS acquisition; the browser, SSR and archive share it.
+- Explicit GitHub user/repo configuration belongs to its module-owned settings
+  adapter and managed URL binding, shared with the archive. Validate it only there;
+  invalid optional configuration must not gate the shell or unrelated content.
   Contribution detail parses the unauthenticated public profile timeline and
   checks its exact day range and type sum against the accompanying calendar.
   Unknown/incomplete provider markup remains an unavailable result, never zero.
@@ -224,5 +225,12 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - `/api/deployment` exposes only validated container metadata. GitHub calendar reads use a fixed origin, bounded body/time/cache and no redirects; see `doc/activity-panels.md`.
 - GitHub's module-owned service archives only public repository metadata and
   commits. Database leases and page/checkpoint transactions make retries safe;
-  unchanged branch heads skip acquisition. Per-day breakdowns use server-only
-  GitHub credentials on hover, independently of repository history.
+  unchanged branch heads skip acquisition. Per-day breakdowns use the public
+  unauthenticated timeline on hover, independently of repository history.
+
+- Optional module-service startup failures remain local: log the module ID,
+  continue starting sibling services, and retain their cleanup handles. Missing
+  unpublished CMS settings do not initiate provider/content work.
+- CMS cache locking covers only request/promise ownership. Keep upstream and
+  media I/O outside the shared lock; identical missing-section requests share reads,
+  independent sections proceed concurrently, and failure releases all waiters.

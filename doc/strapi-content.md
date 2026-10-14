@@ -2,23 +2,37 @@
 
 The web app's public `:content` comes from the Clojure backend. Static editorial
 content has moved out of `db.cljs`; only UI state, routes and options remain there.
-On a normal page load the browser requests `/api/content/bootstrap`, installs all
-16 public sections, and then mounts the app. A retry screen handles unavailable
-content. Supabase continues to own authentication, posts, comments, chat and
+On a client-rendered page load the browser installs the shell and current route's
+content before mounting the app. Optional modules acquire their declared sections
+when activated. A retry screen handles
+unavailable content. Supabase continues to own authentication, posts, comments, chat and
 private documents.
 
 The backend uses `STRAPI_URL` and `STRAPI_READ_TOKEN` to call the token-protected
 CMS bundle. Both variables stay server-side. Responses contain only the public
 content contract, use bounded HTTP timeouts, and cache each section for 30 seconds.
+Concurrent readers share an in-flight read for identical missing-section sets. Cache locking never
+covers upstream/media I/O, so an unavailable section cannot stall unrelated
+content requests. Failed reads release their waiters for retry.
 Reload after an edit to see it, allowing for this cache. With no CMS configured,
 local development uses `resources/content-seed.json` on the backend. A configured
 CMS failure returns 503 and never silently restores the original seed.
 
 `website.content.contract/module-content` is the shared dependency manifest.
-Every lazy module's `spec` includes `:content` referencing this manifest, including
+A lazy module's `spec` includes `:content` referencing this manifest, including
 an empty vector when it needs no CMS content. The module loader waits for those
-sections before running its init function. Concurrent loads share pending
-requests; failures release them so retries can succeed. Auto-layout sections have
+sections before running its init function. `github-settings` and `codex-profile`
+are not published by the CMS yet, so their modules declare no CMS dependencies.
+Bootstrap, module acquisition and content subscriptions omit those keys. The
+GitHub configuration prompt and Codex unavailable state remain usable; their
+schemas and readers are retained for future publication. Concurrent loads share
+pending requests. A failed shared bundle is retried once per section so one
+unavailable section only rejects its own consumers; successful content remains
+cached. A single failed section exposes the existing retry notice. During a CMS
+outage this isolation adds at most one request per queued section, with the same
+bounded timeout. The CMS managed adapter allows 31 seconds for both 15-second
+transport attempts and queue settlement; explicit dependency timeouts override
+that budget. Other sources keep their 15-second default. Failures release pending entries so retries can succeed. Auto-layout sections have
 content sentinels that prefetch within 800 pixels of the viewport. Prefetch only
 loads data; it does not initialize a module or cause authenticated writes.
 
@@ -26,7 +40,8 @@ For server-rendering work, `content/for-route!` uses the same declarations to lo
 shell and route content. Optional `CONTENT_BOOTSTRAP_MODE=route` embeds only that
 snapshot, safely serialized in a non-executable JSON script. The frontend installs
 it and fetches remaining sections through module init or viewport prefetch. `full`
-embeds all sections. The default remains a frontend fetch of the full bundle.
+embeds all sections and therefore requires all declared CMS sections to exist.
+The default frontend acquisition loads only shell and route content.
 This prepares shared data and hydration state; React server rendering and
 `hydrateRoot` are deliberately not implemented in this first integration.
 
