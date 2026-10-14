@@ -1,12 +1,13 @@
 (ns website.react.targets
   "Thin Shadow target adapter: server rendering and diagnostics stay out of the
    ordinary release browser graph. JVM source tooling sees inert declarations."
-  (:require
+  #?(:cljs
+     (:require
     #?@(:dev [[reagent.dom.server] [re-frame.tooling]]
         :browser-test [[reagent.dom.server]]
         :ssr [[reagent.dom.server]]
         :return-worker [[reagent.dom.server]]
-        :default [])))
+        :default []))))
 
 (def render-to-string
   #?(:dev reagent.dom.server/render-to-string
