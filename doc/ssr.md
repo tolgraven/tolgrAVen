@@ -533,3 +533,8 @@ attributes and uncontrolled form properties that do not match retained state.
 Disabling `:page-capture` also omits the capture lifecycle owner and external-link
 interception. The eager installer still checks any matching saved HTML/state pair
 before hydration; disabled capture cannot create new pairs.
+
+Dedicated workspace routes may set `:shell {:chrome? false}`. The common page
+component uses that declaration in both SSR and the browser to omit the header,
+footers and back-to-top markup while retaining ordinary page readiness and HUD
+errors. Workspace navigation belongs to its own compact menu.

@@ -5,7 +5,8 @@
 
 (defpage <page> []
   [:section.neovim-page
-   [:h1 "Neovim"]
-   [:p "Neovim running locally in your browser. Press i to edit, Esc for normal mode, and :help for help."]
-   [views/<editor> {:initial-file "src/frontend/website/modules/neovim/views.cljs", :filetype "clojure"}]
-   [:p "This is a temporary browser session. Copy your work before restarting or leaving."]])
+   [views/<editor>
+    {:initial-file "src/frontend/website/modules/neovim/views.cljs"
+     :filetype "clojure"
+     :rows 36
+     :menu-content [:a {:href "/", :data-document-navigation "true"} "Back to site"]}]])

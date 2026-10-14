@@ -25,6 +25,16 @@
   (is (nil? (validation/explain declarations/dependency
                                {:source :supabase :query {:path-collection [:blog-posts]}}))))
 
+(deftest workspace-shell-options-are-typed-with-existing-fallback-fields
+  (is (nil? (validation/explain declarations/routes
+              [["/workspace" {:shell {:chrome? false
+                                      :heading [:blog :heading]
+                                      :loading-prefab :article
+                                      :loading-view {:module :blog, :view :post-content}
+                                      :loading-args {:post {:title "Loading"}}}}]])))
+  (is (seq (validation/explain declarations/routes
+             [["/workspace" {:shell {:chrome? "false"}}]]))))
+
 (deftest route-parameters-coerce-at-shared-boundary
   (let [match (pages/request-match "/blog/page/2" {"userBox" "false" "debug" "keep"})]
     (is (= {:nr 2} (get-in match [:parameters :path])))

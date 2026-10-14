@@ -66,6 +66,16 @@
   [:sequential [:map [:id :keyword] [:queries fn?]
                 [:?depends [:or [:sequential :keyword] fn?]]
                 [:?transform fn?]]])
+(def page-shell
+  (c/optional-map {:chrome? :boolean
+                   :heading path
+                   :loading-prefab :keyword
+                   :loading-class :string
+                   :loading-view :map
+                   :loading-args :any
+                   :lines c/positive
+                   :avatar? :boolean
+                   :placeholder-background :string}))
 (def route-data
   [:map
    [:?name :keyword]
@@ -74,6 +84,7 @@
    [:?icons icons]
    [:?ssr :boolean]
    [:?streaming :boolean]
+   [:?shell page-shell]
    [:?depends dependencies]
    [:?preload-depends [:or dependencies fn?]]
    [:?parameters :map]
