@@ -74,7 +74,7 @@ Strapi delivery, Storage publication, or deployment state.
 
 ## Prepared asset format
 
-`tolgraven.build.assets` explicitly prepares `resources/optimus/assets.edn` from
+`website.build.assets` explicitly prepares `resources/optimus/assets.edn` from
 real production Shadow outputs and built styles. Its optional `--build-styles`
 argument runs the existing npm style build first. The tool keeps Optimus's current
 URL inventory, independent bundles, CSS reference rewriting and legacy fallback

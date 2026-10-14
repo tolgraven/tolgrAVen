@@ -3,12 +3,12 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [cheshire.core :as json]
-            [tolgraven.build.modules :as modules]
-            [tolgraven.build.site :as site]
-            [tolgraven.site-catalog :as catalog]
-            [tolgraven.supabase.catalog :as storage]
-            [tolgraven.supabase.schema-plan :as plan]
-            [tolgraven.supabase.retention :as retention]))
+            [website.build.modules :as modules]
+            [website.build.site :as site]
+            [website.site-catalog :as catalog]
+            [website.supabase.catalog :as storage]
+            [website.supabase.schema-plan :as plan]
+            [website.supabase.retention :as retention]))
 
 (defn page-names [modules]
   ;; Inspect portable route data without loading the declarations' JVM adapters.

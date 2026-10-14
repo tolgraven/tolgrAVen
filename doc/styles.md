@@ -3,7 +3,7 @@
 `npm run build` compiles the shared `resources/scss/main.scss`, `dev.scss`,
 `icons.scss` and the entry files
 in `resources/scss/modules/` through the locked Sass and Autoprefixer packages.
-Outputs are `resources/public/css/tolgraven/main.min.css`, `dev.min.css`, `icons.min.css`, and
+Outputs are `resources/public/css/website/main.min.css`, `dev.min.css`, `icons.min.css`, and
 `modules/<feature>.min.css`. The development document alone links `dev.min.css`,
 which contains inspector styles; production shell and error pages share the same
 fingerprinted shell link without loading those rules. Shared validation-error
@@ -119,7 +119,7 @@ policy; the Fira change does not fade the whole document.
 Fenced code controls overlap the block's top-right corner. Like comment reply
 buttons, they fade in on parent hover/active intent; keyboard focus reveals the
 same controls. Copy, wrap and fold use declared SVG icons with accessible names
-and hover labels. Their generated icon sheet belongs to Markdown and loads with
+and hover labels. Their generated icon sheet belongs to Highlight and loads with
 that module. Inline copy indicators remain at the end of the snippet.
 
 Long comments constrain their text area, rather than the avatar/metadata/actions.
@@ -175,9 +175,9 @@ The generated faces have disjoint Unicode ranges: known glyphs use the small
 fonts, while other glyphs acquire the original full font when actually rendered.
 A failed subset request can also fall back to the full font through native CSS
 source selection.
-Keep full originals available for regeneration. Dynamic icon consumers use
-`components.icon/<icon>`; an unknown name acquires the full selector catalog
-through `:icon-catalog`, including its CSS-before-code readiness. Known names
+Keep full originals available for regeneration. Dynamic icon consumers render
+the pure `components.icon/<icon>` and explicitly acquire `:icon-catalog` for an
+unknown name, including its CSS-before-code readiness. Known names
 never load that compatibility sheet. Regenerate after
 adding literal icons, changing catalog names, or replacing the vendored fonts.
 
@@ -195,7 +195,7 @@ a marker inside an HTML style element becomes part of its first selector.
 
 Carousel controls/views and their independent sheet belong to `:carousel`. Home, CV
 and Strava declare the bundle dependency; Blog and Search acquire neither its code
-nor its stylesheet. Shared UI compatibility exports delegate to that owner.
+nor its stylesheet. The shared UI media interface acquires that module on use.
 
 The footer's email/toggle remains eager. The closed contact form contributes no
 initial code or CSS; opening it mounts the `:contact` boundary and starts both

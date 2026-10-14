@@ -15,7 +15,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 
 - Cold layout/handler JVM suites require compiled `:document` resources. Build
   them in the isolated test checkout, or reuse its standalone release output; see
-  `doc/testing.md`.
+  `doc/testing.md`. The full JVM suite also requires the compiled `:ssr` worker
+  in that checkout for its actual Node protocol checks.
 - Mount actual Reagent components, dereference subscriptions during render, dispatch
   real events, await lifecycle completion, and unmount in cleanup. Avoid direct
   app-db mutation, dangling subscriptions and forced React flushes.
@@ -47,6 +48,15 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Release browser-test builds include selected module entries through Shadow's
   native namespace list; development uses preloads. Release excludes development
   preloads, so both paths must expose the same lazy owner inventory.
+  Hydration fixtures that replace the module map must include each lazy parser
+  and renderer owner; retained SSR HTML alone does not prove those owners mounted.
+  Keep `:browser-test` in selected release test reader features so test fixtures
+  can render server markup through the framework shim without enabling development
+  tooling. Optimized hydration checks use `website.nested-hydration-runner`;
+  the default display runner mutates a Closure define and is development-only.
+- Default development discovery excludes the release-only authored hydration
+  suite. Run its configured optimized runner separately; an eager development
+  engine cannot exercise that suite's delayed-owner/coercion preconditions.
 - Use owning schemas/constructors in fixtures instead of duplicating contracts.
   Test browser/Node-only schemas in `test/cljs`; JVM tests exercise portable/server
   contracts and generic composition helpers.
@@ -87,7 +97,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   Check that landing code/styles and FiraCode stay absent on unrelated cold routes;
   opening Search acquires its font, and visible code consumers retain typography.
   Idle prefetch checks include offscreen/hidden hints and restricted connections.
-  Data-inspector checks mount its lazy compatibility exports and preserve formatted
+  Data-inspector checks mount its lazy module exports and preserve formatted
   values, full error details and retry. Production audits prove pprint/home helpers
   leave main; a successful source move alone does not establish the boundary.
   Generate both plain and fenced-code Node fixtures. Verify completed Suspense
@@ -187,6 +197,18 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   roles and fixture schema; run it only in a disposable PostgreSQL container, never
   against a project database. See `doc/media-pipeline.md`.
 
+- Middleware integration checks construct the actual `wrap-base` stack, replacing
+  only asset preparation and service I/O. Cover source/jar bytes, conditional and
+  range responses, security/cache headers, real form-cookie CSRF, typed API JSON,
+  one bounded multipart parse and exact authenticated webhook preflight. Streaming
+  gzip must expose the shell before deferred content completes.
+
+- Handler/layout fixtures require generated CSS and the real `:document` bootstrap
+  in the same isolated snapshot as the test command. See `doc/testing.md`.
+- Prepared-asset checks compare exact optimized metadata, CSS/font URLs and body
+  bytes through source and jar resolvers. Reject missing, stale or corrupt output;
+  do not replace this proof with a manifest-exists assertion.
+
 - Markdown authoring checks cover data-only component argument round trips, private
   path/expression rejection, feature-pruned generated help, block-safe published
   markup and actual editor normalization/keyboard/source transitions. Vendor CSS
@@ -200,14 +222,3 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Upload-row checks cover measured/invalid/stale byte callbacks, indeterminate
   processing, errors/retry/cancel, ready-but-unpainted retention and preview-owned
   exit. A mocked queue acknowledgment does not prove actual image decode/visibility.
-- Middleware integration checks construct the actual `wrap-base` stack, replacing
-  only asset preparation and service I/O. Cover source/jar bytes, conditional and
-  range responses, security/cache headers, real form-cookie CSRF, typed API JSON,
-  one bounded multipart parse and exact authenticated webhook preflight. Streaming
-  gzip must expose the shell before deferred content completes.
-
-- Handler/layout fixtures require generated CSS and the real `:document` bootstrap
-  in the same isolated snapshot as the test command. See `doc/testing.md`.
-- Prepared-asset checks compare exact optimized metadata, CSS/font URLs and body
-  bytes through source and jar resolvers. Reject missing, stale or corrupt output;
-  do not replace this proof with a manifest-exists assertion.

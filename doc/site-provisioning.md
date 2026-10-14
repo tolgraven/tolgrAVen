@@ -100,7 +100,7 @@ they are external provider registrations and are not database contents.
 
 Other server-only integrations (e.g. AI API keys or a site's media bucket) belong
 in that web application's runtime environment. They are deliberately not copied
-from tolgraven. Registry S3 storage is shared infrastructure, not site media.
+from website. Registry S3 storage is shared infrastructure, not site media.
 
 ## Capacity and template behavior
 

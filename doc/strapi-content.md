@@ -14,7 +14,7 @@ Reload after an edit to see it, allowing for this cache. With no CMS configured,
 local development uses `resources/content-seed.json` on the backend. A configured
 CMS failure returns 503 and never silently restores the original seed.
 
-`tolgraven.content.contract/module-content` is the shared dependency manifest.
+`website.content.contract/module-content` is the shared dependency manifest.
 Every lazy module's `spec` includes `:content` referencing this manifest, including
 an empty vector when it needs no CMS content. The module loader waits for those
 sections before running its init function. Concurrent loads share pending

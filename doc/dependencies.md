@@ -108,7 +108,7 @@ bucket and prefix used by the upload. A read or dry-run check cannot establish
 current remote write/ACL permissions; verify those on the next real publish.
 
 The old localStorage library has been replaced by
-`tolgraven.component.legacy-storage`. It preserves the existing Transit-encoded
+`website.component.legacy-storage`. It preserves the existing Transit-encoded
 key and payload, caches reads, batches writes and handles cross-tab updates.
 New persistent component state uses the existing scoped storage system.
 
@@ -132,10 +132,10 @@ Several larger libraries remain because they perform real work:
 
 ## JVM logging
 
-Timbre is the application logging backend. The handler loads `tolgraven.log`
+Timbre is the application logging backend. The handler loads `website.log`
 first so Mount initializes its configuration before application services.
-`tolgraven.log` owns console output
-(info and above), rotating `log/tolgraven.log` output, namespace thresholds and
+`website.log` owns console output
+(info and above), rotating `log/website.log` output, namespace thresholds and
 pretty exceptions. Its initialization also installs the sole application default
 uncaught exception handler, passing the Throwable and failing thread's name to
 Timbre. Loading `core` or `log` must not replace that handler.

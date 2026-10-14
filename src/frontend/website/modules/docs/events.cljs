@@ -1,0 +1,35 @@
+(ns website.modules.docs.events
+  (:require [website.react :as r]
+            [website.modules.docs.pages :as pages]
+            [website.component.data :as data]))
+
+(def debug (when ^boolean goog.DEBUG r/debug))
+
+(r/reg-event-fx :docs/init
+ (fn [{:keys [db]} [_ ]]
+   (let [page (get-in db [:state :docs :current-page])] ;this shouldn't be needed, but early get from controller somehow doesn't ever continue its chain
+     (when-not (or (get-in db [:docs])
+                   (= :source (get-in db [:common/route :data :page])))
+       {:dispatch-n
+        [[:docs/get (or page "index")]
+         [:docs/set-page (or page "index")]]}))))
+
+
+(r/reg-event-fx :docs/state
+  (fn [{:keys [db]} [_ path value]]
+    {:db (assoc-in db (into [:state :docs] path) value)}))
+
+(r/reg-event-fx :docs/set-page
+  (fn [{:keys [db]} [_ page]]
+    (let [old-page (get-in db [:state :docs :current-page])]
+      {:db (-> db
+               (assoc-in [:state :docs :current-page] page)
+               (assoc-in [:state :docs :previous-page] old-page))})))
+
+(r/reg-fx :docs/load
+  (fn [page]
+    (data/prefetch! [(pages/document-dependency page)])))
+
+(r/reg-event-fx :docs/get
+  (fn [_ [_ page]]
+    {:docs/load page}))

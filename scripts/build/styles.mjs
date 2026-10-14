@@ -1,11 +1,10 @@
 /** Build the shell and independent feature sheets with the same locked tools. */
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {editorStyles} from './editor-styles.mjs';
 import crypto from 'node:crypto';
 
 const root = 'resources/scss';
-const output = process.env.CSS_OUTPUT_DIR || 'resources/public/css/tolgraven';
+const output = process.env.CSS_OUTPUT_DIR || 'resources/public/css/website';
 const watch = process.argv.includes('--watch');
 const sassOnly = process.argv.includes('--sass-only');
 const postcssOnly = process.argv.includes('--postcss-only');
@@ -28,10 +27,12 @@ async function inputFiles(directory, extensions) {
   }
 }
 
-async function revision() {
+async function revision(buildEntries) {
   const inputs = [
     'scripts/build/styles.mjs', 'scripts/build/editor-styles.mjs',
     'package.json', 'package-lock.json', 'resources/icon-fonts.json',
+    ...(buildEntries.includes('modules/markdown-editor.scss')
+      ? ['node_modules/@mdxeditor/editor/dist/style.css'] : []),
     'resources/public/css/opensans.css',
     ...await inputFiles(root, ['.scss']),
     // Module/component icon declarations and their macros own the style inventory.
@@ -72,13 +73,13 @@ async function current(buildEntries, inputRevision) {
 
 async function build() {
   const buildEntries = await entries();
-  const inputRevision = await revision();
+  const inputRevision = await revision(buildEntries);
   if (ifStale && await current(buildEntries, inputRevision)) {
     console.log(`CSS is current in ${output}`);
     return;
   }
-  const [{compile}, {default: postcss}, {default: autoprefixer}] = await Promise.all([
-    import('sass'), import('postcss'), import('autoprefixer'),
+  const [{compile}, {default: postcss}, {default: autoprefixer}, {editorStyles}] = await Promise.all([
+    import('sass'), import('postcss'), import('autoprefixer'), import('./editor-styles.mjs'),
   ]);
   for (const entry of buildEntries) {
     const file = path.join(output, entry.replace(/\.scss$/, '.css'));

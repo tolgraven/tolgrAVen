@@ -5,14 +5,14 @@ effects, deferral and justified React adapters.
 For the classic/Reagent 2 comparison and the reasons behind the current runtime,
 read [Reagent 2 and React 19](reagent-2-react-19-guide.md).
 
-Reusable rendered UI lives in `tolgraven.components.*`; feature views live under
-`tolgraven.modules.<feature>.*`. `tolgraven.component.*` implements declaration,
+Reusable rendered UI lives in `website.components.*`; feature views live under
+`website.modules.<feature>.*`. `website.component.*` implements declaration,
 lifecycle, data and state capabilities. Import the owning namespace directly;
-there is no `tolgraven.views` compatibility entry point. See [source layout](source-layout.md).
+there is no `website.views` compatibility entry point. See [source layout](source-layout.md).
 
 
-Require `[tolgraven.macros :refer-macros [defc]]` and
-`[tolgraven.component.registry]`, and use components in Hiccup.
+Require `[website.macros :refer-macros [defc]]` and
+`[website.component.registry]`, and use components in Hiccup.
 The default compiles directly to Reagent 2's `reagent.core/defc`: a memoized
 function component, with no error boundary, lifecycle class, DOM wrapper or data
 loader. Registering its descriptor happens once at definition time. As with
@@ -39,7 +39,7 @@ can retain their API during a migration.
 
 The registry is deliberately independent of the component runtime. Leaf views
 such as the error fallback can declare lean components without loading the runtime
-that uses them. Spec-capable components and explicit capabilities use `tolgraven.component`;
+that uses them. Spec-capable components and explicit capabilities use `website.component`;
 non-spec primitives keep the direct Reagent path. `{:spec false}` explicitly
 treats the first argument as domain data, including a domain `:features` key.
 
@@ -168,7 +168,7 @@ or `links`. Other arguments are domain data, even if their map happens to contai
 keys named `:props` or `:depends`. No spec argument needs to be added when absent.
 A feature may be `[id config]`; `[id false]` or `[id nil]` disables it.
 Require the namespace that registers a feature (for links,
-`tolgraven.modules.link-preview.views`) before using it.
+`website.modules.link-preview.views`) before using it.
 
 Root props only apply to native DOM roots, never fragment, child-component or
 React-interop roots. Link discovery needs a native DOM root. Feature composition
@@ -228,8 +228,10 @@ features whose failures should be contained.
 `:appear` and `:seen` merge the existing `appear-wrapper`, animation kind and
 `appeared` classes onto the component's own root. There is no wrapper element or
 React component; `appear-wrapper` is a CSS class retained for selector compatibility. Original classes, styles and refs are preserved. `:appear` waits
-for the initial frame before adding `appeared`. `:seen` uses IntersectionObserver
-with a default 50% threshold; `:root-margin` and `:once?` are configurable. Without
+for the initial frame before adding `appeared`. `:seen` retains `seen-merge`'s
+20% observer steps and 50% visibility decision, so its slide does not repeatedly
+reverse itself around a single 50% observer boundary. An explicit non-default
+`:threshold` selects that observer threshold; `:root-margin` and `:once?` are configurable. Without
 IntersectionObserver it falls back to appearing immediately after the initial
 frame. `:force true` skips waiting for visibility. Use either `:seen` or `:appear`;
 when both are selected, visibility controls the reveal.
@@ -337,7 +339,7 @@ Choose `:loading-prefab` for a skeleton, or `loading/<spinner>` explicitly. A st
 a function of current component arguments can build a skeleton:
 
 ```clojure
-(require '[tolgraven.component.loading :as loading])
+(require '[website.component.loading :as loading])
 
 (defc <profile>
   {:depends [{:source :url :url "/api/public-profile" :into [:profile]
@@ -467,7 +469,7 @@ its existing disk envelope.
 Dependencies register pending promises synchronously and adapters start together
 on the next tick. Repeated resources share a promise. Strapi unions all section
 keys queued in that tick into one `/api/content?keys=...` request. Modules and
-components use the same queue, including `tolgraven.modules.main.module/spec` and its
+components use the same queue, including `website.modules.main.module/spec` and its
 explicit shell dependencies in the shared backend/frontend manifest.
 
 ```clojure
@@ -836,11 +838,19 @@ backend document read, independently of browser sandboxing.
 
 ## Code presentation and copying
 
-`tolgraven.components.highlight/<code-block>` accepts either an option map or
+`website.modules.highlight.code-block/<code-block>` accepts either an option map or
 keyword/value options. Markdown forwards its `:code-options` map to this same
 component. Fenced blocks keep their language tag and inline snippets use generic
 Bash highlighting by default, with the shared Bruvbox palette. An explicit tag
 always wins; `:inline-language` changes only the untagged inline default.
+
+`website.modules.markdown.views/renderers` declares the parser's node/component
+mapping. Code nodes point to the shared Highlight component; the argument adapter
+supplies the language, inline/block mode and owner's options. Images point to the
+shared picture component. Native headings, lists and text marks use DOM element
+types directly, preserving rich children without adding component wrappers.
+The SDK renderer identities are built once, and current options flow through
+context so an option change does not remount images or reader controls.
 
 ```clojure
 [highlight/<code-block> source
@@ -890,7 +900,7 @@ extend the static whole-block preview when that editing capability is implemente
 ## Controlled text fonts
 
 Declare `:features [[:font font/fira]]` after requiring
-`[tolgraven.component.font :as font]`. A feature option function may return nil
+`[website.component.font :as font]`. A feature option function may return nil
 until intent makes the consumer visible. The root must be ordinary native Hiccup;
 its identity, refs, caller classes/style and animation handler are retained.
 Children are text-only: the feature renders a small text stack inside that root.

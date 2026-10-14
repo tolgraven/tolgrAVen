@@ -1,3 +1,3 @@
 {:linters {:redefined-var {:level :off} :unresolved-symbol {:level :off} :unused-binding {:level :off} :unused-namespace {:level :off} :unresolved-namespace {:level :off}}
- :lint-as {tolgraven.macros/for     clojure.core/for
-           tolgraven.macros/defcomp clojure.core/defn}}
+ :lint-as {website.macros/for     clojure.core/for
+           website.macros/defcomp clojure.core/defn}}

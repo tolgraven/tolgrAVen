@@ -12,7 +12,7 @@ Do not retain completed investigation diaries or historical test counts as curre
   and ownership instructions live in `features/reagent-native-refactor.md`.
   See `doc/reagent-2-react-19-guide.md` for the library comparison and design rationale.
 - Reagent 2 / React 19 components use `defc`; spec-capable instances accept map
-  specs or feature-vector shorthand. Full pages use `defpage` and always have an error boundary. Application re-frame calls go through `tolgraven.react`.
+  specs or feature-vector shorthand. Full pages use `defpage` and always have an error boundary. Application React, Reagent and re-frame calls go through `website.react` as `r`; raw framework imports belong to its runtime boundary.
 - Module-local `pages.cljc` files contain native Reitit route trees. Module specs expose these declarations; browser and server routers compose them.
 - JVM adapters acquire public data with snapshot-owned, bounded Supabase REST
   connections; the eager Shadow `:ssr` Node build renders the same page components as the browser. `:ssr` in config controls streaming and worker settings.
@@ -40,7 +40,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 - The standalone `:document` CLJS target supplies parser-blocking head return policy
   and body SSR entrance/image readiness before hydration; build it for deployment.
 - Local returns and reloads may use a service-worker document pairing rendered HTML with exact EDN state/content; install that state before hydration. The `:return-worker` build is part of the deployment.
-- Read `src/frontend/tolgraven/AGENTS.md`, `src/cljc/tolgraven/AGENTS.md`, `src/backend/tolgraven/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
+- Read `src/frontend/website/AGENTS.md`, `src/cljc/website/AGENTS.md`, `src/backend/website/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
 - Markdown code, including untagged blocks and inline snippets, shares the deferred
   formatter boundary. Node SSR renders Bruvbox-highlighted tokens immediately;
   browser acquisition waits for the existing after-page gate. The blog supplies
@@ -48,11 +48,20 @@ Do not retain completed investigation diaries or historical test counts as curre
   Bruvbox palette/token ownership lives in `modules/highlight/theme.cljs`.
 
 ## Project Structure & Module Organization
-- `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code, and shared CLJC infrastructure. Feature implementations and their portable declarations live in `src/frontend/tolgraven/modules/<module>/`.
-- `src/frontend/tolgraven/components/`: reusable rendered UI and site shell;
+- Application namespaces use `website.*` across CLJ, CLJC and CLJS. Standalone
+  pre-hydration `bootstrap.*` sources live beside `website/` in `src/frontend/`.
+  Keep external asset URLs and existing persisted storage identities stable.
+- `src/backend`, `src/frontend`, `src/cljc`: Backend code, frontend code, and shared CLJC infrastructure. Feature implementations and their portable declarations live in `src/frontend/website/modules/<module>/`.
+- `components/ui/` groups shared UI by component type. Import each component's
+  owning namespace directly; do not retain forwarding definitions or compatibility exports.
+- Feature loading is explicit through module declarations or `modules/<feature>/interface`.
+  Shared components stay lightweight; preserve substantive prototypes when moving their owner.
+- Markdown declares its node/component mapping in `modules/markdown/views.cljs`.
+  Highlight owns the shared code-block controls and the separately deferred token formatter.
+- `src/frontend/website/components/`: reusable rendered UI and site shell;
   `component/` contains the declaration/lifecycle runtime.
 - `experiments/clj`: preserved JVM prototypes, compiled only with `:experiments`.
-- `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/tolgraven`.
+- `resources/`: runtime assets and public output; SCSS lives in `resources/scss` and builds into `resources/public/css/website`.
 - `test/clj`, `test/cljs`: backend and frontend tests.
 - `env/`: environment-specific source/resources (dev/test/prod).
 - `resources/supabase/`: schema, native operations and account import SQL.
@@ -114,7 +123,9 @@ Do not retain completed investigation diaries or historical test counts as curre
   target releases first (no HMR); document/bootstrap requests await only that
   bounded release barrier, while unrelated assets/API remain available. `(cljs-repl)` waits for
   startup and selects the browser runtime in the calling session. See `README.md`.
-- Browser builds discover `modules/*/module.cljs` through `tolgraven.build.browser/process`;
+- Browser builds discover `modules/*/module.cljs` through `website.build.browser/process`;
+  development browser builds also select `env/dev/cljs/website/modules/` with the
+  `:dev` reader feature. Production and Node SSR exclude those declarations.
   the literal spec `:id` owns the bundle ID and namespace `:bundle/depends-on`
   declares extra code dependencies. Runtime inventories track declaration resources
   for incremental metadata updates. Restart the browser watch after adding/removing
@@ -153,7 +164,7 @@ Do not retain completed investigation diaries or historical test counts as curre
 
 ## Dependency ownership
 
-- Timbre owns JVM logging configuration in `tolgraven.log`; tools.logging and
+- Timbre owns JVM logging configuration in `website.log`; tools.logging and
   SLF4J route through its existing adapters. Select JBoss's SLF4J provider in
   Lein and direct Java launches before Undertow loads. Use the shared
   `org.clj-commons/pretty`, not the duplicate `io.aviso/pretty` or Logback XML.
@@ -231,11 +242,11 @@ These are required principles for new code and changes to existing code. Follow 
   local timers; its resulting application action still dispatches an event. This
   exception does not justify putting network, persistence or business state in hooks.
 - Read `doc/reagent-re-frame.md` for examples and the decision checklist, and the
-  `src/frontend/tolgraven/AGENTS.md` for concrete adapter contracts. Review the entire diff against
+  `src/frontend/website/AGENTS.md` for concrete adapter contracts. Review the entire diff against
   these principles before merging, including tests and failure paths.
 
 ### Data sourcing and state
-- Read application state through re-frame subscriptions, using the existing subscription helpers and `tolgraven.react` shim. Change state through registered events and the existing update helpers. Do not dereference or mutate `re-frame.db/app-db` directly from views, routing code, or page preparation helpers.
+- Read application state through re-frame subscriptions, using the existing subscription helpers and `website.react` shim. Change state through registered events and the existing update helpers. Do not dereference or mutate `re-frame.db/app-db` directly from views, routing code, or page preparation helpers.
 - Keep subscription computations and event-db handlers pure. Put HTTP, Supabase, Strapi, localStorage, timers, and other external side effects in registered effects or dedicated lifecycle adapters. Pass results back through events that update app-db; components then observe them through subscriptions.
 - Use the existing subscription-backed Supabase and Strapi bindings. A subscription may acquire an existing managed data source; the source adapter owns the read, deduplication, result events, and cleanup. Do not perform network reads inside a subscription's derived-value computation or component render.
 - Declare content dependencies in component, module, or page specifications. Preloading must acquire the same managed subscriptions/data bindings that the rendered component uses. Do not add a parallel imperative preparation namespace, duplicate query definitions, or fetch content directly from a page/view to avoid using the normal data flow.
@@ -261,7 +272,7 @@ These are required principles for new code and changes to existing code. Follow 
 - Prefer Clojure maps, vectors, destructuring and sequence functions within application code. Do not recursively convert Reagent props that are already Clojure values, or inspect React element internals to recover data.
 - Convert JSON/SDK payloads once at the boundary using standard `js->clj`/`clj->js` options. Native events, DOM measurements, React refs and SDK objects legitimately require property access; keep that access in the adapter that owns it.
 - Keep native Promises where a JavaScript API or shared asynchronous adapter requires them. Page/component code should declare dependencies and dispatch events rather than duplicate transport queries and Promise chains. Do not introduce an async library or thin wrappers solely to hide `js/Promise` syntax.
-- `tolgraven.react/use-effect` and `use-layout-effect` accept implicit nil for no
+- `website.react/use-effect` and `use-layout-effect` accept implicit nil for no
   cleanup. Hook dependencies are Clojure vectors/sequences compared by value;
   refs/functions/native handles remain opaque. Memo/callback helpers require
   explicit dependencies and preserve return values. Use these upstream Reagent
@@ -269,7 +280,7 @@ These are required principles for new code and changes to existing code. Follow 
 - Keep adapted React component identities stable across renders. Use Clojure props with Reagent adapters; reserve `#js` containers for APIs that actually require JavaScript values.
 
 ### Toolchain and verification
-- Use the existing `tolgraven.react` shim so development uses the instrumented re-frame API and non-debug builds use the regular API. Do not bypass the shim or introduce a second React/Reagent runtime.
+- Use the existing `website.react` shim so development uses the instrumented re-frame API and non-debug builds use the regular API. Do not bypass the shim or introduce a second React/Reagent runtime.
 - Use the configured Shadow CLJS builds and module boundaries. Keep browser-only APIs out of server execution, and verify referenced framework symbols against the installed versions rather than assuming an API exists.
 - Inspect the running Shadow worker and its compile errors/warnings after changes. Do not launch a competing compile for a build already being watched; use its existing worker/nREPL. Compile affected browser, test, and SSR targets as appropriate.
 - `:app` and `:app-dev` share output. Isolate production build output during a dev watch, or pause the watch and restore its assets before browser checks.
@@ -299,6 +310,11 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   - `[<user-profile>]`
 
 ## Testing Guidelines
+
+- Clear viewport, network and CPU emulation after browser checks, including failure
+  cleanup. Verify the reset on an adopted tab: another tool connection may have
+  left a fixed viewport even when the reset reports success. User-facing tabs must
+  follow the actual browser window again.
 - Use `lein with-profile +project/test test` for backend tests; browser tests use Shadow `:app-test` and the runner in `bb test:browser`.
 - Generate hydration fixtures from the current Node renderer with `bb ssr:fixtures` before browser tests. The obsolete Doo runner has been removed.
 - Inspect existing watched builds before compiling. Live development normally watches `:app-dev`, `:ssr`, and `:return-worker`; never overwrite watched output with another compiler.
@@ -313,6 +329,11 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   after implementation and required verification are complete, the current head is
   pushed, and the description matches it. Return a PR to draft when follow-up
   implementation starts.
+- When assigned a PR, publish a draft once a coherent committed checkpoint exists;
+  keep its head and description current while work continues. A local branch or
+  a "ready for publication" handoff does not complete that assignment. Subagents
+  must return the PR URL, verification status, and remaining work; the parent
+  verifies publication and completes authorized review/merge before closing it.
 - A user request to make or update a PR authorizes committing the task changes,
   pushing its feature branch, and creating/updating the PR in
   `https://github.com/tolgraven/tolgrAVen`; do not ask again solely for these

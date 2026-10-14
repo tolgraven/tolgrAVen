@@ -9,7 +9,7 @@ The default frontend flow is ordinary Reagent Hiccup backed by re-frame. This
 applies to performance changes, lazy components and third-party React packages as
 well as everyday UI. An explicit event, app-db change and called effect are easier
 to inspect and debug than an equivalent flow spread across callbacks and stores.
-Use the `tolgraven.react` shim so application calls retain development tracing.
+Use the `website.react` shim so application calls retain development tracing.
 
 ## Follow the event flow
 

@@ -1,0 +1,262 @@
+(ns website.ssr.local
+  "Paired local HTML/state return snapshots. The service worker delivers an
+   ordinary document; React owns its markup from hydration onward."
+  (:require [ajax.core :as ajax]
+            [cljs.reader :as reader]
+            [website.react :as r]
+
+            [website.listener :as listener]
+            [website.macros :refer-macros [defc]]
+            [website.loader :as loader]
+            [website.render-context :as context]
+            [website.component.restore :as restore]
+            [website.component.storage :as storage]
+            [website.browser-resources :as browser-resources]
+            [website.ssr.contract :as ssr-contract]
+            [website.ssr.return-contract :as contract]))
+
+(defonce *connection (atom nil))
+(defonce *pending (atom nil))
+(defonce *departure-generation (atom 0))
+(declare clear!)
+
+(defn active! [registration]
+  (let [worker (or (.-installing registration) (.-waiting registration) (.-active registration))]
+    (js/Promise.
+      (fn [resolve reject]
+        (let [*timeout (atom nil)]
+          (letfn [(finish! [error]
+                    (js/clearTimeout @*timeout)
+                    (.removeEventListener worker "statechange" changed!)
+                    (if error (reject error) (resolve worker)))
+                  (changed! []
+                  (case (.-state worker)
+                    "activated" (finish! nil)
+                    "redundant" (finish! (js/Error. "Local worker was replaced"))
+                    nil))]
+          (reset! *timeout (js/setTimeout #(finish! (js/Error. "Local worker activation timed out")) 10000))
+          (.addEventListener worker "statechange" changed!)
+          (changed!)))))))
+
+(defn message! [worker payload]
+  (js/Promise.
+    (fn [resolve reject]
+      (let [channel (js/MessageChannel.)
+            finish! (fn [value]
+                      (.close (.-port1 channel))
+                      (.close (.-port2 channel))
+                      (if value (resolve nil) (reject (js/Error. "Local page cache unavailable"))))
+            timeout (js/setTimeout #(finish! false) 3000)]
+        (set! (.-onmessage (.-port1 channel))
+              (fn [event] (js/clearTimeout timeout) (finish! (.-ok (.-data event)))))
+        (.postMessage worker (clj->js payload) #js [(.-port2 channel)])))))
+
+(defn connect! []
+  (or @*connection
+      (let [pending
+            (js/Promise.
+              (fn [resolve reject]
+                (if-not (and (exists? js/window) js/window.isSecureContext
+                             (.-serviceWorker js/navigator))
+                  (resolve nil)
+                  (ajax/GET "/api/page-return-template"
+                    {:response-format (ajax/json-response-format {:keywords? true}) :timeout 10000
+                     :handler (fn [{:keys [build] :as config}]
+                                (if (and (not ^boolean goog.DEBUG)
+                                           (not= build (some-> (.querySelector js/document "meta[name=app-build]")
+                                                              (.getAttribute "content"))))
+                                  (reject (js/Error. "Page build changed; reload before saving a local document"))
+                                (-> (.register (.-serviceWorker js/navigator)
+                                               (str "/return-worker.js?build=" (js/encodeURIComponent build))
+                                               #js {:scope "/" :updateViaCache "none"})
+                                    (.then active!)
+                                    (.then (fn [worker] (resolve (assoc config :worker worker))))
+                                    (.catch reject))))
+                     :error-handler reject}))))]
+        (let [retryable (-> pending (.catch (fn [error] (reset! *connection nil) (throw error))))]
+          (reset! *connection retryable)
+          retryable))))
+
+(defn modules []
+  (into {} (keep (fn [[id loadable]]
+                  (when (loader/ready? id) [id @loadable]))) loader/modules))
+
+(defn- renderer! []
+  (loader/acquire-code! :page-capture))
+
+(defn pair! [db config]
+  (-> (renderer!) (.then (fn [spec] ((:pair! spec) db config)))))
+
+(defonce *save-generation (atom 0))
+
+(defn- publish! [db arm? current? worker config spec]
+  (when (current?)
+    (-> (js/Promise.resolve ((:pair! spec) db config))
+        (.then (fn [pair]
+                 (when (current?)
+                   (-> (message! worker (assoc (dissoc pair :state) :arm arm?))
+                       (.then (fn [_]
+                                (when (current?)
+                                  (r/dispatch [:page-return/status {:status :ready :url (:url pair)}])))))))))))
+
+(defn save! [db arm?]
+  ;; A queued background save must not overtake the fresh departure pair.
+  (when (and arm? @*pending)
+    (js/clearTimeout @*pending)
+    (reset! *pending nil))
+  ;; Loading the renderer is asynchronous. Discard a save overtaken by another
+  ;; save or a route change, rather than pairing old state with a new URL.
+  (let [generation (swap! *save-generation inc)
+        url (.-href js/location)
+        current? #(and (= generation @*save-generation) (= url (.-href js/location)))]
+    (-> (connect!)
+        (.then (fn [{:keys [worker] :as config}]
+                 (when (and worker (current?))
+                   (-> (renderer!)
+                       (.then #(publish! db arm? current? worker config %))))))
+        ;; Optional persistence retains normal navigation when unavailable.
+        (.catch (fn [error]
+                  (when (current?)
+                    (when arm? (clear!))
+                    (r/dispatch [:page-return/status {:status :unavailable :message (str error)}])))))))
+
+(r/reg-event-fx :page-return/save
+  (fn [{:keys [db]} [_ arm?]] {:page-return/save {:db db :arm? arm?}}))
+(r/reg-fx :page-return/save (fn [{:keys [db arm?]}] (save! db arm?)))
+(r/reg-event-fx :page-return/install
+  (fn [{:keys [db]} [_ state]]
+    {:db (ssr-contract/merge-state db (update state :state contract/restored-view-state))
+     :page-return/consume state}))
+(r/reg-fx :page-return/consume storage/consume-restored!)
+(r/reg-event-db :page-return/status (fn [db [_ status]] (assoc db :page-return status)))
+(r/reg-sub :page-return/status (fn [db _] (:page-return db)))
+(r/reg-sub :page-return/source (fn [db _] (contract/source-for db)))
+(r/reg-event-fx :page-return/clear (fn [_ _] {:page-return/clear true}))
+(r/reg-fx :page-return/clear (fn [_] (clear!)))
+
+(defn install! []
+  (when-let [element (.getElementById js/document "local-page-bootstrap")]
+    (let [snapshot (-> (js->clj (js/JSON.parse (.-textContent element)) :keywordize-keys true)
+                       (update :modules #(mapv keyword %)))
+          url (str (.-origin js/location) (.-pathname js/location) (.-search js/location))
+          state (reader/read-string (:state-edn snapshot))]
+      (when-not (and (map? state) (contract/valid? snapshot
+                                   {:url url :build (.getAttribute (.getElementById js/document "app") "data-page-build")
+                                    :now (.now js/Date)}))
+        (throw (js/Error. "Invalid local page snapshot")))
+      ;; The cached document was rendered in restoration mode. This same mode
+      ;; is required for its first render, even if it was reached via a reload.
+      (restore/begin! {:hydrate? true :back? true})
+      (swap! restore/*context assoc :local? true)
+      (restore/install-module-views! (:module-views snapshot))
+      (r/dispatch-sync [:page-return/install state])
+      (reset! context/*interactive? false)
+      snapshot)))
+
+(defn prepare! [snapshot]
+  (js/Promise.all
+    ;; Completed Suspense boundaries retain their native SSR code. Hydrate the
+    ;; surrounding page first; the formatter follows through after-page!.
+    (into-array (map loader/acquire-code! (remove #{:highlight} (:modules snapshot))))))
+
+(defn schedule! []
+  (swap! *save-generation inc)
+  (when @*pending (js/clearTimeout @*pending))
+  (reset! *pending
+    (js/setTimeout (fn [] (reset! *pending nil) (r/dispatch [:page-return/save false])) 500)))
+
+(defn clear! []
+  (swap! *save-generation inc)
+  (when-let [spec (loader/code-spec :page-capture)] ((:stop! spec)))
+  (-> (connect!) (.then (fn [{:keys [worker]}] (when worker (message! worker {:op "clear"}))))
+      (.catch (fn [_] nil))))
+
+(defn resumed! [event]
+  (when (.-persisted event)
+    (swap! *save-generation inc)
+    (swap! *departure-generation inc)
+    (-> (connect!)
+        (.then (fn [{:keys [worker]}] (when worker (message! worker {:op "disarm"}))))
+        (.catch (fn [_] nil)))))
+
+(r/reg-event-fx :page-return/depart
+  (fn [{:keys [db]} [_ url]] {:page-return/depart {:db db :url url}}))
+
+(defn navigate! [url] (.assign js/location url))
+
+(defn depart! [{:keys [db url]}]
+  (restore/direct-images!)
+  ;; A fresh pair must reach the cache before leaving. Bound optional capture
+  ;; so worker/network failure never traps an ordinary external navigation.
+  (let [generation (swap! *departure-generation inc)
+        *timeout (atom nil)
+        source-url (.-href js/location)
+        deadline (js/Promise. (fn [resolve _]
+                               (reset! *timeout (js/setTimeout #(resolve :timeout) 1000))))
+        save (-> (save! db true) (.then (fn [_] :saved)))]
+    (-> (js/Promise.race #js [save deadline])
+        (.then (fn [result]
+                 (js/clearTimeout @*timeout)
+                 (when (and (= generation @*departure-generation)
+                            (= source-url (.-href js/location)))
+                   ;; A timed-out render must never publish if BFCache returns to
+                   ;; this same URL while its older asynchronous work completes.
+                   (when (= :timeout result) (clear!))
+                   (navigate! url)))))))
+
+(r/reg-fx :page-return/depart depart!)
+
+(defn departure!
+  "Capture the same exact page for native links and programmatic departures."
+  ([]
+   (restore/direct-images!)
+   (storage/save-navigation!)
+   (r/dispatch-sync [:page-return/save true]))
+  ([url]
+   (restore/direct-images!)
+   ;; Saving scroll history dispatches synchronously, outside event handling;
+   ;; the queued departure then receives that updated state.
+   (storage/save-navigation!)
+   (r/dispatch [:page-return/depart url])))
+
+(defn external-click! [event]
+  (when (and (= 0 (.-button event)) (not (.-defaultPrevented event))
+             (not (or (.-metaKey event) (.-ctrlKey event) (.-shiftKey event) (.-altKey event))))
+    (when-let [anchor (some-> (.-target event) (.closest "a[href]"))]
+      (let [url (js/URL. (.-href anchor))]
+        (when (and (not (.hasAttribute anchor "download"))
+                   (#{"http:" "https:"} (.-protocol url))
+                   (not= (.-origin url) (.-origin js/location))
+                   (or (= "" (.-target anchor)) (= "_self" (.-target anchor))))
+          (.preventDefault event)
+          (departure! (.-href url)))))))
+
+(defc <capture> {:profile false} []
+  (let [source @(r/subscribe [:page-return/source])
+        identity @storage/*identity
+        *previous-identity (r/use-ref identity)]
+    (r/use-effect
+      (fn []
+        ;; Invalidate an in-flight pair immediately, before the debounce gate.
+        (swap! *save-generation inc)
+        (browser-resources/after-page! schedule!)) [source])
+    (r/use-effect
+      (fn []
+        (when (not= identity (.-current *previous-identity))
+          (set! (.-current *previous-identity) identity)
+          (clear!))
+        nil)
+      [identity]))
+  (r/use-effect
+    (fn []
+      (let [cancel-connect! (browser-resources/after-page!
+                             #(-> (connect!) (.catch (fn [_] nil))))
+            stop-listeners! (listener/listen! :page-return
+                              [{:target "document", :event "click", :handler external-click!}
+                               {:target "window", :event "pageshow", :handler resumed!}])]
+        (fn []
+          (cancel-connect!)
+          (stop-listeners!)
+          (when @*pending (js/clearTimeout @*pending) (reset! *pending nil))
+          (when-let [spec (loader/code-spec :page-capture)] ((:stop! spec)))))) [])
+  nil)

@@ -15,6 +15,15 @@ from urllib.parse import urlsplit, parse_qs
 
 ROOT = Path(__file__).resolve().parents[2]
 
+def stylesheet_root(tree):
+    """Use each checkout's built CSS, including historical benchmark baselines."""
+    public = tree / 'resources/public'
+    shells = sorted((public / 'css').glob('*/main.min.css'))
+    if len(shells) != 1:
+        raise ValueError(f'Expected one built shell stylesheet in {tree}; found {shells}. '
+                         'Build CSS and remove obsolete generated output before benchmarking.')
+    return shells[0].parent.relative_to(public)
+
 class ImageLink:
     def __init__(self, kibps, latency_ms):
         self.rate = kibps * 1024
@@ -131,9 +140,10 @@ const pose=()=>{const hero=document.querySelector('#top-banner');const final=her
  if(opacity){for(const image of hero.querySelectorAll('img,.progressive-image__preview-layer'))for(const animation of image.getAnimations()){animation.pause();animation.currentTime=75;}document.documentElement.dataset.snapshotPose='midfade';}
  else requestAnimationFrame(pose);};requestAnimationFrame(pose);
 </script>'''
+            styles = self.server.css_roots[version].as_posix()
             document = f'''<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
 <base href="/assets/{version}/">{unload}<script>{probe}</script>{snapshot}{policy}{preloads}
-<link rel="stylesheet" href="css/tolgraven/main.min.css"><link rel="stylesheet" href="css/tolgraven/modules/home.min.css">
+<link rel="stylesheet" href="{styles}/main.min.css"><link rel="stylesheet" href="{styles}/modules/home.min.css">
 </head><body class="container themable framing-shadow sticky-footer-container"><div id="app" data-document-pending>{markup}</div>{gate}{driver}</body></html>'''
             self.send(document.encode(), 'text/html; charset=utf-8',
                       {'Permissions-Policy': 'unload=(self)'} if returns == 'network' else None)
@@ -228,6 +238,7 @@ def main():
     server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler)
     server.trees = {'baseline': args.baseline.resolve(), 'progressive': args.progressive.resolve()}
     server.fixtures = {}
+    server.css_roots = {version: stylesheet_root(tree) for version, tree in server.trees.items()}
     versions = {}
     for version, tree in server.trees.items():
         fixture = tree / 'resources/public/js/tests/js/landing-ssr.json'
@@ -238,7 +249,8 @@ def main():
         versions[version] = {'commit': subprocess.check_output(['git', '-C', str(tree), 'rev-parse', 'HEAD'], text=True).strip(),
                              'fixtureSha256': hashlib.sha256(fixture.read_bytes()).hexdigest(),
                              'adapterSha256': hashlib.sha256(gate_file.read_bytes()).hexdigest(),
-                             'mainCssSha256': hashlib.sha256((tree / 'resources/public/css/tolgraven/main.min.css').read_bytes()).hexdigest(),
+                             'mainCssSha256': hashlib.sha256((tree / 'resources/public' / server.css_roots[version] / 'main.min.css').read_bytes()).hexdigest(),
+                             'cssRoot': server.css_roots[version].as_posix(),
                              'trackedChanges': subprocess.call(['git', '-C', str(tree), 'diff', '--quiet']) != 0}
     class HeroPreloads(HTMLParser):
         def __init__(self):

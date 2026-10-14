@@ -129,19 +129,23 @@ can still enter an existing/custom fence tag without changing the source code.
 
 ## Component identities and arguments
 
+Fenced blocks retain their language tag and metadata in Markdown. The `clj`,
+`cljs`, `cljc` and `clojurescript` tags use Clojure's highlighting grammar without
+rewriting the authored tag. Untagged fences use automatic detection.
+
 The tag is a data container. Its `component` field preserves the actual qualified
 ClojureScript component identity, including the angle brackets in its Var name:
 
 ```markdown
-<Component component="tolgraven.components.content.box/<highlight-box>" title="A useful detail" text="Something worth noticing" tone="tip" />
+<Component component="website.components.content.box/<highlight-box>" title="A useful detail" text="Something worth noticing" tone="tip" />
 
-<Component component="tolgraven.components.content.markdown/<heading>" level="json:2" text="A section" />
+<Component component="website.components.content.markdown/<heading>" level="json:2" text="A section" />
 
-<Component component="tolgraven.components.content.markdown/<list>" items='json:["One","Two"]' ordered="json:true" />
+<Component component="website.components.content.markdown/<list>" items='json:["One","Two"]' ordered="json:true" />
 
-<Component component="tolgraven.components.content.box/<highlight-box>" text="db:[:content :common :title]" />
+<Component component="website.components.content.box/<highlight-box>" text="db:[:content :common :title]" />
 
-<Component component="tolgraven.modules.settings.views/<config-table>" title="Make yourself comfortable" />
+<Component component="website.modules.settings.views/<config-table>" title="Make yourself comfortable" />
 ```
 
 Components with a map/spec argument expose its required and optional fields. Other
@@ -149,7 +153,7 @@ signatures take the `args` field as a quoted data vector, retaining the original
 positional call contract:
 
 ```markdown
-<Component component="tolgraven.components.code-block/<code-block>" args='json:["(+ 1 2)",{"language":"clojure"}]' />
+<Component component="website.modules.highlight.code-block/<code-block>" args='json:["(+ 1 2)",{"language":"clojure"}]' />
 ```
 
 Plain strings are literal. `json:` supplies numbers, booleans, arrays, objects or
@@ -196,7 +200,7 @@ its URL-keyed public rendition manifest through a React context, including in th
 editor preview. No widget copies the asset store or fetches image metadata itself.
 
 ```markdown
-<Component component="tolgraven.components.content.frame/<frame>" src="https://example.com" title="Reference" interactive="json:true" layout-width="24rem" layout-height="fit" layout-flow="right" />
+<Component component="website.components.content.frame/<frame>" src="https://example.com" title="Reference" interactive="json:true" layout-width="24rem" layout-height="fit" layout-flow="right" />
 ```
 
 Frames reuse the existing iframe sandbox. Safe local documents without scripts

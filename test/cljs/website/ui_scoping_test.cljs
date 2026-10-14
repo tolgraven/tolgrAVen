@@ -1,0 +1,53 @@
+(ns website.ui-scoping-test
+  (:require-macros [website.test-async :refer [go-promise await!]])
+  (:require [cljs.test :refer-macros [deftest is async]]
+            [cljs.reader :as reader]
+            [website.react :as r]
+            [website.events]
+            [website.subs]
+            [website.loader :as loader]
+            [website.util :as util]
+            [website.test-support :as support]))
+
+(deftest numeric-display-preserves-default-explicit-and-invalid-precision-behavior
+  (is (= 0 (util/format-number nil)))
+  (is (= 0 (util/format-number 0)))
+  (is (= 12.346 (util/format-number 12.3456)))
+  (is (= 12 (util/format-number 12.3456 0)))
+  (is (= -12.35 (util/format-number -12.3456 2)))
+  (is (= 12.3456 (util/format-number 12.3456 -1)))
+  (is (= "unavailable" (util/format-number "unavailable"))))
+
+(deftest optional-inspector-retains-formatted-values-error-details-and-retry
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                value {:nested {:values [1 2 3] :label "Preserved"}}
+                *error (r/atom {:error (ex-info "Readable error" {})})]
+            (try
+              (await! (support/render! root
+                       (loader/component-vector {:module :data-inspector, :view :data, :load-on :immediate}
+                                                ["Data" value])))
+              (await! (support/wait-for!
+                        #(some-> (.querySelector element "pre") .-textContent
+                                 (.includes "Preserved"))))
+              (is (= value (reader/read-string (.-textContent (.querySelector element "pre")))))
+              (is (= "Data" (.-textContent (.querySelector element "h5"))))
+              (await! (support/wait-for!
+                        #(.querySelector element "pre code.language-clojure span")))
+              (is (= value (reader/read-string (.-textContent (.querySelector element "pre code")))))
+              (await! (support/render! root
+                       (loader/component-vector {:module :data-inspector, :view :error, :load-on :immediate}
+                                                ["test" "view" *error value])))
+              (let [retry (await! (support/wait-for!
+                                   #(some (fn [button]
+                                            (when (= "Attempt reload" (.-textContent button)) button))
+                                          (array-seq (.querySelectorAll element "button")))))]
+                (is (.includes (.-textContent element) "Readable error"))
+                (is (.includes (.-textContent element) "Props/spec:"))
+                (.click retry)
+                (is (nil? @*error)))
+              (finally (support/unmount! root)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))

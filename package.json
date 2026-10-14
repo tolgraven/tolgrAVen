@@ -19,7 +19,7 @@
     "remark-gfm": "^4.0.1"
   },
   "scripts": {
-    "init": "mkdir -p resources/public/css/tolgraven && npm ci && npm run vendor:sync",
+    "init": "mkdir -p resources/public/css/website && npm ci && npm run vendor:sync",
     "sass:dev": "node scripts/build/styles.mjs --watch --sass-only",
     "sass:build": "node scripts/build/styles.mjs --sass-only",
     "postcss:dev": "node scripts/build/styles.mjs --watch --postcss-only",

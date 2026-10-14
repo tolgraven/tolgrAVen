@@ -146,7 +146,8 @@ document.querySelector('#run').onclick = async () => {
     // Leave the application document and use the unrelated document's native
     // Back button. A saved pair alone is not proof of native Back classification.
     frame.src = '/__tests/away.html';
-    await wait(() => doc()?.location.pathname === '/__tests/away.html');
+    await wait(() => doc()?.location.pathname === '/__tests/away.html' &&
+      doc()?.querySelector('button'));
     doc().querySelector('button').click();
     await wait(() => doc()?.location.pathname === '/' &&
       doc()?.documentElement.hasAttribute('data-image-direct') && doc()?.querySelector('#intro'));

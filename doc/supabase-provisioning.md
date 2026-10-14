@@ -237,7 +237,7 @@ profile, first create/confirm the matching Supabase account, then run from the
 trusted provisioning environment:
 
 ```sh
-lein run -m tolgraven.provision.supabase.cli link-user <supabase-account-uuid> <firebase-profile-id>
+lein run -m website.provision.supabase.cli link-user <supabase-account-uuid> <firebase-profile-id>
 ```
 
 This requires `SUPABASE_PUBLIC_URL` and `SUPABASE_SERVICE_KEY`, checks that the
@@ -323,7 +323,7 @@ SCRYPT and the providers above are supported. Missing provider subjects, duplica
 UIDs/emails/identities, MFA and tenant accounts require explicit resolution.
 
 ```sh
-lein run -m tolgraven.provision.supabase.cli dump-auth-import \
+lein run -m website.provision.supabase.cli dump-auth-import \
   /private/firebase-auth-export.json /private/firebase-auth-config.json \
   /private/supabase-auth-import.sql
 psql -v ON_ERROR_STOP=1 -f /private/supabase-auth-import.sql

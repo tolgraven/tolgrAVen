@@ -21,12 +21,13 @@ excludes the dev resource directory so dev credentials are not inherited.
 See [Runtime configuration](configuration.md) for defaults and integration keys.
 
 Backend handler/layout fixtures need generated CSS and the real `:document`
-bootstrap. In an isolated agent snapshot, build those prerequisites and run the
+bootstrap. The full suite also starts the real `:ssr` Node worker. In an isolated
+agent snapshot, build those prerequisites and run the
 suite together so each command sees the same output. Use the existing Shadow
 worker when a target is watched; the isolated agent snapshot preserves that output:
 
 ```sh
-/Users/tol/.local/bin/tolgraven-cpu run -- sh -c 'npm run build && lein with-profile prod,provided run -m shadow.cljs.devtools.cli release document && lein with-profile +project/test test'
+/Users/tol/.local/bin/tolgraven-cpu run -- sh -c 'npm run build && lein with-profile prod,provided run -m shadow.cljs.devtools.cli release document ssr && lein with-profile +project/test test'
 bb test:scripts
 ```
 
@@ -51,8 +52,16 @@ Build `:document` first as above; its scripts are required by generated HTML.
 4. `bb test:browser`, then open `http://127.0.0.1:4002/`.
    Inspect final assertion counts and failures, not just compilation.
 
-`:app-test` discovers all `tolgraven.*-test` namespaces through the Shadow
-browser runner; the obsolete Doo entry point has been removed.
+`:app-test` discovers ordinary `website.*-test` namespaces through the Shadow
+browser runner; the authored hydration suite runs separately in release mode,
+where the validation engine and component owners actually begin deferred.
+The obsolete Doo entry point has been removed.
+Selected optimized hydration builds retain `:browser` and `:browser-test` reader
+features and use `website.nested-hydration-runner` with the authored and nested
+hydration namespaces. The test-only feature makes server fixture rendering
+available through the framework shim while keeping development tooling absent.
+The default test display runner is for development: it mutates a Closure define
+and cannot be compiled with advanced optimizations.
 `workflow_unit_test.cljs` replaces the misleadingly named `integration_test.cljs`.
 Ring request fixtures use `ring-mock` from `:project/test`.
 Browser/Node-only state and component schemas are tested in `test/cljs`; portable
@@ -200,8 +209,8 @@ pending eager images/fonts retain observation within the same bounded deadline.
 
 ## Browser bundle declarations
 
-`tolgraven.build.browser/process` delegates to Shadow's browser target after
-reading `src/frontend/tolgraven/modules/*/module.cljs`. Entries need a literal
+`website.build.browser/process` delegates to Shadow's browser target after
+reading `src/frontend/website/modules/*/module.cljs`. Entries need a literal
 `(def spec {:id :feature ...})`. Their namespace can declare
 `{:bundle/depends-on #{:main :other-feature}}`; the default is `#{:main}`.
 Directories without `module.cljs` remain ordinary source organization. `:main`
@@ -234,6 +243,9 @@ watched app assets are untouched. `sources.edn` records module ownership and
 renderer/highlighting implementations in `:main`. It keeps the normal production
 entry/profile, optimizations and reader features. Total bytes measure every
 bundle, not the initial route's network cost; lazy code remains part of that total.
+Public reading bundles also reject editor implementations and SDKs. The portable
+`modules/blog_editor/pages.cljc` route declaration is allowed in the eager router;
+its authoring implementation remains in the deferred editor module.
 
 To run the route checks against those actual advanced-compiled files while keeping
 the HTTP/data server unchanged:
@@ -259,7 +271,7 @@ and real nREPL acknowledgement during a blocked document release.
 For isolated live bootstrap validation, the integration proxy accepts
 `--document-dir PATH` pointing at the capped build's actual document output.
 Add `--style-dir PATH` for actual isolated stylesheet output. Only their declared
-`/js/document/` and `/css/tolgraven/` paths are overridden; application responses,
+`/js/document/` and `/css/website/` paths are overridden; application responses,
 state, styles and app chunks still come unchanged from the existing server. This
 checks a standalone release without overwriting a watched runtime or restarting
 the user's REPL.

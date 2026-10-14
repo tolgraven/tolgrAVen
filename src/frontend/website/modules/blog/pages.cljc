@@ -1,0 +1,67 @@
+(ns website.modules.blog.pages
+  "Page declarations independent of the module implementation."
+  (:require #?(:cljs [website.react :as r])
+            [clojure.string :as string]
+            [website.modules.blog.data :as data]
+            [website.page :as page]
+            [website.schema.http :as schemas]))
+
+(def page-extension
+  [:map [:?selection [:map [:?page [:int {:min 1}]]]]])
+
+#?(:cljs (def controllers
+  {:blog [{:start (fn [_]
+                    (r/dispatch [:blog/nav-page 1])
+                    ;; Preserve the existing blog framing on enter/leave.
+                    (r/dispatch [:->css-var! "line-width" "0.0625rem"])
+                    (r/dispatch [:->css-var! "line-width-vert" "0.0625rem"]))
+           :stop (fn []
+                   (r/dispatch [:->css-var! "line-width" "0.125rem"])
+                   (r/dispatch [:->css-var! "line-width-vert" "0.125rem"]))}]
+   :blog-page [{:parameters {:path [:nr]}
+                :start (fn [{:keys [path]}] (r/dispatch [:blog/nav-action (:nr path)]))}]
+   :blog-post [{:parameters {:path [:permalink]}
+                :start (fn [{:keys [path]}]
+                         (let [id (-> path :permalink (string/split "-") last js/parseInt)]
+                           (r/dispatch [:blog/state [:current-post-id] id])
+                           #_(r/dispatch [:common/set-title "Blog post title: not implemented"])))
+                :stop (fn [_]
+                        (r/dispatch [:common/set-title nil]))}]
+   :blog-tag [{:parameters {:path [:tag]}
+               :start (fn [{:keys [path]}] (r/dispatch [:blog/state [:viewing-tag] (:tag path)]))
+               :stop (fn [_] (r/dispatch [:blog/state [:viewing-tag] nil]))}]}))
+
+
+(def spec
+  ;; Native Reitit routes, with shared data inherited by each child page.
+  [["/blog" {:schema page-extension :module :blog :transition-key :blog
+              :shell {:heading [:blog :heading]
+                      :loading-prefab :article
+                      :loading-view {:module :blog :view :post-content}
+                      :loading-args {:post {:title "A thought worth sharing"
+                                            :user {:name "Author"}
+                                            :text "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vitae sapien sed lectus consequat feugiat.\n\nPraesent commodo cursus magna, vel scelerisque nisl consectetur et. Donec ullamcorper nulla non metus auctor fringilla.\n\nMaecenas sed diam eget risus varius blandit sit amet non magna. Aenean lacinia bibendum nulla sed consectetur."
+                                            :tags ["thoughts" "updates"]}}
+                      :loading-class "ssr-skeleton-article"}
+              :depends [{:source :strapi :availability :startup :keys [:blog]}]
+              :preload-depends (fn [match]
+                                 (if (:ssr (:data match))
+                                   [{:source :subscription
+                                     :query [:blog/page-ready? (page/selection match)]}]
+                                   (when-let [tag (get-in match [:path-params :tag])]
+                                     [{:source :supabase :query (data/tag-query tag)}])))
+              :data-plan data/plan :snapshot data/snapshot
+              :document-title (fn [{:keys [posts]}]
+                                (when (= 1 (count posts)) (:title (first posts))))}
+    ["" {:name :blog :page :page :ssr true :selection {:page 1}
+         #?@(:cljs [:controllers (:blog controllers)])}]
+    ["/page/:nr" {:parameters {:path schemas/blog-page} :name :blog-page :page :page :ssr true
+                  :ssr-parameters {:page {:from :nr :type :page-number}}
+                  #?@(:cljs [:controllers (:blog-page controllers)])}]
+    ["/post/:permalink" {:parameters {:path schemas/blog-post} :name :blog-post :page :post :ssr true
+                        :ssr-parameters {:post-id {:from :permalink :type :trailing-id}}
+                        #?@(:cljs [:controllers (:blog-post controllers)])}]
+    ["/archive" {:name :blog-archive :page :archive}]
+    ["/tag/:tag" {:parameters {:path schemas/blog-tag} :name :blog-tag :page :tag
+                 #?@(:cljs [:controllers (:blog-tag controllers)])}]
+]])

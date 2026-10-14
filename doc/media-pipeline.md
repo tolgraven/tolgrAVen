@@ -1,8 +1,8 @@
 # Managed media
 
 CMS media and authorized Markdown uploads use one durable rendition pipeline.
-The main module owns `site_media`; `tolgraven.media.schema` owns public asset,
-upload/status, library and webhook contracts. `tolgraven.media.query` creates the
+The main module owns `site_media`; `website.media.schema` owns public asset,
+upload/status, library and webhook contracts. `website.media.query` creates the
 same scoped queries used by JVM page plans and managed browser subscriptions.
 
 A request verifies its author or CMS webhook token, bounds and identifies its
@@ -126,7 +126,7 @@ WebP/AVIF encoding and decoding during its build. Refresh it with the bounded
 BuildKit workflow in [Docker builds](docker-builds.md) when changing its toolchain.
 
 ```sh
-tolgraven-cpu run -- lein with-profile +project/test test tolgraven.media-pipeline-test tolgraven.image-conversion-test tolgraven.supabase-catalog-test
+tolgraven-cpu run -- lein with-profile +project/test test website.media-pipeline-test website.image-conversion-test website.supabase-catalog-test
 tolgraven-cpu run -- bb --classpath scripts:test/scripts -m media-asset-test
 ```
 

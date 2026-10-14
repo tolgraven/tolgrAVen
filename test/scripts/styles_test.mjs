@@ -35,27 +35,27 @@ try {
   await write('resources/scss/dev.scss', '.dev { display: block; }');
   await write('resources/scss/icons.scss', '.icon { display: inline; }');
   await write('resources/scss/modules/home.scss', '.logo-picture { width: 100%; }');
-  await write('resources/public/css/tolgraven/main.min.css', '.old-picture { width: auto; }');
+  await write('resources/public/css/website/main.min.css', '.old-picture { width: auto; }');
 
   rebuilt();
-  assert.match(await read('resources/public/css/tolgraven/main.min.css'), /progressive-image__final/);
-  const originalTime = (await fs.stat(path.join(fixture, 'resources/public/css/tolgraven/main.min.css'))).mtimeMs;
+  assert.match(await read('resources/public/css/website/main.min.css'), /progressive-image__final/);
+  const originalTime = (await fs.stat(path.join(fixture, 'resources/public/css/website/main.min.css'))).mtimeMs;
   assert.match(build(), /CSS is current/);
-  assert.equal((await fs.stat(path.join(fixture, 'resources/public/css/tolgraven/main.min.css'))).mtimeMs, originalTime);
+  assert.equal((await fs.stat(path.join(fixture, 'resources/public/css/website/main.min.css'))).mtimeMs, originalTime);
   checks++;
 
   await write('resources/scss/_pictures.scss', '.progressive-image__final { width: 95%; }');
   rebuilt();
-  assert.match(await read('resources/public/css/tolgraven/main.min.css'), /width:95%/);
-  await fs.rm(path.join(fixture, 'resources/public/css/tolgraven/modules/home.min.css'));
+  assert.match(await read('resources/public/css/website/main.min.css'), /width:95%/);
+  await fs.rm(path.join(fixture, 'resources/public/css/website/modules/home.min.css'));
   rebuilt();
-  assert.match(await read('resources/public/css/tolgraven/modules/home.min.css'), /logo-picture/);
-  await write('resources/public/css/tolgraven/main.min.css', '.old-picture { width: auto; }');
+  assert.match(await read('resources/public/css/website/modules/home.min.css'), /logo-picture/);
+  await write('resources/public/css/website/main.min.css', '.old-picture { width: auto; }');
   rebuilt();
-  assert.match(await read('resources/public/css/tolgraven/main.min.css'), /progressive-image__final/);
-  await write('resources/public/css/tolgraven/.build-revision.json', '{');
+  assert.match(await read('resources/public/css/website/main.min.css'), /progressive-image__final/);
+  await write('resources/public/css/website/.build-revision.json', '{');
   rebuilt();
-  await write('resources/public/css/tolgraven/.build-revision.json', 'null');
+  await write('resources/public/css/website/.build-revision.json', 'null');
   rebuilt();
 
   await write('src/frontend/example/module.cljs', '(ns example.module) ; :icons ["solid/house"]');
@@ -72,7 +72,7 @@ try {
   rebuilt();
   await write('resources/scss/modules/new-owner.scss', '.new-owner { display: grid; }');
   rebuilt();
-  assert.match(await read('resources/public/css/tolgraven/modules/new-owner.min.css'), /new-owner/);
+  assert.match(await read('resources/public/css/website/modules/new-owner.min.css'), /new-owner/);
 
   const partial = spawnSync(process.execPath, ['scripts/build/styles.mjs', '--if-stale', '--sass-only'],
     {cwd: fixture, encoding: 'utf8'});

@@ -1,18 +1,18 @@
 (ns user
   "Userspace functions you can run by default in your local REPL."
   (:require
-   [tolgraven.config :refer [env]]
-   [tolgraven.routes.home :as home]
+   [website.config :refer [env]]
+   [website.routes.home :as home]
    [clojure.pprint]
    [clojure.java.shell :as shell]
    [clojure.spec.alpha :as s]
    [clojure.tools.logging :as log]
    [expound.alpha :as expound]
    [mount.core :as mount]
-   [tolgraven.dev.shadow :as shadow-startup]
-   [tolgraven.handler :as handler]
-   [tolgraven.ssr :as ssr]
-   [tolgraven.core]))
+   [website.dev.shadow :as shadow-startup]
+   [website.handler :as handler]
+   [website.ssr :as ssr]
+   [website.core]))
 
 
 (defn- cljs-builds [build-id]
@@ -40,7 +40,7 @@
   (ensure-styles!)
   (shadow-startup/prepare!)
   (home/gen-sitemap!)
-  (doseq [component (-> (mount/start-without #'tolgraven.core/repl-server)
+  (doseq [component (-> (mount/start-without #'website.core/repl-server)
                         :started)]
     (log/info component "started"))
   (alter-var-root #'s/*explain-out* (constantly expound/printer))
@@ -49,7 +49,7 @@
   nil)
 
 (defn stop "Stops application." []
-  (doseq [component (-> (mount/stop-except #'tolgraven.core/repl-server)
+  (doseq [component (-> (mount/stop-except #'website.core/repl-server)
                         :stopped)]
     (log/info component "stopped")))
 

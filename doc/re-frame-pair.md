@@ -38,7 +38,7 @@ To use 10x and re-frisk, start a development JVM with the `:legacy-debug`
 dependency profile and explicitly select the legacy preload:
 
 ```sh
-lein with-profile +legacy-debug run -m shadow.cljs.devtools.cli watch app-dev --config-merge '{:devtools {:preloads [devtools.preload tolgraven.legacy-debug]}}'
+lein with-profile +legacy-debug run -m shadow.cljs.devtools.cli watch app-dev --config-merge '{:devtools {:preloads [devtools.preload website.legacy-debug]}}'
 ```
 
 Stop the existing `:app-dev` watch before starting this command; both write the
@@ -54,7 +54,7 @@ Return to the normal development watch without the merge to omit them again.
 produces both `:redef` and `:fn-arity` warnings, and the generated positional
 constructor incorrectly calls `cljs.core.Vector`.
 
-`tolgraven.build.compat/rrb-vector` applies just those namespace exclusions
+`website.build.compat/rrb-vector` applies just those namespace exclusions
 at Shadow's `:compile-prepare` stage. It preserves the jar and library body,
 changes the compiler cache key, and runs in every build (including SSR/tests).
 The browser regression constructs an RRB vector through `->Vector`, then

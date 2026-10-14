@@ -1,9 +1,9 @@
 (require '[clojure.java.jdbc :as jdbc]
          '[clojure.string :as string]
-         '[tolgraven.config :as config]
-         '[tolgraven.supabase.catalog :as catalog]
-         '[tolgraven.platform.supabase :as platform]
-         '[tolgraven.provision.supabase.import :as importer])
+         '[website.config :as config]
+         '[website.supabase.catalog :as catalog]
+         '[website.platform.supabase :as platform]
+         '[website.provision.supabase.import :as importer])
 (defn ensure! [condition message] (when-not condition (throw (ex-info message {}))))
 ;; All fixture DDL and data live in a unique schema and roll back together.
 ;; Neither installed tables nor database credentials are printed.

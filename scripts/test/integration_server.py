@@ -33,8 +33,8 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
-        if self.server.style_dir and path.startswith('/css/tolgraven/'):
-            file = (self.server.style_dir / path.removeprefix('/css/tolgraven/')).resolve()
+        if self.server.style_dir and path.startswith('/css/website/'):
+            file = (self.server.style_dir / path.removeprefix('/css/website/')).resolve()
             if self.server.style_dir not in file.parents or not file.is_file():
                 self.send_error(404, 'Not in the isolated stylesheet output')
                 return
