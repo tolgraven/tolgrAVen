@@ -2,6 +2,8 @@
   #?(:cljs (:require-macros [website.build.site :refer [when-enabled]]))
   #?(:cljs (:require [website.component.registry]
                      [website.macros :as m :refer-macros [defc]]
+                     ;; <> expands to this runtime helper; declare its build/cache dependency.
+                     [website.loader]
                      [website.react :as r]
                      [website.components.image :as image]
                      [website.components.oembed :as oembed]
