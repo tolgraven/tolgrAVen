@@ -7,6 +7,7 @@
 
 (def spec
   {:content [:common]
+   :ssr-styles :deferred
    :server {:routes 'website.modules.user.api/routes
             :sql ["supabase/modules/avatars.sql"]}
    :storage storage/tables

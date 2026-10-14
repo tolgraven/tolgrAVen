@@ -152,3 +152,59 @@
           (set! js/cancelIdleCallback original-cancel-idle)
           (set! js/setTimeout original-timeout)
           (set! js/clearTimeout original-clear-timeout))))))
+
+(deftest background-work-requires-a-continuously-ready-page
+  (with-redefs [context/*interactive? (atom true)
+                restore/*context (atom {})
+                restore/*pending-layout (atom #{})]
+    (let [frame js/requestAnimationFrame
+          cancel-frame js/cancelAnimationFrame
+          idle js/requestIdleCallback
+          cancel-idle js/cancelIdleCallback
+          timeout js/setTimeout
+          clear-timeout js/clearTimeout
+          now (.-now js/performance)
+          *now (atom 0)
+          *frame (atom nil)
+          *idle (atom nil)
+          *retry (atom nil)
+          *loads (atom 0)
+          *stop (atom nil)
+          painted! (fn [] (@*frame) (@*frame) (@*idle))]
+      (try
+        (js/Object.defineProperty js/document "readyState" #js {:configurable true :value "complete"})
+        (set! (.-now js/performance) (fn [] @*now))
+        (set! js/requestAnimationFrame (fn [callback] (reset! *frame callback) 1))
+        (set! js/cancelAnimationFrame (fn [_]))
+        (set! js/requestIdleCallback (fn [callback] (reset! *idle callback) 1))
+        (set! js/cancelIdleCallback (fn [_]))
+        (set! js/setTimeout (fn [callback _] (reset! *retry callback) 1))
+        (set! js/clearTimeout (fn [_]))
+        (reset! *stop (resources/after-page! #(swap! *loads inc) {:settle-ms 750}))
+        (painted!)
+        (reset! *now 800)
+        (reset! restore/*pending-layout #{:loading})
+        (@*retry) (painted!)
+        (is (zero? @*loads) "New loading work restarts the quiet period")
+        (reset! restore/*pending-layout #{})
+        (reset! *now 900)
+        (@*retry) (painted!)
+        (reset! *now 1400)
+        (@*retry) (painted!)
+        (is (zero? @*loads))
+        (reset! *now 1700)
+        (@*retry) (painted!)
+        (is (= 1 @*loads))
+        (@*stop)
+        (@*retry) (painted!)
+        (is (= 1 @*loads) "Completion/cancellation makes stale callbacks inert")
+        (finally
+          (when @*stop (@*stop))
+          (js/Reflect.deleteProperty js/document "readyState")
+          (set! (.-now js/performance) now)
+          (set! js/requestAnimationFrame frame)
+          (set! js/cancelAnimationFrame cancel-frame)
+          (set! js/requestIdleCallback idle)
+          (set! js/cancelIdleCallback cancel-idle)
+          (set! js/setTimeout timeout)
+          (set! js/clearTimeout clear-timeout))))))

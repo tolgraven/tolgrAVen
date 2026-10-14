@@ -120,6 +120,12 @@
   (reset! (:active? state) false)
   (doseq [id (keys @(:stops state))] (stop! state id)))
 
+(defn- in-viewport? [element]
+  (let [rect (.getBoundingClientRect element)]
+    (and (pos? (.-bottom rect)) (pos? (.-right rect))
+         (< (.-top rect) (.-innerHeight js/window))
+         (< (.-left rect) (.-innerWidth js/window)))))
+
 (defn- ensure-media! [state options]
   ;; Exiting children still acknowledge completion after an instance disables
   ;; motion. That completion alone must not acquire a media query/listener.
@@ -137,20 +143,29 @@
 
 (defn- commit-motion! [state element options]
   (ensure-media! state options)
+  (when (and element (:appear options) (nil? @(:viewport-enter? state)))
+    ;; Preserve first-screen document timing and settled local/history returns.
+    ;; A new offscreen entrance uses the existing observer path, once visible.
+    (let [defer? (and (not (:force (config (:appear options))))
+                     (not (in-viewport? element))
+                     (or (not (:skip-enter? state)) (:document-enter? state)))]
+      (reset! (:viewport-enter? state) defer?)
+      (when defer? (reset! (:visible? state) false))))
   (let [appearance (config (or (:seen options) (:appear options)))
-        seen (:seen options)
-        threshold (or (:threshold appearance) 0.5)
+        automatic? @(:viewport-enter? state)
+        seen (or (:seen options) automatic?)
+        threshold (or (:threshold appearance) (if automatic? 0 0.5))
         ;; seen-merge sampled in 20% steps, deciding visible at 50%. Observing
         ;; exactly 50% lets a slide reverse itself as its transform crosses that
         ;; same boundary. Preserve the original sampling for the default.
         legacy? (= threshold 0.5)
         thresholds (if legacy? [0 0.2 0.4 0.6 0.8 1] threshold)
-        once? (boolean (:once? appearance))
+        once? (or automatic? (boolean (:once? appearance)))
         margin (or (:root-margin appearance) "0px")
         reduced? @(:reduced? state)
         ;; Ready first-screen SSR remains visible. Offscreen :seen owners still
         ;; observe the viewport after hydration and enter when scrolled into view.
-        skip? (and (:skip-enter? state) (not (:observe-document? state)))
+        skip? (and (:skip-enter? state) (not (:observe-document? state)) (not automatic?))
         signature [element (boolean seen) (boolean (:appear options)) thresholds once? margin reduced? skip? (:force appearance)]]
     (when (not= signature @(:signature state))
       (stop! state :watch)
@@ -207,6 +222,7 @@
                :observe-document? (and skip? (restore/document-enter?) (:seen options)
                                       (not (:remembered? options)))
                :visible? (r/atom skip?)
+               :viewport-enter? (atom nil)
                :reduced? (r/atom (boolean (and (some options [:appear :seen :exit])
                                               (reduced-motion?))))
                :active? (atom true)
@@ -225,7 +241,8 @@
                    exiting? (= :exiting (get-in options [:presence :phase]))
                    visible? (if state @(:visible? state) (skip-enter? options))
                    reduced? (boolean (and state @(:reduced? state)))
-                   document-enter? (if state (and (:document-enter? state) (:appear options) (not (:seen options)))
+                   document-enter? (if state (and (:document-enter? state) (:appear options)
+                                                  (not (:seen options)) (not @(:viewport-enter? state)))
                                      (and (skip-enter? options) (restore/document-enter?)
                                           (:appear options) (not (:seen options))
                                      (not (:remembered? options))))
@@ -278,7 +295,8 @@
                                                                (identical? token (get-in % [:presence :token])))
                                                          @(:committed state)))
                                           (swap! (:committed state)
-                                                 #(vec (remove (fn [entry] (= key (:key entry))) %))))))))
+                                                 #(vec (remove (fn [entry] (= key (:key entry))) %)))
+                                          (swap! (:revision state) inc))))))
               index' (min index (count entries))]
           (into (conj (subvec entries 0 index') (assoc entry :presence control))
                 (subvec entries index')))) next removed)))
@@ -303,7 +321,11 @@
   {:root? false
    :reconfigure (fn [state _] state)
    :setup (fn [_]
-            {:committed (r/atom [])
+            ;; A commit records the latest Hiccup, including newly allocated
+            ;; callbacks. Recording it must not schedule another render. Only
+            ;; asynchronous exit completion invalidates the presence owner.
+            {:committed (atom [])
+             :revision (r/atom 0)
              :active? (atom true)
              :deadlines (atom {})})
    :unmount (fn [state]
@@ -311,6 +333,7 @@
               (doseq [[_ {:keys [timer]}] @(:deadlines state)] (js/clearTimeout timer))
               (reset! (:deadlines state) {}))
    :render (fn [form eligible? state]
+             (when state @(:revision state))
              (when (and form (not (or (dom-root? form) (= :<> (first form)))))
                (throw (js/Error. "The :presence feature needs a native parent root or fragment.")))
              (let [retained (when form (retained-children form eligible? state))]

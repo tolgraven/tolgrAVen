@@ -147,6 +147,13 @@
      [<service-categories> {:categories categories}]])
 
 
+(defc <story-body> {:features [[:seen {:threshold 0, :restore? false}]]} [content]
+  [:section#about.anim-gradient-bg.noborder
+   [:h1 (:title content)]
+   [:br]
+   [layout/<auto-layout-text-imgs> content]
+   [:br] [:br]])
+
 (defc <story> "Big img header + story" [{:keys [heading] :as content}]
   [:<>
    [:div#about-intro {:class "section-with-media-bg-wrapper covering stick-up fullwidth"}
@@ -154,9 +161,5 @@
    [:div.fader>div.fade-to-black.between]
 
    [:a {:name "about"}]
-   [:section#about.anim-gradient-bg.noborder
-    [:h1 (:title content)]
-    [:br]
-    [layout/<auto-layout-text-imgs> content]
-    [:br] [:br]]
+   [<story-body> content]
    [ui-layout/<fading> :dir "bottom"]])

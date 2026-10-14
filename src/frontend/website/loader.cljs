@@ -386,7 +386,7 @@
                  #js {:options options :args args :complete! complete!
                       :hydrating? (and initial? (not committed?))}))]]
       (and requested? (or ready? failure)) [<module-content> options args complete! false]
-      :else [:section.module-load-placeholder {:ref *trigger}
+      :else [:section.module-load-placeholder {:ref *trigger :data-loading-active requested?}
              (fallback-form options args requested?)])))
 
 (defn component-vector

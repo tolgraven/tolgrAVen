@@ -76,6 +76,14 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Scoped state handles are native re-frame subscriptions; write through
   `>reset`/`>update` events. Accepted transactions enqueue persistence through
   the storage interceptor/effect; no mirrored app-db or writable cursor.
+  Small preferences/navigation use localStorage; heavy content/resource caches
+  use the shared IndexedDB queue. Decode/validate independent entries in painted
+  batches and preserve the already encoded legacy envelope in a separate backup
+  until transaction success. Small saves remain synchronous during migration;
+  backups restore heavy entries only, preserving small-state removals. Track
+  readiness separately for each store: an IndexedDB failure must not disable
+  readable localStorage drafts or authorize overwriting unseen heavy cache data.
+  Late reads retain edits/tombstones; pagehide never serializes a large content envelope.
   Local-return capture observes its source subscription in the component lifecycle.
   Return-worker decisions use Clojure data in `ssr/return_policy.cljs`; Cache,
   Request/Response and event lifetime handling stay in `ssr/return_worker.cljs`.
@@ -172,6 +180,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   duplicate transport reads in pages or component render functions.
 - Reuse appearance/presence/loading features. Hydration and restored data bypass
   loading and entrances; later SPA navigation must restore ordinary motion.
+  Offscreen new `:appear` roots enter through the existing viewport observer.
+  Presence commit history is nonreactive; only exit completion schedules a render.
+  Unactivated module placeholders and departing skeletons have no shimmer animation.
   Appearance classes merge onto native roots; `appear-wrapper` is only a CSS
   class. Network SSR retains the original site/hero entrance in CSS across
   hydration; the document-owned mount container gates it on hero decoding.
@@ -209,6 +220,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   isolated worker using cached browser chunks and the `:page-render` bundle;
   development and DOM-dependent Leaflet pages retain browser rendering.
   The installer remains eager to restore state before the first commit.
+  Background connection/capture waits for a continuously ready painted idle page;
+  source replacement cancels both its readiness gate and queued debounce.
 - Markdown code, including untagged blocks and inline snippets, shares the deferred
   formatter boundary. Node SSR renders Bruvbox-highlighted tokens immediately;
   browser acquisition waits for the existing after-page gate. The blog supplies

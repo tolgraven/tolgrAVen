@@ -3,6 +3,7 @@
   (:require [website.react :as r]
             [website.render-context :as context]
             [website.loader.style-catalog :as catalog]
+            [website.browser-resources.page :as page]
             [website.validation.runtime :as validation]))
 
 (def manifest-schema [:map-of :keyword [:vector :string]])
@@ -37,6 +38,12 @@
     (some #(when (= href (absolute (.getAttribute % "data-module-style"))) %)
           (array-seq (.querySelectorAll js/document "style[data-module-style]")))))
 
+(defn required-paths [module]
+  ;; A dependency's popup sheet belongs to that popup's activation. Its code
+  ;; dependency alone must not make ordinary route acquisition download it.
+  (let [inventory (manifest)]
+    (vec (distinct (concat (catalog/initial-paths inventory module) (get inventory module))))))
+
 (defn ready? [module]
   (or context/*server?*
       (every? #(or (contains? @*ready %)
@@ -46,7 +53,7 @@
                     ;; observed, readiness needs no repeated DOM/URL scan.
                     (swap! *ready conj %)
                     true))
-              (catalog/paths (manifest) module))))
+              (required-paths module))))
 
 (defn acquire-path! [path]
   (or (get @*requests path)
@@ -62,7 +69,7 @@
                              (str (if (.includes path "?") "&" "?") "css-retry=" attempt)))
             promise (js/Promise.
                       (fn [resolve reject]
-                        (r/preinit href #js {:as "style" :precedence "modules"})
+                        (r/preinit href #js {:as "style" :precedence "modules" :fetchPriority "low"})
                         (if-let [element (link href)]
                           (let [*timeout (atom nil)]
                             (letfn [(finish! [error]
@@ -88,4 +95,11 @@
 (defn acquire! [module]
   (if context/*server?*
     (js/Promise.resolve nil)
-    (js/Promise.all (into-array (map acquire-path! (catalog/paths (manifest) module))))))
+    (let [load! #(js/Promise.all (into-array (map acquire-path! (required-paths module))))]
+      (if (and (= :deferred (get-in catalog/modules [module :ssr-styles])) (not (ready? module)))
+        (js/Promise.
+          (fn [resolve reject]
+            ;; This sheet may itself block a mounted boundary's readiness.
+            ;; Wait for hydration/paint, not for that same boundary to finish.
+            (page/after-page! #(-> (load!) (.then resolve) (.catch reject)) {:layout? false})))
+        (load!)))))

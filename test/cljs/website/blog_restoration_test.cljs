@@ -14,9 +14,9 @@
             [website.modules.blog.cache :as cache]
             [website.modules.blog.comments :as comments]
             [website.ssr.contract :as contract]
-
             [website.modules.blog.views :as blog]
             [website.component.storage :as storage]
+            [website.component.storage-disk :as heavy-disk]
             [website.component.restore :as restore]
             [website.supabase.scoped :as scoped]
             [website.modules.user.views :as user]
@@ -321,56 +321,71 @@
                  (finally (r/clear-subscription-cache!) (reset! r/*app-db before)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
-(deftest saved-comment-window-folds-and-data-round-trip-through-one-envelope
-  (let [before @r/*app-db
-        path [:store :scoped (scoped/query-key (comments/root-query 42 20))]
-        values {path {:docs (mapv #(hash-map :id (str %) :data {:id (str %), :ts %}) (range 21))},
-                [:state :blog :comment-limit] {42 20},
-                [:state :blog :comment-thread-expanded] {[42 "root"] false,
-                                                         [42 "other" "child"] true}}
-        disk (atom nil)
-        writes (atom 0)
-        marker (atom nil)]
-    (r/with-framework-bindings [storage/*buckets (atom {})
-                  storage/*tracked (atom {})
-                  storage/*reads (atom {:public (js/Promise.resolve nil)})
-                  storage/*ready (atom #{:public})
-                  storage/*dirty (atom #{})
-                  storage/*consumed (atom {})
-                  storage/*pending (atom nil)
-                  storage/*write-tick (atom nil)
-                  storage/*public-saved? (atom false)
-                  storage/write-disk! (fn [_ value] (swap! writes inc) (reset! disk value))
-                  storage/mark-return! #(reset! marker %)]
-      (try
-        (reset! r/*app-db {})
-        (doseq [[path value] values]
-          (r/dispatch-sync [:component-data/install path value])
-          (storage/track! [:state path] #(get-in @r/*app-db path storage/missing) cache/options))
-        (storage/track! :public-content (constantly {:common {:title "Cached"}}) cache/options)
-        (storage/save-navigation!)
-        (is (= 1 @writes) "All state and content use one disk write")
-        (is (true? @marker))
-        (let [saved (reader/read-string @disk)]
-          (reset! r/*app-db {})
-          (reset! storage/*buckets {:public saved})
-          (cache/restore!)
-          (is (= 20 (get-in @r/*app-db [:state :blog :comment-limit 42])))
-          (is (false? (get-in @r/*app-db [:state :blog :comment-thread-expanded [42 "root"]])))
-          (is (true? (get-in @r/*app-db
-                             [:state :blog :comment-thread-expanded [42 "other" "child"]])))
-          (is (= 21 (count (:docs (get-in @r/*app-db path)))))
-          (storage/read! :public-content cache/options)
-          (storage/drain!)
-          (is (= {} (reader/read-string @disk)) "Restored disk entries are consumed")
-          (storage/save-navigation!)
-          (is (contains? (reader/read-string @disk) [:state path])
-              "Navigation republishes the restored content")
-          (r/with-framework-bindings [storage/write-disk! (fn [& _] (throw (js/Error. "Full")))]
-            (swap! storage/*dirty conj :public)
-            (storage/save-navigation!)
-            (is (false? @marker) "Failed writes must not opt out of SSR")))
-        (finally (cache/stop!) (reset! storage/*tracked {}) (storage/drain!) (reset! r/*app-db before))))))
+(deftest saved-comment-window-folds-and-data-round-trip-through-split-storage
+  (async done
+    (-> (go-promise
+          (let [before @r/*app-db
+                path [:store :scoped (scoped/query-key (comments/root-query 42 20))]
+                values {path {:docs (mapv #(hash-map :id (str %) :data {:id (str %), :ts %}) (range 21))},
+                        [:state :blog :comment-limit] {42 20},
+                        [:state :blog :comment-thread-expanded] {[42 "root"] false,
+                                                                 [42 "other" "child"] true}}
+                disk (atom nil)
+                heavy (atom {})
+                writes (atom 0)
+                marker (atom nil)]
+            (r/with-framework-bindings
+              [storage/*buckets (atom {})
+               storage/*tracked (atom {})
+               storage/*reads (atom {:public (js/Promise.resolve nil)})
+               storage/*ready (atom #{:public})
+               storage/*heavy-ready (atom #{:public})
+               storage/*dirty (atom #{})
+               storage/*consumed (atom {})
+               storage/*pending (atom nil)
+               storage/*write-tick (atom nil)
+               storage/*public-saved? (atom false)
+               storage/*heavy-owners (atom #{})
+               storage/*migrating (atom #{})
+               storage/*disk-writes (atom {})
+               storage/*disk-generations (atom {})
+               heavy-disk/write! (fn [_ bucket] (reset! heavy bucket) (js/Promise.resolve nil))
+               storage/write-disk! (fn [_ value] (swap! writes inc) (reset! disk value))
+               storage/mark-return! #(reset! marker %)]
+              (try
+                (reset! r/*app-db {})
+                (doseq [[path value] values]
+                  (r/dispatch-sync [:component-data/install path value])
+                  (storage/track! [:state path] #(get-in @r/*app-db path storage/missing) cache/options))
+                (storage/track! :public-content (constantly {:common {:title "Cached"}}) cache/options)
+                (storage/save-navigation!)
+                (await! (storage/drain-async!))
+                (is (= 1 @writes) "Small state uses one localStorage write")
+                (is (true? @marker))
+                (let [saved (merge @heavy (reader/read-string @disk))]
+                  (reset! r/*app-db {})
+                  (reset! storage/*buckets {:public saved})
+                  (cache/restore!)
+                  (is (= 20 (get-in @r/*app-db [:state :blog :comment-limit 42])))
+                  (is (false? (get-in @r/*app-db [:state :blog :comment-thread-expanded [42 "root"]])))
+                  (is (true? (get-in @r/*app-db
+                                     [:state :blog :comment-thread-expanded [42 "other" "child"]])))
+                  (is (= 21 (count (:docs (get-in @r/*app-db path)))))
+                  (storage/read! :public-content cache/options)
+                  (await! (storage/drain-async!))
+                  (is (= {} (merge @heavy (reader/read-string @disk))) "Restored disk entries are consumed")
+                  (storage/save-navigation!)
+                  (await! (storage/drain-async!))
+                  (is (contains? (merge @heavy (reader/read-string @disk)) [:state path])
+                      "Navigation republishes the restored content")
+                  (r/with-framework-bindings [storage/write-disk! (fn [& _] (throw (js/Error. "Full")))]
+                    (swap! storage/*dirty conj :public)
+                    (storage/save-navigation!)
+                    (await! (storage/drain-async!))
+                    (is (false? @marker) "Failed writes must not opt out of SSR")))
+                (finally (cache/stop!) (reset! storage/*tracked {}) (storage/drain!) (reset! r/*app-db before))))))
+        (.catch #(is false (str %)))
+        (.finally done))))
 (deftest folded-reply-placeholder-reserves-its-height-before-mount
   (let [context @restore/*context]
     (try (restore/begin! {:hydrate? true})

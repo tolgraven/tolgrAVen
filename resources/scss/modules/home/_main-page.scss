@@ -95,6 +95,8 @@
   border-top: var(--line-width) solid var(--line-color);
 }
 #about {
+  // The native :seen owner pauses background painting outside the viewport.
+  &:not(.appeared) { animation-play-state: paused; }
   position: relative;
   z-index: 14;
 

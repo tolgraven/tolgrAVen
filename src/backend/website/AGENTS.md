@@ -46,8 +46,11 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   stylesheet policy. Emit
   route dependency styles and actually rendered SSR module
   styles in the first head. Visible authored widgets may use a normally deferred
-  owner; hidden popup boundaries do not enter the renderer export inventory. Do not add the
-  Link Preview popup sheet to the initial head; its static container rule belongs
+  owner; hidden popup boundaries do not enter the renderer export inventory.
+  Plain Home text needs no
+  Markdown/monospace sheet; shared avatars stay in the shell. User and Settings
+  panel styles enter the initial head only when their query parameter opens them.
+  Do not add the Link Preview popup sheet to the initial head; its static container rule belongs
   to Markdown. Respect module `:ssr-styles :deferred` without removing loader URLs.
   Inline small optimized sheets
   within a 16 KiB document budget; publish all URLs in `#module-styles`;

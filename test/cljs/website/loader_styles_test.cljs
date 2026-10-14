@@ -3,7 +3,36 @@
             [shadow.lazy :as lazy]
             [website.loader :as loader]
             [website.loader.style-catalog :as catalog]
+            [website.browser-resources.page :as page]
             [website.loader.styles :as styles]))
+
+(deftest closed-panel-styles-wait-for-the-painted-page-gate
+  (async done
+    (let [url (str "/css/website/modules/user.min.css?deferred=" (random-uuid))
+          gate page/after-page!
+          manifest styles/manifest
+          *release (atom nil)]
+      (set! styles/manifest (fn [] {:user [url]}))
+      (set! page/after-page! (fn
+                             ([load!] (reset! *release load!) (fn []))
+                             ([load! options]
+                              (is (false? (:layout? options)) "CSS must not wait on its own boundary")
+                              (reset! *release load!)
+                              (fn []))))
+      (let [pending (styles/acquire! :user)]
+        (is (not-any? #(.includes (.-href %) url)
+                      (array-seq (.querySelectorAll js/document "link[rel=stylesheet]"))))
+        (@*release)
+        (-> pending
+            (.then (fn [_]
+                     (is (contains? @styles/*ready url))
+                     (is (some #(and (.includes (.-href %) url) (= "low" (.-fetchPriority %)))
+                               (array-seq (.querySelectorAll js/document "link[rel=stylesheet]"))))))
+            (.catch #(is false (str %)))
+            (.finally (fn []
+                        (set! page/after-page! gate)
+                        (set! styles/manifest manifest)
+                        (done))))))))
 
 (deftest shared-font-stylesheet-has-one-bundle-across-consumers
   (let [font "/css/website/modules/monospace.min.css"
@@ -112,6 +141,13 @@
     (is (some #{markdown} (catalog/initial-paths manifest :blog)))
     (is (not (some #{popup} (catalog/paths manifest :blog))))
     (is (some #{popup} (catalog/paths manifest :link-preview)))))
+
+(deftest route-code-dependencies-do-not-acquire-closed-popup-sheets
+  (let [paths (styles/required-paths :blog)]
+    (is (some #{"/css/website/modules/markdown.min.css"} paths))
+    (is (not (some #{"/css/website/modules/user.min.css"} paths)))
+    (is (not (some #{"/css/website/modules/link-preview.min.css"} paths)))
+    (is (some #{"/css/website/modules/user.min.css"} (styles/required-paths :user)))))
 
 (deftest document-style-manifest-is-parsed-once-and-refreshes-on-replacement
   (let [existing (.getElementById js/document "module-styles")

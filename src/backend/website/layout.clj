@@ -83,14 +83,16 @@
         styles/modules))
 
 (defn initial-styles [request manifest]
-  (vec (distinct
-         (concat
-           (mapcat #(styles/initial-paths manifest %)
-                   [(get-in (pages/match (or (:uri request) "/")) [:data :module])])
-           ;; Deferred popups become first-paint content only when actually rendered
-           ;; by an authored widget. Node records visible boundaries, not all owners.
-           (mapcat #(styles/paths manifest %)
-                   (sort (keys (get-in request [:ssr :snapshot :module-views]))))))))
+  (let [query (or (get-in request [:parameters :query]) (:query-params request))
+        panels (keep (fn [[param module]]
+                       (when (#{true "true"} (get query param (get query (name param)))) module))
+                     [[:userBox :user] [:settingsBox :settings]])
+        route (get-in (pages/match (or (:uri request) "/")) [:data :module])]
+    (vec (distinct (concat (styles/initial-paths manifest route)
+                           (mapcat #(styles/paths manifest %) panels)
+                           ;; Visible authored widgets own their first-paint styles.
+                           (mapcat #(styles/paths manifest %)
+                                   (sort (keys (get-in request [:ssr :snapshot :module-views])))))))))
 
 (defn- initial-style-tags [request manifest]
   ;; Small route sheets travel with HTML, so neither the shell nor completed SSR
