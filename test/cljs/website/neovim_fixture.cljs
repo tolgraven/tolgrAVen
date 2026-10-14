@@ -273,6 +273,14 @@
         (.then (fn [_]
                  (-> ready (.then (fn [session]
                    (-> (document/open! #(runtime/request! session %1 %2)
+                         {:mode :diff
+                          :files [{:path "before/deleted.txt", :text (apply str (repeat 256 "deleted line\n"))}
+                                  {:path "after/deleted.txt", :text ""}]})
+                       (.then #(runtime/request! session "nvim_exec_lua"
+                                 ["local win = vim.fn.bufwinid('/workspace/before/deleted.txt'); assert(vim.fn.getwininfo(win)[1].topline == 1, 'Deleted source inherited the previous viewport'); assert(vim.api.nvim_get_current_win() == win, 'Empty side took focus'); return true" []]))))))))
+        (.then (fn [_]
+                 (-> ready (.then (fn [session]
+                   (-> (document/open! #(runtime/request! session %1 %2)
                          {:mode :patch, :files [{:path "commit.patch", :text "@@ -1 +1 @@\n-old\n+new\n"}]})
                        (.then #(runtime/request! session "nvim_exec_lua"
                                  ["assert(#vim.api.nvim_list_wins() == 1); assert(vim.bo.filetype == 'diff'); assert(vim.bo.readonly and not vim.bo.modifiable); return 'PASS: native split diff, absolute line numbers, immutable buffers, equal panes, bulk UTF-8 file bytes and patch view'" []]))))))))

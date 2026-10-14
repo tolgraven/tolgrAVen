@@ -4,9 +4,9 @@ The lazy `:neovim` module exposes `:editor` and `:page`. `/neovim` serves the pa
 with COOP `same-origin` and COEP `require-corp`, required by the official WASM
 build's SharedArrayBuffer transport. No Neovim bytes or isolation headers are
 acquired by ordinary pages. The return worker shares the module-owned header
-policy so a synthesized `/neovim` document remains isolated. A link into `/neovim`
-from a non-isolated document
-uses a full document navigation; subsequent navigation can use the SPA as usual.
+policy so a synthesized `/neovim` document remains isolated. Links crossing the
+isolation boundary in either direction use full document navigation. Routes with
+the same isolation requirements retain ordinary SPA navigation.
 A component embedded in an ordinary document shows an explicit link to the
 isolated page. Every top-level document containing a working editor must provide
 these headers, including iframe ancestors; an iframe alone cannot supply isolation.
