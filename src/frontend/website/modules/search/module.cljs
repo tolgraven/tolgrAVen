@@ -7,7 +7,7 @@
     [website.modules.search.views :as view]))
 
 (def spec
-  {:bundle/depends-on #{:main}
+  {:bundle/depends-on #{:main :styled-input}
    :server {:routes 'website.modules.search.api/routes
             :start 'website.modules.search.index/start!}
    :storage storage/tables

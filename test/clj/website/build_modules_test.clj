@@ -6,6 +6,7 @@
             [website.build.modules :as modules]
             [website.build.site :as site]
             [website.loader.code :as code]
+            [website.loader.style-catalog :as styles]
             [website.build.packaging :as packaging]
             [clojure.java.io :as io]
             [clojure.string :as string]))
@@ -25,6 +26,13 @@
     (is (= #{:main} (get-in by-id [:user :depends-on])))
     (is (= #{:main} (get-in by-id [:link-preview :depends-on])))
     (is (= (set (keys by-id)) (set (keys (modules/bundles)))))))
+
+(deftest search-acquires-its-input-styles-without-making-them-eager
+  (let [manifest (into {} (map (fn [[id spec]] [id (:paths spec)])) styles/modules)
+        required #{"/css/website/modules/monospace.min.css"
+                   "/css/website/modules/styled-input.min.css"}]
+    (is (every? (set (styles/initial-paths manifest :search)) required))
+    (is (not-any? required (styles/initial-paths manifest :main)))))
 
 (deftest search-previews-require-both-owning-capabilities
   (let [all (modules/all-declarations)

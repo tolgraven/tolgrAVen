@@ -129,11 +129,17 @@
         error @(r/subscribe [:search/error])]
     (when (and open? (not (string/blank? query)))
       [:div.search-instant-results
-       {:aria-busy (boolean pending?)}
+       {:aria-busy (boolean pending?)
+        :on-click (fn [event]
+                    (when (and (zero? (.-button event))
+                               (not (or (.-ctrlKey event) (.-metaKey event)
+                                        (.-shiftKey event) (.-altKey event)))
+                               (some-> (.-target event) (.closest "a[href]")))
+                      (r/dispatch [:search/state [:open?] false])))}
        [:div {:role "status", :aria-live "polite"}
         (cond error error
               pending? "Searching…"
-              response (str (:found response) " results"))]
+              response (str (:found response) (if (= 1 (:found response)) " result" " results")))]
        (when error
          [:button {:type "button", :on-click #(r/dispatch [:search/submit])} "Retry"])
        (for [{:keys [document preview] :as hit} (:hits response)]
