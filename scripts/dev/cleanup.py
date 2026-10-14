@@ -171,7 +171,18 @@ def archive_ignored(checkout, target, head):
     raw = subprocess.check_output(['git', '-C', str(target), 'ls-files', '--others',
                                    '--ignored', '--exclude-standard', '-z'])
     names = [os.fsdecode(name) for name in raw.split(b'\0') if name]
-    keep = [name for name in names if not name.startswith(GENERATED)]
+    expanded = set()
+    def collect(path):
+        name = path.relative_to(target).as_posix().rstrip('/')
+        if any(name == prefix.rstrip('/') or name.startswith(prefix) for prefix in GENERATED):
+            return
+        expanded.add(name)
+        if path.is_dir() and not path.is_symlink():
+            for child in path.iterdir():
+                collect(child)
+    for name in names:
+        collect(target / name)
+    keep = sorted(expanded)
     if not keep:
         return None
     root = cpu.repository_root(checkout) / '.local-wip/task-archives'

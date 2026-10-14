@@ -114,6 +114,20 @@ class CleanupTests(unittest.TestCase):
             record['output'] = str(self.target / '.local-wip/cpu-builds/prelaunch')
             self.assertEqual(cleanup.active_docker_builds(self.target)[0]['name'], 'owned-build')
 
+    def test_ignored_nested_checkout_is_archived_recursively_without_following_symlinks(self):
+        with (self.root / '.git/info/exclude').open('a') as ignored:
+            ignored.write('\ncheckouts/codox/\n')
+        nested = self.target / 'checkouts/codox'
+        subprocess.run(['git', 'init', '-q', str(nested)], check=True)
+        (nested / 'unfinished.clj').write_text('preserved experiment')
+        external = self.root.parent / 'outside.txt'; external.write_text('outside data')
+        (nested / 'external-link').symlink_to(external)
+        archive = cleanup.archive_ignored(self.root, self.target, cleanup.git(self.target, 'rev-parse', 'HEAD'))
+        with tarfile.open(archive) as data:
+            self.assertEqual(data.extractfile('checkouts/codox/unfinished.clj').read(), b'preserved experiment')
+            self.assertIn('checkouts/codox/.git/HEAD', data.getnames())
+            self.assertTrue(data.getmember('checkouts/codox/external-link').issym())
+
     def test_applied_retirement_archives_private_data_and_preserves_branch_recovery(self):
         (self.target / 'private.edn').write_text('recoverable')
         args = ['cleanup', '--checkout', str(self.root), '--worktree', str(self.target), '--remove-worktree', '--apply']
