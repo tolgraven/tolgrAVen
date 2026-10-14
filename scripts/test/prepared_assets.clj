@@ -31,7 +31,9 @@
       (fn []
         (let [handler (wrap-base (constantly {:status 404, :headers {}, :body "Not found"}))]
           (assert (= 3 (count samples)) "Styles, fonts and modern images must be represented")
-          (doseq [[{:keys [path contents resource]}] samples]
+          (doseq [[{:keys [path contents resource]}]
+                  (concat samples [[{:path (layout/main-script-path)
+                                     :resource (io/resource (str "public" (layout/main-script-path)))}]])]
             (let [request {:request-method :get
                            :scheme :https
                            :server-name "localhost"
@@ -62,13 +64,17 @@
                           :sha256 (manifest/digest (or resource
                                                        (.getBytes ^String contents "UTF-8")))}) inventory)
       bundles (into (sorted-map)
-                    (for [bundle (concat ["main.js" "styles.css" "icons.css"
+                    (for [bundle (concat ["styles.css" "icons.css"
                                           "document-head.js" "document-entrance.js"]
                                          (keys styles/stylesheet-bundles))]
                       [bundle (vec (link/bundle-paths {:optimus-assets inventory} [bundle]))]))
-      record {:build expected, :bundles bundles, :assets signatures}
+      main-path (layout/main-script-path)
+      main {:url main-path
+            :sha256 (manifest/digest (io/resource (str "public" main-path)))}
+      record {:build expected, :main main, :bundles bundles, :assets signatures}
       report "target/prepared-assets-source.edn"]
   (assert (every? (comp seq val) bundles) "Every declared independent bundle must resolve")
+  (assert (not-any? #(= "main.js" (:bundle %)) inventory) "Shadow owns the sole main entry")
   (assert (nil? (find-ns 'optimus.optimizations.minify)) "Prepared import must not load GraalJS/minifiers")
   (assert (nil? (find-ns 'optimus-img-transform.core)) "Prepared import must not load image transformations")
   (case mode

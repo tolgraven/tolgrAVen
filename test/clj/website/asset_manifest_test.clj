@@ -110,6 +110,21 @@
                                 (manifest/read-prepared! prepared build-settings resolve-resource)))))
       (finally (delete-tree! root)))))
 
+(deftest unbundled-main-remains-a-validated-prepared-source
+  (let [root (temporary-directory)
+        path "public/js/compiled/out/main.hash.js"
+        source (io/file root path)
+        source-resolver (resolver root)]
+    (try
+      (io/make-parents source)
+      (spit source "released main bytes")
+      (let [prepared (build/write-prepared! root build-settings [path] [] source-resolver)]
+        (is (empty? (manifest/read-prepared! prepared build-settings source-resolver)))
+        (spit source "unexpected main bytes")
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"missing or stale"
+                              (manifest/read-prepared! prepared build-settings source-resolver))))
+      (finally (delete-tree! root)))))
+
 (deftest prepared-manifest-fails-clearly-when-missing-invalid-or-incomplete
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"manifest is missing"
                         (manifest/read-prepared! nil build-settings (constantly nil))))

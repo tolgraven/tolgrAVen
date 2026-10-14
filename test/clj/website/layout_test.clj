@@ -103,6 +103,7 @@
 
 (deftest preload-matches-the-executed-bundle
   (with-redefs [config/env {:dev false :ssr {:enabled false}}
+                layout/browser-modules (constantly {:main {:output-name "main.hash.js"}})
                 olink/file-path (fn [_ path]
                                   (when (= path "/webfonts/OpenSans-v29-latin.woff2")
                                     "/webfonts/hash/OpenSans-v29-latin.woff2"))
@@ -113,11 +114,12 @@
                                       []))
                 ohtml/link-to-js-bundles (fn [& _] [:script {:src "/bundles/main.hash.js"}])]
     (let [{:keys [body headers]} (layout/render-home {:uri "/"})]
-      (is (= "</bundles/main.hash.js>; rel=preload; as=script" (get headers "Link")))
+      (is (= "</js/compiled/out/main.hash.js>; rel=preload; as=script" (get headers "Link")))
       (is (not (.contains body "fetchpriority=\"low\"")) "Browser-rendered pages keep normal script priority")
-      (is (re-find #"<link[^>]*href=\"/bundles/main.hash.js\"[^>]*rel=\"preload\"" body))
-      (is (< (.indexOf body "/bundles/main.hash.js") (.indexOf body "<body")))
-      (is (re-find #"<script[^>]*defer[^>]*src=\"/bundles/main.hash.js\"" body))
+      (is (re-find #"<link[^>]*href=\"/js/compiled/out/main.hash.js\"[^>]*rel=\"preload\"" body))
+      (is (< (.indexOf body "/js/compiled/out/main.hash.js") (.indexOf body "<body")))
+      (is (re-find #"<script[^>]*defer[^>]*src=\"/js/compiled/out/main.hash.js\"" body))
+      (is (not (.contains body "/bundles/main.hash.js")))
       (is (not (.contains body "/vendor/supabase.js")))
       (is (re-find #"<link[^>]*href=\"/webfonts/hash/OpenSans-v29-latin.woff2\"[^>]*rel=\"preload\"" body))
       (is (not (.contains body "analytics-id")))
@@ -195,6 +197,7 @@
 
 (deftest preload-hydration-dependencies-in-the-first-response-head
   (with-redefs [config/env {:dev true :ssr {:streaming false}}
+                layout/browser-modules (constantly {:main {:output-name "main.hash.js"}})
                 ssr/page! (fn [& _] {:html "<article>Ready</article>" :snapshot {:content {} :posts []}})
                 layout/hydration-script-paths (constantly ["/js/compiled/out/link-preview.js"
                                                          "/js/compiled/out/user.js"
@@ -210,8 +213,8 @@
                          "fetchpriority=\"low\""))
           (is (.contains (first (filter #(.contains % path) (re-seq #"<link[^>]+>" body)))
                          "as=\"fetch\" crossorigin=\"anonymous\""))))
-      (is (.contains (get headers "Link") "</bundles/main.hash.js>; rel=preload; as=script; fetchpriority=low"))
-      (is (re-find #"<script[^>]*fetchpriority=\"low\"[^>]*src=\"/bundles/main.hash.js\"" body)))))
+      (is (.contains (get headers "Link") "</js/compiled/out/main.hash.js>; rel=preload; as=script; fetchpriority=low"))
+      (is (re-find #"<script[^>]*fetchpriority=\"low\"[^>]*src=\"/js/compiled/out/main.hash.js\"" body)))))
 
 (deftest production-inlines-optimized-route-sheets-with-a-bounded-budget
   (let [asset (fn [module css]
@@ -311,6 +314,7 @@
 
 (deftest pages-and-local-returns-leave-sdk-acquisition-to-shadow
   (with-redefs [config/env {:dev true :ssr {:enabled false}}
+                layout/browser-modules (constantly {:main {:output-name "main.hash.js"}})
                 content/immediate-content (constantly {})
                 ssr/renderer-build (constantly "lazy-sdk-test")
                 olink/bundle-paths (fn [_ bundles]
@@ -319,7 +323,7 @@
     (doseq [html [(:body (layout/render-home {:uri "/"}))
                  (:template (layout/return-template {:uri "/api/page-return-template"}))]]
       (is (not (.contains html "/vendor/supabase.js")))
-      (is (.contains html "/bundles/main.hash.js")))))
+      (is (.contains html "/js/compiled/out/main.hash.js")))))
 
 (deftest local-return-assets-follow-the-browser-manifest
   (with-redefs [ssr/renderer-build (constantly "return-test")
@@ -331,6 +335,8 @@
       (is (= {:main {:url "/js/compiled/out/main.hash.js" :depends []}
               :blog {:url "/js/compiled/out/blog.hash.js" :depends [:main :user]}}
              (:scripts result)))
+      (is (.contains html (get-in result [:scripts :main :url]))
+          "The page and worker share one exact entry URL")
       (is (.contains html "/js/document/entrance.js")
           "Paired returns use the same owned image stage")
       (is (.contains html "data-local-return=\"true\""))

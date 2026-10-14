@@ -8,30 +8,17 @@
             [website.layout :as layout]
             [website.middleware :as middleware]))
 
-(deftest relocated-module-map-url-resolves-against-every-document-and-bundle
-  (let [asset {:path "/js/compiled/out/main.ABC123.js"
-               :contents "var app = 1;\n//# sourceMappingURL=main.ABC123.js.map\n"}
-        transformed (first (middleware/module-source-maps [asset]))]
-    (is (= "/js/compiled/out/main.ABC123.js" (:path transformed)))
-    (is (= "var app = 1;\n//# sourceMappingURL=/js/compiled/out/main.ABC123.js.map\n"
-           (:contents transformed)))
-    (doseq [parent ["https://example.com/blog/post/17"
-                    "https://example.com/bundles/checksum/main.js"]]
-      (is (= "https://example.com/js/compiled/out/main.ABC123.js.map"
-             (str (.resolve (java.net.URI. parent) "/js/compiled/out/main.ABC123.js.map")))))
-    (is (= transformed (first (middleware/module-source-maps [transformed]))) "Idempotent")))
-
-(deftest other-assets-and-existing-absolute-map-urls-stay-identical
-  (doseq [asset [{:path "/vendor/supabase.js"
-                 :contents "//# sourceMappingURL=supabase.js.map"}
-                {:path "/js/compiled/out/main.js"
-                 :contents "//# sourceMappingURL=https://cdn.example/main.js.map"}
-                {:path "/js/compiled/out/main.js"
-                 :contents "//# sourceMappingURL=/js/compiled/out/main.js.map"}
-                {:path "/js/compiled/out/main.js"
-                 :contents "var app = 1;"}
-                {:path "/img/example.avif", :contents (byte-array [1 2 3])}]]
-    (is (= asset (first (middleware/module-source-maps [asset]))))))
+(deftest shadow-owns-the-main-entry-without-an-optimus-copy
+  (doseq [output [nil "main.js" "main.0123456789abcdef0123456789abcdef.js"]]
+    (with-redefs [layout/browser-modules (constantly (when output {:main {:output-name output}}))]
+      (let [path (layout/main-script-path)
+            inventory (middleware/get-bundled-assets)]
+        (is (= (str "/js/compiled/out/" (or output "main.js")) path))
+        (is (not-any? #(= "main.js" (:bundle %)) inventory))
+        (is (not-any? #(= path (:path %)) inventory))
+        (is (= (str "https://example.com" path ".map")
+               (str (.resolve (java.net.URI. (str "https://example.com" path))
+                              (str (or output "main.js") ".map")))))))))
 
 (deftest production-refuses-missing-or-watched-browser-output
   (let [released {:output-name "main.0123456789abcdef0123456789abcdef.js"

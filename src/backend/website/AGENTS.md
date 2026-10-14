@@ -44,10 +44,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   its fonts and rewrites CSS references. Development-only inspector
   rules use a separate unbundled sheet; normal and error documents share the shell
   stylesheet policy. Emit
-  route dependency styles, User control styles and actually rendered SSR module
+  route dependency styles and actually rendered SSR module
   styles in the first head. Visible authored widgets may use a normally deferred
-  owner; hidden popup boundaries do not enter the renderer export inventory. Home owns
-  its static Markdown styles without depending on Markdown code. Do not add the
+  owner; hidden popup boundaries do not enter the renderer export inventory. Do not add the
   Link Preview popup sheet to the initial head; its static container rule belongs
   to Markdown. Respect module `:ssr-styles :deferred` without removing loader URLs.
   Inline small optimized sheets
@@ -68,9 +67,10 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Image preloads must use the same responsive candidates as rendered pictures.
 - Image/video catalog macros track their EDN resources through Shadow during
   CLJS compilation; JVM runtime reads do not require the compiler dependency.
-- Production Shadow chunks use content-hashed names from `manifest.edn`; the
-  Optimus main bundle resolves that manifest too. Its source-map comment uses the
-  absolute Shadow output path so relocation into `/bundles/` cannot break it.
+- Production Shadow chunks use content-hashed names from `manifest.edn`. Page
+  preload/script and rendering-worker imports share the same canonical main URL;
+  keep main out of Optimus bundles and preserve Shadow's source-map references.
+  Prepared-source validation still includes the released main bytes.
   Only successful fingerprinted
   chunk responses receive immutable caching; plain names and errors must not.
 - Streaming uses Hiccup document parts and the existing flush-aware Ring body;

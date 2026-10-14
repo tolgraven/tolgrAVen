@@ -87,6 +87,7 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   time and verify that missing fresh output is written from cached analysis.
 
 - `test/prepared_assets.clj` checks the explicit prepared inventory from source and
-  then from an uberjar, preserving all bodies and independent bundle paths. Run
+  then from an uberjar, preserving all bodies, independent bundle paths and the
+  canonical unbundled main URL/digest. The real middleware check includes main. Run
   it only in the CPU controller's Docker snapshot after real production outputs;
   it does not start the application or prove deployment behavior.

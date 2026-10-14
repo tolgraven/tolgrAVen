@@ -46,9 +46,17 @@
 (defn- script-priority [request]
   ;; Server HTML can paint before hydration; let its styles and fonts win bandwidth.
   (when (:ssr request) "low"))
+(declare browser-modules)
+
+(defn main-script-path
+  "Use Shadow's canonical entry URL in the document and rendering worker alike."
+  []
+  (str "/js/compiled/out/"
+       (or (get-in (browser-modules) [:main :output-name]) "main.js")))
+
 (defn- script-preload-attrs [request path]
   ;; Shadow fetches lazy chunks through XHR, then evaluates them itself.
-  (let [lazy? (not (some #{path} (olink/bundle-paths request ["main.js"])))]
+  (let [lazy? (not= path (main-script-path))]
     (cond-> {:rel "preload" :as (if lazy? "fetch" "script")}
       lazy? (assoc :crossorigin "anonymous")
       (script-priority request) (assoc :fetchpriority (script-priority request)))))
@@ -259,9 +267,8 @@
       [:script#site-content-bootstrap {:type "application/json"} (content/hydration-json bundle)])
     (when (:streamed? request) [:span#ssr-complete {:hidden true}])
     ;; Match the SDK's deferred execution order without blocking streamed HTML.
-    (for [path (olink/bundle-paths request ["main.js"])]
-      [:script (cond-> {:src path :defer true}
-                 (script-priority request) (assoc :fetchpriority (script-priority request)))]) ]]))
+    [:script (cond-> {:src (main-script-path) :defer true}
+               (script-priority request) (assoc :fetchpriority (script-priority request)))]]]))
 
 (defn- hiccup-response [page & args]
   (-> (apply page args) ok (content-type "text/html; charset=utf-8")))
@@ -271,8 +278,6 @@
 
 (defn render-hiccup [page & args]
   (update (apply hiccup-response page args) :body render-document))
-
-(declare browser-modules)
 
 (defn return-template [request]
   ;; No page data acquisition: the browser supplies both markup and its state.
@@ -331,7 +336,7 @@
 
 (defn- home-response
   [request]
-  (let [script-paths (olink/bundle-paths request ["main.js"])
+  (let [script-paths [(main-script-path)]
         returning? (returning-page? request)
         ssr (if (contains? request :ssr-result) (:ssr-result request)
               (when (and (not returning?) (ssr/enabled?) (ssr/route (:uri request)))
