@@ -134,7 +134,7 @@
                        (when-not (.-current closing)
                          (set! (.-current closing) true)
                          (set-transform! (transform-for (bounds source)))
-                           (set-phase! :closing))))]
+                         (set-phase! :closing)))]
     ;; The scrolling/transformed timeline clips fixed descendants. A body portal
     ;; owns this measured FLIP transition; React still owns every style and node.
     (r/use-layout-effect
