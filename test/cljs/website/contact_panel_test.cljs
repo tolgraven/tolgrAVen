@@ -75,3 +75,57 @@
               (finally (close!)))))
         (.catch #(is false (str %)))
         (.finally done))))
+
+(defn- focus-form [launcher?]
+  [:div
+   [:div
+    (when launcher?
+      [:button {:id "contact-focus-launcher", :on-click #(r/dispatch [:contact/open])}
+       "Open contact"])]
+   [contact/<contact-form-host>]])
+
+(deftest close-control-returns-focus-to-the-opener-before-hiding-the-panel
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture!))]
+            (try
+              (await! (support/render! root (focus-form true)))
+              (let [opener (.querySelector element "#contact-focus-launcher")]
+                (.focus opener)
+                (.click opener)
+                (let [panel (await! (support/wait-for! #(.querySelector element ".contact-form-popup")))
+                      close-button (.querySelector panel "button[aria-label=Close]")]
+                  (await! (support/wait-for! #(.contains (.-classList panel) "appeared")))
+                  (.focus close-button)
+                  (.click close-button)
+                  (is (identical? opener (.-activeElement js/document))
+                      "The event moves focus before React renders the exit attributes")
+                  (await! (support/wait-for! #(.contains (.-classList panel) "exiting")))
+                  (is (not (.contains panel (.-activeElement js/document))))
+                  (await! (support/wait-for! #(nil? (.querySelector element ".contact-form-popup"))))
+                  (is (identical? opener (.-activeElement js/document)))))
+              (finally (close!)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest closing-after-the-opener-disappears-releases-focused-descendants
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture!))]
+            (try
+              (await! (support/render! root (focus-form true)))
+              (let [opener (.querySelector element "#contact-focus-launcher")]
+                (.focus opener)
+                (.click opener)
+                (let [panel (await! (support/wait-for! #(.querySelector element ".contact-form-popup")))
+                      close-button (.querySelector panel "button[aria-label=Close]")]
+                  (await! (support/wait-for! #(.contains (.-classList panel) "appeared")))
+                  (await! (support/render! root (focus-form false)))
+                  (is (false? (.-isConnected opener)))
+                  (.focus close-button)
+                  (.click close-button)
+                  (is (not (.contains panel (.-activeElement js/document))))
+                  (await! (support/wait-for! #(nil? (.querySelector element ".contact-form-popup"))))))
+              (finally (close!)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
