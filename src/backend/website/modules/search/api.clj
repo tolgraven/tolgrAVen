@@ -47,7 +47,9 @@
                   :hits hits
                   :suggestions (vec (take 6 (distinct (keep #(model/completion q (get-in % [:document :title])) hits))))}]
       {:status 200
-       :headers {"Cache-Control" "public, max-age=15"}
+       ;; Every request must pass the current source visibility gates, including
+       ;; repeated queries after a repository or content source becomes private.
+       :headers {"Cache-Control" "no-store"}
        :body (validation/check! "Public search response" model/result result)})
     (catch Exception _ {:status 503
                         :headers {"Cache-Control" "no-store"}

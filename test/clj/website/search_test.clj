@@ -83,3 +83,27 @@
         (is (nil? (github-search/filter!)))))
     (with-redefs [platform/request! (fn [& _] {:body [{:owner "owner", :repo "repo", :is_public true}]})]
       (is (= "repository:=`owner/repo`" (github-search/filter!))))))
+
+(deftest repeated-searches-recheck-visibility-without-http-cache-reuse
+  (let [*public? (atom true)
+        *queries (atom 0)
+        github-document (assoc document :id "github-commit-example", :kind "github-commit"
+                                        :href "/github/commits/abcdef0")]
+    (with-redefs [index/sources (constantly [{:kind "github-commit"
+                                            :preview :github-preview/commit
+                                            :filter 'website.modules.github.search/filter!}])
+                  github-sync/target! (constantly {:owner "owner", :repo "repo"})
+                  platform/request! (fn [& _] {:body [{:is_public @*public?}]})
+                  typesense/search! (fn [_]
+                                      (swap! *queries inc)
+                                      {:found 1, :hits [{:document github-document}]})]
+      (let [public-response (api/response! {:q "example"})]
+        (is (= 200 (:status public-response)))
+        (is (= "no-store" (get-in public-response [:headers "Cache-Control"])))
+        (is (= 1 (get-in public-response [:body :found]))))
+      (reset! *public? false)
+      (let [private-response (api/response! {:q "example"})]
+        (is (= 200 (:status private-response)))
+        (is (= "no-store" (get-in private-response [:headers "Cache-Control"])))
+        (is (= [] (get-in private-response [:body :hits])))
+        (is (= 1 @*queries))))))
