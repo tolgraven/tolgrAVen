@@ -29,6 +29,7 @@ def main():
                 assert 'website/core.class' in names, 'Executable backend class missing'
                 assert 'supabase/schema.sql' not in names
                 assert 'site.overrides.edn' not in names
+                assert 'site.overrides.css' not in names
                 assert not any(n.startswith('website/modules/blog/comments') for n in names)
                 assert 'supabase/modules/blog_comments.sql' not in names
                 if label == 'home-only':

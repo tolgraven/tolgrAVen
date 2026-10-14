@@ -128,4 +128,4 @@
                          (re-pattern (str "^public/css/website/modules/icons-" (name id) "(?:\\.min)?\\.css$")))
                        [#"^public/vendor/supabase\.js(?:\.map)?$"
                         #"^supabase/(?:schema|operations)\.sql$"
-                        #"^site\.overrides\.edn$"]))}))
+                        #"^site\.overrides\.(edn|css)$"]))}))

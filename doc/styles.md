@@ -10,6 +10,60 @@ fingerprinted shell link without loading those rules. Shared validation-error
 markup stays in the common component error stylesheet. `npm run dev` watches both shared and module sources.
 Set `CSS_OUTPUT_DIR` to build into a separate directory for comparisons.
 
+## CMS variable overrides
+
+The CMS **Site features and pages** form has a multiline **CSS variable overrides**
+field. It accepts ordinary CSS custom properties, including existing names from
+`scss/shell/_vars.scss`; there is no per-variable registration or parallel form.
+
+```css
+:root {
+  --space: 1.5rem;
+  --space-lg: calc(2 * var(--space));
+  --line-width: 0.125rem;
+}
+
+@media (min-width: 60rem) {
+  :root { --space: 2rem; }
+}
+
+html[data-theme="light"] {
+  --bg-1: #f0eee8;
+  --fg-1: #242628;
+}
+```
+
+Selectors, media queries, native `var()`/`calc()`/color functions and comments are
+retained. Supply CSS rather than Sass; declarations must be custom properties
+(`--name`) inside selectors. Imports are rejected. Theme defaults have their own
+selectors: use `html[data-theme="light"]` for explicit light mode, and
+`@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { ... } }`
+for automatic light mode. A plain `:root` rule overrides the default root values
+and responsive root rules, while more specific component/theme declarations
+keep normal CSS precedence. Use relative units for sizes.
+
+`bb site:resolve` snapshots the authenticated `/api/site-config` response once:
+boolean selections go to `resources/site.overrides.edn`, and its optional `styles`
+text goes to `resources/site.overrides.css`. Both generated files are ignored and
+excluded from Docker inputs/jars. Docker resolves them in its shared source stage
+using existing BuildKit secrets; ordinary CSS builds consume the local snapshot
+and make no network requests. For local CMS preview, export `STRAPI_URL` and
+`STRAPI_READ_TOKEN`, run `bb site:resolve`, then `npm run build` or the CSS watcher.
+
+The stylesheet builder parses the bounded 64 KiB CSS snapshot before writing
+outputs, appends it only to the shell after source defaults, and includes it in
+the freshness hash. Replacing or clearing it invalidates stale output; the watcher
+also notices snapshot changes. The regular Optimus pipeline fingerprints the
+combined sheet, so overrides arrive in the blocking first-paint stylesheet with
+no extra browser/CMS request or hydration restyling. `_vars.scss` stays unchanged.
+Older CMS responses, a missing CMS endpoint, or no configured CMS produce empty
+overrides and retain source defaults. Other CMS/validation failures stop resolution.
+
+Save the field and use **Publish site** to rebuild/deploy. Saving alone does not
+restyle an existing deployment. Clear it and publish to restore the defaults.
+Malformed CSS fails the build while retaining previous stylesheet output; it
+does not become a partially applied theme.
+
 Shared shell/layout rules live in `scss/shell`, reusable component rules in
 `scss/components`, and feature implementations in `scss/modules/<feature>`.
 Shared rules retain ordinary selector specificity; feature rules use their
