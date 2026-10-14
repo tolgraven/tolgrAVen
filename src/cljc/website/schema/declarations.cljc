@@ -101,7 +101,7 @@
    [:?view [:map-of :keyword :any]]
    [:?init fn?]
    [:?install fn?]
-   [:?styles c/strings]
+   [:?styles [:vector [:re "^/"]]]
    [:?icons icons]
    [:?ssr-styles [:enum :initial :deferred]]
    [:?depends dependencies]

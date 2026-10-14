@@ -6,7 +6,8 @@
             [website.handler :as handler]
             [website.config :as config]
             [website.layout :as layout]
-            [website.middleware :as middleware]))
+            [website.middleware :as middleware]
+            [website.loader.style-catalog :as styles]))
 
 (deftest shadow-owns-the-main-entry-without-an-optimus-copy
   (doseq [output [nil "main.js" "main.0123456789abcdef0123456789abcdef.js"]]
@@ -78,3 +79,12 @@
         (is (= :assets (:build (ex-data error))))
         (is (= ["optimus/assets.edn"] (:missing-assets (ex-data error))))
         (is (re-find #"bb prod:build" (.getMessage error)))))))
+
+
+(deftest real-development-css-inventory-loads-the-experiments-sheet
+  (with-redefs [environment/defaults (assoc environment/defaults :document-ready? (constantly false))]
+    (let [inventory (vec (middleware/get-bundled-assets))]
+      (is (= ["/css/website/modules/test.min.css"] (get-in styles/modules [:test :paths])))
+      (is (some #(= "/css/website/modules/test.min.css" (:path %)) inventory))
+      (doseq [path ["/css/website/main.min.css" "/css/website/modules/test.min.css"]]
+        (is (some #(= path (:path %)) inventory))))))

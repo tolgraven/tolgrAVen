@@ -52,8 +52,9 @@
           (throw (ex-info "Declare module bundle dependencies and capability ownership in spec, not ns metadata"
                           {:file (str file)})))
         (when-not (or (nil? styles)
-                      (and (vector? styles) (every? string? styles)))
-          (throw (ex-info "Module :styles must be a literal vector of stylesheet paths"
+                      (and (vector? styles)
+                           (every? #(and (string? %) (string/starts-with? % "/")) styles)))
+          (throw (ex-info "Module :styles must be a literal vector of absolute stylesheet asset paths"
                           {:file (str file)})))
         (when (and (contains? spec :icons) (not (icons/valid-icons? icon-dependencies)))
           (throw (ex-info "Module :icons must be literal brands/name or solid/name strings"
