@@ -2,5 +2,7 @@
   (:require [website.modules.codex-profile.views :as views]))
 
 (def spec
-  {:content [:codex-profile]
+  ;; This section is not published by the CMS yet. Keep the optional view
+  ;; available without adding an unsupported key to bootstrap/module requests.
+  {:content []
    :view {:view #'views/<profile>}})

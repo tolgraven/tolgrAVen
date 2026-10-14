@@ -13,6 +13,10 @@
     [website.component.storage :as storage]
     [website.component.restore :as restore]))
 
+(def request-timeout-ms 15000)
+;; Two bounded transport attempts plus the shared queue/settlement margin.
+(def acquisition-timeout-ms (+ (* 2 request-timeout-ms) 1000))
+
 (def cache-options {:scope :public :version contract/version :ttl-ms 1800000})
 
 (defonce *pending (atom {}))
@@ -40,7 +44,7 @@
    (fn [resolve reject]
      (ajax/GET (if (= (set ks) (set contract/sections)) "/api/content/bootstrap"
                   (str "/api/content?keys=" (js/encodeURIComponent (string/join "," (map name ks)))))
-               {:timeout 15000 :response-format (ajax/json-response-format {:keywords? true})
+               {:timeout request-timeout-ms :response-format (ajax/json-response-format {:keywords? true})
                 :handler (fn [bundle]
                            (if (valid-bundle? bundle ks)
                              (do (r/dispatch-sync [:content/install bundle])
@@ -56,25 +60,35 @@
   (-> (validation/when-ready!)
       (.then (fn [_] (request-ready! ks)))))
 
+(defn- acquire-batch! [batch]
+  (let [ks (vec (sort (keys batch)))]
+    (-> (js/Promise.resolve nil)
+        (.then (fn [_] (request! ks)))
+        (.then (fn [bundle]
+                 (swap! *pending #(apply dissoc % ks))
+                 (storage/schedule!)
+                 (doseq [[_ {:keys [resolve]}] batch] (resolve bundle)))
+               (fn [error]
+                 (if (> (count ks) 1)
+                   ;; Keep the normal shared request. A failed bundle cannot
+                   ;; identify its bad section; isolate it before rejecting
+                   ;; consumers so unrelated module loads can still complete.
+                   (js/Promise.all
+                     (into-array (map (fn [k] (acquire-batch! (select-keys batch [k]))) ks)))
+                   (do
+                     (swap! *pending #(apply dissoc % ks))
+                     (status/fail! [:strapi ks] "Strapi content unavailable"
+                                   "Some site content could not be loaded. Previously loaded content is retained."
+                                   #(prefetch! ks))
+                     (doseq [[_ {:keys [reject]}] batch] (reject error)))))))))
+
 (defn drain!
-  "One network request for all sections requested during this tick."
+  "Batch this tick's requests; isolate sections if the shared request fails."
   []
   (reset! *tick nil)
-  (let [batch @*queued ks (vec (sort (keys batch)))]
+  (let [batch @*queued]
     (reset! *queued {})
-    (when (seq ks)
-      (-> (js/Promise.resolve nil)
-          (.then (fn [_] (request! ks)))
-          (.then (fn [bundle]
-                   (swap! *pending #(apply dissoc % ks))
-                   (storage/schedule!)
-                   (doseq [[_ {:keys [resolve]}] batch] (resolve bundle)))
-                 (fn [error]
-                   (swap! *pending #(apply dissoc % ks))
-                   (status/fail! [:strapi ks] "Strapi content unavailable"
-                                 "Some site content could not be loaded. Previously loaded content is retained."
-                                 #(prefetch! ks))
-                   (doseq [[_ {:keys [reject]}] batch] (reject error))))))))
+    (when (seq batch) (acquire-batch! batch))))
 
 (defn ensure! [requested]
   (doseq [k (distinct requested)
@@ -89,6 +103,12 @@
 
 (r/reg-fx :content/load #(prefetch! %))
 (r/reg-event-fx :content/load (fn [_ [_ ks]] {:content/load ks}))
+
+(defn bootstrap-keys [embedded pathname]
+  (if (:deferred? embedded)
+    (vec (keys (:content embedded)))
+    (let [route (or (second (string/split pathname #"/")) "home")]
+      (contract/keys-for-route (if (#{"" "about" "services" "hire"} route) :home (keyword route))))))
 
 (defn- bootstrap-ready! []
   (try
@@ -107,14 +127,9 @@
                                        #(apply dissoc % (keys (cached-content))))]))))
       (storage/track! :public-content
                       #(hash-map :version contract/version :content (cached-content)) cache-options)
-      ;; The default loads all content. An SSR response can opt into a partial
-      ;; bootstrap; module initialization/prefetch then fill only missing sections.
-      (-> (ensure! (cond
-                     (:deferred? embedded) (keys (:content embedded))
-                     (:back? @restore/*context)
-                     (let [route (or (second (string/split (.-pathname js/location) #"/")) "home")]
-                       (contract/keys-for-route (if (#{"" "about" "services" "hire"} route) :home (keyword route))))
-                     :else contract/sections))
+      ;; Startup needs only the current shell/route. Optional modules acquire
+      ;; their own content through the loader and retain their local retry UI.
+      (-> (ensure! (bootstrap-keys embedded (.-pathname js/location)))
           (.then (fn [result] (status/recover! :strapi-bootstrap) (storage/schedule!) result))))
     (catch :default error
       ;; A retry fetches a fresh bundle instead of parsing the same broken snapshot.

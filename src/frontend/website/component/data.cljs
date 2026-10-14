@@ -114,6 +114,8 @@
     (when (= value (storage/state-value path))
       (r/dispatch-sync [:component-data/remove path]))))
 
+(def default-timeout-ms 15000)
+
 (defn ensure!
   "Queue immediately, independent of React. Return a shared Promise for one resource.
    Errors are retained until retry; successful remote snapshots default to 60s TTL."
@@ -121,7 +123,7 @@
   (try
     (validation/check! "data dependency" schemas/dependency resource)
     (restore! resource)
-    (let [{:keys [load! read]} (adapter resource)
+    (let [{:keys [load! read timeout-ms]} (adapter resource)
           key (resource-key resource)
           ready (ready-value resource)
           existing (get @*entries key)
@@ -141,7 +143,7 @@
               promise (js/Promise. (fn [resolve reject] (reset! *resolve resolve) (reset! *reject reject)))
               current? #(identical? token (get-in @*entries [key :token]))
               timer (js/setTimeout #(@*reject (js/Error. "Component data request timed out"))
-                                   (or (:timeout-ms resource) 15000))
+                                   (or (:timeout-ms resource) timeout-ms default-timeout-ms))
               finish (-> promise
                          (.then (fn [value]
                                   (when-not (current?) (throw (js/Error. "Component data request invalidated")))

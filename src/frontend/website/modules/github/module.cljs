@@ -9,7 +9,9 @@
     [website.modules.github.views :as view]))
 
 (def spec
-  {:content [:github-settings]
+  ;; This section is not published by the CMS yet. Keep the optional view
+  ;; available without adding an unsupported key to bootstrap/module requests.
+  {:content []
    :server {:routes 'website.modules.github.api/routes
             :start 'website.modules.github.sync/start!}
    :storage storage/tables

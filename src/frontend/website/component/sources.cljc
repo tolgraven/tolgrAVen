@@ -45,7 +45,8 @@
 
 (data/register-source!
  :strapi
- {:restore! (fn [{:keys [keys]} value]
+ {:timeout-ms content/acquisition-timeout-ms
+  :restore! (fn [{:keys [keys]} value]
               (let [bundle {:version contract/version :content value}]
                 (when-not (content/valid-bundle? bundle keys) (throw (js/Error. "Invalid cached content")))
                 (r/dispatch-sync [:content/install bundle])))

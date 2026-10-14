@@ -341,7 +341,9 @@ write over app-db. If different in-flight resources target the same path, the
 newer request owns the destination and an older completion cannot overwrite it.
 
 Remote snapshots default to a 60-second TTL and 15-second request deadline;
-positive `:ttl-ms` / `:timeout-ms` override these. Completed cache entries are
+positive `:ttl-ms` / `:timeout-ms` override these. A source adapter may supply its
+own default deadline. Strapi allows 31 seconds for a batched request followed by
+per-section isolation; an explicit dependency deadline still takes precedence. Completed cache entries are
 bounded to 128 (in-flight requests are retained). App-db and Strapi readiness
 comes from current app-db values. Account/client changes invalidate URL and
 Supabase snapshots, reject pending waiters, and clear values installed by those
@@ -350,7 +352,8 @@ install. Failures remain explicit until retry, avoiding automatic retry loops.
 
 Custom sources register via `data/register-source!` with `:load!` returning a
 value or Promise. Optional `:read` returns `{:ready? boolean :value value}`;
-optional `:scope` partitions the request cache (for example by session).
+optional `:scope` partitions the request cache (for example by session). Optional
+`:timeout-ms` supplies the source's default managed acquisition deadline.
 
 ## Loading views and skeletons
 

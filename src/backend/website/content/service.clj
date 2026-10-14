@@ -12,6 +12,7 @@
             [website.content.contract :as contract]))
 
 (defonce *cache (atom {}))
+(defonce *inflight (atom {}))
 (defn settings []
   {:url (or (System/getenv "STRAPI_URL") (:strapi-url config/env))
    :token (or (System/getenv "STRAPI_READ_TOKEN") (:strapi-read-token config/env))})
@@ -98,21 +99,52 @@
     (merge (select-keys warm ks)
            (when (seq missing) (contract/normalize-content (load-content! missing))))))
 
+(defn- acquire-sections! [source ks now]
+  ;; Only cache/request ownership is serialized. Disjoint requests cannot wait
+  ;; behind CMS I/O. Share identical missing sets, not overlapping bundles:
+  ;; a bundle containing a bad section must not reject a healthy subset reader.
+  (locking *cache
+    (let [cached (get @*cache source {})
+          missing (filterv #(> (- now (get-in cached [% :at] 0)) 30000) ks)
+          request-key (vec (sort missing))
+          pending (get-in @*inflight [source request-key])
+          owned? (and (seq missing) (nil? pending))
+          pending' (when (seq missing) (or pending (promise)))]
+      (when owned? (swap! *inflight assoc-in [source request-key] pending'))
+      {:content (into {} (map (fn [k] [k (get-in cached [k :value])])) (remove (set missing) ks))
+       :missing missing
+       :request-key request-key
+       :pending pending'
+       :owned? (boolean owned?)})))
+
 (defn bundle!
   ([] (bundle! nil))
   ([requested]
    (let [ks (contract/validate-keys requested)
          source (:url (settings))
-         now (System/currentTimeMillis)]
-     (locking *cache
-       (let [cached (get @*cache source {})
-             missing (filterv #(> (- now (get-in cached [% :at] 0)) 30000) ks)]
-         (when (seq missing)
-           (let [fresh (read-content! missing)]
-             (swap! *cache update source merge
-                    (into {} (map (fn [[k v]] [k {:at now :value v}])) fresh)))))
+         now (System/currentTimeMillis)
+         {:keys [content missing request-key pending owned?]} (acquire-sections! source ks now)]
+     (when owned?
+       (try
+         (let [fresh (read-content! missing)]
+           (locking *cache
+             (swap! *cache update source
+                    (fn [cached]
+                      (reduce-kv (fn [entries k value]
+                                   ;; A newer overlapping read may have finished
+                                   ;; first. Do not overwrite its cached snapshot.
+                                   (if (> (get-in entries [k :at] 0) now)
+                                     entries (assoc entries k {:at now, :value value})))
+                                 (or cached {}) fresh))))
+           (deliver pending {:content fresh}))
+         (catch Throwable error (deliver pending {:error error}))
+         (finally
+           (locking *cache
+             (swap! *inflight update source dissoc request-key)))))
+     (let [result (when pending @pending)]
+       (when-let [error (:error result)] (throw error))
        {:version contract/version
-        :content (merge (into {} (map (fn [k] [k (get-in @*cache [source k :value])])) ks)
+        :content (merge content (:content result)
                         (when (= source (:source @*immediate))
                           (select-keys (:content @*immediate) ks)))}))))
 

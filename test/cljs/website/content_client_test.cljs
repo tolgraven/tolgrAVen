@@ -13,6 +13,7 @@
             [website.subs]
             [website.loader :as loader]
             [website.component.data :as data]
+            [website.component.sources]
             [website.content.contract :as contract]
             [website.component.storage :as storage]
             [website.component.restore :as restore]
@@ -219,6 +220,8 @@
                  (try (r/with-framework-bindings [r/dispatch #(swap! *requests conj %)]
                         (is (= {:repo []} (await! (subscription-value! [:content [:github]]))))
                         (is (nil? (await! (subscription-value! [:content [:instagram]]))))
+                        (is (nil? (await! (subscription-value! [:content [:github-settings]]))))
+                        (is (nil? (await! (subscription-value! [:content [:codex-profile]]))))
                         (is (nil? (await! (subscription-value! [:content [:story]]))))
                         (is (= [[:content/load [:story]]] @*requests)))
                       (finally (r/clear-subscription-cache!) (reset! r/*app-db before)))))
@@ -281,3 +284,97 @@
               (finally (restore!)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
+
+(deftest failed-batched-content-does-not-reject-unrelated-consumers
+  (async done
+    (-> (go-promise
+          (let [before @r/*app-db
+                failures @status/*failures
+                original content/request!
+                *calls (atom [])]
+            (reset! content/*pending {})
+            (reset! status/*failures {})
+            (reset! r/*app-db {:content {:cv {:title "Retained"}}})
+            (set! content/request!
+                  (fn [ks]
+                    (swap! *calls conj ks)
+                    (if (= ks [:story])
+                      (do (r/dispatch-sync [:content/install
+                                            {:version contract/version
+                                             :content {:story {:title "Available"}}}])
+                          (js/Promise.resolve nil))
+                      (js/Promise.reject (js/Error. "Missing module config")))))
+            (let [healthy (content/ensure! [:story])
+                  unavailable (-> (content/ensure! [:docs])
+                                  (.then (fn [_] (is false "Missing content must reject its owner")))
+                                  (.catch (fn [_] nil)))]
+              (-> (js/Promise.all #js [healthy unavailable])
+                  (.then (fn [_]
+                           (is (= [[:docs :story] [:docs] [:story]] @*calls))
+                           (is (= "Available" (get-in @r/*app-db [:content :story :title])))
+                           (is (= "Retained" (get-in @r/*app-db [:content :cv :title])))
+                           (is (= #{[:strapi [:docs]]} (set (keys @status/*failures))))
+                           (is (empty? @content/*pending))))
+                  (.finally (fn []
+                              (set! content/request! original)
+                              (reset! r/*app-db before)
+                              (reset! status/*failures failures)))))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
+(deftest startup-content-is-scoped-to-the-current-route
+  (is (= contract/shell-content (content/bootstrap-keys nil "/test/liquid-glass")))
+  (is (= (contract/keys-for-route :cv) (content/bootstrap-keys nil "/cv")))
+  (is (= (contract/keys-for-route :home) (content/bootstrap-keys nil "/about")))
+  (is (not (some #{:cv :docs :github-settings :codex-profile}
+                 (content/bootstrap-keys nil "/"))))
+  (is (= [:document] (content/bootstrap-keys {:deferred? true, :content {:document {}}} "/cv"))))
+
+(deftest managed-content-waits-for-delayed-section-recovery
+  (async done
+    (-> (go-promise
+          (let [before @r/*app-db
+                failures @status/*failures
+                original-request content/request!
+                original-timeout data/default-timeout-ms
+                adapter (get @data/*sources :strapi)
+                resource {:source :strapi, :keys [:story]}]
+            (reset! r/*app-db {:content {}})
+            (reset! content/*pending {})
+            (reset! status/*failures {})
+            ;; Scale the same two-attempt/default-deadline relationship down.
+            ;; Recovery (70ms) outlives the ordinary dependency budget (50ms).
+            (set! data/default-timeout-ms 50)
+            (data/register-source! :strapi (assoc adapter :timeout-ms 150))
+            (set! content/request!
+                  (fn [ks]
+                    (js/Promise.
+                      (fn [resolve reject]
+                        (js/setTimeout
+                          (fn []
+                            (if (= ks [:story])
+                              (do (r/dispatch-sync [:content/install
+                                                    {:version contract/version
+                                                     :content {:story {:title "Recovered"}}}])
+                                  (resolve nil))
+                              (reject (js/Error. "Unavailable module config"))))
+                          35)))))
+            (let [healthy (data/ensure! resource)
+                  unavailable (-> (content/ensure! [:docs]) (.catch (fn [_] nil)))]
+              (-> (js/Promise.all #js [healthy unavailable])
+                  (.then (fn [values]
+                           (is (= "Recovered" (get-in (aget values 0) [:story :title])))
+                           (is (= :ready (:status (data/snapshot resource))))
+                           (is (= #{[:strapi [:docs]]} (set (keys @status/*failures))))))
+                  (.finally (fn []
+                              (data/invalidate! #{resource})
+                              (data/register-source! :strapi adapter)
+                              (set! data/default-timeout-ms original-timeout)
+                              (set! content/request! original-request)
+                              (reset! r/*app-db before)
+                              (reset! status/*failures failures)))))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
+(deftest cms-managed-deadline-includes-both-transport-attempts
+  (is (> (:timeout-ms (get @data/*sources :strapi)) (* 2 content/request-timeout-ms))))

@@ -10,9 +10,10 @@ complete original subject and body. Label clicks keep their category search.
 
 ## CMS ownership
 
-Strapi's `github-settings` single type owns `user` and `repo`.
-The module declares this section as a managed content dependency; the
-`:github/get-from` subscription reads it. GitHub provider responses remain in
+The retained `github-settings` contract defines `user` and `repo`; the
+`:github/get-from` subscription reads them when supplied. The currently deployed
+CMS does not publish this section, so the module declares no content dependency
+and shows its configuration prompt when settings are absent. GitHub provider responses remain in
 `:content :github`, separate from editor content. Repository changes reset that
 provider cache and advance a request generation, rejecting late responses even
 after an A/B/A switch. Pending reads are deduplicated; failed initial reads can
@@ -20,8 +21,9 @@ retry on remount without resetting successfully loaded pages. Calendars are
 installed and subscribed to by username, so a cached A/B/A switch retains the
 correct user's counts.
 
-Strapi's `codex-profile` single type owns `displayName`, `profileUrl`, `bio` and
-optional `days`. The public contract uses `:display-name`, `:profile-url`, `:bio`
+The retained `codex-profile` contract defines `displayName`, `profileUrl`, `bio`
+and optional `days`. This section is also unpublished by the current CMS, so its
+module declares no content dependency and absent activity remains unavailable. The public contract uses `:display-name`, `:profile-url`, `:bio`
 and `:days`. A day has ISO `date`, nonnegative integer `count`, and intensity
 `level` from 0 through 4. Supply chronological, consecutive days, at most 371.
 Absent days means unavailable activity; an explicit empty vector means a supplied
@@ -30,9 +32,10 @@ currently requires login to view its full content. The site does not infer usage
 from GitHub commits or collect private ChatGPT conversations.
 
 These single types and their public adapters require the companion
-`tolgrAVen-strapi` change. With a configured CMS, missing sections are a content
-error, not a fallback to seed values. Deploy that CMS change before the web app;
-seed-on-start creates the missing records without replacing existing edits.
+`tolgrAVen-strapi` change before their module content dependencies can be enabled.
+Until then, bootstrap and module acquisition omit both keys. Published sections
+still report CMS failures through the usual retry flow; configured CMS failures
+do not fall back to seed values. See [Content dependencies](strapi-content.md).
 
 ## Deployment identity
 
@@ -91,7 +94,10 @@ through its ordinary storage catalog. Apply the module's SQL using the existing
 Supabase provisioner before enabling its service. `:server :start` returns a
 cleanup owned by the mounted module-services lifecycle. With server Supabase
 settings, it starts asynchronously; `:github {:sync-enabled false}` disables it.
-It uses the CMS-selected repository, traversing every current public branch and tag's
+Without published CMS repository settings the automatic worker has no target and
+performs no archive/content acquisition. Optional module-service startup failures
+are logged locally and do not stop the shared HTTP server or healthy siblings.
+When configured, it uses the CMS-selected repository, traversing every current public branch and tag's
 reachable history, not only commits attributed to the configured owner. Removed
 branch commits already archived remain searchable. Unreachable/deleted GitHub
 objects cannot be discovered through the branches/tags APIs.
