@@ -447,3 +447,7 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   blog reading stays independent of `:blog-editor` and the lazy visual SDK.
 
 - GitHub editor settings live in the CMS `github-settings` section; provider caches stay separate. Deployment identity and public calendar contracts are documented in `doc/activity-panels.md`.
+- Modules may declare a server `:start` symbol returning an optional cleanup
+  function. The mounted module-services owner starts selected services after
+  content/configuration and stops them before those dependencies. GitHub's
+  leased, checkpointed Supabase archive runs there; browser paging never imports history.

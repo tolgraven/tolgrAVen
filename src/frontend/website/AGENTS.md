@@ -17,6 +17,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 
 ## Implementation priority: Reagent and re-frame
 
+- Activity calendar tooltips mount only during hover/focus and release their
+  portal, managed day dependency and scoped listeners immediately on exit.
+  GitHub search is debounced through events and queries the backend's complete
+  Supabase archive; never filter only the browser's loaded subset.
+
 - Apply the root guide's Reagent/re-frame-first principles to every frontend change,
   including lazy loading and performance optimizations. See
   `doc/reagent-re-frame.md` for the event flow, examples and justified exceptions.

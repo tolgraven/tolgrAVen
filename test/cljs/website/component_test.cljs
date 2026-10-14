@@ -4,6 +4,7 @@
             [website.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
+            [website.loader :as loader]
 
 
             [website.macros :refer-macros [defc]]
@@ -62,7 +63,8 @@
   (let [child (fn [_] [:p "Child"])
         spec {:props {:class "outer" :style {:color "red"}}
               :class "base" :style {:padding "1rem"}
-              :appear "zoom" :depends [{:source :strapi}] :skeleton true}
+              :appear "zoom" :depends [{:source :strapi}] :skeleton true
+              :data-error [:p "Unavailable"]}
         form (markup/normalize-form
               [:section spec [:span {:props {:title "A title"} :seen true} "Text"]
                [child spec]])]
@@ -78,6 +80,8 @@
     ;; otherwise awaits the receiver before invoking .catch.
     (let [test! (fn [root element]
                   (go-promise
+                    ;; Skeleton rendering deliberately acquires no module code.
+                    (await! (loader/load! {:module :markdown}))
                     (await! (render! root
                                     [:div {:style {:position "fixed" :top "1rem" :left "1rem" :width "20rem"}}
                                      [loading/<rendered>
