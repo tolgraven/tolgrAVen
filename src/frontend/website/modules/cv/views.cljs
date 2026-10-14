@@ -1,6 +1,7 @@
 (ns website.modules.cv.views
   (:require
     [website.content.schema :as schema]
+    [website.content.fields :as fields]
     [website.media.schema :as media-schema]
     [website.component.registry]
     [clojure.string :as string]
@@ -44,12 +45,13 @@
        [:p.cv-to (if (= from to)
                    ""
                    (or to "current"))]
-       [:p.cv-what [:strong what]]
+       [:p.cv-what [fields/<text> :strong all [:what]]]
        (if @expanded?
-         (for [item how]
-           [:p.cv-how [:i.fas.fa-arrow-right] item])
+         (for [[i item] (map-indexed vector how)]
+           ^{:key i} [:p.cv-how [:i.fas.fa-arrow-right]
+                     (if (fields/editing? all) [fields/<text> :span all [:how i]] item)])
          [:p.cv-position position])
-       [:p.cv-where where]
+       [fields/<text> :p.cv-where all [:where]]
        (when-not (string/blank? logo)
          [img/<picture> {:src logo
                          :asset asset
@@ -88,12 +90,12 @@
   (let [win-fullscreen? @(r/subscribe [:state [:window :fullscreen?]])]
     [:div.cv-intro
      [<intro-logo>]
-     [:p (:intro cv)]
+     [fields/<text> :p cv [:intro]]
      [:div.center-content
       [:div.cv-howto
        [:div.flex
         [:p "Click a box for further details."]
-        [:p.cv-caption (:caption cv)]]
+        [fields/<text> :p.cv-caption cv [:caption]]]
 
        (if-not win-fullscreen?
          "Scroll sideways to look back, or click "
@@ -122,7 +124,7 @@
                      (r/dispatch [:dispatch-in/ms 4500 [:scroll/by -37]])
                      (r/dispatch [:dispatch-in/ms 5500 [:focus-element "fullscreen-btn"]]))))]
    (fn []
-    (let [{:keys [title caption cv image-assets]} @(r/subscribe [:content [:cv]])
+    (let [{:keys [title caption cv image-assets]} @(r/subscribe [:content/view [:cv]])
         {:keys [timeline skills]} cv
         total-width "200em"
         base-height 9

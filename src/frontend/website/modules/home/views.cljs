@@ -80,7 +80,7 @@
   [id section-map]
   (let [{:keys [module <comp> <loading> content args dep init]} section-map
         arguments (cond-> []
-                    content (conj @(r/subscribe [:content [content]]))
+                    content (conj @(r/subscribe [:content/view [content]]))
                     args (conj args))]
     [:<>
      (when (and init (not module))
