@@ -40,7 +40,8 @@
   padding-top: 0;
   padding-bottom: 0;
 }
-.sideways > div, .sideways > img, .sideways > picture, .sideways > .progressive-image {
+.sideways > div, .sideways > img, .sideways > picture,
+.sideways > .progressive-image, .sideways > .content-edit-image {
   scroll-snap-align: start;
   position: sticky;
   left: 0;
@@ -52,7 +53,8 @@
   box-shadow: -0.5rem 0 1rem 0.5rem var(--box-regular-color);
 }
 .sideways > picture,
-.sideways > .progressive-image {
+.sideways > .progressive-image,
+.sideways > .content-edit-image {
   // Both native pictures and progressive wrappers own a full-height slide.
   // A definite height lets the image's aspect ratio determine its flex width.
   flex: 0 0 auto;
@@ -60,6 +62,9 @@
   width: auto;
   max-width: 100%;
   margin: 0;
+
+  > picture,
+  > .progressive-image { height: 100%; }
 
   img {
     display: block;
