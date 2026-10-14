@@ -1,7 +1,10 @@
 (ns website.ssr.return-worker
   "Cache/Fetch adapters for local return documents. No asset or SPA interception."
-  (:require [website.ssr.return-policy :as policy]))
+  #?(:cljs (:require [website.ssr.return-policy :as policy]
+                     #?(:module/neovim [website.modules.neovim.policy :as neovim]))))
 
+#?(:cljs
+   (do
 (def ttl-ms policy/ttl-ms)
 (def max-documents policy/max-documents)
 (def prefix policy/prefix)
@@ -16,12 +19,14 @@
   (when-let [port (first (array-seq (.-ports event)))]
     (.postMessage port (clj->js value))))
 
-(defn- document-response [html saved-at]
+(defn- document-response [url html saved-at]
   (js/Response. html
-    (clj->js {:headers {"Content-Type"  "text/html; charset=utf-8"
+    (clj->js {:headers (merge #?(:module/neovim (neovim/headers-for (.-pathname (js/URL. url)))
+                                :default nil)
+                      {"Content-Type"  "text/html; charset=utf-8"
                        "Cache-Control" "no-store"
                        "X-Local-Page"  "1"
-                       "X-Local-Saved" (str saved-at)}})))
+                       "X-Local-Saved" (str saved-at)})})))
 
 (defn- trim! [cache]
   (-> (.keys cache)
@@ -37,7 +42,7 @@
     (js/Promise.reject (js/Error. "Incompatible return document build"))
     (-> (.open js/caches cache-name)
         (.then (fn [cache]
-                 (-> (.put cache url (document-response html (.now js/Date)))
+                 (-> (.put cache url (document-response url html (.now js/Date)))
                      (.then (fn [_] (trim! cache)))))))))
 
 (defn arm! [url]
@@ -127,3 +132,5 @@
   (.addEventListener js/self "activate" (fn [event] (.waitUntil event (activate!))))
   (.addEventListener js/self "message" message!)
   (.addEventListener js/self "fetch" fetch!))
+
+))

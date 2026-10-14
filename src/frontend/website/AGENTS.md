@@ -108,7 +108,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Late reads retain edits/tombstones; pagehide never serializes a large content envelope.
   Local-return capture observes its source subscription in the component lifecycle.
   Return-worker decisions use Clojure data in `ssr/return_policy.cljs`; Cache,
-  Request/Response and event lifetime handling stay in `ssr/return_worker.cljs`.
+  Request/Response and event lifetime handling stay in `ssr/return_worker.cljc`.
   Decode JSON once at that boundary; process native entry arrays as sequences,
   retaining opaque Request/Response handles. Keep the native Promise write queue
   and synchronous `waitUntil`/`respondWith` event ownership.
@@ -552,3 +552,16 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   native animation completion owns removal, without a business-event timer.
   The panel captures its native opener after commit and returns focus before the
   close event, so exit never hides a focused descendant.
+
+- `:neovim` owns one WASM worker/RPC connection per mounted editor and terminates
+  it on unmount. The process owns buffers/imports; Reagent owns grid, cursor,
+  loading markup and pointer handlers. Profile/workspace files load before startup.
+  Native `:w` callbacks release their exact BufWritePost owner on unmount/replacement;
+  recoverable input rejection never hides a healthy buffer. Worker input diagnostics
+  retain a finite sample, independently of the total byte count.
+  Configure initial files before attaching the UI; diffs attach a hidden UI before
+  loading buffers and publish only the completed redraw. See `doc/neovim.md`.
+- `ssr/return_worker.cljc` shares the module-owned isolation policy. GitHub's
+  optional `/neovim/github/:user/:repo/:sha` views own cached revision reads and
+  readonly native diffs. Crossing the isolation boundary uses document navigation;
+  disabled Neovim sites retain the basic viewer and no editor assets.

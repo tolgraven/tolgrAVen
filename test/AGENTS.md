@@ -222,6 +222,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   bytes through source and jar resolvers. Reject missing, stale or corrupt output;
   do not replace this proof with a manifest-exists assertion.
 
+- `:neovim-check` mounts the real WASM editor in `/fixtures/neovim.html`; serve with COOP/COEP for active editing, and without them for the fallback. Its plugin/workspace controls exercise real Meta/file imports; Node/BB checks cover preRun bytes, profile failures and source pruning. See `doc/neovim.md`.
+
+- `:github-diff-check` exercises public GitHub revision reads with the real readonly Neovim component. Its focused fixture supplies an eager module loadable; it does not prove full-site navigation or hydration. Native diff checks in `:neovim-check` verify buffer immutability, diff highlights and absolute line numbers.
+
 - Markdown authoring checks cover data-only component argument round trips, private
   path/expression rejection, feature-pruned generated help, block-safe published
   markup and actual editor normalization/keyboard/source transitions. Vendor CSS

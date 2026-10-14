@@ -1,5 +1,6 @@
 /** Build the shell and independent feature sheets with the same locked tools. */
 import fs from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {readOverrides, checkedOverrides} from './style-overrides.mjs';
@@ -74,6 +75,9 @@ async function current(buildEntries, inputRevision) {
 }
 
 async function build() {
+  if (!postcssOnly) {
+    execFileSync('bb', ['-cp', 'scripts:src/cljc:resources', '-m', 'build.neovim-workspace'], {stdio: 'inherit'});
+  }
   const buildEntries = await entries();
   const overrides = checkedOverrides(await readOverrides());
   const inputRevision = await revision(buildEntries, overrides);

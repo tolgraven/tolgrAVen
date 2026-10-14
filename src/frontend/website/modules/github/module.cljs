@@ -6,6 +6,9 @@
     [website.components.activity-schema :as activity-schema]
     [website.deployment.schema :as deployment-schema]
     [website.modules.github.events]
+    [website.modules.github.diff-events]
+    [website.modules.github.pages :as pages]
+    [website.modules.github.diff-views :as diff-views]
     [website.modules.github.subs]
     [website.modules.github.views :as view]))
 
@@ -13,6 +16,7 @@
   ;; This section is not published by the CMS yet. Keep the optional view
   ;; available without adding an unsupported key to bootstrap/module requests.
   {:content []
+   :pages pages/spec
    :depends [{:source :url
               :url "/api/github/settings"
               :into [:module :github :configuration]}]
@@ -23,5 +27,6 @@
                [:module :github :activity] [:map-of :string activity-schema/result]
                [:module :github :deployment] deployment-schema/metadata
                [:module :github :days] [:map-of :string [:map-of :string activity-schema/breakdown]]}
-   :view {:view #'view/<commits>}
+   :view {:view #'view/<commits>
+          :diff #'diff-views/<page>}
    :init #(r/dispatch [:github/init])})
