@@ -128,7 +128,7 @@ exports.start = function start(workerPath, onRedraw, onStatus, onExit, onFailure
       group.add(callback);
       return () => {
         group.delete(callback);
-        if (!group.size) listeners.delete(method);
+        if (!group.size && listeners.get(method) === group) listeners.delete(method);
       };
     },
     registerTypes(types) {

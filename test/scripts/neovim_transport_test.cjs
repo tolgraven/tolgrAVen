@@ -29,6 +29,11 @@ global.Worker = class {
   release();
   worker.emit({ type: 'stdout', bytes: packer.pack([2, 'website-buffer-written', ['/workspace/file.cljs', 'stale\n']]) });
   assert.equal(writes.length, 1, 'disposed native notifications cannot reach consumers');
+  const releaseReplacement = session.listen('website-buffer-written', value => writes.push(value));
+  release();
+  worker.emit({ type: 'stdout', bytes: packer.pack([2, 'website-buffer-written', ['/workspace/file.cljs', 'replacement\n']]) });
+  assert.equal(writes.length, 2, 'repeated cleanup cannot remove a replacement owner');
+  releaseReplacement();
   const state = new Int32Array(worker.init.sab, 0, 3);
   const previous = Atomics.load(state, 0);
   await assert.rejects(session.request('nvim_paste', ['x'.repeat(65536), true, -1]), /queue is full/);
