@@ -3,8 +3,8 @@
 The web app's public `:content` comes from the Clojure backend. Static editorial
 content has moved out of `db.cljs`; only UI state, routes and options remain there.
 On a normal page load the browser requests `/api/content/bootstrap`, installs all
-16 public sections, and then mounts the app. A retry screen handles unavailable
-content. Supabase continues to own authentication, posts, comments, chat and
+declared public sections, and then mounts the app. A retry screen handles
+unavailable content. Supabase continues to own authentication, posts, comments, chat and
 private documents.
 
 The backend uses `STRAPI_URL` and `STRAPI_READ_TOKEN` to call the token-protected
@@ -15,10 +15,14 @@ local development uses `resources/content-seed.json` on the backend. A configure
 CMS failure returns 503 and never silently restores the original seed.
 
 `website.content.contract/module-content` is the shared dependency manifest.
-Every lazy module's `spec` includes `:content` referencing this manifest, including
+A lazy module's `spec` includes `:content` referencing this manifest, including
 an empty vector when it needs no CMS content. The module loader waits for those
-sections before running its init function. Concurrent loads share pending
-requests; failures release them so retries can succeed. Auto-layout sections have
+sections before running its init function. `github-settings` and `codex-profile`
+are not published by the CMS yet, so their modules declare no CMS dependencies.
+Bootstrap, module acquisition and content subscriptions omit those keys. The
+GitHub configuration prompt and Codex unavailable state remain usable; their
+schemas and readers are retained for future publication. Concurrent loads share
+pending requests; failures release them so retries can succeed. Auto-layout sections have
 content sentinels that prefetch within 800 pixels of the viewport. Prefetch only
 loads data; it does not initialize a module or cause authenticated writes.
 

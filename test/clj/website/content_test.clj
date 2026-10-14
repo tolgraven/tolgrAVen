@@ -1,6 +1,8 @@
 (ns website.content-test
   (:require [clojure.test :refer :all]
             [clojure.data.json :as json]
+            [clojure.java.io :as io]
+            [clojure.string :as string]
             [clj-http.client :as http]
             [website.content.contract :as contract]
             [website.page-router :as pages]
@@ -88,3 +90,27 @@
       (let [response (content/response nil)]
         (is (= expected (get-in response [:headers "X-Content-Source"])))
         (is (not (.contains (pr-str response) "private")))))))
+
+(deftest bootstrap-omits-unpublished-optional-sections
+  (let [unsupported #{:github-settings :codex-profile}
+        seed (json/read-str (slurp (io/resource "content-seed.json")) :key-fn keyword)
+        calls (atom [])]
+    (is (not-any? unsupported contract/sections))
+    (doseq [module [:github :codex-profile]]
+      (is (empty? (get contract/module-content module)))
+      (is (empty? (get contract/module-dependencies module))))
+    (with-redefs [content/settings (constantly {:url "https://optional-sections.test"})
+                  http/get (fn [_ options]
+                             (let [ks (mapv keyword (string/split (get-in options [:query-params "keys"]) #","))]
+                               (swap! calls conj ks)
+                               (if (some unsupported ks)
+                                 {:status 400}
+                                 {:status 200
+                                  :body {:version contract/version
+                                         :content (select-keys seed ks)}})))]
+      (let [response (content/response nil)]
+        (is (= 200 (:status response)))
+        (is (= (set contract/sections) (set (keys (get-in response [:body :content])))))
+        (is (= "Building experiences" (get-in response [:body :content :intro :title])))
+        (is (= [contract/sections] @calls))
+        (is (= (:body response) (contract/checked-bundle (:body response) contract/sections)))))))
