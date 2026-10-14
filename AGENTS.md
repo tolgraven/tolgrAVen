@@ -60,6 +60,34 @@ sessions' tabs and restore any borrowed tab when finished.
    merge commit, checks performed and material limits. Do not leave an otherwise
    completed request unmerged or ask whether to finish these routine steps.
 
+## Task resource ownership and cleanup
+
+- Track task-created browser tabs/windows, servers, build snapshots and worktree
+  paths while working. Reuse one existing task tab for sequential checks. Create
+  an additional private context only when the check requires isolation, and close
+  it as soon as that check finishes. Close every completed task-created tab/window
+  promptly, including older test runners; never quit Chrome or close user-owned
+  tabs or another session's still-needed checks. Relay this rule to active subagents.
+- Cleanup is part of completion, not an optional later pass. After merge and local
+  integration, stop only owned verification servers, remove finished isolated output
+  snapshots, and retire the task worktree and its compiler caches. Preserve active
+  watches/fixtures, uncommitted or unpublished work, ignored private data and useful
+  verification records; archive the latter before removing the worktree.
+- From another checkout, run `bb cleanup --worktree <task-path> --remove-worktree`
+  to inspect the plan, then add `--apply`. The command requires a clean registered
+  feature worktree, an exact merged PR head present in `origin/master`, no open
+  follow-up PR and no processes, build reservations or container mounts using its
+  directory (including cache-disabled and older builds). It archives ignored task data
+  under the primary checkout's `.local-wip/task-archives`, preserves branch refs,
+  and uses ordinary `git worktree remove` without force. Detached or ambiguous
+  worktrees require manual investigation; age or ahead/behind counts are not proof.
+- Agent compiler caches live in the primary checkout's ignored
+  `.local-wip/shadow-caches`, shared across its worktrees and separate from watched
+  `.shadow-cljs/builds`. Run `bb cleanup` to inspect and `bb cleanup --apply` to prune
+  unlocked obsolete/expired/LRU entries. Never delete lock files, active writer
+  caches, watched caches or another session's unfinished outputs. See
+  `doc/resource-controls.md` for legacy cache cleanup and the 2 GiB repository budget.
+
 ## Current architecture
 - Keep the full-featured `defc` based on upstream `reagent.core/defc`. Hooks delegate
   to upstream `reagent.hooks` through the existing shim; dependency collections
