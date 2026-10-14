@@ -116,6 +116,10 @@
   (-> (Jsoup/connect (str "https://github.com/" user
                          "?action=show&controller=profiles&tab=contributions&user_id=" user
                          "&from=" date "&to=" date))
+      ;; GitHub's public include-fragment URL returns the populated timeline
+      ;; only for an HTML fragment request; an ordinary navigation stays lazy.
+      (.header "Accept" "text/html")
+      (.header "X-Requested-With" "XMLHttpRequest")
       (.header "Accept-Language" "en")
       (.timeout 7000)
       (.maxBodySize 1048576)
