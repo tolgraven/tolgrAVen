@@ -4,4 +4,4 @@
 (def spec
   {:server {:routes 'website.modules.contact.api/routes}
    :ssr-styles :deferred
-   :view {:popup #'views/<contact-form-popup>}})
+   :view {:popup #'views/<contact-form-host>}})

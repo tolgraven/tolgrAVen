@@ -531,3 +531,6 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Contact email anchors retain their visible text in SSR but acquire `mailto:`
   only on the first frame after commit. Keep initial hydration href-free so mail
   handler extensions cannot rewrite these attributes before React attaches.
+- The lazy contact host owns `:presence`; its keyed panel uses `:appear`/`:exit`
+  and exists only while open or exiting. Closing changes intent immediately;
+  native animation completion owns removal, without a business-event timer.
