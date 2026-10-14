@@ -471,6 +471,8 @@ or a 6 ms batch. Older EDN envelopes retain their already encoded heavy cache in
 a separate localStorage migration backup until its IndexedDB commit succeeds.
 Small preferences and drafts still save synchronously during migration; backup
 restoration contributes only heavy entries, preserving small-state removals.
+Store readiness is independent: failed IndexedDB reads preserve unseen heavy data
+while readable localStorage drafts remain available for restoration and saving.
 A failed transaction retains the backup. A single large legacy entry can still
 take a long first-time parse, so measure migration separately from subsequent loads.
 Equal, unexpired values do not produce another write. Components only read the

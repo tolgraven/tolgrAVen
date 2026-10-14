@@ -27,6 +27,8 @@
 (defonce *consumed (atom {}))
 (defonce *ready (atom #{}))
 (defonce *read-errors (atom #{}))
+(defonce *heavy-ready (atom #{}))
+(defonce *heavy-read-errors (atom #{}))
 (defonce *deleted-paths (atom {}))
 (defonce *heavy-owners (atom #{}))
 (defonce *migrating (atom #{}))
@@ -64,7 +66,9 @@
 (defn- read-local-owner! [account disk-key]
   (let [text (read-disk! disk-key)
         legacy (read-disk! (migration-key account))]
-    (-> (js/Promise.all #js [(disk/read-local! text) (disk/read-local! legacy)])
+    (-> (js/Promise.all #js [(disk/read-local! text)
+                            (.catch (disk/read-local! legacy)
+                                    (fn [_] (swap! *heavy-read-errors conj account) nil))])
         (.then (fn [stores]
                  (let [local (aget stores 0)
                        backup (aget stores 1)
@@ -112,6 +116,7 @@
      (or (get @*reads account)
          (let [key (storage-key nil options)
                failed-read! (fn [_] (swap! *read-errors conj account) missing)
+               failed-heavy-read! (fn [_] (swap! *heavy-read-errors conj account) missing)
                promise
                (-> (validation/when-ready!)
                    (.then (fn [_]
@@ -122,29 +127,35 @@
                                          #(resolve (try
                                                      (.catch (read-local-owner! account key) failed-read!)
                                                      (catch :default error (failed-read! error)))) 0)))
-                                   (.catch (disk/read! account) failed-read!)])))
+                                   (.catch (disk/read! account) failed-heavy-read!)])))
                    (.then (fn [stores]
                             (let [local (aget stores 0)
                                   heavy (aget stores 1)
-                                  failed? (or (identical? local missing) (identical? heavy missing))
-                                  saved (merge {} (when-not (identical? heavy missing) heavy)
-                                               (when-not (identical? local missing) local))]
-                              (when (or (seq (when-not (identical? heavy missing) heavy))
+                                  local' (when-not (identical? local missing) local)
+                                  heavy' (when-not (identical? heavy missing) heavy)
+                                  failed? (identical? local missing)
+                                  saved (merge {} heavy' local')]
+                              (when (or (seq heavy')
                                         (some heavy-id? (keys saved)))
                                 (swap! *heavy-owners conj account))
                               ;; Retain the legacy copy until its IDB write commits.
-                              (when (some heavy-id? (keys (when-not (identical? local missing) local)))
+                              (when (or (contains? @*legacy-text account)
+                                        (some heavy-id? (keys local')))
                                 (swap! *migrating conj account)
                                 (swap! *dirty conj account))
                               (-> (disk/map-chunks!
                                     (fn [[id snapshot]]
-                                      (when (nil? (validation/explain schema/storage-snapshot snapshot))
-                                        [id snapshot])) saved)
+                                      (if (nil? (validation/explain schema/storage-snapshot snapshot))
+                                        [id snapshot]
+                                        (do (when-not (contains? local' id)
+                                              (swap! *heavy-read-errors conj account))
+                                            nil))) saved)
                                   (.then
                                     (fn [entries]
                                       (let [clean (into {} (keep identity entries))
                                             migrated (migrate-component-owners clean)]
-                                        (when (and (not= account :public) (not= saved clean))
+                                        (when (and (not= account :public)
+                                                   (some #(not (contains? clean %)) (keys local')))
                                           (throw (js/Error. "Invalid private snapshots")))
                                         ;; Writes/removals queued before this read win.
                                         (swap! *buckets update account
@@ -156,6 +167,10 @@
                                                           (<= (:expires-at snapshot 0) (.now js/Date))) migrated))
                                           (swap! *dirty conj account))
                                         (swap! *deleted-paths dissoc account)
+                                        ;; A heavy-cache failure cannot disable readable
+                                        ;; localStorage drafts or authorize an IDB overwrite.
+                                        (when-not (contains? @*heavy-read-errors account)
+                                          (swap! *heavy-ready conj account))
                                         (when (or (not failed?) (= account :public))
                                           (swap! *ready conj account))
                                         (when (contains? @*dirty account) (schedule-write!))
@@ -174,8 +189,10 @@
   "Retry a completed failed owner read through the same deduplicated boundary."
   [options]
   (let [account (owner options)]
-    (when (contains? @*read-errors account)
+    (when (or (contains? @*read-errors account) (contains? @*heavy-read-errors account))
       (swap! *read-errors disj account)
+      (swap! *heavy-read-errors disj account)
+      (swap! *heavy-ready disj account)
       (swap! *reads dissoc account)
       (swap! *ready disj account))
     (ready! options)))
@@ -281,7 +298,9 @@
                                                   (and (not (contains? (get @*consumed account) id))
                                                        (> (:expires-at v 0) (.now js/Date)))))
                                       (get @*buckets account))
-                         heavy? (or (contains? @*heavy-owners account) (some heavy-id? (keys bucket)))
+                         heavy? (or (contains? @*heavy-owners account)
+                                    (contains? @*migrating account)
+                                    (some heavy-id? (keys bucket)))
                          small (if heavy? (into {} (remove (comp heavy-id? key)) bucket) bucket)
                          text (pr-str small)]
                      (when (> (count text) max-bytes) (throw (js/Error. "Snapshot too large")))
@@ -295,8 +314,13 @@
                        (swap! *legacy-backed conj account))
                      (write-disk! (str prefix (pr-str account)) text)
                      (if heavy?
-                       (do (swap! *heavy-owners conj account)
-                           (write-heavy! account bucket))
+                       (do
+                         (swap! *heavy-owners conj account)
+                         (if (contains? @*heavy-ready account)
+                           (write-heavy! account bucket)
+                           ;; Preserve the unseen heavy store until a successful
+                           ;; retry. Small preferences are already durable.
+                           (failed! account)))
                        (saved! account bucket))
                      ;; Explicit draft saves acknowledge the synchronous small
                      ;; write. Heavy cache callers await drain-async! separately.

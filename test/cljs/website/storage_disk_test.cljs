@@ -12,7 +12,54 @@
     (swap! *store dissoc account))
   (doseq [*store [storage/*ready storage/*dirty storage/*heavy-owners storage/*migrating
                  storage/*legacy-backed storage/*read-errors]]
+    (swap! *store disj account))
+  (doseq [*store [storage/*heavy-ready storage/*heavy-read-errors]]
     (swap! *store disj account)))
+
+(deftest small-private-storage-remains-usable-when-the-heavy-store-cannot-be-read
+  (async done
+    (let [account (random-uuid)
+          identity @storage/*identity
+          options {:scope :user}
+          key (str storage/prefix (pr-str account))
+          draft [:blog-editor/working :without-idb]
+          heavy [:state [:store :unseen]]
+          snapshot {:version 1, :schema 1, :expires-at (+ (.now js/Date) 60000), :value "Saved draft"}
+          read! disk/read!
+          write! disk/write!
+          *writes (atom 0)]
+      (reset! storage/*identity account)
+      (storage/write-disk! key (pr-str {draft snapshot}))
+      (set! disk/read! (fn [_] (js/Promise.reject (js/Error. "IndexedDB unavailable"))))
+      (set! disk/write! (fn [& _] (swap! *writes inc) (js/Promise.resolve nil)))
+      (-> (go-promise
+            (await! (storage/ready! options))
+            (is (false? (storage/read-failed? options)))
+            (is (= "Saved draft" (:value (storage/read! draft (assoc options :consume? false)))))
+            (storage/write! draft "Edited draft" options)
+            (storage/write! heavy :new options)
+            (is (true? (get (storage/drain!) account)))
+            (await! (storage/drain-async!))
+            (let [saved (await! (disk/read-local! (storage/read-disk! key)))]
+              (is (= "Edited draft" (get-in saved [draft :value]))))
+            (is (zero? @*writes) "Failed cache reads cannot authorize overwriting unseen IDB data")
+            (forget! account)
+            (set! disk/read! (fn [_] (js/Promise.resolve {heavy {:version "corrupt"}})))
+            (await! (storage/ready! options))
+            (is (false? (storage/read-failed? options)) "Invalid heavy snapshots do not invalidate readable drafts")
+            (is (= "Edited draft" (:value (storage/read! draft (assoc options :consume? false)))))
+            (storage/write! heavy :new options)
+            (storage/drain!)
+            (await! (storage/drain-async!))
+            (is (zero? @*writes) "Invalid heavy snapshots also require a successful read before replacement"))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (set! disk/read! read!)
+                      (set! disk/write! write!)
+                      (reset! storage/*identity identity)
+                      (forget! account)
+                      (.removeItem js/localStorage key)
+                      (-> (disk/remove! account) (.finally done))))))))
 
 (deftest incremental-legacy-reader-preserves-tags-and-rejects-corruption
   (async done

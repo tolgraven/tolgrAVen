@@ -80,8 +80,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   use the shared IndexedDB queue. Decode/validate independent entries in painted
   batches and preserve the already encoded legacy envelope in a separate backup
   until transaction success. Small saves remain synchronous during migration;
-  backups restore heavy entries only, preserving small-state removals. Late reads
-  retain edits/tombstones; pagehide never serializes a large content envelope.
+  backups restore heavy entries only, preserving small-state removals. Track
+  readiness separately for each store: an IndexedDB failure must not disable
+  readable localStorage drafts or authorize overwriting unseen heavy cache data.
+  Late reads retain edits/tombstones; pagehide never serializes a large content envelope.
   Local-return capture observes its source subscription in the component lifecycle.
   Return-worker decisions use Clojure data in `ssr/return_policy.cljs`; Cache,
   Request/Response and event lifetime handling stay in `ssr/return_worker.cljs`.

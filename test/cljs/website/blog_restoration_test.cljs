@@ -339,6 +339,7 @@
                storage/*tracked (atom {})
                storage/*reads (atom {:public (js/Promise.resolve nil)})
                storage/*ready (atom #{:public})
+               storage/*heavy-ready (atom #{:public})
                storage/*dirty (atom #{})
                storage/*consumed (atom {})
                storage/*pending (atom nil)
