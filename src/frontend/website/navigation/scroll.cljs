@@ -141,11 +141,6 @@
                               (not (get-in db [:state :menu])))
                          [:hide-header-footer true true])) ; hide header and footer
                    
-                  (if (and at-bottom? (not (get-in db [:state :scroll :at-bottom])))
-                    [:scroll/at-bottom true]
-                    (when (and (not at-bottom?) (get-in db [:state :scroll :at-bottom]))
-                      [:scroll/at-bottom false]))
-
                   (if (and past-top? (not (get-in db [:state :scroll :past-top])))
                     [:scroll/past-top true]
                     (when (and (not past-top?) (get-in db [:state :scroll :past-top]))

@@ -135,3 +135,14 @@ CPU controller's disposable Docker snapshot. It loads actual CSS/media and
 identifies generated stand-in JavaScript explicitly; no watched output is changed.
 See [the middleware and Optimus audit](middleware-optimus-audit.md) for the command,
 request fixtures, evidence and implementation recommendations.
+
+### Agent resource cleanup
+
+`bb cleanup` reports disposable compiler-cache candidates; add `--apply` to prune
+unlocked entries. `--worktree <path> --remove-worktree` checks an exact completed,
+merged task before retirement and archives ignored private/task records; run it
+from a retained checkout. Close task-created browser tabs/windows and fixture
+servers as their checks finish, and reuse a task tab for sequential checks.
+Preserve user-owned pages and other sessions' active work. See
+[resource-controls.md](resource-controls.md) for cache location, ownership checks,
+legacy cleanup and the full completion procedure.

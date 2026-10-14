@@ -235,3 +235,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   focus/DOM identity, zero-index refraction, bounded allocations, map reuse,
   failure fallback, cancellation and SSR/hydration. Pixel inspection in Chrome
   establishes SVG backdrop rendering; syntax/compilation alone does not.
+
+- Cleanup tests use disposable Git worktrees and mocked PR/ownership boundaries.
+  Cover exact merged heads, private-data recovery, active cache locks and Docker
+  output mounts from another checkout (including cache-disabled/legacy builds).
+  Native CPU/lifecycle tests remain macOS-only; portable policy tests must still
+  run on other platforms. Never use real task worktrees as deletion fixtures.

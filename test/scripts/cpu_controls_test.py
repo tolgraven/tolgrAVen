@@ -379,6 +379,13 @@ class PolicyTests(unittest.TestCase):
 
 
 class ShadowCacheTests(unittest.TestCase):
+    def setUp(self):
+        fixture = tempfile.TemporaryDirectory()
+        self.addCleanup(fixture.cleanup)
+        patch = mock.patch.object(cpu, 'repository_root', return_value=Path(fixture.name).resolve())
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def test_identity_retains_minor_command_changes_but_separates_worktree_profile_toolchain_site(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); source = root / 'source'; source.mkdir()
@@ -443,11 +450,67 @@ class ShadowCacheTests(unittest.TestCase):
                 self.assertTrue(unmanaged.is_dir())
             self.assertEqual(cpu.prune_shadow_caches(now=cpu.SHADOW_CACHE_AGE + 10)['removed'], ['a' * 24])
 
+    def test_dry_run_owner_cleanup_and_disappeared_worktrees_preserve_live_writers(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            base = Path(directory); owner = base / 'owner'; owner.mkdir()
+            other = base / 'other'; other.mkdir()
+            root = cpu.shadow_cache_root()
+            for key, checkout in [('a' * 24, owner), ('b' * 24, other), ('c' * 24, base / 'gone')]:
+                path = root / key; (path / 'builds').mkdir(parents=True)
+                (path / 'builds/data').write_text('cached')
+                cpu.save_json(path / 'metadata.json', {'version': 1, 'key': key, 'checkout': str(checkout),
+                                                       'used_at': 10, 'bytes': 6})
+            with cpu.cache_lock('a' * 24):
+                dry = cpu.prune_shadow_caches(now=10, checkout=owner, apply=False, all_unused=True)
+                self.assertEqual(dry['candidates'], ['c' * 24])
+                self.assertEqual(dry['removed'], [])
+                self.assertTrue((root / ('c' * 24)).exists())
+                applied = cpu.prune_shadow_caches(now=10, checkout=owner, all_unused=True)
+                self.assertEqual(applied['removed'], ['c' * 24])
+            final = cpu.prune_shadow_caches(now=10, checkout=owner, all_unused=True)
+            self.assertEqual(final['removed'], ['a' * 24])
+            self.assertTrue((root / ('b' * 24)).exists())
+
+    def test_partial_filesystem_failure_preserves_owner_metadata_and_continues_other_entries(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            root = cpu.shadow_cache_root()
+            for key in ['a' * 24, 'b' * 24]:
+                path = root / key; (path / 'builds').mkdir(parents=True)
+                cpu.save_json(path / 'metadata.json', {'version': 1, 'key': key,
+                                                       'used_at': 0, 'bytes': 0})
+            original = cpu.shutil.rmtree
+            def concurrent_finder(path):
+                if path.name == 'a' * 24:
+                    (path / 'metadata.json').unlink()
+                    raise OSError('Directory changed during deletion')
+                return original(path)
+            with mock.patch.object(cpu.shutil, 'rmtree', side_effect=concurrent_finder):
+                result = cpu.prune_shadow_caches(now=cpu.SHADOW_CACHE_AGE + 1)
+            self.assertEqual(result['removed'], ['b' * 24])
+            self.assertEqual(result['errors'][0]['key'], 'a' * 24)
+            self.assertTrue((root / ('a' * 24) / 'metadata.json').exists())
+            self.assertEqual(cpu.prune_shadow_caches(now=cpu.SHADOW_CACHE_AGE + 1)['removed'], ['a' * 24])
+
+    def test_legacy_cleanup_uses_the_original_writer_lock_and_preserves_unmanaged_data(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory)):
+            root = cpu.STATE / 'shadow-caches'; root.mkdir()
+            for key in ['a' * 24, 'b' * 24]:
+                path = root / key; (path / 'builds').mkdir(parents=True)
+                (path / 'builds/data').write_text('data')
+                cpu.save_json(path / 'metadata.json', {'version': 1, 'key': key, 'used_at': 10, 'bytes': 4})
+            unknown = root / 'unmanaged'; unknown.mkdir()
+            with cpu.cache_lock('a' * 24):
+                result = cpu.prune_shadow_caches(now=10, legacy=True, all_unused=True)
+                self.assertEqual(result['removed'], ['b' * 24])
+            self.assertTrue(unknown.exists())
+            self.assertTrue((root / 'locks' / ('a' * 24 + '.lock')).exists())
+
     def test_reuse_refresh_and_off_keep_cache_outside_fresh_output(self):
         from types import SimpleNamespace
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(cpu, 'STATE', Path(directory) / 'state'):
             root = Path(directory); out = root / 'snapshot'; out.mkdir()
             (out / 'shadow-cljs.edn').write_text('{:builds {}}')
+            (root / 'checkout').mkdir()
             args = SimpleNamespace(checkout=str(root / 'checkout'), image='prefab', shadow_cache='reuse')
             image = mock.Mock(returncode=0, stdout='sha256:fixture')
             with mock.patch.object(cpu.subprocess, 'run', return_value=image):
@@ -477,6 +540,16 @@ class ShadowCacheTests(unittest.TestCase):
                 with cpu.shadow_cache(args, out, ['lein'], 'unix:///fixture') as absent:
                     self.assertIsNone(absent)
                 self.assertFalse(cpu.shadow_cache_root().exists())
+
+
+class LauncherUpdateTests(unittest.TestCase):
+    def test_launcher_only_update_does_not_restart_monitor_or_workers(self):
+        from types import SimpleNamespace
+        with mock.patch.object(cpu, 'install_launcher', return_value='/fixture/launcher') as installer, \
+                mock.patch.object(cpu.subprocess, 'run') as external:
+            cpu.install(SimpleNamespace(launcher_only=True))
+            installer.assert_called_once_with()
+            external.assert_not_called()
 
 
 @unittest.skipUnless(sys.platform=='darwin','native guard uses macOS libproc')

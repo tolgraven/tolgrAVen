@@ -34,6 +34,8 @@
          :task (apply dev/audit! *command-line-args*)}
   cpu {:doc "Scoped native CPU monitor and two-slot CPU-capped Docker/low-priority host launcher [action options -- command]"
        :task (apply dev/cpu! *command-line-args*)}
+  cleanup {:doc "Report task caches; --apply prunes, --worktree PATH --remove-worktree verifies and retires a merged task"
+           :task (apply process/shell "python3" "scripts/dev/cleanup.py" *command-line-args*)}
   pair {:doc "Run the installed re-frame-pair skill [operation args...]"
         :task (apply dev/pair! *command-line-args*)}
   ssr:fixtures {:doc "Check the generic Node renderer and generate hydration fixtures [--worker path]"

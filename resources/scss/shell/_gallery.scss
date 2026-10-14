@@ -34,13 +34,13 @@
 
   overflow-x: scroll;
   overflow-y: hidden;
-  max-height: calc(90vh - var(--header-height));
+  height: calc(90vh - var(--header-height));
   display: flex;
   flex-wrap: nowrap;
   padding-top: 0;
   padding-bottom: 0;
 }
-.sideways > div, .sideways > img, .sideways > picture {
+.sideways > div, .sideways > img, .sideways > picture, .sideways > .progressive-image {
   scroll-snap-align: start;
   position: sticky;
   left: 0;
@@ -51,21 +51,27 @@
   border-radius: 0;
   box-shadow: -0.5rem 0 1rem 0.5rem var(--box-regular-color);
 }
-.sideways > picture {
-  // The picture is the flex item; keep its image at the gallery's height.
+.sideways > picture,
+.sideways > .progressive-image {
+  // Both native pictures and progressive wrappers own a full-height slide.
+  // A definite height lets the image's aspect ratio determine its flex width.
   flex: 0 0 auto;
+  height: 100%;
+  width: auto;
   max-width: 100%;
+  margin: 0;
 
-  > img {
+  img {
     display: block;
     width: auto;
+    height: 100%;
     max-width: 100%;
-    max-height: calc(90vh - var(--header-height));
+    max-height: none;
     object-fit: cover;
     margin: 0;
   }
 }
-.sideways > *:first-of-type { /* left first be throwaway item */
+.sideways > *:first-child { /* left first be throwaway item */
   border: 0;
   animation: nudge 5s infinite;
   animation-play-state: paused;
@@ -75,18 +81,18 @@
   0%, 20% { margin-right: calc(-2 * var(--space-lg)); }
   10% { margin-right: calc(-3 * var(--space-lg)); }
 }
-.sideways > *:first-of-type:hover,
-.sideways > *:first-of-type:focus {
+.sideways > *:first-child:hover,
+.sideways > *:first-child:focus {
   animation-play-state: running;
 }
-.sideways > *:nth-of-type(2) { /* keep item visible on right as signal can scroll sideways */
+.sideways > *:nth-child(2) { /* keep item visible on right as signal can scroll sideways */
   left: 3%;
   /* transform: translateZ(var(--parallax-sm-px)) scale(var(--parallax-sm-scale)); */
   /* transform-origin: 50% -950%; */
 }
-.sideways > *:nth-of-type(3) { left: 6%; }
-.sideways > *:nth-of-type(4) { left: 9%; }
-.sideways > *:nth-of-type(5) { left: 12%; }
+.sideways > *:nth-child(3) { left: 6%; }
+.sideways > *:nth-child(4) { left: 9%; }
+.sideways > *:nth-child(5) { left: 12%; }
 
 .sideways > *:last-of-type {
   /* border: 0; */
