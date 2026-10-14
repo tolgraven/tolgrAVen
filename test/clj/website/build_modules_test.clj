@@ -265,7 +265,7 @@
   (let [found (modules/all-declarations)
         experiments (first (filter #(= :test (:id %)) found))]
     (is (= ["/css/website/modules/test.min.css"] (:styles experiments))
-        "Experiments reuse the existing ID-based stylesheet convention")
+        "Experiments publish the real stylesheet as an absolute asset path")
     (doseq [{:keys [id styles]} found, path styles]
       (is (string/starts-with? path "/") (str id " must supply a root-relative asset path")))))
 
