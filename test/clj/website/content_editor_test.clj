@@ -51,12 +51,15 @@
 (deftest upstream-errors-do-not-expose-credentials
   (with-redefs [auth/current-user! (constantly {:id "admin"})
                 media/admin! (constantly nil)
-                editor/settings (constantly {:url "https://cms.invalid", :token "private"})
-                http/put (fn [& _] {:status 409, :body {:token "private"}})]
+                editor/settings (constantly {:url "https://cms.invalid", :token "fixture-sensitive-write-token"})
+                content/install-edited! (constantly nil)
+                http/put (fn [& _] {:status 409, :body {:version 1, :content {:intro {:title "Latest"}}}})
+                content/enrich-media! identity]
     (let [response (editor/response! {} #(editor/save! {:path ["intro" "title"], :expected "Before", :value "After"}))]
       (is (= 409 (:status response)))
-      (is (not (.contains (pr-str response) "private")))))
+      (is (not (.contains (pr-str response) "fixture-sensitive-write-token")))))
   (with-redefs [auth/current-user! (constantly {:id "admin"})
                 media/admin! (constantly nil)]
-    (is (= {:status 503, :body {:error "Content editing is temporarily unavailable"}}
+    (is (= {:status 503, :headers {"Cache-Control" "private, no-store"}
+            :body {:error "Content editing is temporarily unavailable"}}
            (editor/response! {} #(throw (ex-info "Authorization: private" {})))))))

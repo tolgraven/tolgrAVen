@@ -3,6 +3,8 @@
   (:require [babashka.cli :as cli]
             [babashka.fs :as fs]
             [clojure.string :as str]
+            [cheshire.core :as json]
+            [org.httpkit.client :as client]
             [org.httpkit.server :as http]))
 
 (def mime
@@ -50,10 +52,54 @@
         {:status 404 :body "Not found"})
       {:status 400 :body "Invalid test path"})))
 
+(defn editor-handler [cms-origin handler request]
+  (let [uri (:uri request)
+        reply (fn [status body]
+                {:status status
+                 :headers {"content-type" "application/json", "cache-control" "no-store"}
+                 :body (json/generate-string body)})]
+    (case uri
+      "/api/content/editor" (reply 200 {:admin-url (str cms-origin "/admin"), :writable? true})
+      "/api/content/field"
+      (let [result @(client/put (str cms-origin "/api/site-content/field")
+                     {:headers {"Authorization" (str "Bearer " (System/getenv "EDITOR_FIXTURE_CMS_WRITE_TOKEN"))
+                                "Content-Type" "application/json"}
+                      :body (slurp (:body request))
+                      :timeout 15000})
+            body (try (json/parse-string (:body result) true) (catch Exception _ {}))]
+        (if (= 409 (:status result))
+          (reply 409 {:error "This field changed in Strapi. Use the latest value before editing again."
+                      :content-bundle body})
+          (reply (or (:status result) 503) body)))
+      ;; Upload status is a component fixture; it does not claim Storage/codec
+      ;; publication. The ordinary upload effect still builds native FormData.
+      "/api/supabase/media" (reply 200 {:id "fixture-upload", :status "processing"})
+      "/api/supabase/media/fixture-upload"
+      (reply 200 {:id "fixture-upload"
+                  :status "ready"
+                  :asset {:id "fixture-upload"
+                          :src "/img/tolgrav.png"
+                          :width 320
+                          :height 320
+                          :renditions {:original {:src "/img/tolgrav.png"
+                                                  :width 320
+                                                  :height 320
+                                                  :bytes 1
+                                                  :mime "image/png"}
+                                       :webp [{:src "/img/tolgrav.webp", :width 320, :height 320, :bytes 1, :mime "image/webp"}]
+                                       :avif [{:src "/img/tolgrav.avif", :width 320, :height 320, :bytes 1, :mime "image/avif"}]}}})
+      (handler request))))
+
 (defn -main [& args]
-  (let [{:keys [port glass-output]} (cli/parse-opts args {:spec {:port {:coerce :int :default 4002}
+  (let [{:keys [port glass-output editor-cms-origin]} (cli/parse-opts args {:spec {:port {:coerce :int :default 4002}
+                                                        :editor-cms-origin {:coerce :string}
                                                         :glass-output {:coerce :string}}})
-        stop! (http/run-server (partial handler glass-output) {:ip "127.0.0.1" :port port})]
+        _ (when (and editor-cms-origin (not (re-matches #"http://127\.0\.0\.1:[0-9]+" editor-cms-origin)))
+            (throw (ex-info "Editor fixtures require a disposable loopback CMS" {})))
+        handler' (if editor-cms-origin
+                   (partial editor-handler editor-cms-origin (partial handler glass-output))
+                   (partial handler glass-output))
+        stop! (http/run-server handler' {:ip "127.0.0.1" :port port})]
     (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable #(stop!)))
     (println (str "Browser tests: http://127.0.0.1:" port))
     @(promise)))

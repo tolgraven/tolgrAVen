@@ -16,7 +16,7 @@
                   (when-let [url (:url (content/settings))]
                     (str (string/replace url #"/+$" "") "/admin")))})
 
-(defn save! [{:keys [path expected value] :as data}]
+(defn save! [{:keys [path] :as data}]
   (let [path' (editor/data-path path)
         section (first (contract/validate-keys [(first path')]))
         {:keys [url token]} (settings)]
@@ -33,11 +33,16 @@
                       :conn-timeout 3000
                       :socket-timeout 15000})]
       (when-not (= 200 (:status response))
-        (throw (ex-info (case (:status response)
-                         409 "This field changed in Strapi. Reload before editing it again."
+        (let [current (when (= 409 (:status response))
+                        (-> (contract/checked-bundle (:body response) [section])
+                            (update :content content/enrich-media!)))]
+          (when current (content/install-edited! (:content current)))
+          (throw (ex-info (case (:status response)
+                         409 "This field changed in Strapi. Use the latest value before editing again."
                          400 "This field cannot be edited inline. Use Strapi for configuration."
                          "Unable to save content. Your draft is retained.")
-                       {:status (if (#{400 409} (:status response)) (:status response) 503)})))
+                       (cond-> {:status (if (#{400 409} (:status response)) (:status response) 503)}
+                         current (assoc :content-bundle current))))))
       (let [bundle (contract/checked-bundle (:body response) [section])
             content' (content/enrich-media! (:content bundle))]
         (content/install-edited! content')
@@ -49,8 +54,10 @@
     {:status 200 :headers {"Cache-Control" "private, no-store"} :body (f)}
     (catch Exception error
       {:status (or (:auth/status (ex-data error)) (:status (ex-data error)) 503)
-       :body {:error (if (or (:auth/status (ex-data error)) (:status (ex-data error)))
-                       (.getMessage error) "Content editing is temporarily unavailable")}})))
+       :headers {"Cache-Control" "private, no-store"}
+       :body (cond-> {:error (if (or (:auth/status (ex-data error)) (:status (ex-data error)))
+                              (.getMessage error) "Content editing is temporarily unavailable")}
+               (:content-bundle (ex-data error)) (assoc :content-bundle (:content-bundle (ex-data error))))})))
 
 (defn routes []
   [["/content/editor"

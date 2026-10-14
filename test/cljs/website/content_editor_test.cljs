@@ -6,6 +6,9 @@
             [website.content.fields :as fields]
             [website.modules.content-editor.events]
             [website.modules.content-editor.module]
+            [website.modules.content-editor.schema :as schema]
+            [website.schema.dsl :as dsl]
+            [malli.core :as m]
             [website.react :as r]))
 
 (deftest nested-bindings-retain-native-data-and-field-paths
@@ -32,3 +35,64 @@
           (is (= "Second" (:value (await! (support/state-at! [:state :content-editor :fields (pr-str [:intro :title])]))))))
         (.catch #(is false (str %)))
         (.finally done))))
+
+(deftest save-queue-waits-for-each-authoritative-response
+  (async done
+    (let [restore! (r/make-restore-fn)
+          requests (atom [])]
+      (r/reg-fx :content-editor/request #(swap! requests conj %))
+      (-> (go-promise
+            (r/dispatch-sync [:editor-visual/install {:intro {:title "Original", :text "Text"}} true])
+            (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Title saved"])
+            (r/dispatch-sync [:content-editor/change [:intro :text] "Text" "Text saved"])
+            (r/dispatch-sync [:content-editor/save-all])
+            (await! (support/wait-for! #(when (= 1 (count @requests)) true)))
+            (is (= 1 (count @requests)))
+            (let [request (first @requests)
+                  field (last (get-in request [:data :path]))
+                  first-value (get-in request [:data :value])
+                  bundle {:version 1, :content {:intro (assoc {:title "Original", :text "Text"} (keyword field) first-value)}}]
+              (r/dispatch-sync (conj (:success request) bundle)))
+            (await! (support/wait-for! #(when (= 2 (count @requests)) true)))
+            (is (= 2 (count @requests)))
+            (r/dispatch-sync (conj (:success (second @requests))
+                                  {:version 1, :content {:intro {:title "Title saved", :text "Text saved"}}}))
+            (await! (support/settle!))
+            (is (empty? (await! (support/state-at! [:state :content-editor :fields]))))
+            (is (= "Text saved" (:text (await! (support/subscription-value! [:content [:intro]]))))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
+
+(deftest conflict-retains-the-draft-and-installs-the-current-value
+  (async done
+    (-> (go-promise
+          (r/dispatch-sync [:editor-visual/install {:intro {:title "Original"}} true])
+          (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Draft"])
+          (let [key (pr-str [:intro :title])]
+            (r/dispatch-sync [:content-editor/failed "visual-admin" key
+                              {:response {:error "Changed in Strapi"
+                                          :content-bundle {:version 1, :content {:intro {:title "Latest"}}}}}])
+            (await! (support/settle!))
+            (is (= "Draft" (:value (await! (support/state-at! [:state :content-editor :fields key])))))
+            (is (= "Latest" (:title (await! (support/subscription-value! [:content [:intro]])))))
+            (r/dispatch-sync [:content-editor/discard-field key])
+            (is (nil? (await! (support/state-at! [:state :content-editor :fields key]))))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest empty-image-upload-is-a-valid-draft
+  (async done
+    (let [restore! (r/make-restore-fn)
+          uploads (atom [])]
+      (r/reg-fx :content-editor/upload #(swap! uploads conj %))
+      (-> (go-promise
+            (r/dispatch-sync [:editor-visual/install {:services {:caption "Services"}} true])
+            (r/dispatch-sync [:content-editor/upload [:services :bg :src] nil #js {}])
+            (let [draft (await! (support/state-at! [:state :content-editor :fields (pr-str [:services :bg :src])]))]
+              (is (= :uploading (:status draft)))
+              (is (nil? (:expected draft)))
+              (is (= "" (:value draft)))
+              (is (m/validate (dsl/->malli schema/draft) draft)))
+            (is (= 1 (count @uploads))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))

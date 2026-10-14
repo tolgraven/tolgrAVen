@@ -2,7 +2,8 @@
   "Lightweight editable content bindings. The lazy editor owns writes and uploads."
   (:require [clojure.string :as string]
             [website.react :as r]
-            [website.macros :refer-macros [defc]]))
+            [website.macros :refer-macros [defc]])
+  (:require-macros [website.build.site :refer [when-enabled]]))
 
 (defn annotate [value path mode]
   (cond
@@ -15,7 +16,12 @@
 (defn path [content relative]
   (when-let [base (:content/path (meta content))] (into base relative)))
 
-(defn editing? [content] (= :edit (:content/mode (meta content))))
+(defn editing? [content]
+  (boolean (when-enabled :user nil (= :edit (:content/mode (meta content))))))
+
+(defn busy? [editor-state]
+  (boolean (or (seq (:queue editor-state))
+               (some #(#{:saving :uploading} (:status %)) (vals (:fields editor-state))))))
 
 (defn media [content relative]
   (let [value (or (get-in content relative) {})]
@@ -36,7 +42,7 @@
     (if (and (editing? content) field-path (or (nil? original) (string? original)))
       [tag attrs
        [:span.content-edit-field
-        {:on-click stop! :on-pointer-down stop!}
+        {:on-click stop!, :on-pointer-down stop!}
         [:span.content-edit-measure {:aria-hidden true} (str value "\u200b")]
         [(if (some? line-index) :input.content-edit-input :textarea.content-edit-input)
          {:aria-label (str "Edit " (pr-str field-path))
@@ -48,21 +54,30 @@
                              value'' (if (some? line-index)
                                        (string/join "\n" (assoc (vec (string/split (or field-value "") #"\n" -1))
                                                                line-index value')) value')]
-                         (r/dispatch [:content-editor/change field-path original value''])))}]]]
+                         ;; A controlled native field must commit before the
+                         ;; next key reconciles its value/selection.
+                         (r/dispatch-sync [:content-editor/change field-path original value''])))}]]]
       [tag attrs (if (some? line-index) value original)])))
 
 (defc <image>
   "Retain current pixels and geometry, with a corner upload control in edit mode."
   [attrs picture]
-  (let [field-path (path attrs [:src])]
+  (let [field-path (path attrs [:src])
+        editor-state (when (editing? attrs) @(r/subscribe [:get :state :content-editor]))
+        busy?' (busy? editor-state)
+        uploading? (= :uploading (get-in editor-state [:fields (pr-str field-path) :status]))]
     (if (and (editing? attrs) field-path)
       [:span.content-edit-image
-       {:class (when (re-find #"media-as-bg" (or (:class attrs) "")) "content-edit-background")}
+       {:class (str (when (re-find #"media-as-bg" (or (:class attrs) "")) "content-edit-background ")
+                    (when-not (seq (:src attrs)) "content-edit-empty"))}
        picture
        [:label.content-edit-upload
-        {:on-click stop! :on-pointer-down stop!}
-        "Replace image"
+        {:on-click stop!
+         :on-pointer-down stop!
+         :aria-disabled busy?'}
+        (if uploading? "Processing image…" "Replace image")
         [:input {:type "file"
+                 :disabled busy?'
                  :accept "image/png,image/jpeg,image/webp,image/avif,image/svg+xml"
                  :aria-label (str "Replace image " (pr-str field-path))
                  :on-change (fn [event]

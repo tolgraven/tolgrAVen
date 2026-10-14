@@ -1,5 +1,6 @@
 (ns website.modules.content-editor.views
   (:require [website.react :as r]
+            [website.content.fields :as content-fields]
             [website.macros :refer-macros [defc]]
             [website.modules.content-editor.events]))
 
@@ -24,11 +25,11 @@
 
 (defc <toolbar> []
   (let [mode @(r/subscribe [:content/mode])
-        {:keys [fields enabled?]} @(r/subscribe [:get :state :content-editor])
+        {:keys [fields enabled? queue]} @(r/subscribe [:get :state :content-editor])
         user @(r/subscribe [:user/active-user])
         editor-owner @(r/subscribe [:get :state :content-editor :owner])
         admin? @(r/subscribe [:user/has-role? :admins])
-        busy? (some #(#{:saving :uploading} (:status %)) (vals fields))
+        busy? (content-fields/busy? {:queue queue, :fields fields})
         changed (filter #(not= (:expected %) (:value %)) (vals fields))]
     (when (and admin? (= (:id user) editor-owner) (or (= :edit mode) (seq fields)))
       [:div.content-editor-toolbar {:role "region" :aria-label "Site content editor"}
@@ -39,6 +40,12 @@
                     :on-click #(r/dispatch [:content-editor/discard])} "Discard changes"]
           (when (seq changed) [:span "Changes become public when saved."])
           (for [[key draft] fields :when (:error draft)]
-            ^{:key key} [:p {:role "alert"} (:error draft)])
+            ^{:key key}
+            [:div
+             [:p {:role "alert"} (:error draft)]
+             (when (:conflict? draft)
+               [:button {:disabled busy?
+                         :on-click #(r/dispatch [:content-editor/discard-field key])}
+                "Use latest value"])])
           [:button {:on-click #(r/dispatch [:content-editor/toggle])}
            (if enabled? "Finish editing" "Resume editing")]])))

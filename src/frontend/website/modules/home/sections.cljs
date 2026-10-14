@@ -73,7 +73,9 @@
              ^{:key (str "intro-letter-" i)} [<intro-letter> {:letter letter}])
            (take @*showing-title title)))])])]
    (if (fields/editing? spec)
-     [fields/<text> :p spec [:text]]
+     (into [:<>]
+           (map-indexed (fn [i _] [fields/<text> :p spec [:text] nil i])
+                        (string/split-lines text)))
      (into [:<>] (ln->br text)))
    [:br]
    [:div.buttons
@@ -108,9 +110,9 @@
              (when (and (seq icon-name) (not (icon-catalog/names icon-name)))
                [loader/<trigger> {:module :icon-catalog :lead-pages 0.25}]))
            [icon/<icon> "fas" icon-name {}]
-           [fields/<text> :h2.service-title content [0]]]]
+           [fields/<text> :h2.service-title (or content [title icon-name lines]) [0]]]]
          (for [[i line] (map-indexed vector lines)] ^{:key (str "service-" title "-" i)}
-           [fields/<text> :li content [2 i]]))])
+           [fields/<text> :li (or content [title icon-name lines]) [2 i]]))])
 
 (defc <service-categories> [{:keys [categories] :as spec}]
   (let [{:keys [full-screened?]} @(r/subscribe [:state [:services]])]
@@ -119,7 +121,11 @@
       :on-click #(r/dispatch [:state [:services :full-screened?] nil])}
      (for [[i [title icon-name lines :as category]] (map-indexed vector categories)] ^{:key (str "service-" i)}
        [<service-category>
-        {:title title :icon-name icon-name :lines lines :content category :full-screened? full-screened?
+        {:title title
+         :icon-name icon-name
+         :lines lines
+         :content category
+         :full-screened? full-screened?
          :on-click (fn [event]
                      (.stopPropagation event)
                      (r/dispatch [:state [:services :full-screened?]
@@ -154,7 +160,7 @@
        [fields/<text> :p.caption-inset spec [:caption] {:class "bottom right"}]
        [ui-layout/<inset> caption 4]) ;auto-gen
      [img/<media-as-bg>
-      (merge bg {:id "services-bg"
+      (merge (fields/media spec [:bg]) {:id "services-bg"
                  :class "darken-5 parallax-bg"})]
      [<service-categories> {:categories categories}]])
 

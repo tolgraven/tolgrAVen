@@ -2,6 +2,7 @@
   (:require [website.react :as r]
             [website.supabase.runtime :as transport]
             [website.content.contract :as contract]
+            [website.content.fields :as fields]
             [website.content.client :as content]))
 
 (defn owner [db] (get-in db [:state :active-user :id]))
@@ -38,7 +39,9 @@
       (assoc-in db [:state :content-editor :error] "Content editing is unavailable. Try again.") db)))
 (r/reg-event-db :content-editor/toggle
   (fn [db _]
-    (if (and (current? db (owner db)) (get-in db [:state :content-editor :settings :writable?]))
+    (if (and (current? db (owner db))
+             (or (get-in db [:state :content-editor :enabled?])
+                 (get-in db [:state :content-editor :settings :writable?])))
       (update-in db [:state :content-editor :enabled?] not) db)))
 
 (r/reg-event-db :content-editor/change
@@ -48,20 +51,34 @@
             existing (get-in db [:state :content-editor :fields key])]
         (if (= :saving (:status existing)) db
           (assoc-in db [:state :content-editor :fields key]
-                    {:path path, :expected (or (:expected existing) expected), :value value, :status :draft}))) db)))
+                    {:path path
+                     :expected (or (:expected existing) expected)
+                     :value value
+                     :status :draft}))) db)))
 
 (r/reg-event-db :content-editor/discard
   (fn [db _]
-    (if (some #(#{:saving :uploading} (:status %)) (vals (get-in db [:state :content-editor :fields]))) db
+    (if (fields/busy? (get-in db [:state :content-editor])) db
       (assoc-in db [:state :content-editor :fields] {}))))
 
 (r/reg-event-fx :content-editor/save-all
   (fn [{:keys [db]} _]
+    (when (and (current? db (owner db))
+               (not (fields/busy? (get-in db [:state :content-editor]))))
+      (let [queue (->> (get-in db [:state :content-editor :fields])
+                       (filter (fn [[_ draft]] (not= (:expected draft) (:value draft))))
+                       (map first)
+                       sort
+                       vec)]
+        {:db (assoc-in db [:state :content-editor :queue] queue)
+         :dispatch [:content-editor/save-next]}))))
+
+(r/reg-event-fx :content-editor/save-next
+  (fn [{:keys [db]} _]
     (when (current? db (owner db))
-      {:dispatch-n (mapv (fn [[key draft]] [:content-editor/save key])
-                        (filter (fn [[_ draft]] (and (not (#{:saving :uploading} (:status draft)))
-                                                    (not= (:expected draft) (:value draft))))
-                                (get-in db [:state :content-editor :fields])))})))
+      (when-let [key (first (get-in db [:state :content-editor :queue]))]
+        {:db (update-in db [:state :content-editor :queue] #(vec (rest %)))
+         :dispatch [:content-editor/save key]}))))
 (r/reg-event-fx :content-editor/save
   (fn [{:keys [db]} [_ key]]
     (let [draft (get-in db [:state :content-editor :fields key])
@@ -80,14 +97,30 @@
     (when (current? db account)
       (if (content/valid-bundle? bundle [(first (get-in db [:state :content-editor :fields key :path]))])
         {:db (update-in db [:state :content-editor :fields] dissoc key)
-         :dispatch [:content/install bundle]}
+         :dispatch-n [[:content/install bundle] [:content-editor/save-next]]}
         {:dispatch [:content-editor/failed account key {:message "Invalid save response"}]}))))
-(r/reg-event-db :content-editor/failed
-  (fn [db [_ account key error]]
-    (if (and (current? db account) (get-in db [:state :content-editor :fields key]))
-      (update-in db [:state :content-editor :fields key]
-                 #(assoc % :status :error :error (or (get-in error [:response :error]) (:message error)
-                                                     "Unable to save. Your draft is retained."))) db)))
+(r/reg-event-fx :content-editor/failed
+  (fn [{:keys [db]} [_ account key error]]
+    (when (and (current? db account) (get-in db [:state :content-editor :fields key]))
+      (let [bundle (get-in error [:response :content-bundle])
+            section (first (get-in db [:state :content-editor :fields key :path]))
+            conflict? (and bundle (content/valid-bundle? bundle [section]))
+            saving? (= :saving (get-in db [:state :content-editor :fields key :status]))]
+        {:db (update-in db [:state :content-editor :fields key]
+                       #(assoc %
+                               :status :error
+                               :conflict? (boolean conflict?)
+                               :error (or (get-in error [:response :error]) (:message error)
+                                          "Unable to save. Your draft is retained.")))
+         :dispatch-n (cond-> []
+                       conflict? (conj [:content/install bundle])
+                       saving? (conj [:content-editor/save-next]))}))))
+
+(r/reg-event-db :content-editor/discard-field
+  (fn [db [_ key]]
+    (if (and (current? db (owner db))
+             (not= :saving (get-in db [:state :content-editor :fields key :status])))
+      (update-in db [:state :content-editor :fields] dissoc key) db)))
 
 ;; Native File/FormData and async media status stay at the registered effect
 ;; boundary. The existing durable media pipeline owns conversion/publication.
@@ -95,17 +128,27 @@
   (fn [{:keys [file account key]}]
     (let [data (js/FormData.)]
       (.append data "file" file)
-      (request! {:method :post :uri "/api/supabase/media" :data data
-                 :success [:content-editor/uploaded account key]
-                 :failure [:content-editor/failed account key]}))))
+      (r/dispatch [:content-editor/upload-request account key data]))))
+(r/reg-event-fx :content-editor/upload-request
+  (fn [{:keys [db]} [_ account key data]]
+    (when (and (current? db account)
+               (= :uploading (get-in db [:state :content-editor :fields key :status])))
+      {:content-editor/request {:method :post
+                                :uri "/api/supabase/media"
+                                :data data
+                                :success [:content-editor/uploaded account key]
+                                :failure [:content-editor/failed account key]}})))
 (r/reg-event-fx :content-editor/upload
   (fn [{:keys [db]} [_ path expected file]]
     (let [key (pr-str path)
           account (owner db)
           existing (get-in db [:state :content-editor :fields key])]
-      (when (and (current? db account) (not (#{:saving :uploading} (:status existing))))
+      (when (and (current? db account) (not (fields/busy? (get-in db [:state :content-editor]))))
         {:db (assoc-in db [:state :content-editor :fields key]
-                      {:path path, :expected (or (:expected existing) expected), :value expected, :status :uploading})
+                      {:path path
+                       :expected (or (:expected existing) expected)
+                       :value (or expected "")
+                       :status :uploading})
          :content-editor/upload {:file file, :account account, :key key}}))))
 (r/reg-event-fx :content-editor/uploaded
   (fn [{:keys [db]} [_ account key upload]]
