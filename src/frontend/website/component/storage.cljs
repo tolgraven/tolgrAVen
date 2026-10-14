@@ -3,10 +3,10 @@
   (:require
     [cljs.reader :as reader]
     [clojure.string :as string]
+    [website.component.storage-disk :as disk]
     [website.validation :as validation]
     [website.ssr.schema :as schema]
     [website.react :as r]
-
     [website.service-status :as status]))
 
 (def missing (js-obj))
@@ -28,6 +28,16 @@
 (defonce *ready (atom #{}))
 (defonce *read-errors (atom #{}))
 (defonce *deleted-paths (atom {}))
+(defonce *heavy-owners (atom #{}))
+(defonce *migrating (atom #{}))
+(defonce *disk-writes (atom {}))
+(defonce *disk-generations (atom {}))
+
+(defn heavy-id? [id]
+  (or (= :public-content id)
+      (and (vector? id)
+           (or (= :resource (first id))
+               (and (= :state (first id)) (#{:store :content} (first (second id))))))))
 (defn- prefix? [parent child]
   (and (<= (count parent) (count child)) (= (vec parent) (subvec (vec child) 0 (count parent)))))
 (defn- snapshot-paths [id]
@@ -74,54 +84,66 @@
       bucket bucket)))
 
 (defn ready!
-  "Queue one disk read per owner per document, shared by every caller. Startup
-   awaits this for client/local loads; network SSR uses its server pair first."
+  "Queue one disk read per owner. Failed private reads cannot overwrite unseen
+   durable data; public caches may recover through the ordinary server source."
   ([] (ready! {:scope :public}))
   ([options]
    (if-let [account (when (exists? js/window) (owner options))]
      (or (get @*reads account)
          (let [key (storage-key nil options)
-               promise (-> (validation/when-ready!)
-                           (.then (fn [_]
-                                    (js/Promise.
-                                      (fn [resolve _]
-                                        (js/setTimeout
-                                         (fn []
-                                           (let [saved (try
-                                                         (when-let [text (read-disk! key)]
-                                                           (when (> (count text) max-bytes) (throw (js/Error. "Snapshot too large")))
-                                                             (let [value (reader/read-string text)
-                                                                   _ (when-not (map? value) (throw (js/Error. "Invalid snapshot envelope")))
-                                                                   clean (when (map? value)
-                                                                           (into {} (filter (fn [[_ snapshot]]
-                                                                                              (nil? (validation/explain schema/storage-snapshot snapshot)))) value))
-                                                                   migrated (when clean (migrate-component-owners clean))]
-                                                               (when (and (not= account :public) (not= value clean))
-                                                                 (throw (js/Error. "Invalid private snapshots")))
-                                                               (when (not= value migrated)
-                                                                 (swap! *dirty conj account)
-                                                                 (schedule-write!))
-                                                               migrated))
-                                                         (catch :default _
-                                                           (swap! *read-errors conj account)
-                                                           missing))
-                                                 failed? (identical? saved missing)
-                                                 saved' (when-not failed? saved)]
-                                             ;; Writes/removals queued before this read win.
-                                             (swap! *buckets update account
-                                                    #(merge (into {} (remove (fn [[id _]] (affected? id (get @*deleted-paths account)))) saved') %))
-                                             (when (or (some #(affected? % (get @*deleted-paths account)) (keys saved'))
-                                                       (some (fn [[_ snapshot]]
-                                                               (or (not= 1 (:version snapshot))
-                                                                   (<= (:expires-at snapshot 0) (.now js/Date)))) saved'))
-                                               (swap! *dirty conj account)
-                                               (schedule-write!))
-                                             (swap! *deleted-paths dissoc account)
-                                             ;; Public cache fallback may repopulate from SSR.
-                                             ;; Private read failures never authorize replacing
-                                             ;; an unseen durable envelope with defaults.
-                                             (when (or (not failed?) (= account :public)) (swap! *ready conj account))
-                                             (resolve nil))) 0))))))]
+               failed-read! (fn [_] (swap! *read-errors conj account) missing)
+               promise
+               (-> (validation/when-ready!)
+                   (.then (fn [_]
+                            (js/Promise.all
+                              #js [(js/Promise.
+                                     (fn [resolve _]
+                                       (js/setTimeout
+                                         #(resolve (try
+                                                     (.catch (disk/read-local! (read-disk! key)) failed-read!)
+                                                     (catch :default error (failed-read! error)))) 0)))
+                                   (.catch (disk/read! account) failed-read!)])))
+                   (.then (fn [stores]
+                            (let [local (aget stores 0)
+                                  heavy (aget stores 1)
+                                  failed? (or (identical? local missing) (identical? heavy missing))
+                                  saved (merge (when-not (identical? heavy missing) heavy)
+                                               (when-not (identical? local missing) local))]
+                              (when (or (seq (when-not (identical? heavy missing) heavy))
+                                        (some heavy-id? (keys saved)))
+                                (swap! *heavy-owners conj account))
+                              ;; Retain the legacy copy until its IDB write commits.
+                              (when (some heavy-id? (keys (when-not (identical? local missing) local)))
+                                (swap! *migrating conj account)
+                                (swap! *dirty conj account))
+                              (-> (disk/map-chunks!
+                                    (fn [[id snapshot]]
+                                      (when (nil? (validation/explain schema/storage-snapshot snapshot))
+                                        [id snapshot])) saved)
+                                  (.then
+                                    (fn [entries]
+                                      (let [clean (into {} (keep identity entries))
+                                            migrated (migrate-component-owners clean)]
+                                        (when (and (not= account :public) (not= saved clean))
+                                          (throw (js/Error. "Invalid private snapshots")))
+                                        ;; Writes/removals queued before this read win.
+                                        (swap! *buckets update account
+                                               #(merge (into {} (remove (fn [[id _]]
+                                                                          (affected? id (get @*deleted-paths account)))) migrated) %))
+                                        (when (or (not= saved migrated)
+                                                  (some #(affected? % (get @*deleted-paths account)) (keys migrated))
+                                                  (some (fn [[_ snapshot]]
+                                                          (<= (:expires-at snapshot 0) (.now js/Date))) migrated))
+                                          (swap! *dirty conj account))
+                                        (swap! *deleted-paths dissoc account)
+                                        (when (or (not failed?) (= account :public))
+                                          (swap! *ready conj account))
+                                        (when (contains? @*dirty account) (schedule-write!))
+                                        nil)))))))
+                   (.catch (fn [error]
+                             (failed-read! error)
+                             (when (= account :public) (swap! *ready conj account))
+                             nil)))]
            (swap! *reads assoc account promise)
            promise))
      (js/Promise.resolve nil))))
@@ -187,40 +209,77 @@
       (swap! *dirty conj account)
       (schedule-write!))))
 
+(defn- saved! [account bucket]
+  (when (= account :public)
+    (reset! *public-saved? (contains? bucket :public-content))
+    (when @*public-saved?
+      (try (mark-return! true) (catch :default _ nil))))
+  (status/recover! :component-storage))
+
+(defn- failed! [account]
+  (swap! *disk-generations update account (fnil inc 0))
+  (swap! *dirty conj account)
+  (when (= account :public)
+    (reset! *public-saved? false)
+    (try (mark-return! false) (catch :default _ nil)))
+  (warn!))
+
+(defn- write-heavy! [account bucket small]
+  (let [generation (get (swap! *disk-generations update account (fnil inc 0)) account)
+        current? #(= generation (get @*disk-generations account))
+        previous (get @*disk-writes account (js/Promise.resolve nil))
+        pending (-> previous
+                    (.catch (fn [_] nil))
+                    (.then (fn [_]
+                             (when (current?)
+                               (disk/write! account (into {} (filter (comp heavy-id? key)) bucket)))))
+                    (.then (fn [_]
+                             (when (current?)
+                               ;; Migration is committed before the old heavy data
+                               ;; leaves localStorage. A failed transaction retains it.
+                               (when (contains? @*migrating account)
+                                 (write-disk! (str prefix (pr-str account)) (pr-str small)))
+                               (swap! *migrating disj account)
+                               (saved! account bucket))))
+                    (.catch (fn [_] (when (current?) (failed! account)))))]
+    (swap! *disk-writes assoc account pending)
+    pending))
+
 (defn drain!
-  "At most one serialization and setItem per dirty owner. Return each owner's
-   actual write result so explicit Save actions can acknowledge durable success.
-   Pagehide also uses this immediate consolidated write."
+  "Persist small preferences synchronously and return each owner's actual result.
+   Heavy caches use serial async IDB writes; pagehide never encodes large content."
   []
   (when @*write-tick (js/clearTimeout @*write-tick) (reset! *write-tick nil))
   (let [accounts (filterv @*ready @*dirty)]
     (swap! *dirty #(apply disj % accounts))
-    (into {} (map (fn [account]
-      (try
-        (let [bucket (into {} (filter (fn [[id v]] (and (not (contains? (get @*consumed account) id))
-                                                        (> (:expires-at v 0) (.now js/Date)))))
-                           (get @*buckets account))
-              text (pr-str bucket)]
-          (when (> (count text) max-bytes) (throw (js/Error. "Snapshot too large")))
-          (reader/read-string text)
-          (write-disk! (str prefix (pr-str account)) text)
-          (when (= account :public)
-            (reset! *public-saved? (contains? bucket :public-content))
-            ;; Set the hint on a completed save too: reload requests can begin
-            ;; before pagehide. Consuming a snapshot leaves the hint in place;
-            ;; pagehide republishes it before the new document reads storage.
-            (when @*public-saved?
-              (try (mark-return! true) (catch :default _ nil))))
-          (status/recover! :component-storage)
-          [account true])
-        (catch :default _
-          ;; Keep failed durable writes retryable even if values stay equal.
-          (swap! *dirty conj account)
-          (when (= account :public)
-            (reset! *public-saved? false)
-            (try (mark-return! false) (catch :default _ nil)))
-          (warn!)
-          [account false]))) accounts))))
+    (into {}
+          (map (fn [account]
+                 (try
+                   (let [bucket (into {} (filter (fn [[id v]]
+                                                  (and (not (contains? (get @*consumed account) id))
+                                                       (> (:expires-at v 0) (.now js/Date)))))
+                                      (get @*buckets account))
+                         heavy? (or (contains? @*heavy-owners account) (some heavy-id? (keys bucket)))
+                         small (if heavy? (into {} (remove (comp heavy-id? key)) bucket) bucket)
+                         text (pr-str small)]
+                     (when (> (count text) max-bytes) (throw (js/Error. "Snapshot too large")))
+                     ;; Small preferences retain the synchronous EDN validation contract.
+                     (reader/read-string text)
+                     (when-not (contains? @*migrating account)
+                       (write-disk! (str prefix (pr-str account)) text))
+                     [account (if heavy?
+                                (do (swap! *heavy-owners conj account)
+                                    (write-heavy! account bucket small))
+                                (do (saved! account bucket) true))])
+                   (catch :default _ (failed! account) [account false])))
+               accounts))))
+
+(defn drain-async!
+  "Drain preferences, then await all queued heavy writes for explicit callers."
+  []
+  (drain!)
+  (js/Promise.all (into-array (vals @*disk-writes))))
+
 (defn schedule-write! []
   (when (and (exists? js/window) (nil? @*write-tick))
     (reset! *write-tick

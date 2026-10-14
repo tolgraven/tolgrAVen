@@ -27,6 +27,7 @@
                     tracked @storage/*tracked
                     element (.createElement js/document "div")
                     root (await! (support/create-root! element))]
+                (set! (.-cssText (.-style element)) "position:fixed;top:0;left:0;width:50vw")
                 (.appendChild (.-body js/document) element)
                 {:root root,
                  :element element,

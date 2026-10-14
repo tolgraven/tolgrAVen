@@ -41,7 +41,9 @@
       (set! local/schedule! #(swap! *scheduled inc))
       (set! local/connect! #(js/Promise.resolve nil))
       ;; Timing of the shared adapter is covered in browser-resources-test.
-      (set! browser-resources/after-page! (fn [start!] (start!) (fn [])))
+      (set! browser-resources/after-page! (fn [start! options]
+                                           (is (= 750 (:settle-ms options)))
+                                           (start!) (fn [])))
       (-> (go-promise
             (let [element (.createElement js/document "div")
                   root (await! (support/create-root! element))]

@@ -516,7 +516,9 @@ A disabled optional highlighter does not enter the capture asset plan. Developme
 Leaflet retain the browser renderer because those entries require a real DOM.
 
 A source change invalidates an in-flight pair immediately and schedules a fresh
-capture once page bindings settle. Publication checks both generation and URL;
+capture after page bindings remain ready for 750 ms and a painted idle frame.
+Connection/registration uses that same quiet gate. Source changes and unmount
+cancel both the gate and its pending debounce. Publication checks both generation and URL;
 identity changes clear the cache and stop the render worker. Ordinary external
 links and preview departures wait for cache publication, bounded to one second
 when optional capture is unavailable. Native modifiers/downloads/new windows retain

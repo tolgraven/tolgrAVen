@@ -18,10 +18,12 @@ that rely on ordering between equally specific selectors across features.
 Keep mixins in CSS-free `scss/tools` partials: importing a
 feature for a mixin would duplicate its selectors in another module's output.
 `all.scss` remains an explicit combined preview entry, outside the normal build.
-The `:home` sheet owns landing hero/page rules. Its module also declares the shared
-Markdown/monospace sheets for its static rendered text, without a JavaScript
-dependency on the parser. Initial route styles include the global User controls
-but exclude the Link Preview popup sheet even on Blog. Its static
+The `:home` sheet owns landing hero/page rules. Its Story gradient uses continuous
+`:seen` visibility with `:restore? false`, so history returns also pause it offscreen.
+Plain landing text does not acquire
+Markdown/monospace sheets. Shared avatar rules stay in the shell; closed User,
+Settings and Link Preview panels contribute no initial sheet. Query parameters
+that initially open User or Settings include that panel's styles in the head. The preview's static
 `display: contents` container rule belongs to Markdown, keeping SSR layout intact.
 The optional `:styled-input`
 module owns the custom field used by Search and blog editing. It, Markdown and
@@ -49,8 +51,11 @@ at compile time, including transitive bundle dependencies. No browser feature
 code must load to discover its CSS. A module may declare `:ssr-styles :deferred`
 when its styles apply only to intent-driven UI absent from SSR, such as a preview
 popup. The default is `:initial`; dependencies retain their own policies.
-This only filters initial head styles: the full loader inventory and synchronous
-CSS acquisition before Shadow remain unchanged. Do not defer styles needed by
+Runtime acquisition of these optional sheets waits for hydration, window load,
+two painted frames and idle time, with low fetch priority. It does not wait on
+layout readiness, since CSS can itself block the owning boundary. Already installed
+initial styles satisfy acquisition immediately. Ordinary module CSS still starts
+before Shadow code. Do not defer styles needed by
 visible static SSR content. Declaration macros register the entry sources
 as Shadow resources so metadata changes invalidate their baked catalogs in
 incremental builds. Restart Shadow watches after adding or removing module entry

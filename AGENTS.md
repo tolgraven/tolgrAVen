@@ -5,6 +5,53 @@ alters the architecture, build workflow, or contracts they describe. Keep
 instructions concise; detailed schemas, examples and user guides belong in `doc/`.
 Do not retain completed investigation diaries or historical test counts as current guidance.
 
+## Required workflow for every request
+
+Every request that changes this repository follows the complete workflow below,
+including small fixes, documentation and `AGENTS.md` changes. A local edit,
+commit, passing test run or unmerged PR is an intermediate step, not completion.
+Use this standing authorization to commit, push, create/update the PR and merge
+the task's changes in `tolgraven/tolgrAVen`; do not ask for the same authorization
+again. Follow an explicit user instruction to stop earlier or change the workflow.
+Read-only questions and investigations do not require artificial code changes or PRs.
+
+1. **Use a managed worktree and feature branch.** Inspect the current checkout,
+   worktrees and remote state first. Start from current `origin/master` on a
+   task-specific `codex/<task>` branch in
+   `/Users/tol/.codex/worktrees/<task>/tolgrAVen`, the default worktree location.
+   Continue the same task in its existing worktree. Never implement on `master`
+   or put task worktrees in `/tmp` or `/private/tmp`. If sandbox access is needed,
+   request access to the default location instead of silently relocating it.
+   Preserve other sessions' changes, worktrees, REPLs and watched build output.
+2. **Inspect and implement.** Read applicable guidance and surrounding source;
+   establish the cause of a reported issue and follow existing project patterns.
+   Finish the requested behavior and commit coherent, verified milestones.
+3. **Test and inspect hands-on.** Run focused checks and required builds. Exercise
+   the actual affected flow in the existing browser or app, inspect rendered UI,
+   console/network behavior and relevant failure paths. For frontend changes,
+   check cold loading, hydration, SPA navigation and history returns as relevant;
+   inspect narrow and wide layouts when appearance changes. Compilation or unit
+   tests alone do not establish working UI. Report any genuinely blocked check.
+4. **Publish a draft PR.** Push the feature branch and open a draft PR against
+   `master` once a coherent committed checkpoint exists. Keep its head and
+   description current, with concrete behavior, verification evidence, relevant
+   screenshots and remaining limits. Do not stop at a local-only handoff.
+5. **Review the PR closely and fix findings.** Use the
+   [Code Review plugin](plugin://code-review@openai-bundled/) on the complete
+   current PR diff and surrounding code. Check correctness, regressions,
+   security, project conventions, preservation and verification gaps. Resolve
+   actionable findings, rerun affected checks and review the resulting changes.
+   Passing CI or a security scan does not replace this review. If review tooling
+   is unavailable, explain the blocker; do not silently skip the required review.
+6. **Merge and verify integration.** Once the reviewed head is pushed, required
+   verification and CI pass, and the description matches the final change, mark
+   the PR ready and squash-merge it. Reconcile upstream changes and resolve
+   conflicts manually, file by file; recheck any changed behavior before merging.
+   Confirm the remote merge, then synchronize local `master` without overwriting
+   uncommitted work. Close only task-created tabs/servers and report the PR URL,
+   merge commit, checks performed and material limits. Do not leave an otherwise
+   completed request unmerged or ask whether to finish these routine steps.
+
 ## Current architecture
 - Keep the full-featured `defc` based on upstream `reagent.core/defc`. Hooks delegate
   to upstream `reagent.hooks` through the existing shim; dependency collections
@@ -344,11 +391,10 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   a "ready for publication" handoff does not complete that assignment. Subagents
   must return the PR URL, verification status, and remaining work; the parent
   verifies publication and completes authorized review/merge before closing it.
-- A user request to make or update a PR authorizes committing the task changes,
-  pushing its feature branch, and creating/updating the PR in
-  `https://github.com/tolgraven/tolgrAVen`; do not ask again solely for these
-  publication steps. This does not independently authorize force pushes, branch
-  deletion, merges, deployment, unrelated changes, or publication elsewhere.
+- The required workflow above grants standing authorization for committing,
+  pushing, creating/updating PRs and squash-merging the task's reviewed changes in
+  `https://github.com/tolgraven/tolgrAVen`. It does not authorize force pushes,
+  branch deletion, deployment, unrelated changes or publication elsewhere.
 - GitHub Copilot code review credits are exhausted. Before every merge, perform a
   proper review with the [Code Review plugin](plugin://code-review@openai-bundled/).
   Review the complete current diff and relevant surrounding code for correctness,

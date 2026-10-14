@@ -102,7 +102,7 @@
                                     (set! (.-onerror stylesheet) reject)
                                     (.appendChild (.-head js/document) stylesheet))))
                         (await! (render! root [component/<loading-reveal>
-                                              {:ready? false :skeleton [:p "Sample layout"]}]))
+                                              {:ready? false :skeleton [:p.component-skeleton "Sample layout"]}]))
                         (is (= "Sample layout" (.-textContent element)))
                         (await! (render! root [component/<loading-reveal>
                                               {:ready? true :form [:article "Real content"]}]))
@@ -110,6 +110,9 @@
                         (when-not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))
                           (is (some? (.querySelector element ".component-loading-reveal__exit"))
                               "The actual CSS exit retains the skeleton alongside live content"))
+                        (when-let [skeleton (.querySelector element ".component-loading-reveal__skeleton .component-skeleton")]
+                          (is (= "none" (.-animationName (js/getComputedStyle skeleton)))
+                              "The outgoing skeleton stops shimmering before it unmounts"))
                         ;; Let ordinary commits and the presence lifecycle complete.
                         (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 650))))
                         (is (nil? (.querySelector element ".component-loading-reveal__skeleton")))

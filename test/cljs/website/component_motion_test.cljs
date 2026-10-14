@@ -4,8 +4,7 @@
             [website.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
-
-
+            [website.subs]
             [website.component :as component]
             [website.component.motion :as motion]
             [website.component.restore :as restore]
@@ -17,6 +16,7 @@
   []
   (go-promise (let [element (.createElement js/document "div")
                     root (await! (support/create-root! element))]
+                (set! (.-cssText (.-style element)) "position:fixed;top:0;left:0;width:50vw")
                 (.appendChild (.-body js/document) element)
                 {:element element,
                  :root root,
@@ -37,7 +37,89 @@
   {:features [:presence]}
   [items]
   (into [:section {:data-list true}] (map (fn [item] ^{:key (:id item)} [<item> item]) items)))
+(defonce *presence-renders (atom 0))
+(defc <fresh-callback-presence>
+  {:features [:presence]}
+  [label]
+  (swap! *presence-renders inc)
+  [:section [:button {:on-click (fn [_] nil)} label]])
+
+(deftest presence-commits-with-fresh-callbacks-do-not-trigger-idle-renders
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture))]
+            (reset! *presence-renders 0)
+            (try
+              (await! (render! root [<fresh-callback-presence> "Initial"]))
+              (await! (tick! 120))
+              (let [committed @*presence-renders]
+                (await! (tick! 180))
+                (is (= committed @*presence-renders) "Commit bookkeeping does not schedule another frame")
+                (is (= "Initial" (.-textContent element))))
+              (await! (render! root [<fresh-callback-presence> "Updated"]))
+              (is (= "Updated" (.-textContent element)))
+              (let [committed @*presence-renders]
+                (await! (tick! 180))
+                (is (= committed @*presence-renders) "Real parent updates also settle"))
+              (finally (close!)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
 (defc <seen> {:features [:props :seen]} [spec] [:div {:class "original"} "Seen"])
+(defc <appear> {:features [:props [:appear "opacity"]]} [spec] [:div "Appear"])
+
+(deftest continuous-visibility-can-opt-out-of-settled-history-restoration
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture))
+                context @restore/*context
+                original js/IntersectionObserver
+                *callback (atom nil)
+                observer #js {:observe (fn [_]), :disconnect (fn [])}]
+            (try
+              (restore/begin! {:back? true})
+              (set! js/IntersectionObserver (fn [callback _] (reset! *callback callback) observer))
+              (await! (render! root [<seen> {:seen {:threshold 0, :restore? false}}]))
+              (@*callback #js [#js {:isIntersecting true, :intersectionRatio 0.1}] observer)
+              (await! (flush!))
+              (is (.contains (.-classList (.-firstElementChild element)) "appeared"))
+              (@*callback #js [#js {:isIntersecting false, :intersectionRatio 0}] observer)
+              (await! (flush!))
+              (is (not (.contains (.-classList (.-firstElementChild element)) "appeared"))
+                  "Continuous background animation owners still pause after a history return")
+              (finally (close!) (reset! restore/*context context)
+                       (set! js/IntersectionObserver original)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest offscreen-appear-waits-for-the-viewport-and-enters-only-once
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture))
+                original js/IntersectionObserver
+                *callback (atom nil)
+                *observer (atom nil)
+                *disconnects (atom 0)]
+            (try
+              (set! js/IntersectionObserver
+                    (fn [callback options]
+                      (is (= 0 (.-threshold options)))
+                      (reset! *callback callback)
+                      (reset! *observer #js {:observe (fn [_])
+                                             :disconnect #(swap! *disconnects inc)})))
+              (await! (render! root [<appear> {:props {:style {:position "fixed", :top "200vh"}}}]))
+              (await! (tick! 120))
+              (is (some? @*callback))
+              (is (not (.contains (.-classList (.-firstElementChild element)) "appeared")))
+              (@*callback #js [#js {:isIntersecting true, :intersectionRatio 0.1}] @*observer)
+              (await! (flush!))
+              (is (.contains (.-classList (.-firstElementChild element)) "appeared"))
+              (is (= 1 @*disconnects) "Automatic viewport entrances stop observing after entry")
+              (@*callback #js [#js {:isIntersecting false, :intersectionRatio 0}] @*observer)
+              (await! (flush!))
+              (is (.contains (.-classList (.-firstElementChild element)) "appeared"))
+              (finally (close!) (set! js/IntersectionObserver original)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
 (defc <domain-map> {:features [:props]} [{:keys [title]}] [:p title])
 (defc <destructured-spec> {:features [:props]} [{:keys [props]}] [:p (:title props)])
 (deftest high-frame-rate-hint-is-optional-and-preserves-animation-timing

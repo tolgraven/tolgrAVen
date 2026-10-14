@@ -126,3 +126,6 @@ body:has(#ssr-complete):not(:has(#app[data-document-pending])) #ssr-shell { disp
 // Temporary proximity markers reserve no permanent module wrapper.
 .module-load-trigger { display: block; height: .0625rem; pointer-events: none; }
 .module-load-placeholder { min-width: 0; }
+.module-load-placeholder[data-loading-active="false"] {
+  .component-skeleton, .component-render-skeleton * { animation: none !important; }
+}

@@ -1,0 +1,12 @@
+.user-avatar { // Shared by the header, blog and user panel
+  // Broken images render alt text too; keep that text inside the same sized box.
+  display: inline-block;
+  overflow: hidden;
+  border-radius: 50%;
+  border: var(--line-width-sm) solid var(--line-color);
+  box-shadow: 0 0 0.5rem 0.0625rem var(--user-avatar-shadow);
+  // margin-right: var(--space-lg);
+  width: calc(6.5 * var(--space));
+  height: calc(6.5 * var(--space));
+  object-fit: cover;
+}

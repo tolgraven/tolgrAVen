@@ -228,7 +228,9 @@ features whose failures should be contained.
 `:appear` and `:seen` merge the existing `appear-wrapper`, animation kind and
 `appeared` classes onto the component's own root. There is no wrapper element or
 React component; `appear-wrapper` is a CSS class retained for selector compatibility. Original classes, styles and refs are preserved. `:appear` waits
-for the initial frame before adding `appeared`. `:seen` retains `seen-merge`'s
+for the initial frame before adding `appeared`. If its committed native root is
+offscreen, it uses the same observer as `:seen` and enters once it reaches the
+viewport. Settled local/history restoration stays visible. `:seen` retains `seen-merge`'s
 20% observer steps and 50% visibility decision, so its slide does not repeatedly
 reverse itself around a single 50% observer boundary. An explicit non-default
 `:threshold` selects that observer threshold; `:root-margin` and `:once?` are configurable. Without
@@ -239,7 +241,9 @@ when both are selected, visibility controls the reveal.
 For removal, the parent selects `:presence` and its keyed direct children select
 `:exit`. Remove a child from the parent's collection normally. The parent keeps
 that same child instance only while exiting, removes `appeared`, adds `exiting`
-and any configured exit `:class`, and finally lets React unmount it. The existing
+and any configured exit `:class`, and finally lets React unmount it. Committed
+Hiccup history is nonreactive; only asynchronous exit completion invalidates the
+parent. Fresh inline callbacks must not create an idle render loop. The existing
 appearance CSS reverses by default; custom exit classes can define another
 transition or keyframe animation. Exiting roots are inert and aria-hidden.
 
@@ -459,12 +463,19 @@ See [testing](testing.md) for mounted lifecycle and browser checks.
 
 Storage reads are queued once per owner per document. Application startup awaits
 `storage/ready!` before rendering, then components read the in-memory index. A
-150 ms state/content debounce coalesces snapshot requests; the next write tick
-serializes one envelope per dirty owner. Equal, unexpired values do not produce
-another write. Components never invoke localStorage directly. `pagehide` and
-hidden visibility consolidate outstanding writes immediately because browsers
-can freeze timers during navigation. A cold, unfinished read cannot overwrite
-its existing disk envelope.
+150 ms state/content debounce coalesces snapshot requests. Small preferences and
+navigation snapshots stay in localStorage. Public content, managed resources and
+`:store`/`:content` caches use an IndexedDB owner transaction with separately encoded
+Transit entries. Entry decoding/validation yields a painted frame after 32 entries
+or a 6 ms batch. Older EDN envelopes migrate after a successful heavy-cache commit;
+a failed transaction retains the old copy. A single large legacy entry can still
+take a long first-time parse, so measure migration separately from subsequent loads.
+Equal, unexpired values do not produce another write. Components only read the
+in-memory index. `pagehide` synchronously flushes small navigation preferences;
+heavy writes already queued during ordinary updates remain asynchronous. A return
+hint is published only after the heavy public cache commits. Cold reads cannot
+overwrite edits or resurrect explicit removals; serial writes discard superseded
+work before encoding and publication.
 
 Dependencies register pending promises synchronously and adapters start together
 on the next tick. Repeated resources share a promise. Strapi unions all section

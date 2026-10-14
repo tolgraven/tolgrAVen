@@ -4,10 +4,11 @@
   (:require [ajax.core :as ajax]
             [cljs.reader :as reader]
             [website.react :as r]
-
             [website.listener :as listener]
             [website.macros :refer-macros [defc]]
             [website.loader :as loader]
+            [website.loader.styles :as styles]
+            [website.loader.style-catalog :as style-catalog]
             [website.render-context :as context]
             [website.component.restore :as restore]
             [website.component.storage :as storage]
@@ -157,7 +158,11 @@
   (js/Promise.all
     ;; Completed Suspense boundaries retain their native SSR code. Hydrate the
     ;; surrounding page first; the formatter follows through after-page!.
-    (into-array (map loader/acquire-code! (remove #{:highlight} (:modules snapshot))))))
+    (into-array (map loader/acquire-code!
+                    (remove #(or (= :highlight %)
+                                 (and (= :deferred (get-in style-catalog/modules [% :ssr-styles]))
+                                      (not (styles/ready? %))))
+                            (:modules snapshot))))))
 
 (defn schedule! []
   (swap! *save-generation inc)
@@ -239,7 +244,10 @@
       (fn []
         ;; Invalidate an in-flight pair immediately, before the debounce gate.
         (swap! *save-generation inc)
-        (browser-resources/after-page! schedule!)) [source])
+        (let [cancel! (browser-resources/after-page! schedule! {:settle-ms 750})]
+          (fn []
+            (cancel!)
+            (when @*pending (js/clearTimeout @*pending) (reset! *pending nil))))) [source])
     (r/use-effect
       (fn []
         (when (not= identity (.-current *previous-identity))
@@ -250,7 +258,7 @@
   (r/use-effect
     (fn []
       (let [cancel-connect! (browser-resources/after-page!
-                             #(-> (connect!) (.catch (fn [_] nil))))
+                             #(-> (connect!) (.catch (fn [_] nil))) {:settle-ms 750})
             stop-listeners! (listener/listen! :page-return
                               [{:target "document", :event "click", :handler external-click!}
                                {:target "window", :event "pageshow", :handler resumed!}])]

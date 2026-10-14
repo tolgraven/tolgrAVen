@@ -1,11 +1,9 @@
 (ns website.browser-resources
   "Acquire optional scripts after hydration, load, pending page work and a painted idle frame."
-  (:require [website.component.restore :as restore]
+  (:require [website.browser-resources.page :as page]
             [website.component]
             [website.macros :refer-macros [defc]]
             [website.react :as r]
-            [website.listener :as listener]
-            [website.render-context :as context]
             [website.browser-resources.schema :as schema]))
 
 (defonce *started? (atom false))
@@ -14,42 +12,7 @@
   {:result schema/settings}
   (fn [db _] (get-in db [:browser-resources :settings])))
 
-(defn after-page! [load!]
-  (let [*active? (atom true)
-        *frame (atom nil)
-        *idle (atom nil)
-        *timer (atom nil)
-        *stop-listeners (atom nil)]
-    (letfn [(idle! []
-              (when @*active?
-                (if (and @context/*interactive?
-                         (not (:hydrate? @restore/*context))
-                         (restore/layout-ready?))
-                  (load!)
-                  (reset! *timer (js/setTimeout painted! 100)))))
-            (queue-idle! []
-              (when @*active?
-                (if (.-requestIdleCallback js/window)
-                  (reset! *idle (js/requestIdleCallback idle!))
-                  (reset! *timer (js/setTimeout idle! 200)))))
-            (painted! []
-              (when @*active?
-                (reset! *frame
-                        (js/requestAnimationFrame
-                         (fn []
-                           (when @*active?
-                             (reset! *frame (js/requestAnimationFrame queue-idle!))))))))]
-      (if (= "complete" (.-readyState js/document))
-        (painted!)
-        (reset! *stop-listeners
-          (listener/listen! :browser-resources
-            [{:target "window", :event "load", :handler painted!, :once? true}])))
-      (fn []
-        (reset! *active? false)
-        (when-let [stop! @*stop-listeners] (stop!))
-        (when @*frame (js/cancelAnimationFrame @*frame))
-        (when @*idle (js/cancelIdleCallback @*idle))
-        (when @*timer (js/clearTimeout @*timer))))))
+(def after-page! page/after-page!)
 
 (defn- configure-analytics! [google-id]
   (when (compare-and-set! *started? false true)

@@ -312,6 +312,17 @@
       (is (some #(.contains % "modules/monospace.min.css") blog))
       (is (some #(.contains % "modules/markdown.min.css") blog)))))
 
+(deftest initially-open-panels-include-their-styles
+  (with-redefs [config/env {:dev true :ssr {:enabled false}}
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (doseq [query [{:userBox true} {:userBox "true"} {"userBox" "true"}]]
+      (is (.contains (:body (layout/render-home {:uri "/", :query-params query}))
+                     "modules/user.min.css")))
+    (is (not (.contains (:body (layout/render-home {:uri "/", :query-params {:userBox "false"}}))
+                        "modules/user.min.css")))
+    (is (.contains (:body (layout/render-home {:uri "/", :parameters {:query {:settingsBox true}}}))
+                   "modules/settings.min.css"))))
+
 (deftest pages-and-local-returns-leave-sdk-acquisition-to-shadow
   (with-redefs [config/env {:dev true :ssr {:enabled false}}
                 layout/browser-modules (constantly {:main {:output-name "main.hash.js"}})
