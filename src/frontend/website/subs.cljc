@@ -64,7 +64,9 @@
 
 (r/reg-sub :content/view
   (fn [[_ path]] [(r/subscribe [:content path]) (r/subscribe [:content/mode])])
-  (fn [[value mode] [_ path]] (fields/annotate value path mode)))
+  (fn [[value mode] [_ path]]
+    ;; Shared configuration assets are maintained through Strapi's admin UI.
+    (fields/annotate value path (if (= :common (first path)) :view mode))))
 
 (r/reg-sub :state
   (fn [db [_ path]] ;change to path?

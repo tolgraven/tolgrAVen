@@ -18,6 +18,13 @@
     (is (= [:story :images 0 :src] (fields/path (get-in wrapped [:images 0]) [:src])))
     (is (fields/editing? (get-in wrapped [:images 0])))))
 
+(deftest route-overrides-do-not-write-static-cms-fields
+  (let [content (fields/annotate {:title "CMS", :bg {:src "/photo.png"}} [:blog :heading] :edit)
+        overridden (fields/overridden content {:title "Route title"})]
+    (is (= "Route title" (:title overridden)))
+    (is (nil? (fields/path overridden [:title])))
+    (is (= [:blog :heading :bg :src] (fields/path (fields/media overridden [:bg]) [:src])))))
+
 (deftest editing-is-account-bound-and-drafts-preserve-the-loaded-value
   (async done
     (-> (go-promise
