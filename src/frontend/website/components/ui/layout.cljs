@@ -1,6 +1,7 @@
 (ns website.components.ui.layout
   (:require [website.component.registry]
             [website.react :as r]
+    [website.content.fields :as fields]
             [website.util :as util :refer [at]]
             [website.macros :as m :include-macros true]
             [website.components.heading :as heading]))
@@ -27,6 +28,11 @@
 (m/defc <fading-bg-heading> [content]
   [heading/<banner> content #(r/dispatch [:common/navigate! %])])
 
+(m/defc <content-inset> [content relative nr]
+  (let [pos (case (mod nr 4)
+              0 "bottom right" 1 "bottom left" 2 "top right" 3 "top left")]
+    [fields/<text> :p.caption-inset content relative {:class pos}]))
+
 (m/defc <fading> "Hitherto just css but prog gen prob easier in some cases..."
   [& {:keys [fade-to dir content classes]
       :or {fade-to "fade-to-black" dir "light-from-below"}}]
@@ -36,6 +42,6 @@
   "Standard heading component with fade and title."
   [heading-path component & [override]]
   [:<>
-   [<fading-bg-heading> (merge {} @(r/subscribe [:content heading-path])
+   [<fading-bg-heading> (merge @(r/subscribe [:content/view heading-path])
                                 override)]
    component])

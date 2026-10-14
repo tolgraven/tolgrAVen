@@ -105,7 +105,7 @@ try {
                 'APP_KEYS=${APP_KEYS}','ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET}',
                 'API_TOKEN_SALT=${API_TOKEN_SALT}','TRANSFER_TOKEN_SALT=${TRANSFER_TOKEN_SALT}',
                 'ENCRYPTION_KEY=${ENCRYPTION_KEY}','JWT_SECRET=${JWT_SECRET}',
-                'CMS_READ_TOKEN=${CMS_READ_TOKEN}','CMS_ADMIN_EMAIL=${CMS_ADMIN_EMAIL}',
+                'CMS_READ_TOKEN=${CMS_READ_TOKEN}','CMS_WRITE_TOKEN=${CMS_WRITE_TOKEN}','CMS_ADMIN_EMAIL=${CMS_ADMIN_EMAIL}',
                 'CMS_ADMIN_PASSWORD=${CMS_ADMIN_PASSWORD}','CMS_SEED_CONTENT=${CMS_SEED_CONTENT}',
                 'DATABASE_CLIENT=sqlite','DATABASE_FILENAME=/opt/app/data/data.db',
                 'STRAPI_TELEMETRY_DISABLED=true','NODE_OPTIONS=--max-old-space-size=384'],
@@ -134,7 +134,7 @@ try {
 
         $service->docker_compose_raw=Symfony\Component\Yaml\Yaml::dump($compose,20,2);
         $service->save();
-        foreach(['APP_KEYS','ADMIN_JWT_SECRET','API_TOKEN_SALT','TRANSFER_TOKEN_SALT','ENCRYPTION_KEY','JWT_SECRET','CMS_READ_TOKEN','CMS_ADMIN_PASSWORD'] as $key) {
+        foreach(['APP_KEYS','ADMIN_JWT_SECRET','API_TOKEN_SALT','TRANSFER_TOKEN_SALT','ENCRYPTION_KEY','JWT_SECRET','CMS_READ_TOKEN','CMS_WRITE_TOKEN','CMS_ADMIN_PASSWORD'] as $key) {
             if (!$service->environment_variables()->where('key',$key)->first()?->value) cmsEnv($service,$key,bin2hex(random_bytes(32)));
         }
         if (isset($input['site'])) {
@@ -160,6 +160,7 @@ try {
         foreach([false,true] as $preview) {
             cmsEnv($web,'STRAPI_URL',$url,$preview);
             cmsEnv($web,'STRAPI_READ_TOKEN',$token,$preview);
+            cmsEnv($web,'STRAPI_WRITE_TOKEN',$service->environment_variables()->where('key','CMS_WRITE_TOKEN')->firstOrFail()->value,$preview);
         }
     }
     if ($input['action']==='start') App\Actions\Service\StartService::dispatch($service);

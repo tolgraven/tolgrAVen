@@ -1,0 +1,91 @@
+.content-edit-field {
+  display: inline-grid;
+  position: relative;
+  width: 100%;
+  min-width: 1em;
+  vertical-align: baseline;
+
+  .content-edit-measure {
+    visibility: hidden;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    min-height: 1lh;
+  }
+
+  .content-edit-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-sizing: border-box;
+    outline: 0.08em dashed currentColor;
+    outline-offset: 0.12em;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: inherit;
+    letter-spacing: inherit;
+    text-align: inherit;
+    text-transform: inherit;
+    resize: none;
+    overflow: hidden;
+    box-shadow: none;
+
+    &:focus { outline-style: solid; }
+  }
+}
+
+.content-edit-image {
+  display: inline-block;
+  position: relative;
+  max-width: 100%;
+  min-width: 3rem;
+  min-height: 3rem;
+  vertical-align: middle;
+
+  &.content-edit-background { position: absolute; inset: 0; }
+
+  .content-edit-upload {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 20;
+    display: block;
+    margin: 0;
+    padding: 0.5em 0.75em;
+    border-radius: 0.35em;
+    background: #171717;
+    color: #fff;
+    font: 0.9rem/1.4 sans-serif;
+    cursor: pointer;
+
+    input { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+    &:focus-within { outline: 0.15rem solid #fff; outline-offset: 0.15rem; }
+  }
+}
+
+.content-editor-controls { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-block: 1rem; }
+.content-editor-toolbar {
+  position: fixed;
+  inset: auto 1rem 1rem;
+  z-index: 10000;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 0.1rem solid #aaa;
+  border-radius: 0.5rem;
+  background: #171717;
+  color: #fff;
+  font: 1rem/1.4 sans-serif;
+  box-shadow: 0 0.25rem 1rem #0008;
+
+  button { margin: 0; }
+  p { flex-basis: 100%; margin: 0; }
+}

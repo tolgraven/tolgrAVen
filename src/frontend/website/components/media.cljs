@@ -2,6 +2,7 @@
   (:require
     [clojure.string :as string]
     [website.content.schema :as schema]
+    [website.content.fields :as fields]
     [website.media.schema :as media-schema]
     [website.component.registry]
     [website.macros :refer-macros [defc]]
@@ -132,8 +133,8 @@
          :style {:transition "opacity 4.5s"
                  :opacity (when-not (zero? @in-view)
                             "0.4")}}
-        [:h1.h-responsive title]]
-       [ui-layout/<inset> caption nr]]))))
+        [fields/<text> :h1.h-responsive (get interludes nr) [:title]]]
+       [ui-layout/<content-inset> (get interludes nr) [:caption] nr]]))))
 
 (defc <gallery> "Stupid css thing slides sidewayus x) Make it go out left side would be cool"
   [img-attrs :- [:sequential schema/media]]
@@ -144,10 +145,10 @@
          [img/<picture> (merge img {:class "media"})]))]]) ; TODO add captions and other features etc...
 
 (defc <moneyshot> "needs better name lol. what is hero img halfway down page?"
-  [{:keys [title caption bg]}]
+  [{:keys [title caption bg] :as content}]
   (let [frac (r/atom 0.0)
         observer (util/observer #(reset! frac %))]
-    (fn [{:keys [title caption bg]}]
+    (fn [{:keys [title caption bg] :as content}]
         [:div#moneyshot {:class "section-with-media-bg-wrapper parallax-wrapper covering stick-up"
           :ref #(observer %)}
          [img/<media-as-bg> ; TODO try it as background-image instead of separate div, see if calms down...
@@ -159,10 +160,10 @@
           ; {:class "darken-8 parallax-sm origin-toptop"
           ;  :style {:background-image (str "url(" (:src bg) ")")
           ;          :background-size "cover"}}
-          [:h1.h0-responsive.parallax-fg
+          [fields/<text> :h1.h0-responsive.parallax-fg content [:title]
            {:style {:z-index 10
                     :transition "transform 8.5s ease"
                     #_:transform #_(str "translateZ(" (* 14 @frac) "px)")}}
-           title]] ;ideally want this also growing (and moving quicker upwards)]
-         [ui-layout/<inset> caption 3]
+           ]] ;ideally want this also growing (and moving quicker upwards)]
+         [ui-layout/<content-inset> content [:caption] 3]
          [ui-layout/<fading>]])))

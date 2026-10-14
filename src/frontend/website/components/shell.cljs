@@ -17,6 +17,7 @@
     [website.components.image :as img]
     [website.components.image.sources :as image-sources]
     [website.db :as db]
+    [website.content.fields :as fields]
     [website.util :as util :refer [at]]))
 
 (defc <flashing-ersatz-text-like-everyone-uses>
@@ -42,13 +43,14 @@
 
 ;; TODO curr 1px gap between outer lines and img. Fix whatever causing this by mistake (think lines are half-width)
 ;; BUT also retain (and try 2px?) bc looks rather nice actually
-(defc <header-logo> [[text subtitle]]
+(defc <header-logo> [[text subtitle :as content]]
   [:div.header-logo
-   [:a {:href @(r/subscribe [:href :home])} ;works w/o reitit fiddle
-    [:h1 text]]
+   [(if (fields/editing? content) :span :a)
+    (when-not (fields/editing? content) {:href @(r/subscribe [:href :home])}) ;works w/o reitit fiddle
+    [fields/<text> :h1 content [0]]]
    [:div.header-logo-text ; if I want this to do its flip when changes text, do I need to make a whole componentDidChange dance with it? :I
-    (for [line subtitle] ^{:key (str "header-text-" line)}
-      [:p line])]])
+    (for [[i line] (map-indexed vector subtitle)] ^{:key (str "header-text-" i)}
+      [fields/<text> :p content [1 i]])]])
 
 (defc <header-nav> "PLAN: / across with personal stuf on other side. Fade between logos depending on mouse hover..."
   [sections]
@@ -179,10 +181,10 @@
 (defn- footer-image-attrs [image]
   (let [{:keys [width height]} (image-sources/dimensions (:src image))]
     ;; Footer icons render at two em high; source selection follows their ratio.
-    (merge {:class "img-icon"
-            :loading "lazy"}
-           (when (and width height) {:sizes (str (* 2 (/ width height)) "em")})
-           image)))
+    (with-meta
+      (merge {:class "img-icon", :loading "lazy"}
+             (when (and width height) {:sizes (str (* 2 (/ width height)) "em")}) image)
+      (meta image))))
 
 (defc <footer-content> "Upper content (first few rows) of footer"
   [content]
@@ -195,10 +197,10 @@
         [img/<picture> (footer-image-attrs logo)])
       (when (or title email (seq text))
         [:div
-         (when title [:h2.footer-title title])
+         (when title [fields/<text> :h2.footer-title column [:title]])
          (when email [contact/<contact-ways> email])
-         (when text (for [line text] ^{:key (str id "-" line)}
-                      [:p.footer-note line]))])
+         (when text (for [[i line] (map-indexed vector text)] ^{:key (str id "-" i)}
+                      [fields/<text> :p.footer-note column [:text i]]))])
       (when links [:div.footer-icons
                    (for [{:keys [name href icon]} links] ^{:key (str "footer-link-" name)}
                      [:a {:href href :name name :aria-label name}
@@ -219,9 +221,9 @@
          [:div.footer-column {:class (:id column)
                               :id id}
 
-          (when title [:h2.footer-title title])
-          (when text (for [line text] ^{:key (str id "-" line)}
-                          [:p.footer-note line]))
+          (when title [fields/<text> :h2.footer-title column [:title]])
+          (when text (for [[i line] (map-indexed vector text)] ^{:key (str id "-" i)}
+                          [fields/<text> :p.footer-note column [:text i]]))
           (when links [:div.footer-links
                        (for [{:keys [name href info]} links] ^{:key (str "post-footer-link-" name)}
                             [:a {:href href :name name}
@@ -249,7 +251,7 @@
      {:class "full"
       :data-restored-motion restored?}
      [<footer-content> content]
-     [<post-footer> @(r/subscribe [:content [:post-footer]])]]))
+     [<post-footer> @(r/subscribe [:content/view [:post-footer]])]]))
 
 
 (defc <to-top> "A silly arrow, and twice lol. why."
