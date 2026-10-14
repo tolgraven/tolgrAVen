@@ -1,5 +1,10 @@
 (ns website.github-diff-test
-  (:require [cljs.test :refer-macros [deftest is]]
+  (:require [cljs.test :refer-macros [async deftest is]]
+            [website.react :as r]
+            [website.events]
+            [website.subs]
+            [website.test-support :as support]
+            [website.modules.github.diff-views :as views]
             [website.modules.github.diff :as diff]
             [website.modules.github.diff-events :as events]
             [website.modules.github.events]
@@ -95,3 +100,57 @@
                                   (assoc commit :files (vec (repeat 100 {:filename "x"})))])]
     (is (= (str (diff/commit-url revision) "?per_page=100&page=2") (get-in effects [:dispatch 1 :uri])))
     (is (= :loading (get-in (:db effects) (events/state-path revision :metadata :status))))))
+
+(deftest first-file-failure-retains-file-and-patch-recovery-controls
+  (async done
+    (let [restore! (r/make-restore-fn)
+          element (.createElement js/document "div")
+          *root (atom nil)
+          *requests (atom [])
+          revision ["u" "r" sha]
+          key (diff/key-for revision)]
+      (.appendChild (.-body js/document) element)
+      (r/reg-fx :github-diff-test/request #(swap! *requests conj %))
+      (r/reg-event-fx :http/get
+        (fn [_ [_ request]] {:github-diff-test/request request}))
+      (r/dispatch-sync
+        [:set [:state :github :diff-view key]
+         {:mode :diff
+          :selected "image.png"
+          :metadata {:status :ready}
+          :files {"image.png" {:status :error, :message "Binary files cannot be compared as text."}}}])
+      (r/dispatch-sync
+        [:set [:content :github :diff-view key]
+         {:commit (assoc commit
+                    :commit {:message "Recovery fixture"}
+                    :files [{:filename "image.png", :status "added"}
+                            {:filename "source.clj", :status "modified"}])}])
+      (-> (support/create-root! element)
+          (.then (fn [root]
+                   (reset! *root root)
+                   (support/render! root [views/<viewer> revision])))
+          (.then (fn [_]
+                   (is (nil? (.querySelector element ".neovim__grid")) "Failed source must not boot an editor")
+                   (.click (.querySelector element ".disclosure-menu > summary"))
+                   (support/settle!)))
+          (.then (fn [_]
+                   (let [picker (.querySelector element "select")]
+                     (is (pos? (.-width (.getBoundingClientRect picker))) "Recovery picker is visible in the open menu")
+                     (set! (.-value picker) "source.clj")
+                     (.dispatchEvent picker (js/Event. "change" #js {:bubbles true})))
+                   (support/wait-for! #(= 2 (count @*requests)))))
+          (.then (fn [_]
+                   (is (every? #(.includes (:uri %) "/contents/source.clj?ref=") @*requests))
+                   (let [patch (.querySelector element "button[aria-pressed='false']")]
+                     (is (= "Straight patch" (.-textContent patch)))
+                     (.click patch))
+                   (support/wait-for! #(= 3 (count @*requests)))))
+          (.then (fn [_]
+                   (is (= "application/vnd.github.patch" (get-in (last @*requests) [:headers "Accept"])))
+                   (is (nil? (.querySelector element ".neovim__grid")) "Recovery choices remain independent of WASM startup")))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @*root (support/unmount! @*root))
+                      (.remove element)
+                      (restore!)
+                      (done)))))))

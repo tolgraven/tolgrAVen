@@ -16,7 +16,12 @@
 (defonce *unit (r/atom nil))
 (defonce *workers (r/atom 0))
 (defonce *created (r/atom 0))
-(defmethod test/report [::test/default :end-run-tests] [summary] (reset! *unit summary))
+(defonce *after-unit (atom nil))
+(defmethod test/report [::test/default :end-run-tests] [summary]
+  (reset! *unit summary)
+  (when-let [start! @*after-unit]
+    (reset! *after-unit nil)
+    (start!)))
 
 (r/reg-event-fx :github-fixture/commits
   (fn [_ [_ commits]]
@@ -52,16 +57,20 @@
           worker))))
   (let [parts (string/split (.-pathname js/location) #"/")
         revision (when (= "github" (nth parts 2 nil)) (vec (drop 3 parts)))]
-    (r/dispatch-sync [:set [:module :github :configuration]
-                      {:settings {:user "tolgraven", :repo "tolgrAVen"}}])
-    (r/dispatch-sync [:set [:state :github]
-                      {:target ["tolgraven" "tolgrAVen"]
-                       :generation 1
-                       :pages-pending #{1}}])
-    (if revision
-      (r/dispatch [:github/diff-open revision])
-      (r/dispatch [:http/get {:uri "https://api.github.com/repos/tolgraven/tolgrAVen/commits?per_page=5"
-                              :background? true}
-                    [:github-fixture/commits]]))
-    (run-tests 'website.github-diff-test)
-    (r/render (r/create-root (.getElementById js/document "app")) [<fixture> revision])))
+    ;; Mounted unit tests temporarily replace HTTP effects. Start the actual
+    ;; public fixture only after their cleanup restores the real handlers.
+    (reset! *after-unit
+      (fn []
+        (r/dispatch-sync [:set [:module :github :configuration]
+                          {:settings {:user "tolgraven", :repo "tolgrAVen"}}])
+        (r/dispatch-sync [:set [:state :github]
+                          {:target ["tolgraven" "tolgrAVen"]
+                           :generation 1
+                           :pages-pending #{1}}])
+        (if revision
+          (r/dispatch [:github/diff-open revision])
+          (r/dispatch [:http/get {:uri "https://api.github.com/repos/tolgraven/tolgrAVen/commits?per_page=5"
+                                  :background? true}
+                        [:github-fixture/commits]]))
+        (r/render (r/create-root (.getElementById js/document "app")) [<fixture> revision])))
+    (run-tests 'website.github-diff-test)))

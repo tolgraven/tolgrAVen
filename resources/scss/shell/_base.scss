@@ -110,6 +110,7 @@ main { /* dunno purpose of why I choose .main-content... */
     animation: fade-in-site 500ms both;
   }
 }
+.main-content--bare { margin-block: 0; border: 0; }
 .main-loading {
   --line-width: 0px;
   --line-width-vert: 0px;

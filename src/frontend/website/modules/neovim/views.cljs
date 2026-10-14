@@ -3,6 +3,7 @@
             [website.macros :refer-macros [defc]]
             [website.react :as r]
             [website.listener :as listener]
+            [website.components.ui.menu :as menu]
             [clojure.string :as string]
             [website.modules.neovim.model :as model]
             [website.modules.neovim.runtime :as runtime]
@@ -18,7 +19,8 @@
    [:?cols [:int {:min 20, :max 240}]]
    [:?rows [:int {:min 8, :max 80}]]
    [:?on-save fn?]
-   [:?on-write fn?]])
+   [:?on-write fn?]
+   [:?menu-content vector?]])
 
 (defc ^:private <grid>
   [grid :- model/grid-schema]
@@ -39,8 +41,9 @@
 
 (defc ^:private <session>
   {:spec false}
-  [options :- options-schema]
-  :let [*view (r/atom {:status :booting, :message "Starting Neovim…", :grid (model/grid 80 24)})
+  [options :- options-schema restart! :- fn?]
+  :let [*menu-open? (r/atom false)
+        *view (r/atom {:status :booting, :message "Starting Neovim…", :grid (model/grid 80 24)})
         *imports (r/atom files/idle-state)
         *session (atom nil)
         *element (atom nil)
@@ -60,6 +63,7 @@
                      (-> (runtime/request! session method params)
                          (.then (fn [result]
                                   (when (and (identical? session @*session) @*grid-element)
+                                    (reset! *menu-open? false)
                                     (swap! *view dissoc :command-error)
                                     (.focus @*grid-element))
                                   result))
@@ -186,17 +190,61 @@
        [status (:mouse? grid)])
       [:div.neovim
        [:div.neovim__toolbar
-        [:span {:role "status", :aria-live "polite"} (if (= :ready status) (:mode grid) message)]
-        (when (and on-save (not source-document))
-          [:button {:disabled (not= :ready status)
-                    :on-click (fn [_]
-                                (when-let [session @*session]
-                                  (-> (runtime/request! session "nvim_buf_get_lines" [0 0 -1 true])
-                                      (.then (fn [lines]
-                                               (when (identical? session @*session)
-                                                 (on-save (string/join "\n" (js->clj lines))))))
-                                      (.catch #(when (identical? session @*session) (command-error! %))))))}
-           "Use buffer"])]
+        [:span {:role "status", :aria-live "polite"}
+         (if (= :ready status) (:mode grid) message)]
+        [menu/<menu>
+         {:open? @*menu-open?
+          :on-open-change #(reset! *menu-open? %)
+          :label "Editor menu"}
+         [:<>
+          (:menu-content options)
+          (when (and on-save (not source-document))
+            [:button {:disabled (not= :ready status)
+                      :on-click (fn [_]
+                                  (when-let [session @*session]
+                                    (-> (runtime/request! session "nvim_buf_get_lines" [0 0 -1 true])
+                                        (.then (fn [lines]
+                                                 (when (identical? session @*session)
+                                                   (on-save (string/join "\n" (js->clj lines)))
+                                                   (reset! *menu-open? false)
+                                                   (when @*grid-element (.focus @*grid-element)))))
+                                        (.catch #(when (identical? session @*session) (command-error! %))))))}
+             "Use buffer"])
+          (when (and (= :ready status) (not source-document))
+            [:div.neovim__files
+             [:button {:on-click #(request! "nvim_exec_lua" ["vim.cmd('cd /workspace/tolgrAVen'); vim.cmd('Meta!')" []])} "Search repository"]
+             [:button {:on-click #(request! "nvim_exec_lua" ["vim.cmd('cd /workspace/tolgrAVen'); vim.cmd('Meta! #file')" []])} "Browse source files"]
+             [:button {:on-click #(request! "nvim_command" ["NERDTreeToggle /workspace/tolgrAVen"])} "File tree"]
+             [:label "Import files "
+              [:input {:type "file", :multiple true, :disabled importing?
+                       :on-change #(import! (.. % -target -files) false)}]]
+             [:label "Import folder "
+              [:input {:type "file", :multiple true, :webkitdirectory "", :disabled importing?
+                       :on-change #(import! (.. % -target -files) true)}]]
+             (when (seq (:paths @*imports))
+               [:<>
+                [:select {:aria-label "Imported file"
+                          :value (:selected @*imports)
+                          :disabled importing?
+                          :on-change (fn [event]
+                                       (let [path (.. event -target -value)
+                                             session @*session]
+                                         (-> (files/open! #(runtime/request! session %1 %2) path)
+                                             (.then (fn [_]
+                                                      (when (identical? session @*session)
+                                                        (swap! *imports assoc :selected path)
+                                                        (when @*grid-element (.focus @*grid-element)))))
+                                             (.catch #(when (identical? session @*session) (fail! %))))))}
+                 (for [path (:paths @*imports)] ^{:key path} [:option {:value path} path])]
+                [:button {:disabled importing?, :on-click #(request! "nvim_command" ["Meta!"])}
+                 "Search imported project"]])
+             [:span {:role "status"} (:message @*imports)]
+             [:small "Session files only. Up to 512 files, 4 MiB each, 32 MiB per import."]])
+          [:button {:type "button", :on-click restart!} "Restart editor"]
+          [:details.neovim__help
+           [:summary "Help & session limits"]
+           [:p "Press i to edit, Esc for normal mode, and :help for Neovim help."]
+           [:p "Files stay in this browser session. Copy or use the buffer before restarting or leaving."]]]]]
        (when-let [message (:command-error @*view)]
          [:p.neovim__command-error {:role "alert"}
           message " "
@@ -206,36 +254,10 @@
          [:div.neovim__loading
           [:div.neovim__progress {:role "progressbar", :aria-label "Loading Neovim", :aria-valuetext message}
            [:span.neovim__progress-fill]]])
-       (when (and (= :ready status) (not source-document))
-         [:div.neovim__files
-          [:button {:on-click #(request! "nvim_exec_lua" ["vim.cmd('cd /workspace/tolgrAVen'); vim.cmd('Meta!')" []])} "Search repository"]
-          [:button {:on-click #(request! "nvim_exec_lua" ["vim.cmd('cd /workspace/tolgrAVen'); vim.cmd('Meta! #file')" []])} "Browse source files"]
-          [:button {:on-click #(request! "nvim_command" ["NERDTreeToggle /workspace/tolgrAVen"])} "File tree"]
-          [:label "Import files "
-           [:input {:type "file", :multiple true, :disabled importing?
-                    :on-change #(import! (.. % -target -files) false)}]]
-          [:label "Import folder "
-           [:input {:type "file", :multiple true, :webkitdirectory "", :disabled importing?
-                    :on-change #(import! (.. % -target -files) true)}]]
-          (when (seq (:paths @*imports))
-            [:<>
-             [:select {:aria-label "Imported file"
-                       :value (:selected @*imports)
-                       :disabled importing?
-                       :on-change (fn [event]
-                                    (let [path (.. event -target -value)
-                                          session @*session]
-                                      (-> (files/open! #(runtime/request! session %1 %2) path)
-                                          (.then (fn [_]
-                                                   (when (identical? session @*session)
-                                                     (swap! *imports assoc :selected path)
-                                                     (when @*grid-element (.focus @*grid-element)))))
-                                          (.catch #(when (identical? session @*session) (fail! %))))))}
-              (for [path (:paths @*imports)] ^{:key path} [:option {:value path} path])]
-             [:button {:disabled importing?, :on-click #(request! "nvim_command" ["Meta!"])}
-              "Search imported project"]])
-          [:span {:role "status"} (:message @*imports)]
-          [:small "Session files only. Up to 512 files, 4 MiB each, 32 MiB per import."]])
+       (when (#{:loading :error} (:status @*imports))
+         [:p.neovim__command-error
+          {:role (if (= :error (:status @*imports)) "alert" "status")}
+          (:message @*imports)])
        (when (and (= :unsupported status)
                   (exists? js/window)
                   js/window.isSecureContext
@@ -300,5 +322,4 @@
   [options :- options-schema]
   :let [*generation (r/atom 0)]
   [:div.neovim-container
-   ^{:key @*generation} [<session> options]
-   [:button {:on-click #(swap! *generation inc)} "Restart editor"]])
+   ^{:key @*generation} [<session> options #(swap! *generation inc)]])
