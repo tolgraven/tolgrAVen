@@ -234,10 +234,11 @@ div > pre[class*="language-"] {
   align-items: center;
   justify-content: center;
   vertical-align: baseline;
+  margin: 0;
   margin-inline-start: 0.15em;
   padding: 0.05em 0.2em;
-  min-width: 1.5rem;
-  min-height: 1.5rem;
+  min-width: 1em;
+  min-height: 1em;
   font-size: 0.75em;
   line-height: 1;
   color: var(--fg-2);
@@ -245,6 +246,7 @@ div > pre[class*="language-"] {
   border: 0;
   border-radius: 0.2em;
   cursor: pointer;
+  > span { font: inherit; }
 }
 .code-copy:focus-visible,
 .code-block-controls > button:focus-visible {
