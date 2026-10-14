@@ -41,6 +41,12 @@
         (is (= expected parsed))
         (is (m/validate (dsl/->malli schema/parsed-message) parsed))))))
 
+(deftest missing-commit-message-remains-renderable
+  (let [parsed (message/parse-message nil)]
+    (is (m/validate (dsl/->malli [:cat schema/parsed-message [:? :?string]]) [parsed nil]))
+    (is (string/includes? (r/render-to-static-markup [views/<commit-message> parsed nil])
+                          "title=\"\""))))
+
 (deftest commit-messages-fit-narrow-and-wide-containers
   (async done
     (-> (go-promise
@@ -69,13 +75,50 @@
                                    [:div.github-commit {:style {:display "flex"}}
                                     [:div.user-avatar]
                                     [:div.github-commit-details
-                                     [views/<commit-message> (message/parse-message text)]]]
+                                     [views/<commit-message> (message/parse-message text) text]]]
                                    {:key text}))]]]))
                   (await! (support/wait-for! #(deref *loaded?)))
                   (let [box (.querySelector container ".github-commits-inner")
                         rows (.querySelectorAll container ".github-commit")]
                     (is (<= (.-scrollWidth box) (.-clientWidth box))
                         (str "No horizontal scroll at " width))
+                    (doseq [row (array-seq rows)]
+                      (let [message (.querySelector row ".github-commit-message")
+                            info (.querySelector message ".info")
+                            labels (.querySelector message ".github-commit-titles")
+                            line-height (js/parseFloat (.-lineHeight (js/getComputedStyle info)))
+                            row-style (js/getComputedStyle row)
+                            row-rect (.getBoundingClientRect row)
+                            info-rect (.getBoundingClientRect info)]
+                        (is (pos? (js/parseFloat (.-paddingLeft row-style)))
+                            "Each row has space between its content and the left border")
+                        (is (pos? (js/parseFloat (.-paddingRight row-style)))
+                            "Each row has space between its content and the right border")
+                        (is (<= (.-height info-rect) (+ 1 (* 3 line-height)))
+                            "Commit text occupies at most three lines")
+                        (when labels
+                          (let [labels-rect (.getBoundingClientRect labels)]
+                            (is (<= (js/Math.abs (- (.-top labels-rect) (.-top info-rect))) 1)
+                                "Labels share the message's top row")
+                            (is (>= (.-left labels-rect) (.-right info-rect))
+                                "Labels stay to the right of the text")
+                            (is (< (.-right labels-rect) (.-right row-rect))
+                                "Labels remain inset from the right border")
+                            (doseq [label (array-seq (.querySelectorAll labels ":scope > span"))]
+                              (is (>= (.-left (.getBoundingClientRect label)) (.-right info-rect))
+                                  "Both category and sublabel stay in the right column"))))))
+                    (is (= "theme" (.-textContent (.querySelector (.item rows 1) ".subtitle"))))
+                    (is (= "scss" (.-textContent (.querySelector (.item rows 1) ".title"))))
+                    (let [long-info (.querySelector (.item rows 0) ".info")]
+                      (is (> (.-scrollHeight long-info) (.-clientHeight long-info))
+                          "A long message is clipped while its full text remains intact"))
+                    (is (= (str "fix(" (string/join (repeat 32 "x")) "): "
+                                (string/join (repeat 300 "y")))
+                           (.getAttribute (.querySelector (.item rows 0) ".github-commit-message") "title"))
+                        "Hover retains the original full subject, including its prefix")
+                    (is (= "fix: keep https://example.com:4000/path\n\nNotes: body stays text"
+                           (.getAttribute (.querySelector (.item rows 3) ".github-commit-message") "title"))
+                        "The complete multiline message remains available on hover")
                     (is (= 0 (.-length (.querySelectorAll (.item rows 2) ".github-commit-titles")))
                         "An ordinary merge subject has no category tags")
                     (is (= "Notes: body stays text"

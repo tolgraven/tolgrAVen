@@ -213,6 +213,10 @@ Do not retain completed investigation diaries or historical test counts as curre
 - SCSS: keep files modular in `resources/scss`; prefer BEM-ish class names when adding new components.
   Use relative units (`rem`, `em`, percentages or viewport units), never `px`,
   for new or changed styling, sizing, spacing and media queries.
+- Before submitting UI changes, triple-check the actual rendered appearance at
+  narrow and wide widths: outer margins, inner padding on every edge, spacing
+  between controls/text, alignment and overall balance. Inspect screenshots and
+  correct cramped or uneven spacing; passing geometry tests is not sufficient.
 - Avoid introducing new formatters unless the team agrees; none are enforced in-repo.
 - Always confirm that variables (symbols) that are referred to actually exist in the given namespace, do not assume anything just from implicit context.
 

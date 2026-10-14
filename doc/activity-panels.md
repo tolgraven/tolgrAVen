@@ -4,6 +4,10 @@ The GitHub module shows the running container's deployment identity above its
 commit browser, then the configured user's public GitHub contribution calendar.
 The separate `:codex-profile` module follows it in the landing layout.
 
+Commit category and subcategory labels share a right-hand column beside the
+message. Commit text is limited to three lines; hovering the message shows its
+complete original subject and body. Label clicks keep their category search.
+
 ## CMS ownership
 
 Strapi's `github-settings` single type owns `user` and `repo`.
