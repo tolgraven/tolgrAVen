@@ -438,10 +438,9 @@
                         "A completion for the prior selected candidate cannot finish the upgrade")
                     (.dispatchEvent final (js/Event. "load")))
                   (is (identical? final (.querySelector hero "[data-image-final]")))
-                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 250))))
+                  (await! (support/wait-for! #(seq @*ready) "Final fade did not notify visible readiness"))
                   (is (= 1 (.-length (.querySelectorAll hero "img"))))
                   (is (= "decoded" (.getAttribute hero "data-image-phase")))
-                  (await! (support/wait-for! #(seq @*ready) "Final fade did not notify visible readiness"))
                   (is (= [{:src "/img/foggy-shit-small.jpg"
                            :selected-src (.-currentSrc final)}] @*ready))
                   (is (not-any? #(= :image-visible-ready (:owner %)) (vals @listener/*bindings)))))

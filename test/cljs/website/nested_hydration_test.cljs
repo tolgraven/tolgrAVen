@@ -1,10 +1,9 @@
 (ns website.nested-hydration-test
   (:require-macros [website.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
-            [shadow.lazy :as lazy]
             [website.react :as r]
             [website.loader :as loader]
-            [website.loader.styles :as styles]
+            [website.module-transport :as transport]
             [website.component.hydration :as hydration]
             [website.component.restore :as restore]
             [website.render-context :as context]
@@ -43,43 +42,6 @@
    (loader/component-vector {:module inner, :load-on mode} [*events])
    (when @*spa? [<context-probe> *events :spa-context])])
 
-(defn transport! [specs]
-  (let [before {:modules loader/modules
-                :css styles/acquire!
-                :ready? styles/ready?
-                :loads @loader/*loads
-                :code-loads @loader/*code-loads
-                :installed @loader/*installed}
-        *started (atom #{})
-        *ready (atom #{})
-        *releases (atom {})
-        gates (into {} (for [id (keys specs)]
-                         [id (js/Promise. (fn [resolve _] (swap! *releases assoc id resolve)))]))
-        loadables (into {} (for [[id spec] specs]
-                             [id (reify lazy/ILoadable
-                                   (ready? [_] true)
-                                   IDeref (-deref [_] spec))]))]
-    (set! loader/modules (merge loader/modules loadables))
-    (set! styles/acquire!
-      (fn [id]
-        (if-let [gate (get gates id)]
-          (do (swap! *started conj id) gate)
-          ((:css before) id))))
-    (set! styles/ready?
-      (fn [id]
-        (if (contains? specs id)
-          (contains? @*ready id)
-          ((:ready? before) id))))
-    {:started *started
-     :release! (fn [id] (swap! *ready conj id) ((get @*releases id) nil))
-     :restore! (fn []
-                 (set! loader/modules (:modules before))
-                 (set! styles/acquire! (:css before))
-                 (set! styles/ready? (:ready? before))
-                 (reset! loader/*loads (:loads before))
-                 (reset! loader/*code-loads (:code-loads before))
-                 (reset! loader/*installed (:installed before)))}))
-
 (defn nested-scenario! [mode]
   (let [outer (keyword (str "nested-outer-" (random-uuid)))
         inner (keyword (str "nested-inner-" (random-uuid)))
@@ -94,7 +56,7 @@
         before-validation @validation/*enabled?
         element (.createElement js/document "div")
         form (loader/component-vector {:module outer, :load-on :immediate} [inner *events mode *spa?])
-        transport (transport! specs)]
+        transport (transport/install! specs)]
     (.appendChild (.-body js/document) element)
     (reset! validation/*enabled? false)
     (restore/begin! {:hydrate? true})

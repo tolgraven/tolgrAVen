@@ -16,3 +16,6 @@
                    :active [:maybe link-candidate]
                    :prefetch [:?map-of :string [:enum :queued :prefetched]]
                    :prefetch-queue [:sequential link-candidate]}))
+
+(def container-adapter
+  [:map [:observe! fn?] [:handle! fn?]])

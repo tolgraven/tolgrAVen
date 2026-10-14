@@ -1,10 +1,8 @@
 (ns website.modules.markdown-components.module
-  {:bundle/depends-on #{:main :coercion}}
   (:require [website.modules.markdown-components.views :as views]
             [website.loader :as loader]))
 
 (def spec
-  {:id :markdown-components
+  {:bundle/depends-on #{:main :coercion}
    :install (fn [] (loader/acquire-code! :coercion))
-   :styles ["/css/website/modules/markdown-components.min.css"]
    :view {:render #'views/<render>}})

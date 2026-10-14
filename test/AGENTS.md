@@ -160,6 +160,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   withhold the coercion chunk, prove SSR hydrates without it, then test early
   navigation and retries. Audit every Malli namespace out of the main bundle.
 
+- Optional preview checks withhold code, keep native authored nodes through code
+  arrival and candidate changes, skip acquisition for internal/plain content, and
+  release native observation on change/unmount.
 - Readable preview checks cover semantic extraction, malformed/oversized documents,
   public-address DNS enforcement, redirect bounds, deduplication and frame policies.
   Mounted browser checks render text safely, delay miniatures and suppress blocked

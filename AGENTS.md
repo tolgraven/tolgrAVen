@@ -126,8 +126,11 @@ Do not retain completed investigation diaries or historical test counts as curre
 - Browser builds discover `modules/*/module.cljs` through `website.build.browser/process`;
   development browser builds also select `env/dev/cljs/website/modules/` with the
   `:dev` reader feature. Production and Node SSR exclude those declarations.
-  the literal spec `:id` owns the bundle ID and namespace `:bundle/depends-on`
-  declares extra code dependencies. Runtime inventories track declaration resources
+  a missing spec `:id` uses the parent namespace of `.module`. Spec
+  `:bundle/depends-on` declares hard Shadow prerequisites (default `#{:main}`);
+  optional features use explicit lightweight module interfaces and acquire code
+  through the shared loader only when needed. Keep build declarations in `spec`,
+  never namespace metadata. Runtime inventories track declaration resources
   for incremental metadata updates. Restart the browser watch after adding/removing
   module entry files; the runtime loadable map comes from the same discovery.
 - Production `:app` uses content-hashed chunk names; server bundle/preload paths
@@ -143,7 +146,10 @@ Do not retain completed investigation diaries or historical test counts as curre
   source's actual optimized contribution.
 - `npm run build`: produce shared CSS, a development-only inspector sheet, a
   compressed icon selector/font-face sheet, and independent feature sheets. Module
-  specs declare literal `:styles`; CSS starts alongside JS acquisition. SSR emits
+  specs infer an existing `/css/website/modules/<id>.min.css` when `:styles`
+  is absent; matching SCSS establishes ownership before generated output exists.
+  Explicit `:styles` replaces that default, including `[]` to opt out.
+  CSS starts alongside JS acquisition. SSR emits
   route styles in the initial head, inlining small feature sheets within a bounded
   budget. Popup-only modules may declare `:ssr-styles :deferred`; Optimus
   fingerprints each bundle separately. Production packaging prepares its inventory
@@ -373,7 +379,7 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   authored component rendering uses an explicit public catalog and data arguments;
   SSR renders the same widgets and never runs the editor SDK. See `doc/markdown-authoring.md`.
 
-- Authoring modules may declare literal namespace metadata `:site/owner`; child
+- Authoring module specs may declare literal `:site/owner`; child
   capabilities follow their selected parent in discovery and packaging. Public
   blog reading stays independent of `:blog-editor` and the lazy visual SDK.
 

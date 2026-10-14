@@ -5,7 +5,6 @@
             [website.schema.malli-coercion :as malli]))
 
 (def spec
-  {:id :coercion
-   :install (fn []
+  {:install (fn []
               (validation/install-engine! engine/functions)
               (page/install! malli/coercion))})

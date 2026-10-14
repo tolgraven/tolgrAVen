@@ -25,7 +25,7 @@
       (let [forms (take-while #(not= ::eof %) (repeatedly #(read {:eof ::eof} reader)))
             ns-form (first forms)
             [_ _ spec] (first (filter #(and (seq? %) (= 'def (first %)) (= 'spec (second %))) forms))
-            attrs (first (filter map? (drop 2 ns-form)))
+            ns-attrs (first (filter map? (drop 2 ns-form)))
             storage (:storage spec)
             pages (:pages spec)
             server (:server spec)
@@ -36,16 +36,20 @@
                                    :let [alias (second (drop-while #(not= :as %) entry))]
                                    :when alias]
                                [alias (first entry)]))
-            id (:id spec)
+            resolved-spec (packaging/module-defaults (second ns-form) spec)
+            id (:id resolved-spec)
             content (:content spec)
-            styles (:styles spec)
+            styles (:styles resolved-spec)
             icon-dependencies (:icons spec)
             ssr-styles (:ssr-styles spec)
-            dependencies (get attrs :bundle/depends-on #{:main})
-            owner (:site/owner attrs)]
-        (when-not (and (= 'ns (first ns-form)) (symbol? (second ns-form))
+            dependencies (get spec :bundle/depends-on #{:main})
+            owner (:site/owner spec)]
+        (when-not (and (= 'ns (first ns-form)) (symbol? (second ns-form)) (map? spec)
                        (keyword? id) (set? dependencies) (every? keyword? dependencies))
-          (throw (ex-info "Module needs a namespace, literal spec :id and keyword bundle dependencies"
+          (throw (ex-info "Module needs a namespace, literal spec map, optional literal :id and keyword :bundle/depends-on"
+                          {:file (str file)})))
+        (when (some #(contains? ns-attrs %) [:bundle/depends-on :site/owner])
+          (throw (ex-info "Declare module bundle dependencies and capability ownership in spec, not ns metadata"
                           {:file (str file)})))
         (when-not (or (nil? styles)
                       (and (vector? styles) (every? string? styles)))

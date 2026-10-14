@@ -60,7 +60,7 @@
                (catch :default error (js/Promise.reject error)))]
     (-> (js/Promise.all #js [code css])
         (.then (fn [results]
-                 (let [spec (aget results 0)]
+                 (let [spec (module-code/module-spec module (aget results 0))]
                    (validation/module! spec)
                    (-> (js/Promise.resolve (when-let [install! (:install spec)] (install!)))
                        (.then (fn [_]
@@ -145,7 +145,7 @@
   "Already-loaded code is renderable even while its managed data is pending."
   [module]
   (when-let [loadable (get modules module)]
-    (when (ready? module) @loadable)))
+    (when (ready? module) (module-code/module-spec module @loadable))))
 
 (declare load-code!)
 

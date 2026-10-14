@@ -5,9 +5,7 @@
             [website.modules.carousel.views :as views]))
 
 (def spec
-  {:id :carousel
-   :styles ["/css/website/modules/carousel.min.css"]
-   :view {:indices #'views/<carousel-idx-btns>
+  {:view {:indices #'views/<carousel-idx-btns>
           :three #'views/<carousel>
           :normal #'views/<carousel-normal>
           :gallery-two #'gallery/<gallery-2>

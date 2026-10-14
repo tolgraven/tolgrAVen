@@ -1,18 +1,22 @@
 (ns website.modules.search.views
-  (:require
+  #?(:cljs (:require
     [website.component.registry]
     [website.component.font :as font]
     [website.component.motion :as motion]
-    [website.modules.link-preview.views :as link-preview]
+    #?(:module/link-preview [website.modules.link-preview.interface :as link-preview]
+       :default [website.modules.markdown.interface :as markdown])
     [website.modules.styled-input.views :as styled-input]
     [website.react :as r]
     [clojure.string :as string]
     [website.loader]
     [website.components.ui.loading :as ui-loading]
     [website.components.image :as img]
-    [website.util :as util :refer [at]])
-  (:require-macros [website.macros :as m]
-                   [website.build.site :refer [when-enabled]]))
+    [website.util :as util :refer [at]]))
+  #?(:cljs (:require-macros [website.macros :as m]
+                   [website.build.site :refer [when-enabled]])))
+
+#?(:cljs
+   (do
 
 (m/defc <button> "Search button, press to show input field..."
   []
@@ -157,7 +161,7 @@
       (m/<> :blog/posted-by {:id id :user user :ts ts})
       (m/<> :blog/tags-list {:post document})]
      (m/for [highlight highlights]
-       [link-preview/<md> (:snippet highlight)])]))
+       [#?(:module/link-preview link-preview/<md> :default markdown/<md->div>) (:snippet highlight)])]))
 
 (when-enabled :blog :comments
 (m/defc <blog-comment-results> "Show hits that are blog post comments"
@@ -172,7 +176,7 @@
        (m/<> :blog/posted-by {:id id :user user :ts ts})
        (m/for [highlight highlights]
          [:div.blog-comment-text
-          [link-preview/<md> (:snippet highlight)]])]]]))
+          [#?(:module/link-preview link-preview/<md> :default markdown/<md->div>) (:snippet highlight)]])]]]))
 
 )
 
@@ -232,3 +236,5 @@
     (when-enabled :blog :comments
       [:div.blog-comments>div.blog-comments-inner
        [<instant-result-category> "blog-comments" <blog-comment-results> "blog-comment-around flex" "zoom"]])])]))
+
+))

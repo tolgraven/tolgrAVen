@@ -104,13 +104,13 @@
                         (swap! styles/*requests dissoc url)
                         (done))))))))
 
-(deftest deferred-popup-styles-still-start-with-module-acquisition
+(deftest optional-popup-styles-start-with-their-own-module-acquisition
   (let [manifest (into {} (map (fn [[id spec]] [id (:paths spec)])) catalog/modules)
         popup "/css/website/modules/link-preview.min.css"
         markdown "/css/website/modules/markdown.min.css"]
     (is (not (some #{popup} (catalog/initial-paths manifest :blog))))
     (is (some #{markdown} (catalog/initial-paths manifest :blog)))
-    (is (some #{popup} (catalog/paths manifest :blog)))
+    (is (not (some #{popup} (catalog/paths manifest :blog))))
     (is (some #{popup} (catalog/paths manifest :link-preview)))))
 
 (deftest document-style-manifest-is-parsed-once-and-refreshes-on-replacement

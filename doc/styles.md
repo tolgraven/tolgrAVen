@@ -30,7 +30,13 @@ The highlighter shares Markdown's code/control sheet too, so standalone code con
 The common shell contains neither. Browsers acquire the font URL only when a rendered consumer uses
 its glyphs; do not preload it merely because a Markdown module is loaded.
 
-Each feature's literal module spec declares `:styles` with its local output URLs.
+A module with no `:styles` entry automatically uses
+`/css/website/modules/<id>.min.css` when that generated file or its matching SCSS entry exists. Build CSS
+before compiling module inventories. Matching SCSS establishes ownership even
+for cold backend AOT/packaging before the frontend generates its output. An explicit literal `:styles` vector replaces
+this default: use it for additional/shared sheets, custom paths, or `[]` to opt out.
+Blog explicitly includes Markdown and monospace sheets for its streamed/cached
+SSR content without making the parser or preview widgets hard bundle prerequisites.
 The existing module declaration reader generates the shared stylesheet catalog
 at compile time, including transitive bundle dependencies. No browser feature
 code must load to discover its CSS. A module may declare `:ssr-styles :deferred`
@@ -41,7 +47,7 @@ CSS acquisition before Shadow remain unchanged. Do not defer styles needed by
 visible static SSR content. Declaration macros register the entry sources
 as Shadow resources so metadata changes invalidate their baked catalogs in
 incremental builds. Restart Shadow watches after adding or removing module entry
-files so build discovery sees the changed set.
+files or conventional stylesheets so discovery sees the changed set.
 
 Optimus bundles each declared stylesheet separately and publishes content-addressed asset
 URLs with long cache lifetimes. The shared shell sheet stays a blocking,
