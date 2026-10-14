@@ -147,10 +147,21 @@
     ;; Preserve first-screen document timing and settled local/history returns.
     ;; A new offscreen entrance uses the existing observer path, once visible.
     (let [appearance (config (:appear options))
+          offscreen? (not (in-viewport? element))
+          settled? (and offscreen? (:settle-offscreen? appearance))
           defer? (and (not= false (:viewport? appearance))
-                     (not (:force appearance))
-                     (not (in-viewport? element))
+                     (not (:force appearance)) offscreen? (not settled?)
                      (or (not (:skip-enter? state)) (:document-enter? state)))]
+      ;; Layout entrances must retain their natural offscreen height. Waiting
+      ;; for a zero-height row to intersect would also hide the rows below it.
+      (reset! (:settled-offscreen? state) (boolean settled?))
+      (when settled?
+        (reset! (:settling-offscreen? state) true)
+        (reset! (:visible? state) true)
+        ;; Commit natural height with transitions disabled, then restore them
+        ;; after paint so later user folds/reopens still animate normally.
+        (swap! (:stops state) assoc :offscreen-settle
+               (next-frame! #(reset! (:settling-offscreen? state) false))))
       (reset! (:viewport-enter? state) defer?)
       (when defer? (reset! (:visible? state) false))))
   (let [appearance (config (or (:seen options) (:appear options)))
@@ -167,7 +178,8 @@
         reduced? @(:reduced? state)
         ;; Ready first-screen SSR remains visible. Offscreen :seen owners still
         ;; observe the viewport after hydration and enter when scrolled into view.
-        skip? (and (:skip-enter? state) (not (:observe-document? state)) (not automatic?))
+        skip? (or @(:settled-offscreen? state)
+                  (and (:skip-enter? state) (not (:observe-document? state)) (not automatic?)))
         signature [element (boolean seen) (boolean (:appear options)) thresholds once? margin reduced? skip? (:force appearance)]]
     (when (not= signature @(:signature state))
       (stop! state :watch)
@@ -225,6 +237,8 @@
                                       (not (:remembered? options)))
                :visible? (r/atom skip?)
                :viewport-enter? (atom nil)
+               :settled-offscreen? (r/atom false)
+               :settling-offscreen? (r/atom false)
                :reduced? (r/atom (boolean (and (some options [:appear :seen :exit])
                                               (reduced-motion?))))
                :active? (atom true)
@@ -243,7 +257,9 @@
                    exiting? (= :exiting (get-in options [:presence :phase]))
                    visible? (if state @(:visible? state) (skip-enter? options))
                    reduced? (boolean (and state @(:reduced? state)))
+                   settling? (boolean (and state @(:settling-offscreen? state)))
                    document-enter? (if state (and (:document-enter? state) (:appear options)
+                                                  (not @(:settled-offscreen? state))
                                                   (not (:seen options)) (not @(:viewport-enter? state)))
                                      (and (skip-enter? options) (restore/document-enter?)
                                           (:appear options) (not (:seen options))
@@ -258,7 +274,8 @@
                         (with-attrs form
                           (cond-> (assoc base :class classes)
                             document-enter? (assoc :data-document-appear true)
-                            reduced? (update :style merge {:transition "none", :animation "none"})
+                            settling? (assoc :data-appear-settling true)
+                            (or reduced? settling?) (update :style merge {:transition "none", :animation "none"})
                             exiting? (assoc :aria-hidden true :inert true))))
                 :commit! (when state #(commit-motion! state % options))}))})
 

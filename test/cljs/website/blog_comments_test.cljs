@@ -72,7 +72,7 @@
                 (is (= 3 (.-length (.querySelectorAll element ".blog-comment-around"))))
                 (is (= 3 (count (re-seq #"Reply body" (.-textContent element))))
                     "The real Markdown bodies render, rather than dependency error fallbacks")
-                (is (zero? (.-length (.querySelectorAll element ".blog-comment-around:not(.appeared)")))
+                (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared)")))
                     "Initial child transforms cannot trap visible replies")
                 ;; Each pair finishes open, including reversals before the
                 ;; delayed child-unmount and before its entrance completes.
@@ -95,7 +95,7 @@
                 (await! (tick! 300))
                 (is (= 3 (.-length (.querySelectorAll element ".blog-comment-around"))))
                 (is (= 3 (count (re-seq #"Reply body" (.-textContent element)))))
-                (is (zero? (.-length (.querySelectorAll element ".blog-comment-around:not(.appeared)")))))
+                (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared)")))))
               (finally
                 (support/unmount! root)
                 (.remove element)
