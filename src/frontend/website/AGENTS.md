@@ -15,6 +15,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   loader trigger with a quarter-viewport lead for their fallback catalog/font;
   do not mount an empty module view with a section-shaped pending placeholder.
 
+- Page specs may declare `:shell {:chrome? false}` for dedicated workspaces; the
+  shared SSR/browser shell omits header, footers and back-to-top markup. Keep their
+  navigation and secondary controls available in the workspace menu.
+
 ## Implementation priority: Reagent and re-frame
 
 - Activity calendar tooltips mount only during hover/focus and release their

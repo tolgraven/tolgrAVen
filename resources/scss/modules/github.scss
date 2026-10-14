@@ -6,11 +6,14 @@
 .github-diff {
   box-sizing: border-box;
   width: 100%;
-  padding: 1rem;
+  padding-block: .5rem;
 
-  &__message { white-space: pre-wrap; }
+  > .disclosure-menu { width: fit-content; margin-inline-start: auto; }
+  &__message { white-space: pre-wrap; overflow-wrap: anywhere; margin-block: .75rem; }
   &__controls { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-block: 1rem; }
-  &__controls select { max-width: min(36rem, 85vw); }
+  &__controls label { display: grid; gap: .25rem; min-width: 0; width: 100%; }
+  &__controls select { min-width: 0; width: 100%; max-width: 100%; }
+  &__menu { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; min-width: 0; }
   &__revisions { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; overflow-wrap: anywhere; }
   &__controls [aria-pressed="true"] { color: var(--green); }
 }

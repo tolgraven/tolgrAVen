@@ -17,6 +17,7 @@
        :page :diff
        :ssr true
        :streaming false
+       :shell {:chrome? false}
        :parameters {:path parameters}
        #?@(:cljs [:controllers
                   [{:parameters {:path [:user :repo :sha]}
