@@ -5,17 +5,30 @@
             [website.macros :refer-macros [defc]])
   (:require-macros [website.build.site :refer [when-enabled]]))
 
-(defn annotate [value path mode]
-  (cond
-    (map? value) (with-meta (into {} (map (fn [[k v]] [k (annotate v (conj path k) mode)])) value)
-                  {:content/path path, :content/mode mode})
-    (vector? value) (with-meta (mapv (fn [i v] (annotate v (conj path i) mode)) (range) value)
-                     {:content/path path, :content/mode mode})
-    :else value))
+(defn annotate
+  ([value path mode] (annotate value path mode []))
+  ([value path mode identities]
+   (let [identities' (cond-> identities
+                       (when-enabled :cv false
+                         (and (= :cv (first path)) (map? value) (:id value)
+                              (or (:category value) (and (:from value) (:what value)))))
+                       (conj {:path path, :id (:id value)}))
+         metadata {:content/path path, :content/mode mode, :content/identities identities'}]
+     (cond
+       (map? value) (with-meta (into {} (map (fn [[k v]] [k (annotate v (conj path k) mode identities')])) value) metadata)
+       (vector? value) (with-meta (mapv (fn [i v] (annotate v (conj path i) mode identities')) (range) value) metadata)
+       :else value))))
 
 (defn path [content relative]
   (when-not (contains? (:content/overrides (meta content)) (first relative))
-    (when-let [base (:content/path (meta content))] (into base relative))))
+    (if (and (= [:src] relative) (contains? (meta content) :content/image-path))
+      (:content/image-path (meta content))
+      (when-let [base (:content/path (meta content))] (into base relative)))))
+
+(defn image-attrs [content relative attrs]
+  (with-meta attrs {:content/image-path (path content relative)
+                   :content/mode (:content/mode (meta content))
+                   :content/identities (:content/identities (meta content))}))
 
 (defn overridden [content overrides]
   (with-meta (merge content overrides)
@@ -26,12 +39,13 @@
 
 (defn busy? [editor-state]
   (boolean (or (seq (:queue editor-state))
+               (when-enabled :cv nil (= :saving (get-in editor-state [:cv-entry :status])))
                (some #(#{:saving :uploading} (:status %)) (vals (:fields editor-state))))))
 
 (defn media [content relative]
   (let [value (or (get-in content relative) {})]
     (if-let [path' (path content relative)]
-      (annotate value path' (:content/mode (meta content))) value)))
+      (annotate value path' (:content/mode (meta content)) (:content/identities (meta content))) value)))
 
 (defn stop! [event] (.stopPropagation event))
 
@@ -41,6 +55,8 @@
   (let [field-path (path content relative)
         original (get-in content relative)
         draft (when field-path @(r/subscribe [:get :state :content-editor :fields (pr-str field-path)]))
+        creating? (when-enabled :cv nil
+                    (and (editing? content) (= :saving @(r/subscribe [:get :state :content-editor :cv-entry :status]))))
         field-value (if draft (:value draft) original)
         value (if (some? line-index)
                 (nth (string/split (or field-value "") #"\n" -1) line-index "") field-value)]
@@ -52,7 +68,7 @@
         [(if (some? line-index) :input.content-edit-input :textarea.content-edit-input)
          {:aria-label (str "Edit " (pr-str field-path))
           :value (or value "")
-          :disabled (= :saving (:status draft))
+          :disabled (or creating? (= :saving (:status draft)))
           :max-length 20000
           :on-change (fn [event]
                        (let [value' (.. event -target -value)
@@ -61,7 +77,7 @@
                                                                line-index value')) value')]
                          ;; A controlled native field must commit before the
                          ;; next key reconciles its value/selection.
-                         (r/dispatch-sync [:content-editor/change field-path original value''])))}]]]
+                         (r/dispatch-sync [:content-editor/change field-path original value'' (:content/identities (meta content))])))}]]]
       [tag attrs (if (some? line-index) value original)])))
 
 (defc <image>
@@ -70,23 +86,27 @@
   (let [field-path (path attrs [:src])
         editor-state (when (editing? attrs) @(r/subscribe [:get :state :content-editor]))
         busy?' (busy? editor-state)
-        uploading? (= :uploading (get-in editor-state [:fields (pr-str field-path) :status]))]
+        uploading? (= :uploading (get-in editor-state [:fields (pr-str field-path) :status]))
+        compact? (#{"cv-logo-picture" "cv-group-logo"} (:class attrs))]
     (if (and (editing? attrs) field-path)
       [:span.content-edit-image
        {:class (str (when (re-find #"media-as-bg" (or (:class attrs) "")) "content-edit-background ")
+                    (when compact? (str (:class attrs) " "))
                     (when-not (seq (:src attrs)) "content-edit-empty"))}
-       picture
+       (when (seq (:src attrs)) picture)
        [:label.content-edit-upload
         {:on-click stop!
          :on-pointer-down stop!
+         :title "Replace image"
          :aria-disabled busy?'}
-        (if uploading? "Processing image…" "Replace image")
+        (if compact? (if uploading? "…" "↑") (if uploading? "Processing image…" "Replace image"))
         [:input {:type "file"
                  :disabled busy?'
                  :accept "image/png,image/jpeg,image/webp,image/avif,image/svg+xml"
                  :aria-label (str "Replace image " (pr-str field-path))
                  :on-change (fn [event]
                               (when-let [file (aget (.. event -target -files) 0)]
-                                (r/dispatch [:content-editor/upload field-path (or (:cms-src attrs) (:src attrs)) file]))
+                                (r/dispatch [:content-editor/upload field-path (or (:cms-src attrs) (:src attrs)) file
+                                             (:content/identities (meta attrs))]))
                               (set! (.. event -target -value) ""))}]]]
       picture)))

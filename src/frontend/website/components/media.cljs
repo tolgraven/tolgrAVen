@@ -15,15 +15,19 @@
 
 (defc <bg-logo>
   "Keep the decorative logo's container and entrance; shared pictures own pixels."
-  [path :- :?string & [asset] :- [:maybe media-schema/asset]]
-  (when-not (string/blank? path)
+  {:args-schema [:cat [:maybe :string]
+                 [:? [:maybe media-schema/asset]]
+                 [:? [:maybe :map]]
+                 [:? [:vector :keyword]]]}
+  [path & [asset owner relative]]
+  (when (or (not (string/blank? path)) (fields/editing? owner))
     [:div#logo-top.logo-bg.stick-up
-     {:class "logo-tolgraven" :aria-hidden true}
-     [img/<picture> {:src path
+     {:class "logo-tolgraven", :aria-hidden (when-not (fields/editing? owner) true)}
+     [img/<picture> (fields/image-attrs owner relative {:src path
                      :asset asset
                      :alt ""
                      :class "logo-picture"
-                     :loading "eager"}]]))
+                     :loading "eager"})]]))
 
 (defc ^:private <media-as-bg-smart> "Detects whether media is image or video and uses appropriate component"
   [media-data :- schema/media]

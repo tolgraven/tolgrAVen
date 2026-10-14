@@ -45,6 +45,34 @@ content or requiring a content migration. The browser saves fields sequentially
 and installs each response before the next write, preventing old section responses
 from replacing later saves.
 
+CV timeline rows expose **Add entry** in edit mode. Choose **Regular box** for a
+role, course or other individual entry; choose **Timeline container** for a
+grouping. Containers have their own title, description and main logo, plus child
+logo/color tiles. Opening one shows a mini timeline using the same box types and
+date axis as the main timeline. Every new container starts with a regular
+**New entry** child that can be edited immediately. **Zoom back out**, Escape or
+the surrounding backdrop returns to the containing timeline.
+
+Expanded boxes stay centered in the viewport. The owned portal measures the
+clicked box and animates from its bounds, then measures its current bounds again
+on closing. Nested surfaces retain their parent underneath. Reduced-motion
+preferences skip the motion. A regular box opens its own details; only a
+container opens a child timeline. Nesting is bounded to six levels.
+
+`POST /api/content/cv-entry` uses the same fresh administrator check and private
+write token as field writes. It accepts bounded dates/text, a regular/container
+kind and a selected parent chain. The CMS verifies parent identities and the
+original entry count under the section transaction. Reordering or an uncertain
+success response produces a conflict rather than creating an entry in another
+parent or repeating it. Other inline drafts must be saved or discarded first;
+inputs remain disabled while creation is pending.
+
+Deploy the companion CMS schema/endpoints before the web write token. Root CV
+entries remain Strapi components; bounded JSON holds their nested children without
+recursive component definitions. Existing entries default
+to regular boxes and their component/media IDs are preserved. Disabling the write
+token stops editing while keeping all saved content and containers readable.
+
 The web app's public `:content` comes from the Clojure backend. Static editorial
 content has moved out of `db.cljs`; only UI state, routes and options remain there.
 On a client-rendered page load the browser installs only the shared shell

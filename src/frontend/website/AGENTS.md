@@ -1,5 +1,11 @@
 # Browser and renderer implementation
 
+- CV expansion uses a body portal because the scrolling/transformed timeline
+  clips fixed descendants. The portal owns bounds/focus, cancellable frame and
+  transition cleanup; declarative styles animate from the source to viewport
+  center and back. Container boxes render a separate mini timeline with child
+  logo/color glyphs; regular boxes render their own details.
+
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/ssr.md`, and `doc/dev-console.md`.
 

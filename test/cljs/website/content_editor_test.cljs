@@ -4,7 +4,8 @@
             [website.test-support :as support]
             [website.editor-visual]
             [website.content.fields :as fields]
-            [website.modules.content-editor.events]
+            [website.modules.content-editor.events :as editor-events]
+            [website.modules.cv.views :as cv]
             [website.modules.content-editor.module]
             [website.modules.content-editor.schema :as schema]
             [website.schema.dsl :as dsl]
@@ -24,6 +25,23 @@
     (is (= "Route title" (:title overridden)))
     (is (nil? (fields/path overridden [:title])))
     (is (= [:blog :heading :bg :src] (fields/path (fields/media overridden [:bg]) [:src])))))
+
+(deftest scalar-image-fields-retain-their-public-write-path
+  (let [owner (fields/annotate {:logo "/logo.png"} [:cv :cv :timeline 0 :things 0] :edit)
+        attrs {:src "/logo.png", :alt "Company logo"}
+        bound (fields/image-attrs owner [:logo] attrs)]
+    (is (= attrs bound))
+    (is (= [:cv :cv :timeline 0 :things 0 :logo] (fields/path bound [:src])))
+    (is (fields/editing? bound))))
+
+(deftest nested-cv-bindings-retain-stable-owner-identities
+  (let [owner {:id 12, :from 2020, :what "Group", :children [{:id "child", :from 2021, :what "Role", :logo "/logo.png"}]}
+        wrapped (fields/annotate owner [:cv :cv :timeline 0 :things 0] :edit)
+        child (get-in wrapped [:children 0])
+        identities (:content/identities (meta child))]
+    (is (= [{:path [:cv :cv :timeline 0 :things 0], :id 12}
+            {:path [:cv :cv :timeline 0 :things 0 :children 0], :id "child"}] identities))
+    (is (= identities (:content/identities (meta (fields/image-attrs child [:logo] {:src "/logo.png"})))))))
 
 (deftest editing-is-account-bound-and-drafts-preserve-the-loaded-value
   (async done
@@ -101,5 +119,51 @@
               (is (= "" (:value draft)))
               (is (m/validate (dsl/->malli schema/draft) draft)))
             (is (= 1 (count @uploads))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
+
+(deftest cv-entry-parsing-and-origin-geometry
+  (let [fields {:kind "container", :position "Description", :from "2020", :to "2024",
+                :what " Group ", :where "", :how "First\nSecond"}]
+    (is (= {:kind "container", :position "Description", :from 2020, :to 2024,
+            :what "Group", :where "", :how ["First" "Second"]}
+           (editor-events/cv-entry-value fields 2026)))
+    (is (nil? (editor-events/cv-entry-value (assoc fields :to "2019") 2026)))
+    (is (nil? (editor-events/cv-entry-value (assoc fields :from "3000" :to "") 2026)))
+    (is (= "translate(-50%, -50%) translate(-25vw, -20vh) scale(0.5, 0.5)"
+           (cv/origin-transform {:left 100, :top 100, :width 200, :height 100} 400 200 800 500)))))
+
+(deftest cv-creation-retains-failed-drafts-and-guards-account-and-other-edits
+  (async done
+    (let [restore! (r/make-restore-fn)
+          requests (atom [])]
+      (r/reg-fx :content-editor/request #(swap! requests conj %))
+      (-> (go-promise
+            (r/dispatch-sync [:editor-visual/install {:intro {:title "Original"}} true])
+            (r/dispatch-sync [:content-editor/cv-open 0 "work" 3 [] []])
+            (doseq [[field value] {:kind "container", :from "2020", :to "2024", :what "Grouping"}]
+              (r/dispatch-sync [:content-editor/cv-change field value]))
+            (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Draft"])
+            (r/dispatch-sync [:content-editor/cv-create 2026])
+            (is (empty? @requests))
+            (is (seq (:error (await! (support/state-at! [:state :content-editor :cv-entry])))))
+            (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Original"])
+            (r/dispatch-sync [:content-editor/cv-create 2026])
+            (is (= 1 (count @requests)))
+            (is (= :post (:method (first @requests))))
+            (is (= "/api/content/cv-entry" (:uri (first @requests))))
+            (is (= "container" (get-in (first @requests) [:data :entry :kind])))
+            (r/dispatch-sync [:content-editor/cv-create 2026])
+            (r/dispatch-sync [:content-editor/cv-cancel])
+            (is (= :saving (:status (await! (support/state-at! [:state :content-editor :cv-entry])))))
+            (is (= 1 (count @requests)))
+            (r/dispatch-sync [:content-editor/cv-failed "visual-admin" {:message "Unavailable"}])
+            (let [draft (await! (support/state-at! [:state :content-editor :cv-entry]))]
+              (is (= "Grouping" (get-in draft [:fields :what])))
+              (is (= :error (:status draft)))
+              (is (m/validate (dsl/->malli schema/cv-entry-draft) draft)))
+            (r/dispatch-sync [:state [:active-user] nil])
+            (r/dispatch-sync [:content-editor/cv-failed "visual-admin" {:message "Old response"}])
+            (is (= "Unavailable" (:error (await! (support/state-at! [:state :content-editor :cv-entry]))))))
           (.catch #(is false (str %)))
           (.finally (fn [] (restore!) (done)))))))

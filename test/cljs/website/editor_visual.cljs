@@ -85,7 +85,7 @@
   (let [params (js/URLSearchParams. (.-search js/location))
         component (or (.get params "component") "intro")
         edit? (= "true" (.get params "edit"))]
-    (-> (js/fetch "/fixtures/editor-seed.json")
+    (-> (js/fetch (if (= "true" (.get params "live")) "/fixtures/editor-live.json" "/fixtures/editor-seed.json"))
         (.then #(.json %))
         (.then (fn [seed]
                  (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) edit?])

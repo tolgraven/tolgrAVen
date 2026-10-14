@@ -1,9 +1,11 @@
 (ns website.modules.content-editor.events
-  (:require [website.react :as r]
+  (:require [clojure.string :as string]
+            [website.react :as r]
             [website.supabase.runtime :as transport]
             [website.content.contract :as contract]
             [website.content.fields :as fields]
-            [website.content.client :as content]))
+            [website.content.client :as content])
+  (:require-macros [website.build.site :refer [when-enabled]]))
 
 (defn owner [db] (get-in db [:state :active-user :id]))
 (defn admin? [db] (boolean (some #{"admins"} (get-in db [:state :active-user :roles]))))
@@ -45,21 +47,104 @@
       (update-in db [:state :content-editor :enabled?] not) db)))
 
 (r/reg-event-db :content-editor/change
-  (fn [db [_ path expected value]]
+  (fn [db [_ path expected value identities]]
     (if (current? db (owner db))
       (let [key (pr-str path)
             existing (get-in db [:state :content-editor :fields key])]
-        (if (= :saving (:status existing)) db
-          (assoc-in db [:state :content-editor :fields key]
+        (cond
+          (or (= :saving (:status existing)) (= :saving (get-in db [:state :content-editor :cv-entry :status]))) db
+          (= value (or expected "")) (update-in db [:state :content-editor :fields] dissoc key)
+          :else (assoc-in db [:state :content-editor :fields key]
                     {:path path
-                     :expected (or (:expected existing) expected)
+                     :expected (if existing (:expected existing) expected)
+                     :identities (or (:identities existing) identities [])
                      :value value
                      :status :draft}))) db)))
 
 (r/reg-event-db :content-editor/discard
   (fn [db _]
     (if (fields/busy? (get-in db [:state :content-editor])) db
-      (assoc-in db [:state :content-editor :fields] {}))))
+      (update-in db [:state :content-editor] #(-> % (assoc :fields {}) (dissoc :cv-entry))))))
+
+(when-enabled :cv nil
+  (do
+    (r/reg-event-db :content-editor/cv-open
+      (fn [db [_ column category count parents parent-keys column-id]]
+        (if (and (current? db (owner db))
+                 (nil? (get-in db [:state :content-editor :cv-entry]))
+                 (not (fields/busy? (get-in db [:state :content-editor]))))
+          (assoc-in db [:state :content-editor :cv-entry]
+                    {:column column
+                     :column-id column-id
+                     :category category
+                     :parents (or parents [])
+                     :parent-keys (or parent-keys [])
+                     :expected-count count
+                     :fields {:kind "regular", :position "", :from "", :to "", :what "", :where "", :how ""}
+                     :status :draft}) db)))
+    (r/reg-event-db :content-editor/cv-change
+      (fn [db [_ field value]]
+        (if (and (current? db (owner db))
+                 (#{:kind :position :from :to :what :where :how} field)
+                 (get-in db [:state :content-editor :cv-entry])
+                 (not= :saving (get-in db [:state :content-editor :cv-entry :status])))
+          (assoc-in db [:state :content-editor :cv-entry :fields field] value) db)))
+    (r/reg-event-db :content-editor/cv-cancel
+      (fn [db _]
+        (if (= :saving (get-in db [:state :content-editor :cv-entry :status])) db
+          (update-in db [:state :content-editor] dissoc :cv-entry))))
+
+    (defn cv-entry-value [{:keys [kind position from to what where how]} current-year]
+      (let [from' (when (re-matches #"[0-9]{4}" from) (js/parseInt from 10))
+            to' (when (re-matches #"[0-9]{4}" to) (js/parseInt to 10))
+            what' (string/trim what)
+            how' (->> (string/split-lines how) (map string/trim) (remove string/blank?) vec)]
+        (when (and (#{"regular" "container"} kind) from' (<= 1600 from' 3000)
+                   (or (and (string/blank? to) (<= from' (inc current-year)))
+                       (and to' (<= from' to' 3000)))
+                   (<= 1 (count what') 200) (<= (count where) 200) (<= (count position) 2000)
+                   (<= (count how') 32) (every? #(<= (count %) 2000) how'))
+          {:kind kind, :position position, :from from', :to to', :what what', :where (string/trim where), :how how'})))
+
+    (r/reg-event-fx :content-editor/cv-create
+      (fn [{:keys [db]} [_ current-year]]
+        (let [account (owner db)
+              editor (get-in db [:state :content-editor])
+              draft (:cv-entry editor)
+              entry (when draft (cv-entry-value (:fields draft) current-year))]
+          (when (and (current? db account) draft (not (fields/busy? editor)))
+            (if (and entry (empty? (:fields editor))
+                     (or (= "regular" (:kind entry)) (< (count (:parents draft)) 6)))
+              {:db (assoc-in db [:state :content-editor :cv-entry :status] :saving)
+               :content-editor/request {:method :post
+                                        :uri "/api/content/cv-entry"
+                                        :data (assoc (select-keys draft [:column :column-id :category :parents :parent-keys :expected-count]) :entry entry)
+                                        :success [:content-editor/cv-created account]
+                                        :failure [:content-editor/cv-failed account]}}
+              {:db (assoc-in db [:state :content-editor :cv-entry :error]
+                             (if (seq (:fields editor))
+                               "Save or discard your other changes before creating an entry."
+                               "Enter a start year, a title, and an end year no earlier than the start."))})))))
+    (r/reg-event-fx :content-editor/cv-created
+      (fn [{:keys [db]} [_ account bundle]]
+        (when (and (current? db account) (get-in db [:state :content-editor :cv-entry]))
+          (if (content/valid-bundle? bundle [:cv])
+            {:db (update-in db [:state :content-editor] dissoc :cv-entry)
+             :dispatch [:content/install bundle]}
+            {:dispatch [:content-editor/cv-failed account {:message "Invalid creation response"}]}))))
+    (r/reg-event-fx :content-editor/cv-failed
+      (fn [{:keys [db]} [_ account error]]
+        (when (and (current? db account) (get-in db [:state :content-editor :cv-entry]))
+          (let [bundle (get-in error [:response :content-bundle])
+                conflict? (and bundle (content/valid-bundle? bundle [:cv]))]
+            (cond-> {:db (update-in db [:state :content-editor :cv-entry]
+                                   #(assoc %
+                                           :status :error
+                                           :conflict? (boolean conflict?)
+                                           :error (or (get-in error [:response :error]) (:message error)
+                                                      "Unable to create the entry. Your draft is retained.")))}
+              conflict? (assoc :dispatch [:content/install bundle]))))))))
+
 
 (r/reg-event-fx :content-editor/save-all
   (fn [{:keys [db]} _]
@@ -88,6 +173,7 @@
          :content-editor/request {:method :put
                                   :uri "/api/content/field"
                                   :data {:path (mapv #(if (keyword? %) (name %) %) (:path draft))
+                                         :identities (mapv #(update % :path (fn [path] (mapv (fn [part] (if (keyword? part) (name part) part)) path))) (:identities draft))
                                          :expected (:expected draft)
                                          :value (:value draft)}
                                   :success [:content-editor/saved account key]
@@ -139,14 +225,15 @@
                                 :success [:content-editor/uploaded account key]
                                 :failure [:content-editor/failed account key]}})))
 (r/reg-event-fx :content-editor/upload
-  (fn [{:keys [db]} [_ path expected file]]
+  (fn [{:keys [db]} [_ path expected file identities]]
     (let [key (pr-str path)
           account (owner db)
           existing (get-in db [:state :content-editor :fields key])]
       (when (and (current? db account) (not (fields/busy? (get-in db [:state :content-editor]))))
         {:db (assoc-in db [:state :content-editor :fields key]
                       {:path path
-                       :expected (or (:expected existing) expected)
+                       :expected (if existing (:expected existing) expected)
+                       :identities (or (:identities existing) identities [])
                        :value (or expected "")
                        :status :uploading})
          :content-editor/upload {:file file, :account account, :key key}}))))

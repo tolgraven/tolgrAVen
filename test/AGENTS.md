@@ -4,6 +4,10 @@
   viewports and separate scrolled sections; full-page capture can repaint filtered
   media beyond the active viewport. Inspect edit-mode control geometry separately.
   The fixture's seed URL reads `resources/content-seed.json` directly.
+- CV checks cover regular/container creation, automatic editable starter children,
+  bounded nesting, changed-parent/count conflicts, retained drafts and account
+  isolation. Inspect measured opening/closing frames and viewport centering at
+  narrow/wide widths; settled screenshots alone do not prove continuous motion.
 
 - Editor build checks validate the pinned public-entry selection and reject
   unknown/private SDK exports. Production audits reject CodeMirror, Lezer and

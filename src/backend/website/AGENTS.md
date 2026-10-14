@@ -1,7 +1,8 @@
 # Server adapters
 - CMS editor endpoints verify the Auth session and current administrator role
   before acquiring Strapi. Writes use a separate private token, bounded requests
-  without redirects, and the shared field contract. Installing saved sections must
+  without redirects, and shared field/CV creation contracts. Disabled CV sites
+  expose no CV creation route. Installing saved sections must
   retain their authoritative cache/shell state across older in-flight reads and refreshes.
 
 - Successful public SSR documents use `private, no-cache` so native BFcache is

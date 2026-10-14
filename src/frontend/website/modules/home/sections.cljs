@@ -41,7 +41,7 @@
         *showing-title (r/atom (if restored? (count title) 0))
         letter-delays (title-delays-ms title)]
   [:section#intro {:data-restored (when restored? true)}
-   [media/<bg-logo> logo-bg (get (:image-assets spec) logo-bg)]
+   [media/<bg-logo> logo-bg (get (:image-assets spec) logo-bg) spec [:logo-bg]]
    [img/<media-as-bg> (merge (first bg) {:id "top-banner"
                                       :loading "eager"
                                       :fetchPriority "high"})]

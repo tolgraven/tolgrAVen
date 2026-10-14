@@ -3,6 +3,7 @@
             [clj-http.client :as http]
             [website.content.editor :as editor]
             [website.content.editor-contract :as contract]
+            [website.content.contract :as content-contract]
             [website.content.service :as content]
             [website.supabase.auth :as auth]
             [website.media.pipeline :as media]
@@ -64,3 +65,26 @@
             :headers {"Cache-Control" "private, no-store"}
             :body {:error "Content editing is temporarily unavailable"}}
            (editor/response! {} #(throw (ex-info "Authorization: private" {})))))))
+
+(deftest cv-creation-is-bounded-and-uses-the-private-write-adapter
+  (let [entry {:kind "regular", :position "", :from 2020, :to nil, :what "Role", :where "Organisation", :how ["Detail"]}
+        request {:column 0, :category "work", :parents [], :parent-keys [], :expected-count 3, :entry entry}
+        observed (atom nil)
+        bundle {:version 1, :content {:cv {:title "CV"}}}]
+    (is (nil? (validation/explain contract/create-cv-entry request)))
+    (doseq [invalid [(assoc request :column -1)
+                     (assoc request :expected-count 1000)
+                     (assoc-in request [:entry :to] 2019)
+                     (assoc-in request [:entry :how] [(apply str (repeat 2001 "x"))])
+                     (assoc-in request [:entry :id] 123)]]
+      (is (some? (validation/explain contract/create-cv-entry invalid))))
+    (with-redefs [editor/settings (constantly {:url "https://cms.invalid", :token "fixture-write"})
+                  content/enrich-media! identity
+                  content/install-edited! #(reset! observed %)
+                  http/post (fn [url options]
+                              (is (= "https://cms.invalid/api/site-content/cv-entry" url))
+                              (is (= request (:form-params options)))
+                              (is (= :none (:redirect-strategy options)))
+                              {:status 200, :body bundle})]
+      (is (= (content-contract/checked-bundle bundle [:cv]) (editor/create-cv! request)))
+      (is (= (:content (content-contract/checked-bundle bundle [:cv])) @observed)))))
