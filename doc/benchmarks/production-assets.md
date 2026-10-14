@@ -21,6 +21,13 @@ manifest URL. Main is absent from Optimus's bundle inventory, while its released
 bytes remain covered by startup's prepared-source digest validation. Workers
 still need their separate JavaScript execution context.
 
+In the isolated optimized server, the executed script and return-template main
+URL matched exactly. A native worker imported that same URL successfully with
+`transferSize: 0` and 1,943,624 decoded bytes, demonstrating browser cache reuse.
+The real prepared inventory contained 1,010 assets, 31 independent bundles and
+no main bundle; its direct-main whole/range/security checks passed. Focused JVM
+delivery/layout checks passed 35 tests / 520 assertions.
+
 ## Fonts and initial feature ownership
 
 | Check | Before | After |
@@ -30,6 +37,7 @@ still need their separate JavaScript execution context.
 | Google-hosted Open Sans subset URLs | 7 | 0 |
 | Redundant shell Open Sans TTF face | 1 | 0 |
 | Home-declared Markdown/monospace sheets | 2 | 0 |
+| Prepared shell CSS bytes | 108,963 | 98,647 |
 
 The ninth face is the existing metrics-only system fallback. All original
 Unicode ranges and the 300–800 weight range are preserved. A native FontFaceSet
@@ -41,6 +49,41 @@ Anonymous Home SSR records neither User nor Blog exports; an explicitly open
 account panel still records the User view. Blog link hover/focus retains its
 intent preload. A clean Home load did not reproduce an unconditional Blog load;
 the old anonymous account boundary did acquire User without intent.
+
+Cold optimized Home requested none of Blog/User JavaScript or Markdown/Blog CSS
+before interaction. Opening the account link retained the SPA document and
+acquired User assets. This local server lacked browser Supabase settings, so it
+showed the existing unavailable/retry state; this does not prove a live login.
+
+On cold CV → SPA Home, the service-icon catalog's CSS/code stayed absent until
+the category section approached view. Acquisition-only triggers left no pending
+section boxes in service list items and disappeared after activation. Native
+scrolling acquired the catalog and displayed the actual glyphs. Other consumers
+can independently request the full icon font; this is not a global font ban.
+
+## Optimized bundle ownership
+
+The source-map audit compares the merged module-conventions baseline with the
+asset changes using the same selected production modules:
+
+| Resource | Before | After | Change |
+| --- | ---: | ---: | ---: |
+| Main raw bytes | 1,938,614 | 1,722,445 | −216,169 |
+| Main gzip bytes | 475,810 | 415,013 | −60,797 (−12.8%) |
+| Markdown gzip bytes | 90,260 | 151,814 | +61,554 |
+| All chunks gzip bytes | 1,827,150 | 1,827,418 | +268 |
+
+Reading and editing now share Markdown as a lazy parser ancestor. The optimized
+main graph contains no MDAST from/to-Markdown or Micromark sources; the audit
+rejects their reintroduction. This moves needed code to its consumer rather than
+deleting it. A cold real blog post rendered highlighted inline snippets with the
+new split. Module graph tests passed 17 tests / 161 assertions.
+
+External Back on the optimized public Home retained its document identity and
+reported `pageshow.persisted = true`; the image direct-return policy was active
+and the document/skeleton entrance stayed settled. Successful network SSR uses
+`private, no-cache`; known errors and private paired-return documents keep
+`no-store`.
 
 ## Skeleton animation and lifecycle
 
