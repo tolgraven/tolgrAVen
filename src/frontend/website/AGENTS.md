@@ -136,7 +136,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - The page shell owns one lazy contact popup outside both footer copies. Footer
   controls share its re-frame state; do not mount the popup inside each control.
   Keep the HUD above the contact layer so notices remain actionable.
-  The shared near-bottom scroll state switches accessibility between footer copies:
+  The full footer's shared visibility feature owns near-bottom state, including
+  initial layout and resize. That state switches accessibility between copies:
   the distant full footer and hidden/retired sticky footer use `aria-hidden` and `inert`.
 - Render state through `website.react` subscriptions and change it through events.
   Effects/source adapters own I/O; view functions remain pure.

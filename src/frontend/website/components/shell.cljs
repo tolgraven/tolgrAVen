@@ -246,6 +246,12 @@
      [<footer-content> content]]))
 
 (defc <footer-full> "Render the full footer at bottom of page"
+  {:features [[:on-seen {:threshold 0
+                        :once? false
+                        ;; Native observer margins use CSS pixels; retain the
+                        ;; existing 100-pixel handover on initial/resize checks.
+                        :root-margin "0px 0px 100px 0px"
+                        :on-change #(r/dispatch [:scroll/at-bottom %])}]]}
   [content]
   (let [[restored?] (r/use-state #(restore/local-document?))
         at-bottom? @(r/subscribe [:state [:scroll :at-bottom]])]

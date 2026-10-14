@@ -17,6 +17,10 @@
                         (and (= "true" (.getAttribute footer "aria-hidden"))
                              (.hasAttribute footer "inert"))))]
       (.appendChild (.-body js/document) element)
+      ;; Exercise the real native-root observer, including layout changes
+      ;; without a scroll event. Test-only positioning keeps the footer distant.
+      (set! (.. element -style -position) "absolute")
+      (set! (.. element -style -top) "calc(100vh + 20rem)")
       (r/dispatch-sync [:state [:scroll :at-bottom] false])
       (r/dispatch-sync [:state [:hidden :footer] false])
       (-> (support/create-root! element)
@@ -26,14 +30,14 @@
           (.then (fn [_]
                    (is (inactive? "#footer-end") "Distant full footer has no accessible or focusable duplicate")
                    (is (not (inactive? "#footer-sticky")))
-                   (r/dispatch-sync [:state [:scroll :at-bottom] true])
-                   (support/settle!)))
+                   (set! (.. element -style -top) "0rem")
+                   (support/wait-for! #(not (inactive? "#footer-end")))))
           (.then (fn [_]
                    (is (not (inactive? "#footer-end")) "Full footer becomes accessible near the page end")
                    (is (inactive? "#footer-sticky") "The retired sticky copy is inert")
-                   (r/dispatch-sync [:state [:scroll :at-bottom] false])
+                   (set! (.. element -style -top) "calc(100vh + 20rem)")
                    (r/dispatch-sync [:state [:hidden :footer] true])
-                   (support/settle!)))
+                   (support/wait-for! #(inactive? "#footer-end"))))
           (.then (fn [_]
                    (is (inactive? "#footer-end"))
                    (is (inactive? "#footer-sticky") "A visually hidden sticky footer cannot receive focus")))
