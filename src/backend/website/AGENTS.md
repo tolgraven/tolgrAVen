@@ -217,6 +217,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   public publication; keep the complete-raster versus original-only SVG
   rendition contracts distinct. See `doc/media-pipeline.md`.
 
+- Neovim isolation headers apply only to `/neovim`, `/neovim/github/` diff documents and `/vendor/neovim/`; keep ordinary documents unchanged and omit the module adapter/assets from disabled sites. See `doc/neovim.md`.
+
 - Development page, return-template and document-bootstrap requests await the
   existing deferred startup owner's standalone release barrier. Gate before
   asset delivery; unrelated static images and APIs must not wait for app watches.

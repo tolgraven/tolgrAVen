@@ -440,7 +440,7 @@ another server rendering pipeline. Ordinary SPA navigation never requests SSR HT
 
 `ssr/return_policy.cljs` expresses request eligibility, arm expiry, cache freshness,
 bounded document retention and obsolete-build selection as pure functions over
-Clojure maps and sequences. `ssr/return_worker.cljs` extracts native request fields
+Clojure maps and sequences. `ssr/return_worker.cljc` extracts native request fields
 once, decodes arm JSON into a map once, and converts outgoing response options at
 the API boundary. Cache entries remain opaque Request/Response handles inside
 Clojure sequences. Native Promises retain the serialized write queue and browser

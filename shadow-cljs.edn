@@ -96,6 +96,22 @@
                   :ns-regexp "website\\.supabase-.*-test$"
                   :autorun true}
 
+  :neovim-check {:target :browser
+                 :devtools {:enabled false}
+                 :output-dir "resources/public/js/neovim-check"
+                 :asset-path "/js/neovim-check"
+                 :modules {:main {:init-fn website.neovim-fixture/init!}}}
+
+  :github-diff-check {:target :browser
+                      :module-loader true
+                      :compiler-options {:reader-features #{:dev}}
+                      :build-hooks [(website.build.modules/configure-site)
+                                    (website.build.modules/check-site-sources)]
+                      :devtools {:enabled false}
+                      :output-dir "resources/public/js/github-diff-check"
+                      :asset-path "/js/github-diff-check"
+                      :modules {:main {:init-fn website.github-diff-fixture/init!}}}
+
   :app-test {:target :browser-test
              :module-loader true
              :compiler-options {:reader-features #{:browser :dev :browser-test}}

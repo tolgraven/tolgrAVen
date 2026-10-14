@@ -8,11 +8,15 @@
     (and (= [user repo] (:target state)) (= generation (:generation state)))))
 
 (defn- begin-query [db target query]
+  ;; Feed queries own their search/page cache, while immutable revision viewers
+  ;; can already be opening when the module's configuration finishes loading.
   (-> db
-      (assoc-in [:state :github] {:target target
-                                  :generation (inc (get-in db [:state :github :generation] 0))
-                                  :query query})
-      (assoc-in [:content :github] {})))
+      (assoc-in [:state :github]
+                (merge (select-keys (get-in db [:state :github]) [:diff-view :diff-attempt])
+                       {:target target
+                        :generation (inc (get-in db [:state :github :generation] 0))
+                        :query query}))
+      (assoc-in [:content :github] (select-keys (get-in db [:content :github]) [:diff-view]))))
 
 (r/reg-event-fx :github/init
   (fn [{:keys [db]} _]
