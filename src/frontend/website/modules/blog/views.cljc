@@ -150,6 +150,17 @@
   (into [:div.flex.blog-comment-around] children)))
 
 (when-enabled :blog :comments
+  (defc <reply-row>
+  "One intrinsic-height row per reply; the same entrance grows its layout box."
+  {:features [:props [:appear {:class "reply-height", :settle-offscreen? true}]]}
+  [{:keys [expanded? children] :as spec} :- schema/reply-row-spec]
+  [:div.blog-comment-reply-row
+   {:class (when-not expanded? "collapsed")
+    :aria-hidden (not expanded?)
+    :inert (not expanded?)}
+   (into [:div.blog-comment-reply-body] children)]))
+
+(when-enabled :blog :comments
   (defc <comment-fade> {:features [:props [:appear "opacity"]]} [spec]
   [:div.fade-to-black.bottom {:style {:z-index "0"}}]))
 
@@ -212,8 +223,13 @@
             replies? (or (seq @*comments) (pos? (:reply-count post 0)))]
           [:<>
            [<comment-frame> {:appear {:class (or (:appear spec) "zoom-y fast")
+                                      ;; The parent owns reply visibility. A slide-behind
+                                      ;; root starts outside its clipping container, so
+                                      ;; observing that transformed root would deadlock.
+                                      :viewport? (nil? visible?)
                                       :restore? (not (:enter? spec))
                                       :remember-key (when (nil? visible?) [:blog/comment path])}
+                            :features (if (false? (:appear spec)) [[:appear false]] [])
                             :props {:style {:transition-delay (str (or (:stagger-ms spec) 0) "ms")
                                             "--comment-reveal-duration" (str (or (:motion-ms spec) 180) "ms")
                                             "--comment-reveal-delay" (str (or (:stagger-ms spec) 0) "ms")}}
@@ -282,15 +298,20 @@
            (when replies? ;replies
              [:div.blog-comment-reply-outer
               [:div.blog-comment-reply
-               {:class (when-not @*expanded? "collapsed")
-                :style {"--comment-reveal-duration" (str (comments/reveal-duration-ms (count @*comments)) "ms")}}
+               {:style {"--comment-reveal-duration" (str (comments/reveal-duration-ms (count @*comments)) "ms")}}
                (doall (for [[index post] (map-indexed vector (sort-by :ts (vals @*comments)))]
                         ^{:key (get-id-str (conj path (:id post)))}
-                        [<comment-post> {:path (conj path (:id post)) :comment post
-                                         :enter? (or (:enter? spec) @*interacted?)
-                                         :visible? *expanded? :appear "slide-behind"
-                                         :motion-ms (comments/reveal-duration-ms (count @*comments))
-                                         :stagger-ms (min 36 (+ (or (:stagger-ms spec) 0) 12 (* 12 index)))}] ))]
+                        [<reply-row>
+                         {:expanded? @*expanded?
+                          :appear {:class "reply-height"
+                                   :settle-offscreen? true
+                                   :restore? (not (or (:enter? spec) @*interacted?))}
+                          :props {:style {"--comment-reveal-delay" (str (min 384 (* 48 index)) "ms")}}
+                          :children [[<comment-post> {:path (conj path (:id post))
+                                                      :comment post
+                                                      :enter? (or (:enter? spec) @*interacted?)
+                                                      :visible? *expanded?
+                                                      :appear false}]]}] ))]
               (when (or (not @*expanded?) (nil? @*comments))
                 [<collapsed-reply-view> {:path path :comments @*comments :reply-count (:reply-count post)
                                          :expand! (fn [] (reset! *interacted? true)

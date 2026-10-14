@@ -230,13 +230,26 @@ features whose failures should be contained.
 React component; `appear-wrapper` is a CSS class retained for selector compatibility. Original classes, styles and refs are preserved. `:appear` waits
 for the initial frame before adding `appeared`. If its committed native root is
 offscreen, it uses the same observer as `:seen` and enters once it reaches the
-viewport. Settled local/history restoration stays visible. `:seen` retains `seen-merge`'s
+viewport. For entrances whose visibility is already owned by a parent (for example,
+replies sliding from behind a clipped thread), `:viewport? false` keeps the normal
+paint-then-enter animation without observing the transformed child. It does not
+skip the animation as `:force true` does. Settled local/history restoration stays
+visible. `:seen` retains `seen-merge`'s
 20% observer steps and 50% visibility decision, so its slide does not repeatedly
 reverse itself around a single 50% observer boundary. An explicit non-default
 `:threshold` selects that observer threshold; `:root-margin` and `:once?` are configurable. Without
 IntersectionObserver it falls back to appearing immediately after the initial
 frame. `:force true` skips waiting for visibility. Use either `:seen` or `:appear`;
 when both are selected, visibility controls the reveal.
+
+Intrinsic-height entrances (blog reply rows) use `:settle-offscreen? true` in
+their `:appear` options. An initially offscreen row commits as appeared without
+an observer or entrance animation, retaining the layout needed for scrolling.
+Visible rows use the ordinary painted entrance. Each reply's grid row grows
+from `0fr` to `1fr` with its own stagger; no large parent max-height bounds it.
+Folded rows become inert immediately and finish collapsing before their comment
+contents leave the retained visibility lifecycle. Restoration keeps open rows
+at their natural height on the first render.
 
 For removal, the parent selects `:presence` and its keyed direct children select
 `:exit`. Remove a child from the parent's collection normally. The parent keeps

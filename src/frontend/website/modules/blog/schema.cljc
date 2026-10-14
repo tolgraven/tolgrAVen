@@ -36,6 +36,10 @@
                                             [:?visible? [:maybe c/derefable]]])))
 (when-enabled :blog :comments
   (def parent-spec (declarations/extend-spec [:map [:parent-path c/path]])))
+(when-enabled :blog :comments
+  (def reply-row-spec
+    (declarations/extend-spec [:map [:expanded? :boolean]
+                                    [:children [:sequential :any]]])))
 (def posted-by-spec
   (declarations/extend-spec
    (c/optional-map {:id [:maybe c/id] :user [:?or c/id store/profile]

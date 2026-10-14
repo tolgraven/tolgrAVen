@@ -55,6 +55,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 
 ## Ownership and feature contracts
 
+- Parent-controlled clipped entrances use `:appear {:viewport? false ...}` on
+  their children. Observing an initial transform outside its overflow container
+  can prevent intersection forever; the parent retains visibility ownership.
+
 - The lazy page-render owner explicitly imports `website.react.server` and passes
   its renderer to shared SSR rendering. The ordinary release facade keeps that
   dependency absent; do not use its inert target aliases for browser-worker SSR.
@@ -187,6 +191,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   loading and entrances; later SPA navigation must restore ordinary motion.
   Offscreen new `:appear` roots enter through the existing viewport observer.
   Presence commit history is nonreactive; only exit completion schedules a render.
+  Blog replies animate intrinsic height per row with their entrance stagger;
+  do not reintroduce a large parent max-height. Layout entrances opt into
+  `:settle-offscreen?` so hidden rows retain height without waiting on visibility.
   Unactivated module placeholders and departing skeletons have no shimmer animation.
   Appearance classes merge onto native roots; `appear-wrapper` is only a CSS
   class. Network SSR retains the original site/hero entrance in CSS across
