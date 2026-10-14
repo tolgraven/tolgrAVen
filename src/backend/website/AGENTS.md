@@ -50,6 +50,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   within a 16 KiB document budget; publish all URLs in `#module-styles`;
   local return documents carry their saved modules' styles before first paint.
   Strip a leading UTF-8 marker when inlining CSS so its first selector remains valid.
+- Shell text fonts use local variable WOFF2 subsets with their original Unicode
+  ranges. Keep the Latin preload aligned with its prepared CSS URL; independent
+  feature/icon fonts must remain outside `styles.css`. See `doc/styles.md`.
 - Keep SDK and app scripts ordered and deferred, including local-return templates. Emit no analytics metadata,
   queue or scripts; the browser initializes it only after hydration and page readiness.
   SSR hydration preloads follow only the route’s Shadow dependency graph; other
