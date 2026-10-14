@@ -83,21 +83,18 @@
       (is (= "Bearer fixture-secret" (get-in @*options [:headers "Authorization"])))
       (is (thrown? Exception (provider/request! :get "https://evil.test" {}))))))
 
-(deftest day-breakdown-uses-calendar-day-and-preserves-types
-  (with-redefs [provider/token (constantly "fixture")
-                provider/request! (fn [_ _ options]
-                                    (is (= "2026-10-13T00:00:00Z" (get-in options [:form-params :variables :from])))
-                                    (is (= "2026-10-13T23:59:59Z" (get-in options [:form-params :variables :to])))
-                                    {:data {:user {:contributionsCollection {:totalCommitContributions 3
-                                                                            :totalIssueContributions 1
-                                                                            :totalPullRequestContributions 2
-                                                                            :totalPullRequestReviewContributions 4
-                                                                            :totalRepositoryContributions 0
-                                                                            :restrictedContributionsCount 0}}}})]
-    (is (= {:date "2026-10-13", :types {:commits 3, :issues 1, :pull-requests 2, :reviews 4, :repositories 0, :restricted 0}}
-           (activity/fetch-day! "test" "2026-10-13"))))
+(deftest day-breakdown-rejects-invalid-identities-before-acquisition
+  (is (thrown? Exception (activity/fetch-day! "../evil" "2026-10-13")))
+  (is (thrown? Exception (activity/fetch-day! "test" "2026-02-30")))
   (is (= 400 (:status (activity/day-response! "test" "2026-02-30"))))
   (is (= 400 (:status (activity/day-response! "../evil" "2026-10-13")))))
+
+(deftest public-commit-transport-does-not-require-authentication
+  (with-redefs [config/env {}
+                http/request (fn [options]
+                               (is (not (contains? (:headers options) "Authorization")))
+                               {:status 200, :body (ByteArrayInputStream. (.getBytes "[]" "UTF-8"))})]
+    (is (= [] (provider/request! :get "/repos/test/repo/commits" {})))))
 
 (deftest module-service-cleanup-and-disabled-inventory
   (is (= [] (services/start! {})))

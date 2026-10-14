@@ -446,7 +446,12 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   capabilities follow their selected parent in discovery and packaging. Public
   blog reading stays independent of `:blog-editor` and the lazy visual SDK.
 
-- GitHub editor settings live in the CMS `github-settings` section; provider caches stay separate. Deployment identity and public calendar contracts are documented in `doc/activity-panels.md`.
+- GitHub editor settings live in the CMS `github-settings` section; explicit
+  server `:github-user` / `:github-repo` values override that section through the
+  same checked public content binding. Supply both or neither; unrelated CMS
+  failures remain errors. Provider caches stay separate. Public GitHub reads
+  require no token; an optional server token raises the REST archive rate limit.
+  Deployment identity and calendar contracts are documented in `doc/activity-panels.md`.
 - Modules may declare a server `:start` symbol returning an optional cleanup
   function. The mounted module-services owner starts selected services after
   content/configuration and stops them before those dependencies. GitHub's

@@ -108,6 +108,11 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   expose only public origins/keys and allowed options.
   `/api/browser-resources` projects only `:analytics :google-id`; `:enabled false`
   disables that script. Keep these settings out of SSR markup and snapshots.
+- Explicit GitHub user/repo configuration overrides only its managed public
+  content section before CMS acquisition; the browser, SSR and archive share it.
+  Contribution detail parses the unauthenticated public profile timeline and
+  checks its exact day range and type sum against the accompanying calendar.
+  Unknown/incomplete provider markup remains an unavailable result, never zero.
 - ImageMagick pixel-cache files stay inside the request temporary directory so
   failure/timeout cleanup also removes them. Avatar uploads normalize/validate PNG
   before bounded `media/image` conversion.

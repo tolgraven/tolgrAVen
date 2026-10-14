@@ -10,7 +10,12 @@ complete original subject and body. Label clicks keep their category search.
 
 ## CMS ownership
 
-Strapi's `github-settings` single type owns `user` and `repo`.
+Strapi's `github-settings` single type owns `user` and `repo`. Explicit server
+`:github-user` and `:github-repo` settings select that section instead when both
+are supplied (or `GITHUB_USER` / `GITHUB_REPO` through cprop). The checked public
+selection reaches the browser, SSR and archive through the same content binding;
+no token is included. Both keys are required together. Remove both to return
+ownership to the CMS. Cache identity includes the explicit selection.
 The module declares this section as a managed content dependency; the
 `:github/get-from` subscription reads it. GitHub provider responses remain in
 `:content :github`, separate from editor content. Repository changes reset that
@@ -31,7 +36,9 @@ from GitHub commits or collect private ChatGPT conversations.
 
 These single types and their public adapters require the companion
 `tolgrAVen-strapi` change. With a configured CMS, missing sections are a content
-error, not a fallback to seed values. Deploy that CMS change before the web app;
+error, not a fallback to seed values. Explicit GitHub configuration avoids requesting
+that CMS section; all other CMS content retains its normal failure behavior.
+Deploy that CMS change before using CMS-owned settings;
 seed-on-start creates the missing records without replacing existing edits.
 
 ## Deployment identity
@@ -76,13 +83,16 @@ pull requests, reviews, new repositories and restricted contribution counts stay
 separate. Zero days and the CMS-owned Codex calendar do not request GitHub data.
 Escape, blur, pointer exit, scrolling and resize close and unmount the popup.
 
-`GET /api/github/activity/day?user=…&date=YYYY-MM-DD` uses GitHub GraphQL's
-single-day contributions collection. Configure a server-only `GITHUB_TOKEN`
-(`:github-token`, or nested `:github :token`) with public-read access for this
-endpoint; without it the total remains usable and the managed detail dependency
-reports unavailable. No repository names, issue bodies or private content are
-returned by the day endpoint. Date and user validation precede acquisition;
-requests, body size, concurrency and caches are bounded.
+`GET /api/github/activity/day?user=…&date=YYYY-MM-DD` reads GitHub's public
+single-day profile timeline without authentication. It counts only category
+headings, including featured contributions and their disjoint “other” rollups,
+and verifies the date range and sum against that response's calendar count.
+Unknown headings, truncated/missing data or a count mismatch report unavailable
+instead of inventing zero counts. This depends on GitHub's public HTML structure;
+a provider markup change can require an adapter update. No repository names,
+issue bodies or private content are returned; only the public anonymous count
+for private contributions is retained. Date and user validation precede
+acquisition; requests, body size, concurrency and caches are bounded.
 
 ## Complete repository archive
 
@@ -91,7 +101,7 @@ through its ordinary storage catalog. Apply the module's SQL using the existing
 Supabase provisioner before enabling its service. `:server :start` returns a
 cleanup owned by the mounted module-services lifecycle. With server Supabase
 settings, it starts asynchronously; `:github {:sync-enabled false}` disables it.
-It uses the CMS-selected repository, traversing every current public branch and tag's
+It uses the shared configured repository, traversing every current public branch and tag's
 reachable history, not only commits attributed to the configured owner. Removed
 branch commits already archived remain searchable. Unreachable/deleted GitHub
 objects cannot be discovered through the branches/tags APIs.
@@ -106,8 +116,11 @@ repository lease works across app instances, and one transaction writes the
 commit page and its next checkpoint. A crash or failed page is retried without
 skipping data or creating duplicates. The worker performs at most eight steps
 per minute, checks again after fifteen minutes when caught up, and respects
-GitHub rate-limit reset times. A public-read GitHub token avoids the low
-unauthenticated request limit. Startup never waits for the backfill.
+GitHub rate-limit reset times. No token is required for public history. GitHub's
+REST limit is 60 requests/hour per IP without authentication; an optional
+server-only `GITHUB_TOKEN` (`:github-token`, or nested `:github :token`) normally
+raises that to 5,000/hour. Token-free backfills pause and resume at the reset
+time, so a large initial archive takes longer. Startup never waits for the backfill.
 
 `GET /api/github/commits?user=…&repo=…&q=…&cursor=…` reads only the selected
 repository from Supabase, with indexed full-text matching over the complete
@@ -134,7 +147,7 @@ same leased checkpoints (it never falls back from a failing CMS):
 lein run -m website.modules.github.sync owner repository
 ```
 
-Omit the two arguments to use the CMS selection. The command stops when the
+Omit the two arguments to use the shared configured selection. The command stops when the
 scan completes, a retry delay is reached, another worker holds the lease, or its
 bounded step budget is used. Re-running resumes rather than starting over.
 Calendar days use one tab stop; arrow keys navigate by day/week, with Home/End

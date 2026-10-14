@@ -10,7 +10,10 @@
 
  :nrepl-bind "127.0.0.1"
  :nrepl-port 7000                  ; Optional standalone app nREPL; omit to disable.
- ;; GitHub integration: server-only public-read token, never a browser setting.
+ ;; Optional explicit public selection; supply both, or omit both to use Strapi.
+ ;; :github-user "your-user"       ; GITHUB_USER through cprop.
+ ;; :github-repo "your-repo"       ; GITHUB_REPO through cprop.
+ ;; Public GitHub reads work without a token. Optional server-only REST rate limit upgrade:
  ;; :github-token "PRIVATE-GITHUB-TOKEN" ; GITHUB_TOKEN via cprop in deployment.
  ;; :github {:sync-enabled false} ; Default: archive when server Supabase is configured.
  ;; `lein repl` also has its own listener on 7000 from project.clj.

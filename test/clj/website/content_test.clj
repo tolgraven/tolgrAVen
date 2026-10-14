@@ -4,6 +4,8 @@
             [clj-http.client :as http]
             [website.content.contract :as contract]
             [website.page-router :as pages]
+            [website.config :as config]
+            [website.modules.github.sync :as github-sync]
             [website.content.service :as content]))
 
 (use-fixtures :each (fn [f] (reset! content/*cache {}) (f) (reset! content/*cache {})))
@@ -88,3 +90,46 @@
       (let [response (content/response nil)]
         (is (= expected (get-in response [:headers "X-Content-Source"])))
         (is (not (.contains (pr-str response) "private")))))))
+
+(deftest explicit-github-settings-are-shared-by-browser-ssr-and-archive
+  (let [settings content/settings
+        *calls (atom [])]
+    (with-redefs [config/env {:github-user "Public-Owner", :github-repo "Public-Repo"}
+                  content/settings #(assoc (settings) :url "https://cms.test")
+                  http/get (fn [_ options]
+                             (swap! *calls conj (get-in options [:query-params "keys"]))
+                             {:status 200, :body {:version 1, :content {:document {:title "From CMS"}}}})]
+      (let [response (content/response [:github-settings])]
+        (is (= 200 (:status response)))
+        (is (= "config" (get-in response [:headers "X-Content-Source"])))
+        (is (= {:user "Public-Owner", :repo "Public-Repo"} (get-in response [:body :content :github-settings]))))
+      (is (= {:owner "public-owner", :repo "public-repo"} (github-sync/target!)))
+      (is (= [] @*calls) "Explicit settings must not request the missing CMS section")
+      (is (= {:user "Public-Owner", :repo "Public-Repo"}
+             (get-in (content/fresh-bundle! [:github-settings]) [:content :github-settings])))
+      (let [mixed (content/response [:document :github-settings])]
+        (is (= "strapi+config" (get-in mixed [:headers "X-Content-Source"])))
+        (is (= "From CMS" (get-in mixed [:body :content :document :title]))))
+      (is (= ["document"] @*calls)))))
+
+(deftest github-config-changes-cannot-reuse-another-selection
+  (let [settings content/settings]
+    (with-redefs [content/settings #(assoc (settings) :url "https://cms.test")
+                  http/get (fn [& _] (throw (Exception. "CMS should not be queried")))]
+      (doseq [repo ["first" "second" "first"]]
+        (with-redefs [config/env {:github-user "owner", :github-repo repo}]
+          (is (= repo (get-in (content/bundle! [:github-settings]) [:content :github-settings :repo])))))
+      (doseq [configuration [{:github-user "owner"}
+                             {:github-repo "repo"}
+                             {:github-user "../invalid", :github-repo "repo"}]]
+        (with-redefs [config/env configuration]
+          (is (= 503 (:status (content/response [:github-settings])))))))))
+
+(deftest github-config-is-an-explicit-source-not-a-cms-error-fallback
+  (let [settings content/settings]
+    (with-redefs [content/settings #(assoc (settings) :url "https://cms.test")
+                  http/get (fn [& _] {:status 400})]
+      (with-redefs [config/env {:github-user "owner", :github-repo "repo"}]
+        (is (= 503 (:status (content/response [:intro :github-settings])))))
+      (with-redefs [config/env {}]
+        (is (= 503 (:status (content/response [:github-settings]))))))))
