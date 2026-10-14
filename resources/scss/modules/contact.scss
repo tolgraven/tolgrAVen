@@ -43,7 +43,7 @@
     margin: var(--space) var(--space-lg);
   }
 
-  &.inited {
+  &.appeared {
     max-height: 80%;
     bottom: calc(var(--footer-height-current) + env(safe-area-inset-bottom, 0rem) - var(--line-width));
     opacity: 100%;
@@ -52,7 +52,7 @@
     max-height: 20%;
     opacity: 100%;
   }
-  &.closing {
+  &.exiting {
     max-height: 0%;
     opacity: 0%;
   }

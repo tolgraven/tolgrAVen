@@ -22,15 +22,10 @@
                   [:form-field [:contact-form :title] nil]
                   [:form-field [:contact-form :email] nil]]}))
 
-(r/reg-event-fx :contact/open
-  (fn [{:keys [db]} [_]]
-    {:db (assoc-in db [:state :contact-form :show?] true)}))
+(r/reg-event-db :contact/open
+  (fn [db _]
+    (update-in db [:state :contact-form] merge {:show? true, :sent? false})))
 
-(r/reg-event-fx :contact/close
-  (fn [{:keys [db]} [_ force?]]
-    (if force?
-      {:db (update-in db [:state :contact-form] merge
-                      {:show? false :sent? false :closing? false})}
-      {:db (assoc-in db [:state :contact-form :closing?] true)
-       :dispatch-later {:ms 1000
-                        :dispatch [:contact/close :force]}})))
+(r/reg-event-db :contact/close
+  (fn [db _]
+    (assoc-in db [:state :contact-form :show?] false)))

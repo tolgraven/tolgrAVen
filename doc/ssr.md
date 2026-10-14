@@ -36,6 +36,11 @@ component definition.
 
 ## Rendering and hydration
 
+Contact email text renders on the server without a link destination. The same
+anchor acquires its `mailto:` href on the first frame after the browser component
+commits, avoiding mail-handler extension rewrites before hydration. Without
+JavaScript the address remains readable and copyable.
+
 Both environments render `components/page.cljs`, the ordinary application shell.
 The blog uses `modules/blog/views.cljs`; the landing page uses `modules/home/sections.cljs` and its
 existing home/media components. There are no SSR-only copies of the header,
