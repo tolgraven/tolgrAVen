@@ -17,6 +17,13 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 
 ## Implementation priority: Reagent and re-frame
 
+- Activity calendar tooltips mount only during hover/focus and release their
+  portal, managed day dependency and scoped listeners immediately on exit.
+  GitHub configuration uses its module's managed `/api/github/settings` URL
+  dependency, installed at `[:module :github :configuration]` before init.
+  GitHub search is debounced through events and queries the backend's complete
+  Supabase archive; never filter only the browser's loaded subset.
+
 - Apply the root guide's Reagent/re-frame-first principles to every frontend change,
   including lazy loading and performance optimizations. See
   `doc/reagent-re-frame.md` for the event flow, examples and justified exceptions.
@@ -110,11 +117,17 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   and a parent summary; quoted instances never claim a navigation target's DOM ID.
   Subscription dependencies read already satisfied bindings synchronously, so
   supplied SSR data and first hydration do not wait for browser acquisition.
+  Accepted navigation owns a path-scoped component-focus policy. Explicit link
+  intent reveals/scrolls its target; history restores its saved position and folds
+  even when a newly mounted target view becomes ready later.
   Blog comment UI lives in `modules/blog/comment_views.cljs`, required only by
   the `:feature/blog-comments` reader feature. Posts and comments share
   `blog/presentation.cljc`; the blog page retains shell ownership. Comment action
   links retain native hrefs and use owned hover/focus labels rather than title
   attributes. Text collapse controls require measured truncation.
+  Comment authoring uses a controlled native textarea backed by its existing
+  form subscription/events. The preserved styled-input experiment accepts a
+  text subscription, never the whole comment model.
   `validation/schema.cljs` assembles browser/Node app-db sections from their owners;
   small single-use shell-state contracts stay inline there.
 - Image readiness callbacks use the shared picture lifecycle: notify only a decoded,
@@ -136,6 +149,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Rendered reusable UI lives in `components/`; feature-specific UI lives with its
   module. `component/` is the declaration/lifecycle runtime, not a view inventory.
   Import the owning namespace directly; there is no top-level `views.cljs` shim.
+- `components/ui/liquid_glass.cljs` owns the spec-driven glass wrapper. Filter
+  only its decorative background; preserve child DOM and independent opacity.
+  Its measured geometry and bounded image work belong to cancellable native
+  lifecycle adapters. See `doc/liquid-glass.md`; the lazy experiments module owns
+  the playground.
 - The page shell owns one lazy contact popup outside both footer copies. Footer
   controls share its re-frame state; do not mount the popup inside each control.
   Keep the HUD above the contact layer so notices remain actionable.
@@ -438,6 +456,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   UI selection, capture options and bounded records use re-frame; native window,
   measurement and WeakMap ownership adapters must release their lifecycle resources.
   Source/stack and actual-value details stay behind `:dev` reader boundaries.
+  The console's deferred/module host uses the development-only
+  `instrumentation/without-profiling` subtree boundary; retain instance metadata,
+  but never capture its inclusive commits back into its own record subscriptions.
+  Ancestors outside that boundary must also omit timing callbacks.
   See `doc/dev-console.md` for capture, source links and diagnostic limitations.
 
 - Missing scoped-state and installed-data subscriptions return `:present? false`
@@ -515,4 +537,14 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   byte callbacks and remains attempt/owner guarded in transient module state.
   Server-ready media stays visible in the status list until the published preview
   acknowledges visible decoded content; keyed presence owns row exit and cleanup.
-- GitHub settings and Codex profile content use declared Strapi dependencies. Shared activity markup renders provider counts; absent profile days remain unavailable. See `doc/activity-panels.md`.
+- Declare module `:content` dependencies only for published CMS sections. GitHub
+  settings and Codex profile content currently have no request dependencies;
+  preserve their readers and unavailable views until those CMS sections exist.
+  See `doc/strapi-content.md`.
+- Client startup acquires only shared shell content, not every enabled module.
+  Optional modules own their dependency failures and retries. Failed shared CMS
+  batches isolate section requests before rejecting consumers; keep successful
+  section caches and unrelated module acquisition intact.
+- Managed source adapters may declare a default `:timeout-ms`; an explicit
+  dependency timeout takes precedence. The CMS adapter budgets both transport
+  attempts plus queue settlement so isolation cannot strand a healthy module.

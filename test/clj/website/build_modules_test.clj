@@ -1,5 +1,8 @@
 (ns website.build-modules-test
   (:require [clojure.test :refer [deftest is testing]]
+            [malli.core :as m]
+            [website.schema.dsl :as dsl]
+            [website.schema.declarations :as declarations]
             [website.build.modules :as modules]
             [website.build.site :as site]
             [website.loader.code :as code]
@@ -270,3 +273,27 @@
                                (modules/check-site-sources comments))))
         (reset! *settings {:modules {:blog {:enabled true :comments true}}})
         (is (identical? comments (modules/check-site-sources comments)))))))
+
+
+(deftest installed-module-styles-are-absolute-asset-paths
+  (let [found (modules/all-declarations)
+        experiments (first (filter #(= :test (:id %)) found))]
+    (is (= ["/css/website/modules/test.min.css"] (:styles experiments))
+        "Experiments publish the real stylesheet as an absolute asset path")
+    (doseq [{:keys [id styles]} found, path styles]
+      (is (string/starts-with? path "/") (str id " must supply a root-relative asset path")))))
+
+(deftest declaration-and-runtime-contract-reject-relative-stylesheet-paths
+  (let [file (java.io.File/createTempFile "module-style-path" ".cljs")
+        schema (dsl/->malli declarations/module)]
+    (try
+      (doseq [path ["test" "" "css/test.css" "https://example.com/test.css"]]
+        (spit file (str "(ns example.module)\n(def spec {:styles [" (pr-str path) "]})"))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"absolute stylesheet asset paths"
+                             (modules/declaration file)))
+        (is (not (m/validate schema {:id :example, :styles [path]}))))
+      (spit file "(ns example.module)\n(def spec {:styles [\"/css/custom.css\"]})")
+      (is (= ["/css/custom.css"] (:styles (modules/declaration file))))
+      (is (m/validate schema {:id :example, :styles ["/css/custom.css"]}))
+      (is (m/validate schema {:id :example, :styles []}))
+      (finally (.delete file)))))

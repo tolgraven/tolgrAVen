@@ -95,6 +95,27 @@
           (.catch #(is false (str %)))
           (.finally (fn [] (restore!) (done)))))))
 
+(deftest history-comment-intent-retains-manual-folds
+  (async done
+    (let [restore! (r/make-restore-fn)
+          path "/blog/post/24/comment/113"]
+      (r/reg-fx :dispatch (fn [_]))
+      (r/reg-fx :dispatch-n (fn [_]))
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            (r/dispatch-sync [:component-data/install [:common/route]
+                              (match path {:permalink "24", :comment-id "113"})])
+            (install-comment! target 24)
+            (r/dispatch-sync [:blog/expand-comment-thread [24 "root"] false])
+            (r/dispatch-sync [:component-data/install [:state :scroll :component-focus] {:path path, :scroll? false}])
+            (r/dispatch-sync [:blog/navigate-comment "113"])
+            (is (false? (get (:comment-thread-expanded (await! (support/state-at! [:state :blog]))) [24 "root"])))
+            (r/dispatch-sync [:component-data/install [:state :scroll :component-focus] {:path path, :scroll? true}])
+            (r/dispatch-sync [:blog/navigate-comment "113"])
+            (is (true? (get (:comment-thread-expanded (await! (support/state-at! [:state :blog]))) [24 "root"]))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
+
 (deftest focused-root-already-in-the-paged-records-is-rendered-once
   (async done
     (let [restore! (r/make-restore-fn)

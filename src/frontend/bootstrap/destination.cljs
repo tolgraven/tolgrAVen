@@ -44,6 +44,9 @@
                   (set! (.-frame owner) (js/requestAnimationFrame measure!))))]
         (set! (.-observer owner) (js/MutationObserver. schedule!))
         (.observe (.-observer owner) root #js {:subtree true :childList true :attributes true})
+        ;; The trailing completion marker is outside React's mount container.
+        ;; Its arrival can make a streamed target measurable before hydration.
+        (.observe (.-observer owner) (.-body js/document) #js {:childList true})
         (.addEventListener js/window "pagehide" finish!)
         (.addEventListener js/document "load" schedule! true)
         (when-let [fonts (.-fonts js/document)] (.then (.-ready fonts) schedule!))

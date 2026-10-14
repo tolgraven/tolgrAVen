@@ -72,7 +72,7 @@ function fixture({pending=true, width=390, dpr=2, same=false, reduced=false, nat
   const context={performance:{getEntriesByType:()=>[{type:direct?'back_forward':'navigate'}]},document, location:{pathname:'/blog/post/42/comment/target'}, Event, MutationObserver:Observer, window,
     innerWidth:width, innerHeight:700, devicePixelRatio:dpr, matchMedia:()=>({matches:reduced}),
     DOMMatrixReadOnly:class{constructor(){this.a=scale;}},
-    getComputedStyle:node=>({animationName:node===shell&&!reduced?'skeleton-dissolve':'none',animationDuration:node===shell&&!reduced?'0.16s':'0s',transitionDuration:'0.15s',scrollMarginTop:'100px',opacity:'1',visibility:'visible',transform:node===hero?'matrix(1,0,0,1,0,0)':'none',display:node.hidden?'none':'block'}),
+    getComputedStyle:node=>({animationName:node===shell&&!reduced?'skeleton-dissolve':'none',animationDuration:node===shell&&!reduced?'0.16s':'0s',transitionDuration:'0.15s',scrollMarginTop:'100px',opacity:'1',visibility:'visible',transform:node===hero?'matrix(1,0,0,1,0,0)':'none',display:node.hidden||(node===root&&shell&&!completed)?'none':'block'}),
     requestAnimationFrame:callback=>{const n=++sequence;frames.set(n,callback);return n;},
     cancelAnimationFrame:n=>frames.delete(n), setTimeout:callback=>{const n=++sequence;timers.set(n,callback);return n;},clearTimeout:n=>timers.delete(n), Promise};
   vm.runInNewContext(head,context);
@@ -111,6 +111,16 @@ test('missing cold target releases the page without jumping or leaking its obser
   assert.equal(f.document.listeners.get('load'),0);
   assert.equal(f.window.listeners.get('pagehide'),fixture().window.listeners.get('pagehide'),
     'The target listener is released while existing document/image owners remain');
+});
+test('the trailing stream marker wakes a target hidden from layout before completion',async()=>{
+  const f=fixture({target:true,skeleton:true,complete:false});
+  await f.load(f.preview);await f.frame();await f.frame();
+  assert.equal(f.scrolls.length,0);
+  assert.equal(f.root.hasAttribute('data-document-pending'),true);
+  f.completeMarker();await f.frame();await f.frame();
+  assert.equal(f.scrolls[0].pending,true);
+  await f.frame();await f.frame();
+  assert.equal(f.root.hasAttribute('data-document-pending'),false);
 });
 test('paired return and native history retain their saved position rather than reacquiring a cold target',async()=>{
   for(const options of [{pending:false},{direct:true}]) {

@@ -310,6 +310,9 @@ produce a visible alert with **Retry data**, plus the existing service
 notification/log. Identical in-flight descriptors share requests, including
 preloads and later mounts. One failing dependency does not prevent the others
 from starting. Retry invalidates those dependencies and starts a new attempt.
+For compact noninteractive surfaces, `:data-error` may supply replacement Hiccup;
+the managed failure and service notification/retry remain active. Use it instead
+of rendering unusable recovery controls inside a pointer-transparent tooltip.
 
 Built-in sources:
 
@@ -338,7 +341,9 @@ write over app-db. If different in-flight resources target the same path, the
 newer request owns the destination and an older completion cannot overwrite it.
 
 Remote snapshots default to a 60-second TTL and 15-second request deadline;
-positive `:ttl-ms` / `:timeout-ms` override these. Completed cache entries are
+positive `:ttl-ms` / `:timeout-ms` override these. A source adapter may supply its
+own default deadline. Strapi allows 31 seconds for a batched request followed by
+per-section isolation; an explicit dependency deadline still takes precedence. Completed cache entries are
 bounded to 128 (in-flight requests are retained). App-db and Strapi readiness
 comes from current app-db values. Account/client changes invalidate URL and
 Supabase snapshots, reject pending waiters, and clear values installed by those
@@ -347,7 +352,8 @@ install. Failures remain explicit until retry, avoiding automatic retry loops.
 
 Custom sources register via `data/register-source!` with `:load!` returning a
 value or Promise. Optional `:read` returns `{:ready? boolean :value value}`;
-optional `:scope` partitions the request cache (for example by session).
+optional `:scope` partitions the request cache (for example by session). Optional
+`:timeout-ms` supplies the source's default managed acquisition deadline.
 
 ## Loading views and skeletons
 
@@ -959,3 +965,11 @@ Committed owners attach/detach through events; the shared face request is retain
 for reuse. A native FontFaceSet adapter owns the Promise. A layout effect owns only
 the cancellable paint frames between layer insertion and simultaneous reveal.
 See [styles.md](styles.md) for first-paint policy, fallback metrics and failure behavior.
+
+## Liquid glass backgrounds
+
+`components.ui.liquid-glass/<liquid-glass>` wraps `[spec & forms]` with an
+independently sized refractive background. Children retain their opacity, DOM
+and interactions. Shapes, optics, tint, light, outsets and bounded raster budgets
+are spec options; SSR and unsupported engines use a native frosted fallback.
+See [Liquid glass](liquid-glass.md) for the contract, examples and lifecycle.

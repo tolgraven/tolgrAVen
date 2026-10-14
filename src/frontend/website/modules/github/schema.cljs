@@ -8,6 +8,7 @@
                    :pages-pending [:set :int]
                    :commits-pending [:set :string]
                    :headers-pending? :boolean
+                   :query :string
                    :pages-fetched [:sequential :int]
                    :commits-fetched c/strings}))
 (def options (c/optional-map {:user :string, :repo :string}))
@@ -42,4 +43,7 @@
                    :commit [:map-of :string commit]
                    :commit-errors [:map-of :string :any]
                    :repo-headers :map
+                   :total c/nonnegative
+                   :next-cursor :?string
+                   :complete? :boolean
                    :errors :any}))

@@ -52,8 +52,9 @@
           (throw (ex-info "Declare module bundle dependencies and capability ownership in spec, not ns metadata"
                           {:file (str file)})))
         (when-not (or (nil? styles)
-                      (and (vector? styles) (every? string? styles)))
-          (throw (ex-info "Module :styles must be a literal vector of stylesheet paths"
+                      (and (vector? styles)
+                           (every? #(and (string? %) (string/starts-with? % "/")) styles)))
+          (throw (ex-info "Module :styles must be a literal vector of absolute stylesheet asset paths"
                           {:file (str file)})))
         (when (and (contains? spec :icons) (not (icons/valid-icons? icon-dependencies)))
           (throw (ex-info "Module :icons must be literal brands/name or solid/name strings"
@@ -72,7 +73,10 @@
           (seq content) (assoc :content content)
           (seq styles) (assoc :styles styles)
           (seq icon-dependencies) (assoc :icons icon-dependencies)
-          server (assoc :server (update server :routes #(if (seq? %) (second %) %)))
+          server (assoc :server (reduce (fn [value key]
+                                          (cond-> value
+                                            (seq? (get value key)) (update key second)))
+                                        server [:routes :start]))
           pages (assoc :pages (symbol (str (get aliases (symbol (namespace pages))
                                                (namespace pages))) (name pages)))
           storage (assoc :storage (symbol (str (get aliases (symbol (namespace storage))

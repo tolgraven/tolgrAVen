@@ -265,9 +265,9 @@
                                      :label "Open thread"
                                      :icon "comments"
                                      :href @(r/subscribe [:href :blog-comment {:comment-id (str id)}])}]])
-               (when (and active-user (= (:id active-user) (:id user)))
+               (when (and (not is-preview?) active-user (= (:id active-user) (:id user)))
                  [<edit-comment> {:path path :comment post}])
-               (when active-user
+               (when (and (not is-preview?) active-user)
                  [<add-comment-btn> {:parent-path path :kind :reply}])]]
 
              [:div.blog-comment-expansion
@@ -422,9 +422,17 @@
                           :comment {:user @(r/subscribe [:user/active-user])
                                     :title (:title @*model)
                                     :text (or (:text @*model) "")}}]
-         (m/<> {:module :styled-input, :view :input, :load-on :immediate}
-               :model *model
-               :on-change #(r/dispatch-sync [:form-field [:write-comment parent-path :text] %]))
+         [:textarea.blog-comment-editor
+          {:aria-label "Comment text"
+           :rows 6
+           :value (or (:text @*model) "")
+           :on-change #(r/dispatch-sync [:form-field [:write-comment parent-path :text]
+                                         (.. % -target -value)])}]
+         ;; Preserve the styled-input alternative; it owns a single text value,
+         ;; while the editor's managed form model also contains title/metadata.
+         #_(m/<> {:module :styled-input, :view :input, :load-on :immediate}
+                 :model (r/subscribe [:form-field [:write-comment parent-path :text]])
+                 :on-change #(r/dispatch-sync [:form-field [:write-comment parent-path :text] %]))
          ;; The experimental field could use :style {:opacity 0.1 :z-index 10}.
          ;; Future shortcut: submit on Alt-Enter.
          [<submit-comment-btn> {:parent-path parent-path :model @*model
@@ -475,7 +483,8 @@
          [:div.blog-comments-inner
           [<comment-post> {:path [(:parent-post row) (:id row)]
                            :comment row
-                           :focused-id (str (:id row))}]]]
+                           :focused-id (str (:id row))}]]
+         [<add-comment> {:parent-path [(:parent-post row)]}]]
         (if ready?
           [:p {:role "alert"} "Comment not found."]
           [loading/<spinner>]))))

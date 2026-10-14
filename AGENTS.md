@@ -307,6 +307,10 @@ These are required principles for new code and changes to existing code. Follow 
 - Keep subscription computations and event-db handlers pure. Put HTTP, Supabase, Strapi, localStorage, timers, and other external side effects in registered effects or dedicated lifecycle adapters. Pass results back through events that update app-db; components then observe them through subscriptions.
 - Use the existing subscription-backed Supabase and Strapi bindings. A subscription may acquire an existing managed data source; the source adapter owns the read, deduplication, result events, and cleanup. Do not perform network reads inside a subscription's derived-value computation or component render.
 - Declare content dependencies in component, module, or page specifications. Preloading must acquire the same managed subscriptions/data bindings that the rendered component uses. Do not add a parallel imperative preparation namespace, duplicate query definitions, or fetch content directly from a page/view to avoid using the normal data flow.
+- Missing configuration for an enabled module must fail within that
+  module and expose its local error/retry state; it must not gate unrelated
+  modules or the shared shell. Startup loads only shared shell dependencies;
+  route modules own their content.
 - Batch and deduplicate pending data loads and persistence operations through the shared queues. Distinguish pending, successfully loaded empty, failed, and cached data. Preserve usable cached content during refresh and report real failures through the established notification/retry system.
 - Release subscriptions, watches, listeners, and live connections when their owning lifecycle ends. Retain app-db content caches for reuse; temporary preloading must not dispose a subscription still owned by a mounted component.
 - Use the scoped subscription/update helpers for persistent component, module, page, and shared state. Reserve local Reagent state for transient component-owned state; do not introduce a second application store or bypass event-driven persistence.
@@ -413,6 +417,19 @@ rather as guidelines to help make code more readable and maintainable. If you ha
 ## Deploy
 - Follow `doc/docker-builds.md` for `make docker` and PR preview cleanup; `doc/site-provisioning.md` covers separate sites and production/staging services.
 
+- The user grants standing authorization for tested, reviewed migrations and
+  bounded feature backfills on this project's Supabase database on SSH host
+  `bux`, including production (currently container
+  `supabase-db-e840kco0scs04gkcco44w088`). Verify the destination and actual SQL
+  before execution. This includes application tables, indexes, constraints,
+  functions, triggers, RLS policies and grants needed for the requested feature;
+  do not request another confirmation solely for those persistent changes.
+  Destructive resets, dropping populated tables/columns, unrelated deletions,
+  disabling access controls and other databases need separate authorization.
+  Application/container deployment remains outside this standing scope. The
+  local Codex `[auto_review].extra_policy` carries matching reviewer guidance;
+  managed restrictions and the required denial/override workflow still apply.
+
 - Module specs expose portable `:storage` declarations. Supabase seed tooling,
   public projections and realtime identities derive from that catalog; runtime
   `:supabase :modules` options select seed/reset owners and feature groups.
@@ -433,4 +450,14 @@ rather as guidelines to help make code more readable and maintainable. If you ha
   capabilities follow their selected parent in discovery and packaging. Public
   blog reading stays independent of `:blog-editor` and the lazy visual SDK.
 
-- GitHub editor settings live in the CMS `github-settings` section; provider caches stay separate. Deployment identity and public calendar contracts are documented in `doc/activity-panels.md`.
+- GitHub's managed `/api/github/settings` dependency and archive share one
+  validated server selection. Explicit `:github-user` / `:github-repo` values
+  take priority; supply both or neither. Unpublished CMS settings stay omitted;
+  partial/invalid GitHub configuration cannot gate unrelated content or startup.
+  Provider caches stay separate. Public GitHub reads
+  require no token; an optional server token raises the REST archive rate limit.
+  Deployment identity and calendar contracts are documented in `doc/activity-panels.md`.
+- Modules may declare a server `:start` symbol returning an optional cleanup
+  function. The mounted module-services owner starts selected services after
+  content/configuration and stops them before those dependencies. GitHub's
+  leased, checkpointed Supabase archive runs there; browser paging never imports history.

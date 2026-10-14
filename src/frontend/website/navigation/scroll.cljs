@@ -30,7 +30,8 @@
 (r/reg-event-fx :scroll/component-target
   {:args [:tuple :string :string]}
   (fn [{:keys [db]} [_ id path]]
-    (when (= path (get-in db [:common/route :path]))
+    (when (and (= path (get-in db [:common/route :path]))
+               (not= {:path path, :scroll? false} (get-in db [:state :scroll :component-focus])))
       {:scroll/component-target id})))
 
 (r/reg-fx :scroll/component-target

@@ -3,10 +3,14 @@
             [website.modules.github.model :as model]
             [website.react :as r]))
 
+(r/reg-sub :github/configuration
+ (fn [db _]
+   (get-in db [:module :github :configuration :settings])))
+
 (r/reg-sub :github/get-from
- :<- [:content [:github-settings]]
- (fn [github]
-   [(:user github) (:repo github)]))
+ :<- [:github/configuration]
+ (fn [{:keys [user repo]}]
+   [user repo]))
 
 (r/reg-sub :github/website-url
  :<- [:github/get-from]
@@ -16,19 +20,31 @@
 
 (r/reg-sub :github/commits
  :<- [:content [:github]]
- (fn [github]
-   (:commits github)))
+ :<- [:form-field [:github :search]]
+ (fn [[github query] _]
+   (let [sha (string/lower-case (string/trim (or query "")))]
+     (if (re-matches #"[a-f0-9]{7,40}" sha)
+       (let [cached (or (get-in github [:commit sha])
+                        (some #(when (model/matches? % sha) %) (vals (:commit github))))]
+         (filterv #(model/matches? % sha)
+                  (cond-> (:commits github)
+                    cached (model/merge-commits [(model/normalize-commit cached)]))))
+       (:commits github)))))
 
 (r/reg-sub :github/commit-count
- :<- [:content [:github :repo-headers]]
+ :<- [:content [:github :total]]
  :<- [:github/commits]
- (fn [[headers commits] _]
-   (if headers
-     (if-let [page (some->> (:link headers)
-                           (re-find #"[?&]page=(\d+)>; rel=\"last\"") second)]
-       (js/parseInt page)
-       (count commits))
-     "Loading")))
+ (fn [[total commits] _]
+   (if (some? total) (max total (count commits))
+     (if (seq commits) (count commits) "Loading"))))
+
+(r/reg-sub :github/archive-complete?
+ :<- [:content [:github :complete?]]
+ (fn [complete? _] (true? complete?)))
+
+(r/reg-sub :github/more?
+ :<- [:content [:github :next-cursor]]
+ (fn [cursor _] (some? cursor)))
 
 (r/reg-sub :github/commit
  :<- [:content [:github]]

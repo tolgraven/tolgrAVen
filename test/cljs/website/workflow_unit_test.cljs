@@ -1050,6 +1050,25 @@
                                  [:scroll/on-navigate (:path other) 3 nil])]
       (is (= "main" (get-in effects' [:dispatch-n 2 1]))))))
 
+(deftest history-component-mounts-cannot-replace-saved-scroll-and-explicit-intent-can-refocus
+  (let [route (reitit/match-by-path routes/router "/blog/post/24/comment/113")
+        path (:path route)
+        db {:common/route route
+            :state {:browser-nav {:got-nav true}
+                    :scroll-position {path 730}}}
+        intent (event-effects :page/navigate {:db db} [:page/navigate route])
+        committed (event-effects :scroll/on-navigate {:db (:db intent)} [:scroll/on-navigate path 3 nil])
+        target (event-effects :scroll/component-target {:db (:db committed)} [:scroll/component-target "blog-comment-113" path])]
+    (is (= 730 (get-in committed [:dispatch-n 2 1])))
+    (is (nil? target) "A late target commit cannot cancel the saved-position owner")
+    (let [explicit (event-effects :page/navigate {:db (:db committed)} [:page/navigate route])
+          target' (event-effects :scroll/component-target {:db (:db explicit)} [:scroll/component-target "blog-comment-113" path])]
+      (is (= {:scroll/component-target "blog-comment-113"} target')
+          "Repeating a permalink is a new focus intent even at the same URL"))
+    (let [cold (event-effects :page/navigate {:db {:state {:browser-nav {:nav-type 2}}}} [:page/navigate route])]
+      (is (false? (get-in cold [:db :state :scroll :component-focus :scroll?]))
+          "A native history document also retains the browser's saved position"))))
+
 (deftest history-scroll-waits-for-layout-animation-completion
   (async done
     (-> (go-promise
@@ -1418,6 +1437,7 @@
                                         :github/commit-count 0
                                         :github/website-url "https://github.com/owner/repo"
                                         :github/commits []
+                                        :github/more? true
                                         nil)))
                               ([_ _] (r/atom nil)))]
     (let [html (r/render-to-string [github-views/<commits>])]

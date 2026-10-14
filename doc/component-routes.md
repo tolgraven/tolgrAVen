@@ -29,14 +29,16 @@ host owns that view's managed dependencies and data.
 The result event checks the current path before dispatching the module's action.
 A late completion or error for an abandoned destination cannot activate it.
 
-GitHub's action waits for its managed CMS repository settings through normal
+GitHub's action waits for its managed repository configuration through normal
 component initialization. It puts the SHA in the existing filter and reads that
 commit directly rather than paging from the latest thirty. Canonical and short
 SHA detail caches share the result. Paginated and direct reads merge one list row
 per SHA; the list does not retain file patches. Repository generations and pending
 request sets reject obsolete responses and allow failed requests to retry.
-The filter treats input literally, includes messages and SHAs, and can acquire
-a typed SHA itself. Automatic pagination runs only while browsing without a filter.
+Archive searches acquire cursor pages from the server, including older matching
+commits. SHA input can acquire a commit directly even before the archive reaches
+it; cached details remain immediately available across query changes. Only the
+matching SHA appears for a SHA filter; list rows do not duplicate cached patches.
 
 After the component commits its requested data, it dispatches
 `[:scroll/component-target element-id route-path]`. This guarded effect uses the
@@ -47,6 +49,9 @@ settle, then use a native smooth scroll, rather than holding the pixel position
 measured before expansion. Reduced motion retains immediate positioning. Component
 views read subscriptions and dispatch events; they do not read app-db directly
 or implement a separate scrolling timer.
+Accepted navigation owns the path-scoped focus policy: history returns keep their
+saved scroll and fold state even if the component mounts after restoration begins.
+Clicking the same permalink again records a new explicit target intent.
 
 Blog post destinations mount `/comment/:comment-id` beneath the post route.
 Their shared public plan reads the selected comment, its ancestors and the

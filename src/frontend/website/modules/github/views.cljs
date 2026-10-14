@@ -106,7 +106,7 @@
               :style {:cursor "pointer"}
               :on-click (fn [e]
                           (.stopPropagation e)
-                          (r/dispatch [:form-field [:github :search] subtitle]))}
+                          (r/dispatch [:github/search subtitle]))}
        subtitle]
       (when title
         [:<>
@@ -115,7 +115,7 @@
           {:style {:cursor "pointer"}
            :on-click (fn [e]
                        (.stopPropagation e)
-                       (r/dispatch [:form-field [:github :search] title]))}
+                       (r/dispatch [:github/search title]))}
           title]])])])
 
 (defc ^:private <commit-row>
@@ -169,6 +169,27 @@
     :url (str "/api/github/activity?user=" (js/encodeURIComponent user))
     :into [:module :github :activity user]}])
 
+(defn day-dependencies [user date]
+  [{:source :url
+    :url (str "/api/github/activity/day?user=" (js/encodeURIComponent user) "&date=" date)
+    :into [:module :github :days user date]}])
+
+(r/reg-sub :github/day (fn [db [_ user date]] (get-in db [:module :github :days user date])))
+
+(defc <day-details>
+  {:depends day-dependencies
+   :data-error [:p "Breakdown temporarily unavailable."]
+   :loading [:p "Loading breakdown…"]}
+  [user date]
+  (let [{:keys [types]} @(r/subscribe [:github/day user date])]
+    [:ul
+     (for [[kind label] [[:commits "Commits"] [:issues "Issues"]
+                        [:pull-requests "Pull requests"] [:reviews "Reviews"]
+                        [:repositories "Repositories"] [:restricted "Private contributions"]]
+           :let [amount (get types kind 0)]
+           :when (pos? amount)]
+       ^{:key kind} [:li [:span label] [:strong amount]])]))
+
 (defc <activity>
   {:depends activity-dependencies
    :loading [:section.github-activity.covering-2 [:h2 "GitHub activity"] [:p "Loading contribution calendar…"]]}
@@ -176,14 +197,16 @@
   (let [{:keys [days]} @(r/subscribe [:github/activity user])]
     [:section.github-activity.covering-2
      [:h2 [:a {:href (str "https://github.com/" user)} (str user " on GitHub")]]
-     [activity/<calendar> days]]))
+     [activity/<calendar> days [<day-details> user]]]))
 
-(defc <repository> "List Github commits for the CMS-selected repository"
+(defc <repository> "List Github commits for the configured public repository"
   {:features [:lifecycle]}
   [spec]
   (let [from (r/subscribe [:github/get-from])
-        commits (r/subscribe [:github/filter-by])
+        commits (r/subscribe [:github/commits])
         amount (r/subscribe [:github/commit-count])
+        complete? (r/subscribe [:github/archive-complete?])
+        more? (r/subscribe [:github/more?])
         view (r/atom :commits)
         main-view-position (r/atom 0)
         ref-fn #(when %
@@ -213,6 +236,10 @@
        [:a {:title "The repo" :href @url}
         (str (second @from))]]]
      [:p.github-repository-owner (str "by " (first @from))]
+     (when-not @complete?
+       [:div.github-archive-status
+        [:p "Indexing repository history… search includes commits archived so far."]
+        [:button {:on-click #(r/dispatch [:github/refresh])} "Refresh indexed history"]])
 
      [:div#github-commits-box.github-commits-inner
       [ui-inputs/<input-text> :id "github-commits-filter"
@@ -251,7 +278,7 @@
           [:div
             [<commit> @view [ui-controls/<close> #(reset! view :commits)]]])
 
-     (when (and (= @view :commits) (string/blank? search))
+     (when (and (= @view :commits) @more?)
       [<loading> (first @from) (second @from)])]]]
      [ui-layout/<fading> :dir "bottom"]]))))
 
@@ -261,4 +288,4 @@
       [:<>
        ^{:key (str user "/" repo)} [<repository> {:init (fn [_] (r/dispatch [:github/init]))}]
        ^{:key user} [<activity> user]]
-      [:section#github-commits.github-commits.covering-2 [:h2 "GitHub"] [:p "Configure a user and repository in the CMS."]])))
+      [:section#github-commits.github-commits.covering-2 [:h2 "GitHub"] [:p "Configure a GitHub user and repository in the server settings."]])))

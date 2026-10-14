@@ -151,7 +151,9 @@
                       (if (:standalone-comment? selection)
                         (assoc expanded [(:parent-post row) (:id row)] true)
                         (comments/focus-expansion expanded row)))]
-      (when (and (= id (:comment-id selection)) row)
+      (when (and (= id (:comment-id selection)) row
+                 (not= {:path (get-in db [:common/route :path]), :scroll? false}
+                       (get-in db [:state :scroll :component-focus])))
         (cond-> {:dispatch-n [[:scroll/component-target
                               (if (:standalone-comment? selection) "standalone-comment" (str "blog-comment-" id))
                               (get-in db [:common/route :path])]

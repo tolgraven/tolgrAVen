@@ -515,6 +515,20 @@
     margin-left: 0;
   }
 }
+
+.blog-comment-editor {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 8rem;
+  margin: 0.5rem 0;
+  padding: 0.65rem;
+  border: 0.05rem solid var(--bg-4);
+  background: var(--bg-1);
+  color: var(--fg-1);
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
 textarea.blog-adding-comment-textbox { // only text
   width: 100%;
   max-width: 100%;

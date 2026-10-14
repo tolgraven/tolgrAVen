@@ -22,6 +22,70 @@
 
 (defn- tick! [ms] (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
 
+(deftest standalone-root-edit-renders-the-parent-path-editor
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                restore-db! (r/make-restore-fn)
+                before-context @restore/*context
+                subscribe (r/subscribe-function)
+                author {:id "writer", :name "Writer"}
+                row {:id "113"
+                     :user "writer"
+                     :parent-post 42
+                     :parent-comment "hidden-parent"
+                     :path [42 "hidden-parent"]
+                     :reply-count 0
+                     :title "Selected comment"
+                     :text "Original standalone text"
+                     :ts 1}
+                status (r/atom {:ready? true
+                                :comment-id "113"
+                                :row row
+                                :root row
+                                :parent {:id 42, :title "Parent post"}})
+                modules loader/modules
+                ready (fn [spec]
+                        (reify lazy/ILoadable
+                          (ready? [_] true)
+                          IDeref
+                          (-deref [_] (dissoc spec :content :depends))))]
+            (try
+              (r/dispatch-sync [:init/app-db])
+              (restore/begin! {})
+              (r/dispatch-sync [:set [:common/route]
+                                (assoc (reitit/match-by-path routes/router "/blog/comment/113")
+                                       :parameters {:path {:comment-id "113"}, :query {}})])
+              (await! (loader/load! {:module :markdown}))
+              (r/with-framework-bindings
+                [loader/modules (assoc modules :user (ready user-module/spec))
+                 rfe/href (fn [name params query]
+                            (some-> (reitit/match-by-name routes/router name params) (reitit/match->path query)))
+                 r/subscribe
+                 (fn
+                   ([q]
+                    (case (first q)
+                      :comments/focus-ready? (r/atom true)
+                      :comments/focus-state status
+                      :user/user (r/atom author)
+                      :user/active-user (r/atom author)
+                      (subscribe q)))
+                   ([q opts] (subscribe q opts)))]
+                (await! (support/render! root [comment-views/<standalone-comment> "113"]))
+                (.click (.querySelector element ".blog-comment-edit-btn"))
+                (await! (support/wait-for! #(.querySelector element ".blog-adding-comment"))))
+              (is (.querySelector element ".blog-adding-comment") "Edit renders a real comment editor")
+              (is (= "Original standalone text" (.-value (.querySelector element "textarea"))))
+              (is (= "113" (:id (await! (support/subscription-value! [:blog/state [:editing-comment [42]]])))))
+              (is (= "Original standalone text" (:text (await! (support/subscription-value! [:form-field [:write-comment [42]]])))))
+              (finally
+                (support/unmount! root)
+                (reset! restore/*context before-context)
+                (restore-db!)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
 (deftest clipped-replies-enter-and-survive-repeated-fast-folds
   (async done
     (-> (go-promise

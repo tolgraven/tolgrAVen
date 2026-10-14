@@ -4,6 +4,8 @@
 
 (def return-state-keys [:scroll-position])
 
+(def component-focus [:map [:path :string] [:scroll? :boolean]])
+
 (def completion
   (c/optional-map {:current? fn?
                    :resolve! fn?

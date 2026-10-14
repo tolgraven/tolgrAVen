@@ -10,9 +10,20 @@ complete original subject and body. Label clicks keep their category search.
 
 ## CMS ownership
 
-Strapi's `github-settings` single type owns `user` and `repo`.
-The module declares this section as a managed content dependency; the
-`:github/get-from` subscription reads it. GitHub provider responses remain in
+Explicit server `:github-user` and `:github-repo` settings select the public
+repository (or `GITHUB_USER` / `GITHUB_REPO` through cprop). Both are required
+together. The module declares a managed URL dependency on `/api/github/settings`,
+installing its checked `{:settings ...}` response at `[:module :github :configuration]`.
+The `:github/get-from` subscription and archive use the same server selection;
+no token or unrelated configuration is exposed. Missing settings return
+`{:settings nil}` and show the configuration prompt. Invalid settings fail only
+this module, without blocking shell startup or other content.
+
+The retained CMS `github-settings` contract also defines `user` and `repo`. The
+currently deployed CMS does not publish this section, so the module declares no
+CMS content dependency. After publication a build may restore that declaration;
+the settings adapter then reads it when neither explicit key is supplied. A CMS
+failure never silently falls back to seed content. GitHub provider responses remain in
 `:content :github`, separate from editor content. Repository changes reset that
 provider cache and advance a request generation, rejecting late responses even
 after an A/B/A switch. Pending reads are deduplicated; failed initial reads can
@@ -20,8 +31,9 @@ retry on remount without resetting successfully loaded pages. Calendars are
 installed and subscribed to by username, so a cached A/B/A switch retains the
 correct user's counts.
 
-Strapi's `codex-profile` single type owns `displayName`, `profileUrl`, `bio` and
-optional `days`. The public contract uses `:display-name`, `:profile-url`, `:bio`
+The retained `codex-profile` contract defines `displayName`, `profileUrl`, `bio`
+and optional `days`. This section is also unpublished by the current CMS, so its
+module declares no content dependency and absent activity remains unavailable. The public contract uses `:display-name`, `:profile-url`, `:bio`
 and `:days`. A day has ISO `date`, nonnegative integer `count`, and intensity
 `level` from 0 through 4. Supply chronological, consecutive days, at most 371.
 Absent days means unavailable activity; an explicit empty vector means a supplied
@@ -30,9 +42,10 @@ currently requires login to view its full content. The site does not infer usage
 from GitHub commits or collect private ChatGPT conversations.
 
 These single types and their public adapters require the companion
-`tolgrAVen-strapi` change. With a configured CMS, missing sections are a content
-error, not a fallback to seed values. Deploy that CMS change before the web app;
-seed-on-start creates the missing records without replacing existing edits.
+`tolgrAVen-strapi` change before their module content dependencies can be enabled.
+Until then, bootstrap and module acquisition omit both keys. Published sections
+still report CMS failures through the usual retry flow; configured CMS failures
+do not fall back to seed values. See [Content dependencies](strapi-content.md).
 
 ## Deployment identity
 
@@ -68,3 +81,83 @@ subset. Redirects are disabled, response bodies and timeouts are bounded, four
 requests may run concurrently, and shared in-flight results use the existing
 bounded cache. Successful reads last fifteen minutes; failures last one minute.
 Provider errors use the managed component dependency retry UI.
+
+Hovering or focusing a calendar day mounts a compact viewport-contained popup
+with the original daily count/date. Nonempty GitHub days acquire their typed
+breakdown only then, through the shared managed URL dependency. Commits, issues,
+pull requests, reviews, new repositories and restricted contribution counts stay
+separate. Zero days and the CMS-owned Codex calendar do not request GitHub data.
+Escape, blur, pointer exit, scrolling and resize close and unmount the popup.
+
+`GET /api/github/activity/day?user=…&date=YYYY-MM-DD` reads GitHub's public
+single-day profile timeline without authentication. It counts only category
+headings, including featured contributions and their disjoint “other” rollups,
+and verifies the date range and sum against that response's calendar count.
+Unknown headings, truncated/missing data or a count mismatch report unavailable
+instead of inventing zero counts. This depends on GitHub's public HTML structure;
+a provider markup change can require an adapter update. No repository names,
+issue bodies or private content are returned; only the public anonymous count
+for private contributions is retained. Date and user validation precede
+acquisition; requests, body size, concurrency and caches are bounded.
+
+## Complete repository archive
+
+The selected GitHub module declares `github_repositories` and `github_commits`
+through its ordinary storage catalog. Apply the module's SQL using the existing
+Supabase provisioner before enabling its service. `:server :start` returns a
+cleanup owned by the mounted module-services lifecycle. With server Supabase
+settings, it starts asynchronously; `:github {:sync-enabled false}` disables it.
+Without explicit or published CMS repository settings the automatic worker has no target and
+performs no archive/content acquisition. Optional module-service startup failures
+are logged locally and do not stop the shared HTTP server or healthy siblings.
+When configured, it uses the shared selection, traversing every current public branch and tag's
+reachable history, not only commits attributed to the configured owner. Removed
+branch commits already archived remain searchable. Unreachable/deleted GitHub
+objects cannot be discovered through the branches/tags APIs.
+
+Each branch head is pinned to an immutable SHA while paging 100 commits at a
+time. Unchanged completed heads skip traversal. Later heads use fully paginated
+`BASE..HEAD` comparisons against an already archived immutable head, preserving
+all new ancestry without re-reading shared history. Unrelated/unavailable bases
+or oversized comparison diffs restart a complete pinned-head walk. Provider
+visibility is checked both before acquisition and before publishing its rows. One
+repository lease works across app instances, and one transaction writes the
+commit page and its next checkpoint. A crash or failed page is retried without
+skipping data or creating duplicates. The worker performs at most eight steps
+per minute, checks again after fifteen minutes when caught up, and respects
+GitHub rate-limit reset times. No token is required for public history. GitHub's
+REST limit is 60 requests/hour per IP without authentication; an optional
+server-only `GITHUB_TOKEN` (`:github-token`, or nested `:github :token`) normally
+raises that to 5,000/hour. Token-free backfills pause and resume at the reset
+time, so a large initial archive takes longer. Startup never waits for the backfill.
+
+`GET /api/github/commits?user=…&repo=…&q=…&cursor=…` reads only the selected
+repository from Supabase, with indexed full-text matching over the complete
+stored message/body, author name/login and hash. Each response includes 30 rows,
+matching total, next cursor and whether a complete scan has finished. The cursor
+uses immutable commit time/SHA ordering, so inserts between requests do not repeat
+earlier pages or hide the existing tail. The widget debounces
+search with re-frame events, rejects late responses after repository/query
+changes, and stops pagination at the explicit end cursor. SHA deduplication also prevents
+duplicate rows/React keys. While initially backfilling, it
+states that coverage is partial and provides an explicit refresh action.
+
+Public roles may read only published archive columns for public repositories;
+writes, checkpoints, leases and job RPCs remain service-role only. Author email,
+provider tokens and raw provider payloads are not stored. The stable
+`(owner, repo, sha)` identity, complete message, category/subcategory and indexed
+UTC timestamp provide the source for the later Typesense export. This change
+does not install a second search service or change the top-of-page search.
+
+For an explicit initial import or recovery, the server-side command uses the
+same leased checkpoints (it never falls back from a failing CMS):
+
+```sh
+lein run -m website.modules.github.sync owner repository
+```
+
+Omit the two arguments to use the shared configured selection. The command stops when the
+scan completes, a retry delay is reached, another worker holds the lease, or its
+bounded step budget is used. Re-running resumes rather than starting over.
+Calendar days use one tab stop; arrow keys navigate by day/week, with Home/End
+for the first/last day.

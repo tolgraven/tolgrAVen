@@ -124,7 +124,9 @@
                                          (when main (.-height (.getBoundingClientRect main)))
                                          (when main (+ (.-top (.getBoundingClientRect main)) (.-scrollY js/window)))
                                          (when resolve-position position')]
-                               layout-ready? (and (empty? animations) (restore/layout-ready?) assets-ready?)
+                               layout-ready? (and (empty? animations) (restore/layout-ready?) assets-ready?
+                                                  (not (some-> (.getElementById js/document "app")
+                                                               (.hasAttribute "data-document-pending"))))
                                ready? (and layout-ready?
                                            (<= (js/Math.abs (- (.-scrollY js/window) position')) 1))]
                            (doseq [animation animations :when (not (contains? @*waiting animation))]
@@ -262,12 +264,14 @@
                       (= id (.getAttribute root "data-document-target")))
         positioned? (and root (= id (.getAttribute root "data-document-positioned")))]
     (cond
-      pending? nil ; the native cold-document gate owns positioning before reveal
-      positioned? (.removeAttribute root "data-document-positioned")
+      (and positioned? (not pending?)) (.removeAttribute root "data-document-positioned")
       :else
       (when-let [element (.getElementById js/document id)]
     (restore-position! (.-scrollY js/window)
       (fn []
+        (when (and root (not (.hasAttribute root "data-document-pending"))
+                   (= id (.getAttribute root "data-document-positioned")))
+          (.removeAttribute root "data-document-positioned"))
         (when-let [target (.getElementById js/document id)]
           (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle target)))]
             (- (+ (.-top (.getBoundingClientRect target)) (.-scrollY js/window))
@@ -290,14 +294,19 @@
 
 (r/reg-event-fx :page/navigate
   (fn [{:keys [db]} [_ match]]
-    {:page/transition
+    (let [history? (or (get-in db [:state :browser-nav :got-nav])
+                       (and (nil? (get-in db [:state :scroll :component-focus]))
+                            (= 2 (get-in db [:state :browser-nav :nav-type]))))]
+    {:db (cond-> db (:path match)
+           (assoc-in [:state :scroll :component-focus] {:path (:path match), :scroll? (not history?)}))
+     :page/transition
      [match (and @context/*interactive?
                  (some? (:common/route db))
                  (not (and (get-in match [:data :transition-key])
                            (= (get-in match [:data :transition-key])
                               (get-in db [:common/route :data :transition-key]))))
                  (not= (:path match) (get-in db [:common/route :path])))
-      (boolean (get-in db [:state :browser-nav :got-nav]))]}))
+      (boolean (get-in db [:state :browser-nav :got-nav]))]})))
 
 (r/reg-fx :page/transition (fn [[match animate? back?]] (navigate! match animate? back?)))
 (r/reg-event-fx :page/ready

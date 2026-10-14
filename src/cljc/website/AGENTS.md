@@ -5,6 +5,9 @@ query constructors and normalization belong here so CLJ and CLJS use the same
 definition. Portable module data contracts and page specs live beside their frontend
 implementation in `src/frontend/website/modules/<module>/`, also on the JVM source path.
 
+- Module `:styles` entries are absolute asset paths beginning with `/`; discovery
+  and the shared module schema reject bare IDs/relative paths. Reuse the ID-based
+  stylesheet convention when no explicit override is needed. See `doc/styles.md`.
 - Module `pages.cljc` exports a native Reitit route tree and may contain nested or
   multiple pages. Do not require module implementation namespaces from it.
   Portable `routes.cljc` fragments can declare component destinations. Mount them

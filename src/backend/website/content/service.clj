@@ -12,6 +12,7 @@
             [website.content.contract :as contract]))
 
 (defonce *cache (atom {}))
+(defonce *inflight (atom {}))
 (defn settings []
   {:url (or (System/getenv "STRAPI_URL") (:strapi-url config/env))
    :token (or (System/getenv "STRAPI_READ_TOKEN") (:strapi-read-token config/env))})
@@ -65,12 +66,34 @@
 (defonce *immediate (atom nil))
 
 (defn refresh-immediate!
-  "Publish a complete shell snapshot atomically; a failed refresh keeps the last good value."
-  []
-  (let [ks (pages/immediate-keys)
-        value (contract/normalize-content (load-content! ks))]
-    (reset! *immediate {:source (:url (settings)) :content value})
-    value))
+  "Publish required shell content atomically. Optional module warmup failures
+   keep their last good sections without preventing other modules from loading."
+  ([] (refresh-immediate! true))
+  ([include-module-content?]
+   (let [source (:url (settings))
+         ks (pages/immediate-keys)
+         shell-keys (set contract/shell-content)
+         required (filterv shell-keys ks)
+         optional (filterv (complement shell-keys) ks)
+         previous (when (= source (:source @*immediate)) (:content @*immediate))
+         shell (contract/normalize-content (load-content! required))
+         modules (when include-module-content?
+                   (reduce (fn [content k]
+                             (try (merge content (contract/normalize-content (load-content! [k])))
+                                  (catch InterruptedException error
+                                    (.interrupt (Thread/currentThread))
+                                    (throw error))
+                                  (catch Exception error
+                                    (if (.isInterrupted (Thread/currentThread))
+                                      (throw error)
+                                      (do (log/warn "Module startup content unavailable" (name k))
+                                          content)))))
+                           (select-keys previous optional) optional))
+         value (merge (select-keys previous ks) shell modules)]
+     (when (.isInterrupted (Thread/currentThread))
+       (throw (InterruptedException. "Module startup content refresh interrupted")))
+     (reset! *immediate {:source source, :content value})
+     value)))
 
 (defn immediate-content []
   (let [{:keys [source content]} @*immediate]
@@ -80,15 +103,15 @@
 
 (mount/defstate startup-content
   :start (do
-           ;; Startup readiness includes CMS availability. Refresh failures later
-           ;; keep serving the last successful public snapshot.
-           (refresh-immediate!)
+           ;; Only the shared shell gates HTTP readiness. The owned refresh
+           ;; worker warms module headings after this initial snapshot.
+           (refresh-immediate! false)
            (let [executor (java.util.concurrent.Executors/newSingleThreadScheduledExecutor)
                  interval (max 1 (long (get-in config/env [:ssr :shell-refresh-seconds] 120)))]
              (.scheduleWithFixedDelay executor
                ^Runnable (fn [] (try (refresh-immediate!)
                                     (catch Exception _ (log/warn "Page shell refresh failed; retaining loaded content"))))
-               interval interval java.util.concurrent.TimeUnit/SECONDS)
+               0 interval java.util.concurrent.TimeUnit/SECONDS)
              executor))
   :stop (when startup-content (.shutdownNow ^java.util.concurrent.ExecutorService startup-content)))
 
@@ -98,21 +121,52 @@
     (merge (select-keys warm ks)
            (when (seq missing) (contract/normalize-content (load-content! missing))))))
 
+(defn- acquire-sections! [source ks now]
+  ;; Only cache/request ownership is serialized. Disjoint requests cannot wait
+  ;; behind CMS I/O. Share identical missing sets, not overlapping bundles:
+  ;; a bundle containing a bad section must not reject a healthy subset reader.
+  (locking *cache
+    (let [cached (get @*cache source {})
+          missing (filterv #(> (- now (get-in cached [% :at] 0)) 30000) ks)
+          request-key (vec (sort missing))
+          pending (get-in @*inflight [source request-key])
+          owned? (and (seq missing) (nil? pending))
+          pending' (when (seq missing) (or pending (promise)))]
+      (when owned? (swap! *inflight assoc-in [source request-key] pending'))
+      {:content (into {} (map (fn [k] [k (get-in cached [k :value])])) (remove (set missing) ks))
+       :missing missing
+       :request-key request-key
+       :pending pending'
+       :owned? (boolean owned?)})))
+
 (defn bundle!
   ([] (bundle! nil))
   ([requested]
    (let [ks (contract/validate-keys requested)
          source (:url (settings))
-         now (System/currentTimeMillis)]
-     (locking *cache
-       (let [cached (get @*cache source {})
-             missing (filterv #(> (- now (get-in cached [% :at] 0)) 30000) ks)]
-         (when (seq missing)
-           (let [fresh (read-content! missing)]
-             (swap! *cache update source merge
-                    (into {} (map (fn [[k v]] [k {:at now :value v}])) fresh)))))
+         now (System/currentTimeMillis)
+         {:keys [content missing request-key pending owned?]} (acquire-sections! source ks now)]
+     (when owned?
+       (try
+         (let [fresh (read-content! missing)]
+           (locking *cache
+             (swap! *cache update source
+                    (fn [cached]
+                      (reduce-kv (fn [entries k value]
+                                   ;; A newer overlapping read may have finished
+                                   ;; first. Do not overwrite its cached snapshot.
+                                   (if (> (get-in entries [k :at] 0) now)
+                                     entries (assoc entries k {:at now, :value value})))
+                                 (or cached {}) fresh))))
+           (deliver pending {:content fresh}))
+         (catch Throwable error (deliver pending {:error error}))
+         (finally
+           (locking *cache
+             (swap! *inflight update source dissoc request-key)))))
+     (let [result (when pending @pending)]
+       (when-let [error (:error result)] (throw error))
        {:version contract/version
-        :content (merge (into {} (map (fn [k] [k (get-in @*cache [source k :value])])) ks)
+        :content (merge content (:content result)
                         (when (= source (:source @*immediate))
                           (select-keys (:content @*immediate) ks)))}))))
 
