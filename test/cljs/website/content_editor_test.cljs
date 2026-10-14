@@ -64,6 +64,10 @@
                  (r/render-to-string [fields/<text> :p
                                       (fields/annotate {:text "Published\nSecond line"} [:intro] :view)
                                       [:text] nil 0])))
+          (is (= "<p>Second line</p>"
+                 (r/render-to-string [fields/<text> :p
+                                      (fields/annotate {:text "Published\r\nSecond line\r\n"} [:intro] :view)
+                                      [:text] nil 1])))
           (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Unauthorized"])
           (is (= "Second" (:value (await! (support/state-at! [:state :content-editor :fields (pr-str [:intro :title])]))))))
         (.catch #(is false (str %)))

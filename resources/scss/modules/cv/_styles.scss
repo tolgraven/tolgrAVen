@@ -335,7 +335,8 @@
 
   &.cv-detail-surface--moving { transition: transform 0.35s ease; }
   .cv-what { margin-top: 1rem; }
-  p { margin-inline: 0; }
+  > p, .cv-mini-timeline > p { margin-inline: 0; }
+  .cv-mini-timeline .cv-detail p { margin: 0.3em 0.6em; }
   .cv-how i { margin-left: 0; margin-right: 0.5em; }
   .cv-where { position: relative; margin-top: 1rem; }
   button { color: inherit; border-color: currentColor; }
@@ -404,6 +405,7 @@
 }
 
 // Inline CV entry and image controls, acquired with the CV view.
+.cv-detail .content-edit-field, .cv-detail .content-edit-measure { margin: 0; }
 .cv-add-entry { margin-inline-start: 0.75em; font-size: 0.6em; }
 .content-editor-entry-panel {
   position: fixed;

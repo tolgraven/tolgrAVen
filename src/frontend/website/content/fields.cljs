@@ -65,7 +65,7 @@
                     (and (editing? content) (= :saving @(r/subscribe [:get :state :content-editor :cv-entry :status]))))
         field-value (if draft (:value draft) original)
         value (if (some? line-index)
-                (nth (string/split (or field-value "") #"\n" -1) line-index "") field-value)]
+                (nth (string/split (or field-value "") #"\r?\n" -1) line-index "") field-value)]
     (if (and (editing? content) field-path (or (nil? original) (string? original)))
       [tag attrs
        [:span.content-edit-field
@@ -80,7 +80,7 @@
           :on-change (fn [event]
                        (let [value' (.. event -target -value)
                              value'' (if (some? line-index)
-                                       (string/join "\n" (assoc (vec (string/split (or field-value "") #"\n" -1))
+                                       (string/join "\n" (assoc (vec (string/split (or field-value "") #"\r?\n" -1))
                                                                line-index value')) value')]
                          ;; A controlled native field must commit before the
                          ;; next key reconciles its value/selection.
