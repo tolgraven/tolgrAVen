@@ -524,9 +524,13 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   `components/ui/*` owners. Call their components directly; do not re-export them
   from forwarding namespaces. Lazy interfaces own actual module acquisition.
 
-- `/blog/new-post` and its upload queue/UI belong to `:blog-editor`; the
-  independent lazy `:markdown-editor` owns the visual Markdown SDK. Canonical source and
-  media jobs remain in the existing form/event owner. Published authored tags use
+- `/blog/new-post`, drafts, publishing and the server image library belong to
+  `:blog-editor`. The independent lazy `:markdown-editor` owns the shared composer,
+  visual SDK and owner-scoped upload queue/UI; comments must work when post
+  authoring is disabled. Canonical source and media jobs remain in the existing
+  form/event owner. Comments allow file uploads through `/api/supabase/comment-media`
+  without library access or site-component insertion. Both previews acknowledge
+  decoded images through the shared preview adapter. Published authored tags use
   the same public `:markdown-components` views and data-only argument contract;
   never compile/evaluate MDX or expose private state paths. See `doc/markdown-authoring.md`.
 

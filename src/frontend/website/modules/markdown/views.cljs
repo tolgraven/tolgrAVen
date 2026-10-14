@@ -144,8 +144,9 @@
      [:r> (r/context-provider authored-media/asset-context) #js {:value (or image-assets {})}
      [react-markdown
      {:children md-text
-      :remarkPlugins (cond-> [remarkGfm]
-                       (not (false? (:allow-components? options))) (conj authored/plugin))
+      :remarkPlugins [remarkGfm (if (false? (:allow-components? options))
+                                 authored/semantic-plugin
+                                 authored/plugin)]
       :rehypePlugins (cond-> [mark-markdown-blocks]
                        allow-raw? (conj [rehypeRaw {:passThrough ["tolgravenCodeBlock"]}])
                        true (conj restore-markdown-blocks))

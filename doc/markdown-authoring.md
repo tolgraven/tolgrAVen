@@ -1,7 +1,8 @@
 # Markdown authoring
 
 The saved document remains Markdown. `/blog/new-post` belongs to `:blog-editor`,
-which owns the posting form, media-library UI and serialized attachment queue.
+which owns the posting form, private drafts and media-library UI. The shared
+Markdown editor owns the serialized attachment queue.
 The reusable visual SDK, its toolbar and rich help live in the independently lazy
 `:markdown-editor` bundle. `blog-editor` and `markdown-editor` both declare `:site/owner :blog`.
 The shared Markdown editor remains available to comments when post authoring is
@@ -300,3 +301,11 @@ Run `tolgraven-cpu run -- bash scripts/test/comment-authoring.sh` to compile
 the actual browser graph with post authoring disabled and check the resolved
 source manifest and selected stylesheet inventory. The script changes only
 the isolated build snapshot and restores its selection on exit.
+
+Comment upload intake is `POST /api/supabase/comment-media`; owned-job polling
+uses the existing media status endpoint. Its implementation and route are both
+pruned when User or blog comments are disabled. The actual post/comment preview
+shares owner-scoped decoded-image acknowledgments, keeping successful notices
+until the final image visibly paints and exposing preview failures for retry.
+Attribute-free underline, subscript and superscript marks remain supported in
+comments; this does not enable arbitrary HTML or authored components.

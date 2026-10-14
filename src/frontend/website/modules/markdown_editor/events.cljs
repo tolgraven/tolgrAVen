@@ -119,7 +119,7 @@
   (fn [{:keys [id file attempt kind]}]
     (let [body (doto (js/FormData.) (.append "file" file))]
       (client/authenticated-request!
-        :post (if (= :comment kind) "/api/supabase/media/comments" "/api/supabase/media") body
+        :post (if (= :comment kind) "/api/supabase/comment-media" "/api/supabase/media") body
         #(accept-response! id attempt %)
         #(r/dispatch [:blog/image-upload-failed id attempt %])
         {:on-upload-progress #(r/dispatch [:blog/image-upload-progress id attempt %])}))))

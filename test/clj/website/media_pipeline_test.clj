@@ -15,6 +15,9 @@
             [website.schema.dsl :as dsl]
             [website.site :as site]
             [website.supabase.auth :as auth]
+            [website.modules.main.api :as main-api]
+            [reitit.core :as reitit]
+            [reitit.ring :as ring]
             [website.store.contract :as contract]
             [website.supabase.operations :as operations]
             [website.supabase.query :as store-query]
@@ -336,3 +339,14 @@
         (is (= 404 (:auth/status (ex-data (try (pipeline/comment-upload! user {})
                                              (catch clojure.lang.ExceptionInfo error error)))))))
       (finally (.delete file)))))
+
+(deftest registered-comment-upload-route-does-not-conflict-with-owned-job-polling
+  (with-redefs [pipeline/start! (constantly nil)]
+    (let [router (ring/router (main-api/routes))
+          upload (reitit/match-by-path router "/supabase/comment-media")
+          polling (reitit/match-by-path router "/supabase/media/owned-job")]
+      (is (= "/supabase/comment-media" (:template upload)))
+      (is (get-in upload [:data :post :handler]))
+      (is (nil? (get-in upload [:data :get])))
+      (is (= "/supabase/media/:id" (:template polling)))
+      (is (get-in polling [:data :get :handler])))))

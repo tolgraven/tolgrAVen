@@ -256,10 +256,13 @@
               (reset! root mounted)
               (await! (support/render! mounted
                         [presentation/<comment-markdown>
-                         "**Comment**\n\n![Uploaded image](/img/tolgrav.png)\n\n<iframe src='/private-library'></iframe>\n\n<Component component='website.components.content.markdown/<image>' src='/injected-component.png' />"
+                         "**Comment**\n\n<u>Underlined</u>, x<sup>2</sup> and y<sub>n</sub>.\n\n![Uploaded image](/img/tolgrav.png)\n\n<iframe src='/private-library'></iframe>\n\n<Component component='website.components.content.markdown/<image>' src='/injected-component.png' />"
                          {:trust :trusted}]))
               (await! (support/wait-for! #(.querySelector element "strong")))
               (is (= "Comment" (.-textContent (.querySelector element "strong"))))
+              (is (= "Underlined" (.-textContent (.querySelector element "u"))))
+              (is (= "2" (.-textContent (.querySelector element "sup"))))
+              (is (= "n" (.-textContent (.querySelector element "sub"))))
               (is (nil? (.querySelector element "iframe")))
               (is (nil? (.querySelector element "[src='/injected-component.png']")))
               (is (.querySelector element "img[alt='Uploaded image']") "Ordinary uploaded Markdown images remain available")))

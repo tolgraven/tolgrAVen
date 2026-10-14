@@ -41,7 +41,7 @@
      (when-enabled :main :media
        (when-enabled :blog :comments
          (when-enabled :user nil
-           ["/supabase/media/comments"
+           ["/supabase/comment-media"
             {:post {:summary "Queue an image owned by a registered commenter, without image-library access"
                     :parameters {:multipart [:map [:file http-schema/upload]]}
                     :responses {200 {:body schema/upload-response}}

@@ -8,6 +8,10 @@
             [website.modules.blog.comments :as comments]
             [website.modules.blog.schema :as schema]
             [website.modules.blog.presentation :as presentation]
+            [website.modules.markdown-editor.model :as editor-model]
+            [website.modules.markdown-editor.preview :as preview]
+            [website.components.content.media :as authored-media]
+            [website.media.schema :as media-schema]
             [website.macros :as m :refer-macros [defc]]
             [website.schema.common :as c]
             [website.component.loading :as loading]
@@ -77,7 +81,9 @@
      {:style {:min-height "7.35rem"}}
      (when title
        [:h3.blog-comment-title title])
-     [presentation/<comment-markdown> text {:trust (presentation/link-trust user)}]]))
+     [presentation/<comment-markdown> text {:trust (presentation/link-trust user)
+                  :image-assets (:image-assets spec)
+                  :image-readiness (:image-readiness spec)}]]))
 
 (defc <add-comment-btn> "Open or cancel the comment editor."
   [{:keys [parent-path kind] :as spec} :- schema/parent-spec]
@@ -177,9 +183,15 @@
            :right (str (util/px-to-rem (- (.-right bounds) (.-right code-bounds))) "rem")
            :width "auto"})))))
 
+(def comment-render-spec
+  [:merge schema/comment-spec
+   [:map
+    [:?image-assets [:?map-of :string media-schema/asset]]
+    [:?image-readiness [:maybe authored-media/readiness-schema]]]])
+
 (defc <comment-post> "Render a comment and its replies; defer hidden threads until needed."
   {:features [:error-boundary]}
-  [{:keys [path visible?] {:keys [id ts user title text score] :as post} :comment :as spec} :- schema/comment-spec]
+  [{:keys [path visible?] {:keys [id ts user title text score] :as post} :comment :as spec} :- comment-render-spec]
   :let [*full? (r/atom (when (= (str id) (:focused-id spec)) true)) ; nil: not measured, false: truncated, true: expanded
         *truncated? (r/atom false)
         *interacted? (r/atom false)
@@ -272,7 +284,9 @@
                                    (str "brightness(calc(1 + "
                                         (max -0.7 (* 0.1 score)) "))"))}}
                 [presentation/<comment-markdown> text
-                 {:trust (presentation/link-trust user)}]
+                 {:trust (presentation/link-trust user)
+                  :image-assets (:image-assets spec)
+                  :image-readiness (:image-readiness spec)}]
                 (when (false? @*full?)
                   [<comment-fade>
                    {:props {:style @*fade-style
@@ -424,12 +438,24 @@
 (defc <comment-editor> [{:keys [parent-path]}]
   (let [account @(r/subscribe [:user/active-user])
         editing @(r/subscribe [:blog/state [:editing-comment parent-path]])
-        owner (r/use-memo #(str (random-uuid)) [(:id account) (:id editing)])]
-    (m/<> {:module :markdown-editor, :view :composer, :load-on :immediate}
-           {:owner owner
-            :kind :comment
-            :form-path [:write-comment parent-path :text]
-            :library? false})))
+        owner (r/use-memo #(str (random-uuid)) [(:id account) (:id editing)])
+        model @(r/subscribe [:form-field [:write-comment parent-path]])
+        uploads (filter #(and (= owner (:owner %)) (= :ready (:status %)))
+                        (vals @(r/subscribe [:blog/state [:image-uploads]])))
+        generations (editor-model/preview-generations uploads)
+        readiness (r/use-memo #(preview/readiness owner generations) [owner generations])]
+    [:<>
+     [<comment-post> {:path [:new-comment]
+                      :comment {:user account
+                                :title (:title model)
+                                :text (or (:text model) "")}
+                      :image-assets (preview/assets uploads)
+                      :image-readiness readiness}]
+     (m/<> {:module :markdown-editor, :view :composer, :load-on :immediate}
+            {:owner owner
+             :kind :comment
+             :form-path [:write-comment parent-path :text]
+             :library? false})]))
 
 (defc <add-comment> "Edit or submit a comment with a live preview."
   {:features [:error-boundary]}
@@ -455,10 +481,6 @@
                                   :ui-name "Title (optional)"}]
                 [<comment-input> {:parent-path parent-path :field :text :kind :textarea
                                   :model @*model :ui-name "Comment"}]]}])
-         [<comment-post> {:path [:new-comment]
-                          :comment {:user @(r/subscribe [:user/active-user])
-                                    :title (:title @*model)
-                                    :text (or (:text @*model) "")}}]
          [<comment-editor> {:parent-path parent-path}]
          ;; The experimental field could use :style {:opacity 0.1 :z-index 10}.
          ;; Future shortcut: submit on Alt-Enter.

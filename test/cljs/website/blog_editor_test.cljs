@@ -638,7 +638,7 @@
                 (await! (support/settle!))
                 (transfer! editable "paste" (js/File. #js ["image"] "comment.png" #js {:type "image/png"}))
                 (await! (support/wait-for! #(seq @calls)))
-                (is (= [[:post "/api/supabase/media/comments"]] (mapv (juxt :method :uri) @calls)))
+                (is (= [[:post "/api/supabase/comment-media"]] (mapv (juxt :method :uri) @calls)))
                 (is (= "Keep post draft" (get-in @r/*app-db [:state :form-field :post-blog :text])))
                 (is (= path (:form-path (first (vals (get-in @r/*app-db [:state :blog :image-uploads]))))))
                 ((:success (first @calls)) {:id "comment-job", :status "ready", :asset asset})

@@ -1,6 +1,7 @@
 (ns website.media.pipeline
   "Durable media jobs and complete immutable publication, shared by CMS and uploads."
   (:require [clojure.java.io :as io]
+            [website.build.site :refer [when-enabled]]
             [clojure.string :as string]
             [clojure.tools.logging :as log]
             [mount.core :as mount]
@@ -108,12 +109,14 @@
 (defn upload! [user file]
   (upload-file! (author! user) file :upload))
 
-(defn comment-upload! [user file]
-  ;; The authenticated route supplies the registered account. Its profile owns
-  ;; this job and polling; this permission does not grant library access.
-  (when-not (site/enabled? :blog :comments)
-    (storage/fail! 404 "Comment uploads are unavailable"))
-  (upload-file! (auth/ensure-profile! user) file :comment-upload))
+(when-enabled :user nil
+  (when-enabled :blog :comments
+    (defn comment-upload! [user file]
+      ;; The authenticated route supplies the registered account. Its profile
+      ;; owns this job and polling; this permission does not grant library access.
+      (when-not (site/enabled? :blog :comments)
+        (storage/fail! 404 "Comment uploads are unavailable"))
+      (upload-file! (auth/ensure-profile! user) file :comment-upload))))
 
 (defn assets! [sources]
   (if-not (enabled?)
