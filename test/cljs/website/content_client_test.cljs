@@ -219,6 +219,8 @@
                  (try (r/with-framework-bindings [r/dispatch #(swap! *requests conj %)]
                         (is (= {:repo []} (await! (subscription-value! [:content [:github]]))))
                         (is (nil? (await! (subscription-value! [:content [:instagram]]))))
+                        (is (nil? (await! (subscription-value! [:content [:github-settings]]))))
+                        (is (nil? (await! (subscription-value! [:content [:codex-profile]]))))
                         (is (nil? (await! (subscription-value! [:content [:story]]))))
                         (is (= [[:content/load [:story]]] @*requests)))
                       (finally (r/clear-subscription-cache!) (reset! r/*app-db before)))))
@@ -281,3 +283,48 @@
               (finally (restore!)))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
+
+(deftest failed-batched-content-does-not-reject-unrelated-consumers
+  (async done
+    (-> (go-promise
+          (let [before @r/*app-db
+                failures @status/*failures
+                original content/request!
+                *calls (atom [])]
+            (reset! content/*pending {})
+            (reset! status/*failures {})
+            (reset! r/*app-db {:content {:cv {:title "Retained"}}})
+            (set! content/request!
+                  (fn [ks]
+                    (swap! *calls conj ks)
+                    (if (= ks [:story])
+                      (do (r/dispatch-sync [:content/install
+                                            {:version contract/version
+                                             :content {:story {:title "Available"}}}])
+                          (js/Promise.resolve nil))
+                      (js/Promise.reject (js/Error. "Missing module config")))))
+            (let [healthy (content/ensure! [:story])
+                  unavailable (-> (content/ensure! [:docs])
+                                  (.then (fn [_] (is false "Missing content must reject its owner")))
+                                  (.catch (fn [_] nil)))]
+              (-> (js/Promise.all #js [healthy unavailable])
+                  (.then (fn [_]
+                           (is (= [[:docs :story] [:docs] [:story]] @*calls))
+                           (is (= "Available" (get-in @r/*app-db [:content :story :title])))
+                           (is (= "Retained" (get-in @r/*app-db [:content :cv :title])))
+                           (is (= #{[:strapi [:docs]]} (set (keys @status/*failures))))
+                           (is (empty? @content/*pending))))
+                  (.finally (fn []
+                              (set! content/request! original)
+                              (reset! r/*app-db before)
+                              (reset! status/*failures failures)))))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
+(deftest startup-content-is-scoped-to-the-current-route
+  (is (= contract/shell-content (content/bootstrap-keys nil "/test/liquid-glass")))
+  (is (= (contract/keys-for-route :cv) (content/bootstrap-keys nil "/cv")))
+  (is (= (contract/keys-for-route :home) (content/bootstrap-keys nil "/about")))
+  (is (not (some #{:cv :docs :github-settings :codex-profile}
+                 (content/bootstrap-keys nil "/"))))
+  (is (= [:document] (content/bootstrap-keys {:deferred? true, :content {:document {}}} "/cv"))))
