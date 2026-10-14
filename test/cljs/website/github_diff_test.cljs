@@ -13,7 +13,7 @@
   (is (= (str "/neovim/github/user/repo/" sha) (diff/page-url ["user" "repo" sha])))
   (doseq [revision [["u/evil" "repo" sha] ["u" ".." sha] ["u" "r" "HEAD"] ["u" "r" sha "extra"]]]
     (is (nil? (diff/page-url revision))))
-  (is (= (str "https://api.github.com/repos/u/r/contents/a%20b/%23c.clj?ref=" sha)
+  (is (= (str "/api/github/contents?user=u&repo=r&ref=" sha "&path=a%20b%2F%23c.clj")
          (diff/contents-url ["u" "r" sha] {:sha sha, :path "a b/#c.clj"})))
   (doseq [path ["../x" "/x" "x//y" "x\\y" "x/./y"]] (is (not (diff/safe-path? path)))))
 
@@ -116,5 +116,5 @@
   (let [revision ["u" "r" sha]
         effects (event-effects {} [:github/diff-metadata revision 1
                                   (assoc commit :files (vec (repeat 100 {:filename "x"})))])]
-    (is (= (str (diff/commit-url revision) "?per_page=100&page=2") (get-in effects [:dispatch 1 :uri])))
+    (is (= (str (diff/commit-url revision) "&page=2") (get-in effects [:dispatch 1 :uri])))
     (is (= :loading (get-in (:db effects) (events/state-path revision :metadata :status))))))

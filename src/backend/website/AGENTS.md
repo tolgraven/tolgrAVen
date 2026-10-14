@@ -239,6 +239,11 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   commits. Database leases and page/checkpoint transactions make retries safe;
   unchanged branch heads skip acquisition. Per-day breakdowns use the public
   unauthenticated timeline on hover, independently of repository history.
+  Commit details, paged changed-file metadata, patches and immutable file reads
+  use the same fixed-origin server provider and optional server-only token.
+  Match current repository settings and check public visibility before every
+  delivery, including cache hits; recheck after fresh reads. Keep the bounded
+  promise cache and consumed-field projections; never proxy arbitrary URLs.
 
 - Optional module-service startup failures remain local: log the module ID,
   continue starting sibling services, and retain their cleanup handles. Missing

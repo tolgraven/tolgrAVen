@@ -142,6 +142,25 @@ changes, and stops pagination at the explicit end cursor. SHA deduplication also
 duplicate rows/React keys. While initially backfilling, it
 states that coverage is partial and provides an explicit refresh action.
 
+Commit details use `GET /api/github/commits/:sha?user=…&repo=…`. The endpoint
+accepts hexadecimal prefixes of at least seven characters and returns the
+canonical SHA, public author metadata, first-parent information and consumed file
+patch fields. The Neovim viewer passes `page=1…30`; each page requests 100 files,
+preserving GitHub's changed-file pagination. Straight patches use the sibling
+`/:sha/patch` endpoint; before/after files use `/api/github/contents` with a
+validated repository-relative path and immutable `ref` SHA. Browser requests
+remain on the site's origin; the existing optional GitHub token stays on the server.
+
+All three detail reads must match the current configured repository. They check
+public visibility before every response, including server-cache hits, and again
+after fresh acquisition; a token's access to private content never authorizes its
+publication. The shared promise cache retains at most 16 responses for fifteen
+minutes, shortens failures to one minute, and bounds concurrent requests to four.
+HTTP responses use `no-store` so privatization cannot leave a shared HTTP cache
+serving the old detail. Provider JSON remains capped at 4 MiB; patches and decoded
+source files retain the viewer's 1 MiB limits. Real provider failures and exhausted
+rate limits remain explicit retryable errors with bounded `Retry-After` timing.
+
 Public roles may read only published archive columns for public repositories;
 writes, checkpoints, leases and job RPCs remain service-role only. Author email,
 provider tokens and raw provider payloads are not stored. The stable

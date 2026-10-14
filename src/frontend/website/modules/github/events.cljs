@@ -123,8 +123,8 @@
       {:db (-> db
                (update-in [:state :github :commits-pending] (fnil conj #{}) sha)
                (update-in [:content :github :commit-errors] (fnil dissoc {}) sha))
-       :dispatch [:http/get {:uri (str "https://api.github.com/repos/" user "/" repo "/commits/" sha)
-                            :headers {"Accept" "application/vnd.github.v3+json"}}
+       :dispatch [:http/get {:uri (str "/api/github/commits/" sha)
+                            :url-params {:user user, :repo repo}}
                   [:github/save-commit user repo (get-in db [:state :github :generation]) sha]
                   [:github/request-failed user repo (get-in db [:state :github :generation]) :commit sha]]})))
 

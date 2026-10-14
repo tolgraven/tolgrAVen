@@ -69,6 +69,8 @@
                 "No latest-30 page is needed for a deep commit")
             (let [request (first (filter #(string/ends-with? (:uri %) prefix) @*requests))]
               (is (some? request))
+              (is (= (str "/api/github/commits/" prefix) (:uri request)))
+              (is (= {:user "route-user", :repo "repo"} (:url-params request)))
               (r/dispatch-sync (conj (:on-success request) item)))
             (await! (support/settle!))
             (is (= prefix (await! (support/subscription-value! [:form-field [:github :search]]))))

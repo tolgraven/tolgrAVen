@@ -1,6 +1,7 @@
 (ns website.modules.github.diff
   "Pure GitHub revision/path planning and bounded text decoding."
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [website.modules.github.detail-schema :as detail-schema]))
 
 (def revision-schema [:tuple :string :string [:re #"^[0-9a-fA-F]{40}$"]])
 
@@ -11,22 +12,21 @@
        (string? sha) (re-matches #"[0-9a-fA-F]{40}" sha)))
 (defn key-for [revision] (string/join "/" revision))
 (defn page-url [revision] (when (valid-revision? revision) (str "/neovim/github/" (key-for revision))))
-(defn commit-url [[user repo sha]] (str "https://api.github.com/repos/" user "/" repo "/commits/" sha))
-(defn metadata-url [revision page] (str (commit-url revision) "?per_page=100&page=" page))
+(defn- query-target [[user repo]] (str "user=" (js/encodeURIComponent user) "&repo=" (js/encodeURIComponent repo)))
+(defn commit-url [[_ _ sha :as revision]] (str "/api/github/commits/" sha "?" (query-target revision)))
+(defn metadata-url [revision page] (str (commit-url revision) "&page=" page))
+(defn patch-url [[_ _ sha :as revision]] (str "/api/github/commits/" sha "/patch?" (query-target revision)))
 (defn safe-path? [path]
-  (and (string? path) (seq path) (<= (count path) 480)
-       (not (re-find #"[\\\u0000]" path))
-       (every? #(and (seq %) (not (#{"." ".."} %))) (string/split path #"/" -1))))
+  (detail-schema/safe-path? path))
 (defn sides [commit file]
   (let [parent (get-in commit [:parents 0 :sha])
         removed? (= "removed" (:status file))
         added? (or (= "added" (:status file)) (nil? parent))]
     {:before (when-not added? {:sha parent, :path (or (:previous_filename file) (:filename file))})
      :after (when-not removed? {:sha (:sha commit), :path (:filename file)})}))
-(defn contents-url [[user repo] {:keys [sha path]}]
-  (str "https://api.github.com/repos/" user "/" repo "/contents/"
-       (string/join "/" (map js/encodeURIComponent (string/split path #"/")))
-       "?ref=" sha))
+(defn contents-url [revision {:keys [sha path]}]
+  (str "/api/github/contents?" (query-target revision)
+       "&ref=" sha "&path=" (js/encodeURIComponent path)))
 (defn decode-text [{:keys [type encoding content size]}]
   (when-not (and (= "file" type) (= "base64" encoding) (string? content)
                  (number? size) (<= 0 size max-bytes))
