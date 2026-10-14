@@ -224,12 +224,11 @@
         max-height: 150em;
         overflow: auto;
       }
-      
-      &:hover {
-        .blog-comment-actions { 
-          right: -0%;
-        }
+
+      &:hover, &:focus-within {
+        .blog-comment-actions { right: 0%; }
       }
+      
     }
     .blog-comment-reply {
       border: 0;
@@ -304,16 +303,18 @@
       text-align: end;
       position: absolute;
       display: grid;
+      // Keep Reply/Edit in their original corner column. Links share the same
+      // hover group alongside it without adding a line to the comment body.
+      grid-template-rows: repeat(2, auto);
+      grid-auto-flow: column;
       right: calc(0.5 * var(--space));
       top: calc(0.5 * var(--space));
       transition: right 0.3s ease;
       opacity: 0.8;
-      
-      > button {
+
+      > * {
         margin: 0;
-        &:hover {
-          opacity: 1.0;
-        }
+        &:hover { opacity: 1.0; }
       }
     }
   }
@@ -336,7 +337,7 @@
   //   max-height: 4rem;
   // }
   
-  &:hover, &:active {
+  &:hover, &:active, &:focus-within {
     .blog-comment-vote, 
     .blog-comment-actions > * {
       opacity: 1;
@@ -468,9 +469,43 @@
 .blog-add-comment-btn {
 }
 .blog-comment-actions {
-  > * {
-    opacity: 0;
+  > * { opacity: 0; }
+
+  @media (hover: none) {
+    > * { opacity: 1; }
   }
+
+  .blog-comment-action {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    font-size: 0.8em;
+    text-decoration: none;
+
+    &:focus-visible {
+      outline: 0.1rem solid var(--fg-6);
+      outline-offset: 0.1rem;
+    }
+  }
+}
+
+.blog-comment-action-label {
+  position: fixed;
+  transform: translate(-100%, 0.2rem);
+  z-index: 100;
+  width: max-content;
+  max-width: min(14rem, 90vw);
+  padding: 0.35rem 0.55rem;
+  border: 0.05rem solid var(--bg-4);
+  border-radius: 0.25rem;
+  background: var(--bg-1);
+  color: var(--fg-1);
+  box-shadow: 0 0.2rem 0.6rem rgb(0 0 0 / 25%);
+  font-size: 0.8rem;
+  line-height: 1.3;
+  pointer-events: none;
 }
 
 .blog-adding-comment {
@@ -489,6 +524,7 @@
     margin-left: 0;
   }
 }
+
 textarea.blog-adding-comment-textbox { // only text
   width: 100%;
   max-width: 100%;

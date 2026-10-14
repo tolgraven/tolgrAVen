@@ -1,0 +1,79 @@
+.blog-image-editor {
+  display: grid;
+  gap: 0.75rem;
+
+  > textarea {
+    width: 100%;
+    min-height: 40vh;
+    resize: vertical;
+  }
+
+  &__attach {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  &__hint {
+    font-size: 0.9em;
+    opacity: 0.8;
+  }
+
+  &__uploads {
+    list-style: none;
+    padding: 0;
+    margin-inline: var(--space);
+  }
+}
+
+.upload-row {
+  display: grid;
+  grid-template-columns: 2em minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space);
+  padding: 0.75em;
+  margin-block: 0.5em;
+  background: var(--bg-2);
+  border: var(--line-width) solid var(--line-color);
+  border-radius: var(--section-rounded);
+  &[data-status="failed"] { background: color-mix(in srgb, var(--red) 18%, var(--bg-2)); border-color: var(--red); }
+  &[data-status="ready"] { border-color: var(--green); }
+  &__icon { font-size: 1.5em; text-align: center; }
+  &__body { display: grid; gap: 0.3em; flex: 1; min-width: 0; }
+  &__name { overflow-wrap: anywhere; }
+  &__status { font-size: 0.9em; }
+  &__progress { width: 100%; height: 0.65em; accent-color: var(--fg-1); }
+  &__actions { display: flex; gap: 0.5em; }
+  @media (prefers-reduced-motion: reduce) { progress:indeterminate { animation: none; } }
+}
+
+@keyframes upload-row-exit { to { opacity: 0; transform: translateY(-0.25em); } }
+.upload-row--exit { animation: upload-row-exit 150ms ease-in both; }
+@media (prefers-reduced-motion: reduce) { .upload-row--exit { animation: none; } }
+
+.upload-slot { display: inline; }
+.upload-chip {
+  display: inline-flex;
+  vertical-align: baseline;
+  align-items: center;
+  gap: 0.35em;
+  max-width: 100%;
+  margin-inline: 0.1em;
+  padding: 0.1em 0.35em;
+  line-height: inherit;
+  font-size: 1em;
+  border: var(--line-width) solid var(--line-color);
+  border-radius: 0.3em;
+  background: var(--bg-2);
+  box-shadow: inset 0 0 0 0.08em color-mix(in srgb, var(--fg-1) 12%, transparent);
+  &[data-status="failed"] { background: color-mix(in srgb, var(--red) 18%, var(--bg-2)); border-color: var(--red); }
+  &[data-status="ready"] { border-color: var(--green); }
+  &__icon { width: 1em; text-align: center; flex: none; }
+  &__name { max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  &__status { font-size: 0.8em; }
+  &__progress { width: 3em; height: 0.4em; accent-color: var(--fg-1); }
+  button { padding: 0; min-width: 1em; line-height: inherit; }
+}
+.upload-chip--exit { animation: upload-row-exit 150ms ease-in both; }
+@media (prefers-reduced-motion: reduce) { .upload-chip--exit { animation: none; } }

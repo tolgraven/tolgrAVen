@@ -65,11 +65,13 @@
   "Restore against committed layout, releasing only after mounted code/data,
    layout-affecting images/fonts and two measured frames agree on the target.
    User input/navigation cancels immediately; the timeout only bounds failure."
-  [position]
+  [position & [resolve-position behavior position-animations]]
   (when-let [cleanup! @*restore-cleanup] (cleanup!))
   (set! (.-scrollRestoration js/history) "manual")
   (reset! *restored-position position)
-  (let [*observer (atom nil)
+  (let [smooth? (and (= "smooth" behavior) (not (motion/reduced-motion?)))
+        *started-position (atom nil)
+        *observer (atom nil)
         *mutations (atom nil)
         *timeout (atom nil)
         *frame (atom nil)
@@ -94,40 +96,67 @@
                    (reset! *frame nil)
                    (when @*active?
                      ;; Scroll early too: it exposes lazy content at the saved position.
-                     (.scrollTo js/window #js {:top position :left 0 :behavior "instant"})
-                     (let [animations (vec (layout-animations))
-                           main (.getElementById js/document "main")
-                           images (array-seq (.querySelectorAll (or main js/document) "img"))
-                           assets-ready? (and (not= "loading" (some-> js/document .-fonts .-status))
-                                              (every? #(or (> (+ (.-top (.getBoundingClientRect %)) (.-scrollY js/window))
-                                                            (+ position (.-innerHeight js/window)))
-                                                           (.-complete %)
-                                                           ;; Explicit dimensions/aspect ratio reserve layout
-                                                           ;; without waiting for below-fold lazy downloads.
-                                                           (and (pos? (js/parseFloat (.getAttribute % "width")))
-                                                                (pos? (js/parseFloat (.getAttribute % "height"))))
-                                                           (let [ratio (.-aspectRatio (js/getComputedStyle %))]
-                                                             (and (seq ratio) (not (re-find #"auto" ratio)))))
-                                                      images))
-                           geometry [(.-scrollHeight (.-documentElement js/document))
-                                     (.-innerHeight js/window)
-                                     (when main (.-height (.getBoundingClientRect main)))
-                                     (when main (+ (.-top (.getBoundingClientRect main)) (.-scrollY js/window)))]
-                           ready? (and (empty? animations) (restore/layout-ready?) assets-ready?
-                                       (<= (js/Math.abs (- (.-scrollY js/window) position)) 1))]
-                       (doseq [animation animations :when (not (contains? @*waiting animation))]
-                         (swap! *waiting conj animation)
-                         (.then (.-finished animation)
-                                (fn [_] (when @*active? (@*wake)))
-                                (fn [_] (when @*active? (@*wake)))))
-                       (if (and ready? (= geometry @*previous))
+                     (let [requested (if resolve-position (resolve-position) position)]
+                       (if (nil? requested)
                          (cleanup!)
-                         (do
-                           (reset! *previous (when ready? geometry))
-                           ;; Only ready layout needs another measured frame. Pending
-                           ;; layout wakes through commit, resize, load or font events.
-                           (when ready?
-                             (reset! *frame (js/requestAnimationFrame measure!))))))))
+                         (let [maximum (max 0 (- (.-scrollHeight (.-documentElement js/document))
+                                                (.-innerHeight js/window)))
+                               position' (if resolve-position (min maximum (max 0 requested)) requested)
+                               _ (do (when-not smooth?
+                                       (.scrollTo js/window #js {:top position' :left 0 :behavior "instant"}))
+                                     (reset! *restored-position position'))
+                               animations (vec (concat (layout-animations)
+                                                       (when position-animations (position-animations))))
+                               main (.getElementById js/document "main")
+                               images (array-seq (.querySelectorAll (or main js/document) "img"))
+                               assets-ready? (and (not= "loading" (some-> js/document .-fonts .-status))
+                                                  (every? #(or (> (+ (.-top (.getBoundingClientRect %)) (.-scrollY js/window))
+                                                                (+ position' (.-innerHeight js/window)))
+                                                               (.-complete %)
+                                                               ;; Explicit dimensions/aspect ratio reserve layout
+                                                               ;; without waiting for below-fold lazy downloads.
+                                                               (and (pos? (js/parseFloat (.getAttribute % "width")))
+                                                                    (pos? (js/parseFloat (.getAttribute % "height"))))
+                                                               (let [ratio (.-aspectRatio (js/getComputedStyle %))]
+                                                                 (and (seq ratio) (not (re-find #"auto" ratio)))))
+                                                          images))
+                               geometry [(.-scrollHeight (.-documentElement js/document))
+                                         (.-innerHeight js/window)
+                                         (when main (.-height (.getBoundingClientRect main)))
+                                         (when main (+ (.-top (.getBoundingClientRect main)) (.-scrollY js/window)))
+                                         (when resolve-position position')]
+                               layout-ready? (and (empty? animations) (restore/layout-ready?) assets-ready?
+                                                  (not (some-> (.getElementById js/document "app")
+                                                               (.hasAttribute "data-document-pending"))))
+                               ready? (and layout-ready?
+                                           (<= (js/Math.abs (- (.-scrollY js/window) position')) 1))]
+                           (doseq [animation animations :when (not (contains? @*waiting animation))]
+                             (swap! *waiting conj animation)
+                             (.then (.-finished animation)
+                                    (fn [_] (when @*active? (@*wake)))
+                                    (fn [_] (when @*active? (@*wake)))))
+                           (if smooth?
+                             (if layout-ready?
+                               (let [stable? (= geometry @*previous)
+                                     started? (= position' @*started-position)]
+                                 ;; Wait for intrinsic row growth before starting. A
+                                 ;; later geometry change retargets the native scroll.
+                                 (when (and stable? (not started?))
+                                   (reset! *started-position position')
+                                   (.scrollTo js/window #js {:top position' :left 0 :behavior "smooth"}))
+                                 (if (and stable? started? ready?)
+                                   (cleanup!)
+                                   (do (reset! *previous geometry)
+                                       (reset! *frame (js/requestAnimationFrame measure!)))))
+                               (reset! *previous nil))
+                             (if (and ready? (= geometry @*previous))
+                               (cleanup!)
+                               (do
+                                 (reset! *previous (when ready? geometry))
+                                 ;; Pending layout wakes through commit, resize,
+                                 ;; load or font events rather than frame polling.
+                                 (when ready?
+                                   (reset! *frame (js/requestAnimationFrame measure!)))))))))))
         schedule! (fn [& _]
                     (when (and @*active? (nil? @*frame))
                       (reset! *previous nil)
@@ -228,6 +257,46 @@
               (restore-position! (.-scrollY js/window))))))
       (when resolve! (resolve!)))))
 
+(defn- anchor-animations [element]
+  ;; The native document can hold its entrance clock during hydration. Keep the
+  ;; initial position until these ancestor transforms finish; client rectangles
+  ;; then give the precise final coordinate, including fractional layout units.
+  (when (.-getAnimations element)
+    (mapcat (fn [node]
+              (filter (fn [animation]
+                        (let [effect (.-effect animation)]
+                          (and effect
+                               (not (#{"finished" "idle"} (.-playState animation)))
+                               (js/isFinite (.-endTime (.getComputedTiming effect)))
+                               (some #(some #{"transform" "translate" "scale" "rotate"}
+                                            (array-seq (js/Object.keys %)))
+                                     (array-seq (.getKeyframes effect))))))
+                      (array-seq (.getAnimations node))))
+            (take-while some? (iterate #(.-parentElement %) element)))))
+
+(defn restore-anchor!
+  "Follow a committed component while ancestor rows, code or fonts settle."
+  [id]
+  (let [root (.getElementById js/document "app")
+        pending? (and root (.hasAttribute root "data-document-pending")
+                      (= id (.getAttribute root "data-document-target")))
+        positioned? (and root (= id (.getAttribute root "data-document-positioned")))]
+    ;; Native positioning preserves the initial entrance. Hydration must still
+    ;; follow later layout changes rather than treating that first offset as final.
+    (when (and positioned? (not pending?)) (.removeAttribute root "data-document-positioned"))
+    (when (.getElementById js/document id)
+      (restore-position! (.-scrollY js/window)
+        (fn []
+          (when (and root (not (.hasAttribute root "data-document-pending"))
+                     (= id (.getAttribute root "data-document-positioned")))
+            (.removeAttribute root "data-document-positioned"))
+          (when-let [target (.getElementById js/document id)]
+            (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle target)))]
+              (- (+ (.-top (.getBoundingClientRect target)) (.-scrollY js/window))
+                 (if (js/isNaN margin) 0 margin)))))
+        "smooth"
+        #(when-let [target (.getElementById js/document id)] (anchor-animations target))))))
+
 (defn use-ready!
   "Complete navigation after React commits the subscribed route and its shell.
    Releasing a height reservation must not replay scrolling or route completion."
@@ -244,14 +313,19 @@
 
 (r/reg-event-fx :page/navigate
   (fn [{:keys [db]} [_ match]]
-    {:page/transition
+    (let [history? (or (get-in db [:state :browser-nav :got-nav])
+                       (and (nil? (get-in db [:state :scroll :component-focus]))
+                            (= 2 (get-in db [:state :browser-nav :nav-type]))))]
+    {:db (cond-> db (:path match)
+           (assoc-in [:state :scroll :component-focus] {:path (:path match), :scroll? (not history?)}))
+     :page/transition
      [match (and @context/*interactive?
                  (some? (:common/route db))
                  (not (and (get-in match [:data :transition-key])
                            (= (get-in match [:data :transition-key])
                               (get-in db [:common/route :data :transition-key]))))
                  (not= (:path match) (get-in db [:common/route :path])))
-      (boolean (get-in db [:state :browser-nav :got-nav]))]}))
+      (boolean (get-in db [:state :browser-nav :got-nav]))]})))
 
 (r/reg-fx :page/transition (fn [[match animate? back?]] (navigate! match animate? back?)))
 (r/reg-event-fx :page/ready

@@ -7,6 +7,7 @@
             [website.modules.markdown-editor.source :as source]
             [website.modules.markdown-editor.uploads :as uploads]
             [website.modules.markdown-editor.code :as code]
+            [website.modules.markdown-editor.features :as features]
             [website.markdown.authoring :as model]
             [website.modules.markdown-components.views :as components]
             [website.components.content.layout :as layout]
@@ -186,10 +187,13 @@
         *error (r/atom nil)
         *pending? (r/atom false)]
   (let [{:keys [assets library upload!]} (r/use-context media-context)
-        {:keys [insert-upload!]} (r/use-context uploads/context)
+        {:keys [insert-upload! allow-components?]} (r/use-context uploads/context)
         insert! (editor/usePublisher editor/insertJsx$)
+        insert-ordinary! (editor/usePublisher editor/insertImage$)
         insert-image! (fn [src alt]
-                        (insert! (clj->js {:kind "flow", :name "Component", :props (image-props src alt)}))
+                        (if (false? allow-components?)
+                          (insert-ordinary! (clj->js {:src src, :altText (or alt "Image")}))
+                          (insert! (clj->js {:kind "flow", :name "Component", :props (image-props src alt)})))
                         (reset! *open? false))]
     [:div.md-image-picker
      [:button {:type "button"
@@ -198,8 +202,9 @@
                               (when library (library :load 0)))} "Image"]
      (when @*open?
        [:div.md-image-picker__menu
-        [:label "Find a server image"
-         [:input {:type "search", :value @*query, :on-change #(reset! *query (.. % -target -value))}]]
+        (when library
+          [:label "Find a server image"
+           [:input {:type "search", :value @*query, :on-change #(reset! *query (.. % -target -value))}]])
         [:div.md-image-picker__assets
          (for [{:keys [id src] :as asset} assets
                :when (string/includes? (string/lower-case (str src)) (string/lower-case @*query))]
@@ -250,21 +255,24 @@
 
 (def image-layout-toolbar-react (r/reactify-component (fn [props] [<image-layout-toolbar> props])))
 
-(defc <toolbar> []
+(defc <toolbar> [enabled-features]
   [:div.md-editor-toolbar
-   [:> editor/UndoRedo]
+   (when (enabled-features :history) [:> editor/UndoRedo])
    [:> editor/Separator]
-   [:> editor/BlockTypeSelect]
-   [:> editor/BoldItalicUnderlineToggles]
-   [:> editor/StrikeThroughSupSubToggles]
-   [:> editor/CodeToggle]
-   [:> editor/ListsToggle {:options #js ["bullet" "number" "check"]}]
-   [:> editor/CreateLink]
-   [<image-picker>]
-   [:> editor/InsertTable]
-   [:> editor/InsertThematicBreak]
-   [:> editor/InsertCodeBlock]
-   [<component-picker>]])
+   (when (enabled-features :headings) [:> editor/BlockTypeSelect])
+   (when (enabled-features :formatting)
+     [:<>
+      [:> editor/BoldItalicUnderlineToggles]
+      [:> editor/StrikeThroughSupSubToggles]
+      [:> editor/CodeToggle]])
+   (when (enabled-features :lists) [:> editor/ListsToggle {:options #js ["bullet" "number" "check"]}])
+   (when (enabled-features :links) [:> editor/CreateLink])
+   (when (enabled-features :images)
+     [<image-picker>])
+   (when (enabled-features :tables) [:> editor/InsertTable])
+   (when (enabled-features :thematic-breaks) [:> editor/InsertThematicBreak])
+   (when (enabled-features :code) [:> editor/InsertCodeBlock])
+   (when (enabled-features :site-components) [<component-picker>])])
 
 (defc <formatting-keymap>
   "Both Ctrl and Cmd formatting shortcuts use the active SDK selection, including nested editors."
@@ -286,31 +294,36 @@
   (editor/realmPlugin #js {:init (fn [realm]
                                   (.pub realm editor/addEditorWrapper$ formatting-keymap-react))}))
 
-(defn plugins [upload! image-urls import-params]
-  #js [(keymap-plugin)
+(defn plugins [upload! image-urls import-params enabled-features]
+  (into-array
+    (concat
+      (when (enabled-features :formatting) [(keymap-plugin)])
+      [
        ((editor/realmPlugin #js {:init (fn [realm] (.pub realm editor/addEditorWrapper$ uploads/controller-react))}))
        (editor/directivesPlugin #js {:directiveDescriptors (uploads/descriptors), :escapeUnknownTextDirectives true})
        (uploads/plugin import-params)
-       (editor/headingsPlugin #js {:allowedHeadingLevels #js [1 2 3 4 5 6]})
-       (editor/listsPlugin)
-       (editor/quotePlugin)
-       (editor/thematicBreakPlugin)
-       (editor/linkPlugin)
-       (editor/linkDialogPlugin)
-       (editor/tablePlugin)
-       (editor/codeBlockPlugin #js {:defaultCodeBlockLanguage "", :codeBlockEditorDescriptors code/descriptors})
-       (editor/imagePlugin #js {:imageUploadHandler upload!
-                                :imageAutocompleteSuggestions (clj->js image-urls)
+       ]
+      (when (enabled-features :headings) [(editor/headingsPlugin #js {:allowedHeadingLevels #js [1 2 3 4 5 6]})])
+      (when (enabled-features :lists) [(editor/listsPlugin)])
+      (when (enabled-features :quotes) [(editor/quotePlugin)])
+      (when (enabled-features :thematic-breaks) [(editor/thematicBreakPlugin)])
+      (when (enabled-features :links) [(editor/linkPlugin) (editor/linkDialogPlugin)])
+      (when (enabled-features :tables) [(editor/tablePlugin)])
+      (when (enabled-features :code) [(editor/codeBlockPlugin #js {:defaultCodeBlockLanguage "", :codeBlockEditorDescriptors code/descriptors})])
+      (when (enabled-features :images)
+        [(editor/imagePlugin (clj->js (cond-> {:imageAutocompleteSuggestions image-urls
                                 :disableImageResize true
-                                :allowSetImageDimensions false
-                                :EditImageToolbar image-layout-toolbar-react})
-       (editor/jsxPlugin #js {:jsxComponentDescriptors (descriptors)})
-       (editor/markdownShortcutPlugin)
-       (editor/toolbarPlugin #js {:toolbarContents #(r/as-element [<toolbar>] )})])
+                                :allowSetImageDimensions false}
+                               (enabled-features :site-components) (assoc :imageUploadHandler upload!
+                                                                         :EditImageToolbar image-layout-toolbar-react))))])
+      (when (enabled-features :site-components) [(editor/jsxPlugin #js {:jsxComponentDescriptors (descriptors)})])
+      [(editor/markdownShortcutPlugin)
+       (editor/toolbarPlugin #js {:toolbarContents #(r/as-element [<toolbar> enabled-features])})])))
 
 (defc <editor>
   "Edit canonical Markdown through the lazy rich-text SDK; only external changes reset SDK content."
-  {:spec-schema [:map [:text :string] [:on-change fn?] [:?upload! fn?] [:?image-urls [:vector :string]] [:?assets [:vector :map]] [:?library fn?]
+  {:spec-schema [:map [:text :string] [:on-change fn?] [:?upload! fn?] [:?image-urls [:vector :string]] [:?assets [:vector :map]] [:?library [:maybe fn?]]
+                      [:?enabled-features features/schema]
                       [:?source? :boolean] [:?document-id :?string] [:?text-query [:vector :any]] [:?uploads [:vector :map]] [:?uploads-query [:vector :any]] [:?upload-query fn?]
                       [:?render-upload fn?] [:?enqueue! fn?] [:?insert-ready! fn?] [:?on-anchors fn?] [:?on-removed fn?]]}
   [{:keys [text text-query document-id on-change upload! image-urls assets library source? uploads uploads-query upload-query render-upload enqueue! insert-ready! on-anchors on-removed] :as props}]
@@ -329,7 +342,9 @@
                        (apply on-change markdown args))
                      [on-change input-changed!])
         import-params {:text text', :uploads (mapv #(select-keys % [:id :position :image-inserted? :cancelled? :asset]) uploads)}
-        editor-plugins (r/use-memo #(plugins upload! (or image-urls []) import-params) [upload! image-urls import-params])]
+        enabled-features (features/enabled (:enabled-features props))
+        editor-plugins (r/use-memo #(plugins upload! (or image-urls []) import-params enabled-features)
+                                  [upload! image-urls import-params enabled-features])]
     ;; This calls the SDK's public content API, never mutates React-owned markup.
     ;; onChange writes through the parent form's event; selection/history are SDK transient state.
     ;; Re-read the managed form query, as source mode does. A delayed parent echo
@@ -352,7 +367,8 @@
     [:r> (r/context-provider media/asset-context) #js {:value (into {} (map (juxt :src identity)) assets)}
      [:r> (r/context-provider media-context) #js {:value {:assets assets, :library library, :upload! upload!}}
      [:r> (r/context-provider uploads/context)
-      #js {:value (cond-> {:upload-query upload-query
+      #js {:value (cond-> {:allow-components? (boolean (enabled-features :site-components))
+                          :upload-query upload-query
                           :uploads-query uploads-query
                           :render-upload render-upload
                           :enqueue! enqueue!

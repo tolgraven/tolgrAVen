@@ -3,6 +3,7 @@
    and both runtimes. Extension keys stay open; declared keys have real types."
   (:require [website.schema.common :as c]
             [website.supabase.schema :as store]
+            [website.navigation.component-routes :as component-routes]
             [website.supabase.catalog :as catalog]))
 
 (def path [:vector {:min 1} :any])
@@ -88,6 +89,10 @@
    [:?preload-depends [:or dependencies fn?]]
    [:?parameters :map]
    [:?controllers [:sequential :map]]
+   [:?component-route component-routes/target]
+   [:?page-route :keyword]
+   [:?page-selection-keys [:vector :keyword]]
+   [:?document-target [:or :string [:map [:prefix :string] [:parameter :keyword]]]]
    [:?data-plan data-plan]
    [:?snapshot fn?]
    [:?document-title fn?]])
@@ -105,11 +110,21 @@
    [:?server [:map
                              [:?routes :symbol]
                              [:?start :symbol]
+                             [:?search [:vector
+                                        [:map
+                                         [:kind :string]
+                                         [:preview :keyword]
+                                         [:?feature :keyword]
+                                         [:?sql :string]
+                                         [:?filter :symbol]
+                                         [:?href :string]
+                                         [:?content [:vector :keyword]]]]]
                              [:?requires [:set :keyword]]
                              [:?requires-features [:map-of :keyword [:set :keyword]]]
                              [:?sql c/strings]
                              [:?sql-without-comments c/strings]]]
    [:?storage [:vector catalog/table]]
+   [:site/requires {:optional true} [:set :keyword]]
    [:?pages routes]
    [:?view [:map-of :keyword :any]]
    [:?init fn?]

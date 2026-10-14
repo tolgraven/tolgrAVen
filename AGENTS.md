@@ -99,6 +99,10 @@ sessions' tabs and restore any borrowed tab when finished.
 - Reagent 2 / React 19 components use `defc`; spec-capable instances accept map
   specs or feature-vector shorthand. Full pages use `defpage` and always have an error boundary. Application React, Reagent and re-frame calls go through `website.react` as `r`; raw framework imports belong to its runtime boundary.
 - Module-local `pages.cljc` files contain native Reitit route trees. Module specs expose these declarations; browser and server routers compose them.
+- Search sources belong to module `:server :search` declarations; private SQL
+  projections and leased delivery feed server-owned Typesense. Lightweight preview
+  modules require both Search and their content owner through `:site/requires`.
+  Preserve native component destinations and safe text/mark fragments. See `doc/search.md`.
 - JVM adapters acquire public data with snapshot-owned, bounded Supabase REST
   connections; the eager Shadow `:ssr` Node build renders the same page components as the browser. `:ssr` in config controls streaming and worker settings.
 - Module references activate near the viewport by default; hidden panels use

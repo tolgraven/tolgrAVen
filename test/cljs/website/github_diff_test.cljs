@@ -18,7 +18,7 @@
   (is (= (str "/neovim/github/user/repo/" sha) (diff/page-url ["user" "repo" sha])))
   (doseq [revision [["u/evil" "repo" sha] ["u" ".." sha] ["u" "r" "HEAD"] ["u" "r" sha "extra"]]]
     (is (nil? (diff/page-url revision))))
-  (is (= (str "https://api.github.com/repos/u/r/contents/a%20b/%23c.clj?ref=" sha)
+  (is (= (str "/api/github/contents?user=u&repo=r&ref=" sha "&path=a%20b%2F%23c.clj")
          (diff/contents-url ["u" "r" sha] {:sha sha, :path "a b/#c.clj"})))
   (doseq [path ["../x" "/x" "x//y" "x\\y" "x/./y"]] (is (not (diff/safe-path? path)))))
 
@@ -78,6 +78,29 @@
     (is (nil? (:dispatch-n (event-effects after [:github/diff-ensure revision]))))
     (is (nil? (event-effects initial [:github/diff-open revision])))))
 
+(deftest query-changes-retain-canonical-detail-and-independent-viewer-caches
+  (let [revision ["u" "r" sha]
+        db {:module {:github {:configuration {:settings {:user "u", :repo "r"}}}}
+            :state {:github {:target ["u" "r"]
+                             :generation 1
+                             :query ""
+                             :commits-fetched [sha]
+                             :diff-attempt 4
+                             :diff-view {(diff/key-for revision) {:mode :patch, :selected "", :metadata {:status :ready}}}}}
+            :content {:github {:commit {sha commit}
+                               :commit-errors {}
+                               :diff-view {(diff/key-for revision) {:commit commit}}
+                               :commits [commit]}}}
+        searched (:db (event-effects db [:github/search "older commit"]))]
+    (is (= commit (get-in searched [:content :github :commit sha])))
+    (is (= [sha] (get-in searched [:state :github :commits-fetched])))
+    (is (= commit (get-in searched (events/content-path revision :commit))))
+    (is (= :patch (get-in searched (events/state-path revision :mode))))
+    (is (= 4 (get-in searched [:state :github :diff-attempt])))
+    (is (nil? (get-in searched [:content :github :commits])))
+    (is (= {:github/open-document (diff/page-url revision)}
+           (event-effects searched [:github/open-diff revision])))))
+
 (deftest superseded-file-failures-cannot-poison-a-retry
   (let [revision ["u" "r" sha]
         initial (:db (event-effects {} [:github/diff-open revision]))
@@ -98,7 +121,7 @@
   (let [revision ["u" "r" sha]
         effects (event-effects {} [:github/diff-metadata revision 1
                                   (assoc commit :files (vec (repeat 100 {:filename "x"})))])]
-    (is (= (str (diff/commit-url revision) "?per_page=100&page=2") (get-in effects [:dispatch 1 :uri])))
+    (is (= (str (diff/commit-url revision) "&page=2") (get-in effects [:dispatch 1 :uri])))
     (is (= :loading (get-in (:db effects) (events/state-path revision :metadata :status))))))
 
 (deftest first-file-failure-retains-file-and-patch-recovery-controls
@@ -140,13 +163,17 @@
                      (.dispatchEvent picker (js/Event. "change" #js {:bubbles true})))
                    (support/wait-for! #(= 2 (count @*requests)))))
           (.then (fn [_]
-                   (is (every? #(.includes (:uri %) "/contents/source.clj?ref=") @*requests))
+                   (is (= #{(str "/api/github/contents?user=u&repo=r&ref=" parent "&path=source.clj")
+                            (str "/api/github/contents?user=u&repo=r&ref=" sha "&path=source.clj")}
+                          (set (map :uri @*requests))))
                    (let [patch (.querySelector element "button[aria-pressed='false']")]
                      (is (= "Straight patch" (.-textContent patch)))
                      (.click patch))
                    (support/wait-for! #(= 3 (count @*requests)))))
           (.then (fn [_]
-                   (is (= "application/vnd.github.patch" (get-in (last @*requests) [:headers "Accept"])))
+                   (is (= (str "/api/github/commits/" sha "/patch?user=u&repo=r")
+                          (:uri (last @*requests))))
+                   (is (= "text/plain" (get-in (last @*requests) [:headers "Accept"])))
                    (is (nil? (.querySelector element ".neovim__grid")) "Recovery choices remain independent of WASM startup")))
           (.catch #(is false (str %)))
           (.finally (fn []

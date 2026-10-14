@@ -125,23 +125,35 @@
 (defc ^:private <commit-row>
   {:features [[:appear "slide-in slow"]]}
   [{:keys [from sha main-view-position view author date ts html_url sha7 commit]}]
-  (let [href (when (site/enabled? :neovim) (diff/page-url [(first @from) (second @from) sha]))]
-  [(if href :a.github-commit.flex :div.github-commit.flex)
-         (if href
-           {:href href, :data-document-navigation "true"}
-           {:on-click #(do (r/dispatch [:github/fetch-commit (first @from) (second @from) sha])
-                         (reset! main-view-position
-                                 (.-scrollTop (util/elem-by-id "github-commits-box")))
-                         (reset! view sha))})
-         [img/<picture> {:src (:avatar_url author)
+  (let [revision [(first @from) (second @from) sha]
+        href (when (site/enabled? :neovim) (diff/page-url revision))
+        avatar [img/<picture> {:src (:avatar_url author)
                        :alt (str (:login author) " avatar")
-                       :class "user-avatar center-content"}]
+                       :class "user-avatar center-content"}]]
+    [:div.github-commit.flex
+     {:id (str "github-commit-" sha)
+      :on-click #(if href
+                   (r/dispatch [:github/open-diff revision])
+                   (do (r/dispatch [:github/fetch-commit (first @from) (second @from) sha])
+                       (reset! main-view-position (.-scrollTop (util/elem-by-id "github-commits-box")))
+                       (reset! view sha)))}
+     (if href
+       [:a {:href href
+            :data-document-navigation "true"
+            :style {:display "contents"}
+            :aria-label (str "View diff for commit " sha7)
+            :on-click #(.stopPropagation %)} avatar]
+       avatar)
          [:div.github-commit-details
           [:span.github-commit-time date]
           [:span.github-commit-time (util/local-time ts)]
-          (if href
-            [:span.github-commit-sha sha7]
-            [:a {:href html_url} [:span.github-commit-sha sha7]])
+          [:a {:href html_url, :on-click #(.stopPropagation %)}
+           [:span.github-commit-sha sha7]]
+          [:a.github-commit-permalink
+           {:href @(r/subscribe [:href :github-commit {:sha sha}])
+            :on-click #(.stopPropagation %)
+            :aria-label (str "Permalink to commit " sha7)}
+           "Permalink"]
 
           ;; Parse the provider text here too so restored, previously parsed
           ;; cache entries immediately use the current presentation rules.
@@ -218,8 +230,19 @@
                       (set! (.-scrollTop el) 0))))
         url (r/subscribe [:github/website-url])]
    (fn [spec]
+    (let [{:keys [sha path]} @(r/subscribe [:github/route-target])
+          search @(r/subscribe [:form-field [:github :search]])
+          selected? @(r/subscribe [:github/commit-listed? sha])
+          error (when sha @(r/subscribe [:github/commit-error sha]))]
+      (r/use-layout-effect
+        (fn []
+          (when selected?
+            (reset! view :commits)
+            (r/dispatch [:scroll/component-target "github-commits" path]))
+          nil)
+        [sha path (boolean selected?)])
     [:<>
-     [:section.github-commits.covering-2
+     [:section#github-commits.github-commits.covering-2
 
      [<deployment>]
      [:h2 [:i.fab.fa-github]" " @amount " commits to "
@@ -238,8 +261,18 @@
        :placeholder "Search commits"
        :width "100%"
        :height "2em"
-       :on-change (fn [text & _] (r/dispatch-sync [:github/search text]))
+       :on-change (fn [query & _] (r/dispatch-sync [:github/search query]))
+       :attr {:id "github-commits-filter"
+              :aria-label "Search commits"
+              :maxLength 200}
        :path [:form-field [:github :search]]]
+      (when (and sha (not selected?))
+        (if error
+          [:p {:role "alert"}
+           "This commit could not be loaded. "
+           [:button {:on-click #(r/dispatch [:github/fetch-commit (first @from) (second @from) sha])}
+            "Retry"]]
+          [:p {:role "status"} "Loading the requested commit…"]))
       [:div#github-commits-main
        {:ref ref-fn} ; restore scroll when displaying details
        (when (= @view :commits)
@@ -261,7 +294,7 @@
 
      (when (and (= @view :commits) @more?)
       [<loading> (first @from) (second @from)])]]]
-     [ui-layout/<fading> :dir "bottom"]])))
+     [ui-layout/<fading> :dir "bottom"]]))))
 
 (defc <commits> []
   (let [[user repo] @(r/subscribe [:github/get-from])]
@@ -269,4 +302,4 @@
       [:<>
        ^{:key (str user "/" repo)} [<repository> {:init (fn [_] (r/dispatch [:github/init]))}]
        ^{:key user} [<activity> user]]
-      [:section.github-commits.covering-2 [:h2 "GitHub"] [:p "Configure a GitHub user and repository in the server settings."]])))
+      [:section#github-commits.github-commits.covering-2 [:h2 "GitHub"] [:p "Configure a GitHub user and repository in the server settings."]])))

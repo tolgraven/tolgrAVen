@@ -33,6 +33,8 @@
   (vector :merge store/comment-record [:map [:?user [:?or c/id store/profile]]])))
 (when-enabled :blog :comments
   (def comment-spec (declarations/extend-spec [:map [:path c/path] [:comment displayed-comment]
+                                            [:?focused-id [:maybe c/id]]
+                                            [:?quote? :boolean]
                                             [:?visible? [:maybe c/derefable]]])))
 (when-enabled :blog :comments
   (def parent-spec (declarations/extend-spec [:map [:parent-path c/path]])))
@@ -70,6 +72,15 @@
    [:records comment-records]
    [:loading? :boolean]
    [:more? :boolean]]))
+
+(when-enabled :blog :comments
+  (def focus-state
+    [:maybe [:map
+             [:ready? :boolean]
+             [:comment-id :string]
+             [:row [:maybe displayed-comment]]
+             [:root [:maybe displayed-comment]]
+             [:parent [:maybe displayed-post]]]]))
 
 (def positive-input
   [:or c/positive [:and :string [:re #"^[+]?0*[1-9][0-9]*$"]]])

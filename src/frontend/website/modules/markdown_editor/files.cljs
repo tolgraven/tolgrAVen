@@ -1,4 +1,4 @@
-(ns website.modules.blog-editor.files
+(ns website.modules.markdown-editor.files
   "Native File filtering shared by picker, paste and drop boundaries."
   (:require [clojure.string :as string]))
 

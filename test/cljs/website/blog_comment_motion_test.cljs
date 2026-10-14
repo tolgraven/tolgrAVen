@@ -6,6 +6,7 @@
             [website.component.restore :as restore]
             [website.loader.style-catalog :as style-catalog]
             [website.modules.blog.views :as blog]
+            [website.modules.blog.comment-views :as comment-views]
             [website.test-support :as support]))
 
 (defn- tick! [ms]
@@ -68,7 +69,7 @@
     [:div.blog-comment-reply {:style {"--comment-reveal-duration" "200ms"}}
      (for [index @*rows]
        ^{:key index}
-       [blog/<reply-row>
+       [comment-views/<reply-row>
         {:expanded? expanded?
          :appear {:class "reply-height", :settle-offscreen? true, :restore? false}
          :props {:style {"--comment-reveal-delay" (str (* 48 index) "ms")}}
@@ -127,7 +128,7 @@
                 form (fn [appear props]
                        [:section.blog-comments
                         [:div.blog-comments-inner
-                         [blog/<reply-row>
+                         [comment-views/<reply-row>
                           {:expanded? true
                            :appear appear
                            :props props

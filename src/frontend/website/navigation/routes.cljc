@@ -9,6 +9,8 @@
     [reitit.coercion :as coercion]
     [website.service-status :as status]
     [website.navigation.transition]
+    [website.navigation.component-routes :as component-routes]
+    [website.navigation.schema :as navigation-schema]
     [website.macros :refer-macros [defc defpage]]
     [website.ssr.client :as ssr] [website.react :as r]
     [reitit.frontend :as reitit]
@@ -107,7 +109,40 @@
 (defonce *navigation (atom 0))
 
 (defn landing-dependencies [match]
-  [{:source :strapi :keys (content/keys-for-route (get-in match [:data :name]))}])
+  [{:source :strapi
+    :keys (content/keys-for-route (or (get-in match [:data :page-route])
+                                    (get-in match [:data :name])))}])
+
+(r/reg-event-fx :navigation/activate-component
+  (fn [{:keys [db]} _]
+    ;; Native Reitit controllers start as the page route commits. Reading the
+    ;; accepted match here avoids racing a native transition's async update.
+    (when-let [match (when (get-in db [:common/route :data :component-route]) (:common/route db))]
+      {:dispatch [:loader/activate (select-keys (get-in match [:data :component-route]) [:module])]
+       :navigation/load-component match})))
+
+(r/reg-fx :navigation/load-component
+  (fn [match]
+    (let [target (get-in match [:data :component-route])
+          ;; The mounted host supplies the target view's arguments and data.
+          ;; Acquiring its code must not invoke that view with an empty argv.
+          options (select-keys target [:module])]
+      (-> (l/load-code! options)
+          (.then (fn [_] (r/dispatch [:navigation/component-loaded match])))
+          (.catch (fn [_] (r/dispatch [:navigation/component-failed match])))))))
+
+(r/reg-event-fx :navigation/component-loaded
+  {:args [:tuple navigation-schema/route]}
+  (fn [{:keys [db]} [_ match]]
+    (when (= (:path match) (get-in db [:common/route :path]))
+      (when-let [event (component-routes/action match)] {:dispatch event}))))
+
+(r/reg-event-fx :navigation/component-failed
+  {:args [:tuple navigation-schema/route]}
+  (fn [{:keys [db]} [_ match]]
+    (when (= (:path match) (get-in db [:common/route :path]))
+      {:dispatch [:diag/new :error "Destination could not be loaded"
+                  "Retry the component or open its permalink again."]})))
 
 (defn navigate!
   "Resolve a route with injectable loading and dispatch for isolated regression tests."

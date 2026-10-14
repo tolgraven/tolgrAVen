@@ -54,6 +54,9 @@
       (when-let [children (.-children node)]
         (set! (.-children node) (into-array (semantic-children (array-seq children))))))))
 
+(defn semantic-plugin []
+  (fn [tree] (restore-semantic-marks! tree)))
+
 (defn plugin []
   (fn [tree]
     (restore-semantic-marks! tree)

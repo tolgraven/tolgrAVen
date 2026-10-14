@@ -10,7 +10,7 @@
   [:http/get {:uri uri
               :background? true
               :timeout 20000
-              :headers {"Accept" accept, "X-GitHub-Api-Version" "2022-11-28"}}
+              :headers {"Accept" accept}}
    success failure])
 
 (r/reg-event-fx :github/diff-open
@@ -18,7 +18,7 @@
     (when (and (diff/valid-revision? revision)
                (not (#{:loading :ready} (get-in db (state-path revision :metadata :status)))))
       {:db (assoc-in db (state-path revision) {:mode :diff, :selected "", :metadata {:status :loading}})
-       :dispatch (http-read (diff/metadata-url revision 1) "application/vnd.github+json"
+       :dispatch (http-read (diff/metadata-url revision 1) "application/json"
                             [:github/diff-metadata revision 1]
                             [:github/diff-failed revision [:metadata]])})))
 
@@ -34,7 +34,7 @@
                (assoc-in (state-path revision :selected) selected')
                (assoc-in (state-path revision :metadata) {:status (if more? :loading :ready)}))
        :dispatch (if more?
-                   (http-read (diff/metadata-url revision (inc page)) "application/vnd.github+json"
+                   (http-read (diff/metadata-url revision (inc page)) "application/json"
                               [:github/diff-metadata revision (inc page)]
                               [:github/diff-failed revision [:metadata]])
                    [:github/diff-ensure revision])})))
@@ -82,10 +82,10 @@
           (= :ready status) {:db (assoc-in db (state-path revision :displayed) {:mode mode, :selected selected})}
           (= :patch mode)
           {:db (assoc-in db (state-path revision :patch) {:status :loading})
-           :dispatch [:http/get {:uri (diff/commit-url revision)
+           :dispatch [:http/get {:uri (diff/patch-url revision)
                                  :background? true
                                  :timeout 20000
-                                 :headers {"Accept" "application/vnd.github.patch"}
+                                 :headers {"Accept" "text/plain"}
                                  :response-format (ajax/text-response-format)}
                       [:github/diff-patch revision]
                       [:github/diff-failed revision [:patch]]]}
@@ -101,7 +101,7 @@
                    (assoc-in (content-path revision :files selected) {}))
            :dispatch-n (mapv (fn [[side spec]]
                                (if spec
-                                 (http-read (diff/contents-url revision spec) "application/vnd.github+json"
+                                 (http-read (diff/contents-url revision spec) "application/json"
                                             [:github/diff-source revision selected attempt side]
                                             [:github/diff-file-failed revision selected attempt])
                                  [:github/diff-source revision selected attempt side

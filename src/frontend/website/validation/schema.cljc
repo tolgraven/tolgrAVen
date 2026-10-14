@@ -63,7 +63,10 @@
     :motion-seen [:map-of :any :boolean]
     :form-field form-fields
     :scroll-position [:map-of [:maybe c/named] number?]
-    :scroll (optional-map {:at-bottom :boolean, :past-top :boolean, :block :boolean})
+    :scroll (optional-map {:at-bottom :boolean
+                           :past-top :boolean
+                           :block :boolean
+                           :component-focus navigation/component-focus})
     :settings #?(:module/settings settings/state :default nil)
     :document (optional-map {:title :?string})
     :content content/state

@@ -10,6 +10,12 @@ implementation in `src/frontend/website/modules/<module>/`, also on the JVM sour
   stylesheet convention when no explicit override is needed. See `doc/styles.md`.
 - Module `pages.cljc` exports a native Reitit route tree and may contain nested or
   multiple pages. Do not require module implementation namespaces from it.
+  Portable `routes.cljc` fragments can declare component destinations. Mount them
+  with `navigation/component-routes` under a named host page; retain typed native
+  parameters and complete matching instead of parsing unmatched URL prefixes.
+  `:document-target` declares a constant target ID or a prefix plus selection
+  parameter for positioning cold SSR before its document entrance. It is data,
+  consumed by `page/document-target` and the standalone native document gate.
 - Public data plans are adapter-independent. Server reads and managed browser
   subscriptions consume the same filters, projections, batching and row shape.
 - Preserve EDN keys/types in persistence contracts. JSON is converted and normalized
@@ -51,7 +57,11 @@ implementation in `src/frontend/website/modules/<module>/`, also on the JVM sour
   shell opts out with `:container false`.
 
 - Module specs own literal `:bundle/depends-on` and `:site/owner`; namespace
-  metadata is rejected. Source-only defaults in `build/packaging.clj` are shared
+  metadata is rejected.
+  `:site/requires` adds literal capability prerequisites for views shared by two
+  owners, such as Blog's Search preview. Disabling either owner prunes its code,
+  styles and exports; it is separate from runtime bundle dependency ordering.
+  Source-only defaults in `build/packaging.clj` are shared
   with discovery: infer missing IDs from the parent of `.module` and existing
   `/css/website/modules/<id>.min.css` when `:styles` is absent. Matching SCSS also
   establishes ownership before generated output, so packaging/AOT and frontend agree. Explicit values

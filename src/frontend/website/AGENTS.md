@@ -111,6 +111,35 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   use `.cljs`; portable routes/data contracts use `.cljc` and must not require
   browser implementation namespaces. Shared platform contracts remain in `src/cljc`.
 - `navigation/` owns routing, preload, transition and scroll adapters and contracts.
+  Component destinations are complete native Reitit children mounted with
+  `navigation/component-routes`; `:page-route` retains the host page identity.
+  Coerced controllers activate the normal module loader after route commit;
+  loaded actions and committed target scrolling reject obsolete paths. See
+  `doc/component-routes.md`.
+  Focused blog comments use the shared public plan to reveal ancestry and roots
+  outside the paged window. Standalone comment routes acquire only their subtree
+  and a parent summary; quoted instances never claim a navigation target's DOM ID.
+  Subscription dependencies read already satisfied bindings synchronously, so
+  supplied SSR data and first hydration do not wait for browser acquisition.
+  Accepted navigation owns a path-scoped component-focus policy. Explicit link
+  intent reveals/scrolls its target; history restores its saved position and folds
+  even when a newly mounted target view becomes ready later.
+  Blog comment UI lives in `modules/blog/comment_views.cljs`, required only by
+  the `:feature/blog-comments` reader feature. Posts and comments share
+  `blog/presentation.cljc`; the blog page retains shell ownership. Comment action
+  links retain native hrefs and use owned hover/focus labels rather than title
+  attributes. Text collapse controls require measured truncation.
+  Shared composition, upload events/models and styles live under `markdown_editor/`;
+  post publishing, private drafts and library controls stay under `blog_editor/`.
+  Posts and comments use the Markdown editor's shared composer with explicit
+  enabled tools and a form path. Comment owners allow file uploads but never
+  subscribe to the server library or enable site components. Comment rendering
+  disables authored component parsing and raw HTML, including trusted authors.
+  Each editor lifetime owns its upload anchors and writes only its own form;
+  pending comment uploads block submission without blocking a post draft.
+  Comment links share the original corner action group with Reply/Edit. Preserve
+  the existing layout, typography, spacing and hover appearance when changing
+  navigation or data plumbing.
   `validation/schema.cljs` assembles browser/Node app-db sections from their owners;
   small single-use shell-state contracts stay inline there.
 - Image readiness callbacks use the shared picture lifecycle: notify only a decoded,
@@ -504,9 +533,13 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   `components/ui/*` owners. Call their components directly; do not re-export them
   from forwarding namespaces. Lazy interfaces own actual module acquisition.
 
-- `/blog/new-post` and its upload queue/UI belong to `:blog-editor`; the
-  independent lazy `:markdown-editor` owns the visual Markdown SDK. Canonical source and
-  media jobs remain in the existing form/event owner. Published authored tags use
+- `/blog/new-post`, drafts, publishing and the server image library belong to
+  `:blog-editor`. The independent lazy `:markdown-editor` owns the shared composer,
+  visual SDK and owner-scoped upload queue/UI; comments must work when post
+  authoring is disabled. Canonical source and media jobs remain in the existing
+  form/event owner. Comments allow file uploads through `/api/supabase/comment-media`
+  without library access or site-component insertion. Both previews acknowledge
+  decoded images through the shared preview adapter. Published authored tags use
   the same public `:markdown-components` views and data-only argument contract;
   never compile/evaluate MDX or expose private state paths. See `doc/markdown-authoring.md`.
 
@@ -558,3 +591,6 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   optional `/neovim/github/:user/:repo/:sha` views own cached revision reads and
   readonly native diffs. Crossing the isolation boundary uses document navigation;
   disabled Neovim sites retain the basic viewer and no editor assets.
+  Commit rows retain native external/permalink links without nested anchors;
+  row intent dispatches the GitHub-owned document effect. Feed query resets keep
+  immutable detail caches and separately keyed revision-viewer state independent.

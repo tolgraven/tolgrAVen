@@ -1,0 +1,16 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Markdown authoring regressions</title>
+<link rel="stylesheet" href="/css/website/main.min.css">
+<link rel="stylesheet" href="/css/website/modules/blog.min.css">
+<link rel="stylesheet" href="/css/website/modules/blog-editor.min.css">
+<body>
+<script src="/js/test.js"></script>
+<script>
+const run = shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1;
+shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1 = env =>
+  shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$2(env,
+    /^website\.(markdown-components|blog-editor|blog-editor-anchors|blog-draft|markdown-upload-tree)-test$/);
+shadow.test.browser.init();
+</script>
+</body>

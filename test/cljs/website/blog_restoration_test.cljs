@@ -15,6 +15,7 @@
             [website.modules.blog.comments :as comments]
             [website.ssr.contract :as contract]
             [website.modules.blog.views :as blog]
+            [website.modules.blog.comment-views :as comment-views]
             [website.component.storage :as storage]
             [website.component.storage-disk :as heavy-disk]
             [website.component.restore :as restore]
@@ -129,7 +130,7 @@
                                     :comments/adding? (r/atom false)
                                     (original q)))
                                  ([q _] (original q)))]
-                 (await! (support/render! root [blog/<comments-section> {:post {:id 28}}]))
+                 (await! (support/render! root [comment-views/<comments-section> {:post {:id 28}}]))
                  (is (= 5 (.-length (.querySelectorAll element ".blog-comment-title")))
                      "Restored roots are visible in the first commit")
                  (is (.contains (.-classList (.querySelector element ".blog-comments")) "appeared"))
@@ -389,7 +390,7 @@
 (deftest folded-reply-placeholder-reserves-its-height-before-mount
   (let [context @restore/*context]
     (try (restore/begin! {:hydrate? true})
-         (let [html (r/render-to-string [blog/<collapsed-reply-view>
+         (let [html (r/render-to-string [comment-views/<collapsed-reply-view>
                                               {:path [27 1], :reply-count 2}])]
            (is (string/includes? html "max-height:3rem"))
            (is (string/includes? html "hidden replies")))

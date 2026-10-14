@@ -1,4 +1,4 @@
-(ns website.modules.blog-editor.upload-bridge
+(ns website.modules.markdown-editor.upload-bridge
   "SDK-required Promises observe the existing serialized event queue; no transport here."
   (:require [website.react :as r]))
 
