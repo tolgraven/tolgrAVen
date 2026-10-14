@@ -27,7 +27,9 @@ pending requests. A failed shared bundle is retried once per section so one
 unavailable section only rejects its own consumers; successful content remains
 cached. A single failed section exposes the existing retry notice. During a CMS
 outage this isolation adds at most one request per queued section, with the same
-bounded timeout. Failures release pending entries so retries can succeed. Auto-layout sections have
+bounded timeout. The CMS managed adapter allows 31 seconds for both 15-second
+transport attempts and queue settlement; explicit dependency timeouts override
+that budget. Other sources keep their 15-second default. Failures release pending entries so retries can succeed. Auto-layout sections have
 content sentinels that prefetch within 800 pixels of the viewport. Prefetch only
 loads data; it does not initialize a module or cause authenticated writes.
 

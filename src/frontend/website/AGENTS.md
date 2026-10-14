@@ -522,3 +522,6 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Optional modules own their dependency failures and retries. Failed shared CMS
   batches isolate section requests before rejecting consumers; keep successful
   section caches and unrelated module acquisition intact.
+- Managed source adapters may declare a default `:timeout-ms`; an explicit
+  dependency timeout takes precedence. The CMS adapter budgets both transport
+  attempts plus queue settlement so isolation cannot strand a healthy module.

@@ -13,6 +13,10 @@
     [website.component.storage :as storage]
     [website.component.restore :as restore]))
 
+(def request-timeout-ms 15000)
+;; Two bounded transport attempts plus the shared queue/settlement margin.
+(def acquisition-timeout-ms (+ (* 2 request-timeout-ms) 1000))
+
 (def cache-options {:scope :public :version contract/version :ttl-ms 1800000})
 
 (defonce *pending (atom {}))
@@ -40,7 +44,7 @@
    (fn [resolve reject]
      (ajax/GET (if (= (set ks) (set contract/sections)) "/api/content/bootstrap"
                   (str "/api/content?keys=" (js/encodeURIComponent (string/join "," (map name ks)))))
-               {:timeout 15000 :response-format (ajax/json-response-format {:keywords? true})
+               {:timeout request-timeout-ms :response-format (ajax/json-response-format {:keywords? true})
                 :handler (fn [bundle]
                            (if (valid-bundle? bundle ks)
                              (do (r/dispatch-sync [:content/install bundle])
