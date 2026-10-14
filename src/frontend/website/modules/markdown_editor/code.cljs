@@ -4,6 +4,7 @@
             [website.macros :refer-macros [defc]]
             [website.react :as r]
             [website.modules.highlight.code-block :as code-block]
+            ["lexical" :refer [$setSelection]]
             ["@mdxeditor/editor" :as editor]))
 
 (defc ^:private <code-editor> [{:keys [code language meta focusEmitter]}]
@@ -12,10 +13,14 @@
         publish-focus! (editor/usePublisher editor/editorInFocus$)
         on-focus! (r/use-callback
                     (fn [_]
+                      ;; Like the SDK's native code editor, release the outer
+                      ;; Lexical selection before its update can reclaim focus
+                      ;; from the textarea's own caret/selection.
+                      (.update (.-parentEditor context) (fn [] ($setSelection nil)))
                       (publish-focus! #js {:editorType "codeblock"
                                           :rootNode (.-lexicalNode context)
                                           :editorRef (.-current *input)}))
-                    [publish-focus! (.-lexicalNode context)])]
+                    [publish-focus! (.-lexicalNode context) (.-parentEditor context)])]
     ;; The SDK selects newly inserted decorator nodes through this native emitter.
     ;; It has one callback slot; clearing that slot releases the owned DOM ref.
     (r/use-effect

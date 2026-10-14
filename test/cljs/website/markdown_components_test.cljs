@@ -177,6 +177,10 @@
   (async done
     (let [element (.createElement js/document "div")
           *changes (atom [])
+          *text (r/atom "```cljs sample\n\ufeff(defn yada [] [])\u200b\n```")
+          *echo? (atom true)
+          *earlier-export (atom nil)
+          *document-id (r/atom "initial")
           *root (atom nil)
           change! (fn [selector value]
                     (let [input (.querySelector element selector)
@@ -190,10 +194,16 @@
       (-> (support/create-root! element)
           (.then (fn [root]
                    (reset! *root root)
-                   (support/render! root [rich/<editor> {:text "```cljs sample\n\ufeff(defn yada [] [])\u200b\n```"
-                                                       :on-change #(swap! *changes conj %)}])))
+                   (support/render! root [(fn []
+                                            [rich/<editor> {:text @*text
+                                                            :document-id @*document-id
+                                                            :on-change (fn [text']
+                                                                         (swap! *changes conj text')
+                                                                         (when @*echo? (reset! *text text')))}])])))
           (.then (fn [_] (support/wait-for! #(.querySelector element ".code-block-input"))))
+          (.then (fn [_] (.focus (.querySelector element "[contenteditable=true]")) (support/settle!)))
           (.then (fn [_]
+                   (.focus (.querySelector element ".code-block-input"))
                    (is (.querySelector element ".code-block .code-wrap"))
                    (is (= "(defn yada [] [])" (.-value (.querySelector element ".code-block-input")))
                        "The textarea receives clean source, never display-only characters")
@@ -205,6 +215,8 @@
                    (change! ".code-block-input" "\u0007(+\u200b 3 4)\ufeff")))
           (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(+ 3 4)"))))
           (.then (fn [_]
+                   (is (identical? (.-activeElement js/document) (.querySelector element ".code-block-input"))
+                       "An accepted code edit preserves native focus after the outer Lexical selection")
                    (is (string/includes? (last @*changes) "```cljs sample") "Formatting aliases never rewrite the authored fence tag")
                    (is (not (re-find #"[\u0007\u200b\ufeff]" (last @*changes)))
                        "Pasted artifacts are removed before the SDK saves Markdown")
@@ -237,7 +249,51 @@
                          code-node (some #(when (= "code" (.-type %)) %) (array-seq (.-children tree)))]
                      (is (= "auto" (.-lang code-node)))
                      (is (= "title=Example" (.-meta code-node)) "Auto detection retains metadata on a Markdown round trip"))
-                   (is (= "Language: Auto detect" (.getAttribute (.querySelector element ".code-language") "title")))))
+                   (is (= "Language: Auto detect" (.getAttribute (.querySelector element ".code-language") "title")))
+                   (reset! *echo? false)
+                   (change! ".code-block-input" "(first)")))
+          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(first)"))))
+          (.then (fn [_]
+                   (reset! *earlier-export (last @*changes))
+                   (change! ".code-block-input" "(second)")))
+          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(second)"))))
+          (.then (fn [_]
+                   (reduce (fn [pending index]
+                             (.then pending
+                               (fn [_]
+                                 (let [code (str "(burst " index ")")]
+                                   (change! ".code-block-input" code)
+                                   (support/wait-for! #(string/includes? (or (last @*changes) "") code))))))
+                           (js/Promise.resolve nil) (range 100))))
+          (.then (fn [_] (reset! *text @*earlier-export) (support/settle!)))
+          (.then (fn [_]
+                   (is (= "(burst 99)" (.-value (.querySelector element ".code-block-input")))
+                       "An old echo cannot replace newer input after sustained delayed acknowledgement")
+                   (reset! *text (last @*changes))
+                   (support/settle!)))
+          (.then (fn [_]
+                   (reset! *echo? true)
+                   (reset! *text "```cljs\n(external replacement)\n```")
+                   (support/wait-for! #(= "(external replacement)" (.-value (.querySelector element ".code-block-input"))))))
+          (.then (fn [_] (is (= "(external replacement)" (.-value (.querySelector element ".code-block-input")))
+                            "External document changes still replace SDK content")
+                   (reset! *echo? false)
+                   (change! ".code-block-input" "(pending)")))
+          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(pending)"))))
+          (.then (fn [_]
+                   (reset! *text @*earlier-export)
+                   (reset! *document-id "restore-earlier-revision")
+                   (support/wait-for! #(= "(first)" (.-value (.querySelector element ".code-block-input"))))))
+          (.then (fn [_] (is (= "(first)" (.-value (.querySelector element ".code-block-input")))
+                            "A document identity change deliberately restores even an earlier exported value")
+                   (change! ".code-block-input" "(temporary)")))
+          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(temporary)"))))
+          (.then (fn [_] (change! ".code-block-input" "(first)") (support/settle!)))
+          (.then (fn [_]
+                   (reset! *text "```cljs\n(normal external)\n```")
+                   (support/wait-for! #(= "(normal external)" (.-value (.querySelector element ".code-block-input"))))))
+          (.then (fn [_] (is (= "(normal external)" (.-value (.querySelector element ".code-block-input")))
+                            "Returning to unchanged parent content acknowledges edits without a document-ID change")))
           (.catch #(is false (str %)))
           (.finally (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))
 

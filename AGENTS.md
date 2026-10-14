@@ -68,6 +68,8 @@ sessions' tabs and restore any borrowed tab when finished.
   it as soon as that check finishes. Close every completed task-created tab/window
   promptly, including older test runners; never quit Chrome or close user-owned
   tabs or another session's still-needed checks. Relay this rule to active subagents.
+  Close task pages before waiting for builds, reviews or provider availability;
+  reopen one only when browser checks resume. Do not retain idle test windows.
 - Cleanup is part of completion, not an optional later pass. After merge and local
   integration, stop only owned verification servers, remove finished isolated output
   snapshots, and retire the task worktree and its compiler caches. Preserve active

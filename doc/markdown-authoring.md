@@ -102,6 +102,14 @@ marks and directional controls before handing text to the backing textarea or
 exporting an edit. Tabs and line breaks remain, with native line endings normalized
 to LF; Unicode letters, combining marks and meaningful joiners remain intact.
 The highlight-only trailing-line marker never enters the editable source.
+The native input releases the surrounding Lexical selection on focus. Rich
+reconciliation rereads the managed `:text-query`, just like source mode. A single
+pending flag rejects parent values until the latest native edit is acknowledged.
+A reactive native-input revision also checks acknowledgement after undo returns
+to unchanged parent text; neither retains historical documents. To deliberately replace unacknowledged edits,
+change `:document-id` (also when restoring an earlier revision of the same post).
+After acknowledgement, ordinary external text updates still apply. Markdown
+passes through the parent's normal change event.
 
 Source mode does not implement another fenced-code rendering system.
 
