@@ -96,7 +96,7 @@
   [:<>
    [l/<loaded-assets> (:assets spec)]
 
-   (when chrome? [common/<header> @(r/subscribe [:content [:header]])])
+   (when chrome? [common/<header> @(r/subscribe [:content/view [:header]])])
    [:a {:name "linktotop" :id "linktotop"}]
 
    [ui-overlays/<zoom-to-modal> :fullscreen]
@@ -137,8 +137,8 @@
 
    (when chrome?
      [:<>
-      [common/<footer-full> @(r/subscribe [:content [:footer]])]
-      [common/<footer> @(r/subscribe [:content [:footer]])]])
+      [common/<footer-full> @(r/subscribe [:content/view [:footer]])]
+      [common/<footer> @(r/subscribe [:content/view [:footer]])]])
    (when-enabled :contact nil
      (let [open? @(r/subscribe [:state [:contact-form :show?]])]
        ;; The lazy host owns presence; its panel exists only while open/exiting.
@@ -148,6 +148,10 @@
               :load-on (if open? :immediate :event)
               :<loading> (if open? [:span {:role "status"} "Opening contact form…"] [:<>])})))
    [ui-notifications/<hud> (r/subscribe [:hud])]
+   (when-enabled :user nil
+     (let [editor @(r/subscribe [:get :state :content-editor])]
+       (when (or (:enabled? editor) (seq (:fields editor)))
+         (m/<> {:module :content-editor :view :toolbar :load-on :immediate}))))
    (when chrome? [common/<to-top>])
    ; [[:div.ripple-on-click
    ;    {:class (when click-evt "ripple")

@@ -5,6 +5,7 @@
 
 
             [website.content.client :as content]
+            [website.content.fields :as fields]
             [website.content.contract :as content-contract]
             [website.util :as util]
             #?(:module/supabase [website.supabase.runtime :as supabase-client])
@@ -53,6 +54,19 @@
       ;; CMS content. Its own module owns loading and error reporting.
       (when (and (seq ks) (not context/*server?*)) (r/dispatch [:content/load ks]))
       (r/make-reaction #(get-in @db (into [:content] path))))))
+
+(r/reg-sub :content/mode
+  (fn [db _]
+    (let [user (get-in db [:state :active-user])
+          editor (get-in db [:state :content-editor])]
+      (if (and (:enabled? editor) (= (:id user) (:owner editor))
+               (some #{"admins"} (:roles user))) :edit :view))))
+
+(r/reg-sub :content/view
+  (fn [[_ path]] [(r/subscribe [:content path]) (r/subscribe [:content/mode])])
+  (fn [[value mode] [_ path]]
+    ;; Shared configuration assets are maintained through Strapi's admin UI.
+    (fields/annotate value path (if (= :common (first path)) :view mode))))
 
 (r/reg-sub :state
   (fn [db [_ path]] ;change to path?
@@ -106,7 +120,7 @@
 
 (r/reg-sub :header-text
  :<- [:state [:is-personal]]
- :<- [:content [:header]]
+ :<- [:content/view [:header]]
  (fn [[is-personal header] [_ _]]
    (if is-personal
      (:text-personal header)

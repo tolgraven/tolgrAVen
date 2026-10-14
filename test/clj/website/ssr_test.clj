@@ -94,6 +94,45 @@
       (is (thrown? Exception (ssr/page! "/blog"))))
     (reset! ssr/*cache {})))
 
+(deftest inline-publication-expires-html-and-keeps-old-renders-out-of-new-cache
+  (let [immediate @content/*immediate
+        content-cache @content/*cache
+        page-cache @ssr/*cache
+        entered (promise)
+        release (promise)
+        reads (atom 0)]
+    (try
+      (reset! ssr/*cache {})
+      (reset! content/*immediate {:source "https://fixture.invalid"
+                                 :content {:blog {:heading {:title "Before"}}}})
+      (with-redefs [content/settings (constantly {:url "https://fixture.invalid"})
+                    config/env {:ssr {:cache-ttl-ms 3600000}}
+                    ssr/renderer-build (constantly 1)
+                    ssr/snapshot! (fn [uri _]
+                                    (let [snapshot {:path uri, :kind :blog, :posts []
+                                                    :content (content/immediate-content)}]
+                                      (when (= 1 (swap! reads inc)) (deliver entered true) @release)
+                                      snapshot))
+                    ssr/render-page! #(rendered-page % (get-in % [:content :blog :heading :title]))]
+        (let [old (ssr/page-async! "/blog")]
+          (is (= true (deref entered 2000 false)))
+          (content/install-edited! {:blog {:heading {:title "Saved"}}})
+          (let [current (concurrent/await! (ssr/page-async! "/blog") 2000)]
+            (is (= "Saved" (:html current)))
+            (is (ssr/cached? "/blog" nil)))
+          (deliver release true)
+          (is (= "Before" (:html (concurrent/await! old 2000))))
+          (is (= "Saved" (:html (ssr/page! "/blog"))))
+          (is (= 2 @reads) "An older completion cannot overwrite the new cache")
+          (content/install-edited! {:blog {:heading {:title "Saved again"}}})
+          (is (not (ssr/cached? "/blog" nil)))
+          (is (= "Saved again" (:html (ssr/page! "/blog"))))))
+      (finally
+        (deliver release true)
+        (reset! content/*immediate immediate)
+        (reset! content/*cache content-cache)
+        (reset! ssr/*cache page-cache)))))
+
 (deftest public-cache-freshness-bounds-reads-and-expires-without-validating-errors
   (let [*reads (atom 0)
         *renders (atom 0)

@@ -7,6 +7,7 @@
     [website.component.visibility :as visibility]
     [clojure.string :as string]
     [website.content.schema :as content]
+    [website.content.fields :as fields]
     [website.media.schema :as media-schema]
     [website.macros :refer-macros [defc]]
     [website.components.image.sources :as sources]
@@ -261,7 +262,7 @@
      ^{:key :preview} [<preview-layer> preview-attrs])
    ^{:key :final} [<source-picture> final-attrs]])
 
-(defc <picture>
+(defc ^:private <picture-body>
   "Render responsive modern sources with original recovery. Different candidates
    overlap for 150ms after final decode; matching candidates use a single layer.
    The initial document owns its upgrade through hydration, without replay."
@@ -491,11 +492,22 @@
 
         :else [<source-picture> (dissoc attrs' :on-visible-ready)])))))
 
+(defc <picture>
+  "Responsive picture with an inline replacement control for editable CMS media."
+  [attrs :- attrs-schema]
+  (let [path (fields/path attrs [:src])
+        candidate (when (and path (fields/editing? attrs))
+                    @(r/subscribe [:get :state :content-editor :fields (pr-str path)]))
+        draft (fields/current-draft candidate attrs)
+        attrs' (if (and draft (not= (:expected draft) (:value draft)))
+                 (-> attrs (dissoc :asset :renditions :placeholder) (assoc :src (:value draft))) attrs)]
+    [fields/<image> attrs [<picture-body> (dissoc attrs' :cms-src)] (boolean (seq (:src attrs')))]))
+
 (defc <media-as-bg>
   "Generate picture element optimized for use as background media.
    Adds common background styling attributes."
   [{:keys [src alt class] :as attrs} :- attrs-schema]
-  (let [combined-attrs (merge {:loading "lazy"} attrs
+  (let [combined-attrs (with-meta (merge {:loading "lazy"} attrs
                               {:alt (or alt "")
-                               :class (str "media media-as-bg " (or class ""))})]
+                               :class (str "media media-as-bg " (or class ""))}) (meta attrs))]
     [<picture> combined-attrs]))

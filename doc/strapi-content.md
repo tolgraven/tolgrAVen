@@ -1,5 +1,85 @@
 # Strapi content, module dependencies and SSR preparation
 
+## In-site editing
+
+Administrators open **Edit site content** from the account panel. The same panel
+links to **Strapi admin**, where site configuration, content structure, section
+selection and ordering remain managed. Ordinary visitors render native headings,
+paragraphs, spans and responsive pictures. In edit mode, text fields retain their
+typography and pictures retain their pixels with a corner replacement control.
+The toolbar stays available after closing the account panel. **Save changes**
+publishes the changed fields; **Discard changes** restores their loaded values.
+Failed saves retain the draft and show the actual recovery message. Conflicts
+install the latest public value while keeping the draft; **Use latest value**
+discards only that field's draft so it can be reviewed and edited again.
+
+`:content/view` wraps the existing managed content subscription, preserving its
+Clojure values and adding field path/mode metadata to maps and vectors. Renderers
+use `website.content.fields` for text and preserve metadata when merging media
+props. The lazy `content-editor` module owns account-bound re-frame drafts,
+authenticated request effects and existing media upload/status events. These
+drafts remain in memory; reloading discards unsaved edits. Signing out or changing
+accounts disables editing and prevents old asynchronous completions from applying.
+
+`GET /api/content/editor` returns only the administrator's public admin link and
+write availability. `PUT /api/content/field` verifies the session with Auth and
+checks the current `auth_roles` record before using the separate server-private
+`STRAPI_WRITE_TOKEN`. The CMS counterpart accepts `CMS_WRITE_TOKEN`; a read token
+cannot write. Provisioning's prepare/wire flow creates and wires that token.
+An optional `STRAPI_ADMIN_URL` sets a different public admin origin. When write
+configuration is missing, public content continues normally and the account
+panel explains why inline editing is unavailable.
+
+The CMS endpoint allows specific text/image leaves, compares their loaded values,
+serializes section writes inside a database transaction, and updates only the owning stored field. Component IDs,
+unrelated properties and media relations survive edits. Replacing an image clears
+the old relation so it cannot override the replacement source. The site's existing
+durable media pipeline converts/uploads still images before a replacement becomes
+a saveable draft. Enriched pictures keep their original CMS source in `:cms-src`
+for conflict checks; it never enters native image markup. Saved sections update
+the shared cache/shell immediately and win over older pending refreshes.
+They also expire cached SSR HTML immediately; older renders cannot overwrite the
+new publication's page cache. Existing browser history returns retain their saved
+view state; a fresh network document uses the newly published content.
+
+The Strapi image must include `/api/site-content/field` before enabling the web
+write token. Disabling that token turns off inline writes without changing public
+content or requiring a content migration. The browser saves fields sequentially
+and installs each response before the next write, preventing old section responses
+from replacing later saves.
+
+CV timeline rows expose **Add entry** in edit mode. Choose **Regular box** for a
+role, course or other individual entry; choose **Timeline container** for a
+grouping. Containers have their own title, description and main logo, plus child
+logo/color tiles. Opening one shows a mini timeline using the same box types and
+date axis as the main timeline. Every new container starts with a regular
+**New entry** child that can be edited immediately, including a first detail line
+when its body is empty. **Zoom back out**, Escape or
+the surrounding backdrop returns to the containing timeline.
+
+Expanded boxes stay centered in the viewport. The owned portal measures the
+clicked box and animates from its bounds, then measures its current bounds again
+on closing. Nested surfaces retain their parent underneath. Reduced-motion
+preferences skip the motion. A regular box opens its own details; only a
+container opens a child timeline. Nesting is bounded to six levels.
+
+`POST /api/content/cv-entry` uses the same fresh administrator check and private
+write token as field writes. It accepts bounded dates/text, a regular/container
+kind and a selected parent chain. The CMS verifies parent identities and the
+original entry count under the section transaction. Reordering or an uncertain
+success response produces a conflict rather than creating an entry in another
+parent or repeating it. Other inline drafts must be saved or discarded first;
+inputs remain disabled while creation is pending.
+
+Deploy the companion CMS schema/endpoints before the web write token. Root CV
+entries remain Strapi components; bounded JSON holds their nested children without
+recursive component definitions. Existing entries default
+to regular boxes and their component/media IDs are preserved. Disabling the write
+token stops editing while keeping all saved content and containers readable.
+For rollback, disable writes while retaining the upgraded CMS schema. Back up the
+CMS database before removing its container fields; an older schema can discard
+persisted child timelines.
+
 The web app's public `:content` comes from the Clojure backend. Static editorial
 content has moved out of `db.cljs`; only UI state, routes and options remain there.
 On a client-rendered page load the browser installs only the shared shell

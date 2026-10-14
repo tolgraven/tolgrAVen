@@ -1,5 +1,12 @@
 # Browser and renderer implementation
 
+- CV expansion uses a body portal because the scrolling/transformed timeline
+  clips fixed descendants. The portal owns bounds/focus, cancellable frame and
+  transition cleanup; declarative styles animate from the source to viewport
+  center and back. Container boxes render a separate mini timeline with child
+  logo/color glyphs; regular boxes render their own details. Empty details expose
+  a first editable line only in edit mode, using the existing scalar write path.
+
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/ssr.md`, and `doc/dev-console.md`.
 
@@ -20,6 +27,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   navigation and secondary controls available in the workspace menu.
 
 ## Implementation priority: Reagent and re-frame
+- Editable CMS presentation consumers use `:content/view`. `content/fields.cljs`
+  preserves native view elements and carries paths/mode in Clojure metadata;
+  preserve it when merging media props. The lazy `content-editor` owns account-bound
+  drafts, authenticated writes and media status events. Keep configuration and
+  arbitrary field changes in Strapi admin.
 
 - Activity calendar tooltips mount only during hover/focus and release their
   portal, managed day dependency and scoped listeners immediately on exit.

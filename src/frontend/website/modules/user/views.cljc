@@ -185,6 +185,8 @@
 
      [:div.user-change-options
       {:style {:position :relative}}
+      (when admin?
+        (m/<> {:module :content-editor :view :controls :load-on :immediate}))
       [:span "Change "]
       [section-btn "Username"  :username :change-username]
       [section-btn "Password"  :password :change-password]

@@ -1,4 +1,12 @@
 # Server adapters
+- CMS editor endpoints verify the Auth session and current administrator role
+  before acquiring Strapi. Writes use a separate private token, bounded requests
+  without redirects, and shared field/CV creation contracts. Disabled CV sites
+  expose no CV creation route. Installing saved sections must
+  retain their authoritative cache/shell state across older in-flight reads and refreshes.
+- Inline content publications also advance the source-owned SSR cache revision.
+  New page requests use the new revision; older in-flight renders cannot replace
+  its cache entry. Keep that identity server-only, outside public snapshots.
 
 - Search delivery reads module-owned public projections through the private
   durable queue. Keep Typesense credentials server-only; acknowledge only each

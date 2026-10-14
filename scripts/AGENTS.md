@@ -96,6 +96,11 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   it only in the CPU controller's Docker snapshot after real production outputs;
   it does not start the application or prove deployment behavior.
 
+- The browser fixture server's optional `--editor-cms-origin` accepts only a
+  disposable loopback CMS. Its private fixture tokens proxy field/CV writes and
+  optional live fixture reads. Upload status is simulated there; it does not
+  establish Storage/codec publication or production session authorization.
+
 - `dev/cleanup.py` defaults to a report. Applied worktree retirement requires an
   exact merged PR head, no open follow-up, clean source and no process using the
   target. Preserve the main checkout and detached/ambiguous work; archive ignored

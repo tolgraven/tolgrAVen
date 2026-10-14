@@ -83,7 +83,7 @@
         route @(r/subscribe [:common/route])
         target (get routes/targets id)
         arguments (cond-> []
-                    content (conj @(r/subscribe [:content [content]]))
+                    content (conj @(r/subscribe [:content/view [content]]))
                     args (conj args))]
     ;; The managed content dependency has resolved before this body mounts.
     ;; Its native section root exists after commit, including a delayed SPA load.

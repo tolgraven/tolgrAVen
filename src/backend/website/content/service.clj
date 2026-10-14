@@ -37,7 +37,8 @@
         (let [enriched (walk/postwalk
                          (fn [node]
                            (if-let [asset (and (map? node) (get assets (:src node)))]
-                             (merge node (select-keys asset [:src :width :height :renditions :placeholder]) {:asset asset})
+                             (merge node (select-keys asset [:src :width :height :renditions :placeholder])
+                                    {:asset asset, :cms-src (:src node)})
                              node)) value)
               owned (select-keys assets (sources key))]
           [key (if (and (map? enriched) (seq owned))
@@ -70,7 +71,8 @@
    keep their last good sections without preventing other modules from loading."
   ([] (refresh-immediate! true))
   ([include-module-content?]
-   (let [source (:url (settings))
+   (let [original @*immediate
+         source (:url (settings))
          ks (pages/immediate-keys)
          shell-keys (set contract/shell-content)
          required (filterv shell-keys ks)
@@ -92,8 +94,34 @@
          value (merge (select-keys previous ks) shell modules)]
      (when (.isInterrupted (Thread/currentThread))
        (throw (InterruptedException. "Module startup content refresh interrupted")))
-     (reset! *immediate {:source source, :content value})
-     value)))
+     ;; An inline save can finish while the refresh is reading Strapi. Its
+     ;; authoritative snapshot must win over this older request.
+     (if (compare-and-set! *immediate original
+                          (cond-> {:source source, :content value}
+                            (and (= source (:source original)) (:edit-revision original))
+                            (assoc :edit-revision (:edit-revision original))))
+       value (:content @*immediate)))))
+
+(defn install-edited! [sections]
+  (let [source (:url (settings))
+        now (System/currentTimeMillis)]
+    (locking *cache
+      (swap! *cache update source
+             #(reduce-kv (fn [entries k value] (assoc entries k {:at now, :value value}))
+                         (or % {}) sections))
+      (swap! *immediate
+             (fn [snapshot]
+               (if (= source (:source snapshot))
+                 (-> snapshot
+                     (update :content merge sections)
+                     (update :edit-revision (fnil inc 0))) snapshot))))))
+
+(defn edit-revision
+  "Server-only cache identity: configured source plus its inline publication count."
+  []
+  (let [source (:url (settings))
+        snapshot @*immediate]
+    [source (if (= source (:source snapshot)) (or (:edit-revision snapshot) 0) 0)]))
 
 (defn immediate-content []
   (let [{:keys [source content]} @*immediate]
@@ -155,7 +183,7 @@
                       (reduce-kv (fn [entries k value]
                                    ;; A newer overlapping read may have finished
                                    ;; first. Do not overwrite its cached snapshot.
-                                   (if (> (get-in entries [k :at] 0) now)
+                                   (if (>= (get-in entries [k :at] 0) now)
                                      entries (assoc entries k {:at now, :value value})))
                                  (or cached {}) fresh))))
            (deliver pending {:content fresh}))

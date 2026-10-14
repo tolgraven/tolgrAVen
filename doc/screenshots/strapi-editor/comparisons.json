@@ -1,0 +1,250 @@
+{
+  "baseline": "49d29ce0",
+  "browserAndSSRSource": "bb3fdc7b",
+  "finalStyles": "d58f430f",
+  "devicePixelRatio": 2,
+  "comparisons": [
+    {
+      "component": "intro",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "183.612 (3.75024e-05)",
+      "maxChannelDifference": 2.0,
+      "exact": false
+    },
+    {
+      "component": "services",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "632.545 (0.000129196)",
+      "maxChannelDifference": 2.0,
+      "exact": false
+    },
+    {
+      "component": "story",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "4061.36 (0.000829526)",
+      "maxChannelDifference": 3.0,
+      "exact": false
+    },
+    {
+      "component": "moneyshot",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "140.722 (2.87422e-05)",
+      "maxChannelDifference": 2.0,
+      "exact": false
+    },
+    {
+      "component": "interlude",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "305.497 (6.23972e-05)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "gallery",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "61.2392 (1.2508e-05)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "header",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "0 (0)",
+      "maxChannelDifference": 0.0,
+      "exact": true
+    },
+    {
+      "component": "footer",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "566.697 (0.000115747)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "sticky-footer",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "690.635 (0.000141061)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "post-footer",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "654.864 (0.000133755)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "cv",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "550.86 (0.000112512)",
+      "maxChannelDifference": 3.0,
+      "exact": false
+    },
+    {
+      "component": "blog-heading",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "397.579 (8.12049e-05)",
+      "maxChannelDifference": 2.0,
+      "exact": false
+    },
+    {
+      "component": "docs-heading",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "619.055 (0.000126441)",
+      "maxChannelDifference": 2.0,
+      "exact": false
+    },
+    {
+      "component": "image",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "389.069 (7.94668e-05)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "admin",
+      "viewportWidth": 1360,
+      "dimensions": "2720x1800",
+      "absoluteErrorMetric": "628.671 (0.000128405)",
+      "maxChannelDifference": 3.0,
+      "exact": false
+    },
+    {
+      "component": "intro",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "276.356 (0.000209895)",
+      "maxChannelDifference": 2.0,
+      "exact": false
+    },
+    {
+      "component": "services",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "97.1908 (7.38173e-05)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "story",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "894.686 (0.000679522)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "moneyshot",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "195.292 (0.000148326)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "interlude",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "341.637 (0.000259476)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "gallery",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "27.3451 (2.07688e-05)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "header",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "0 (0)",
+      "maxChannelDifference": 0.0,
+      "exact": true
+    },
+    {
+      "component": "footer",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "877.583 (0.000666532)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "sticky-footer",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "901.048 (0.000684354)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "post-footer",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "888.427 (0.000674769)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "cv",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "215.295 (0.000163519)",
+      "maxChannelDifference": 2.0,
+      "exact": false
+    },
+    {
+      "component": "blog-heading",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "336.468 (0.00025555)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "docs-heading",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "336.468 (0.00025555)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "image",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "468.09 (0.000355519)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    },
+    {
+      "component": "admin",
+      "viewportWidth": 390,
+      "dimensions": "780x1688",
+      "absoluteErrorMetric": "907.281 (0.000689088)",
+      "maxChannelDifference": 1.0,
+      "exact": false
+    }
+  ],
+  "note": "All before/after pairs were visually inspected at their native viewport. Layout, text and imagery match; raw raster differences are at most 3 of 255 per channel. The header fixture initializes the existing history router and asserts rendered header presence. No error-boundary screenshots are included.",
+  "headerFixtureSource": "980b6638"
+}

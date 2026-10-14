@@ -8,9 +8,17 @@
             #?(:clj [website.build.site :refer [when-enabled]]))
   #?(:cljs (:require-macros [website.build.site :refer [when-enabled]])))
 
-(def media (c/optional-map {:src :string :alt :string :poster :string :title :string
-                           :playsInline :boolean :autoPlay :boolean :muted :boolean
-                           :loop :boolean :controls :boolean :width [:or number? :string]
+(def media (c/optional-map {:src :string
+                           :cms-src :string
+                           :alt :string
+                           :poster :string
+                           :title :string
+                           :playsInline :boolean
+                           :autoPlay :boolean
+                           :muted :boolean
+                           :loop :boolean
+                           :controls :boolean
+                           :width [:or number? :string]
                            :height [:or number? :string]
                            :asset media-schema/asset
                            :renditions media-schema/renditions
@@ -23,11 +31,23 @@
                              :bg media :tint :string}))
 (def link (c/optional-map {:id c/id :name :string :href :string :info :string :icon :string}))
 (def menu-item [:and vector? [:cat :string :string [:? [:maybe c/named]]]])
-(def timeline-item
-  (c/optional-map {:from [:or number? :string] :to [:?or number? :string]
-                   :what :string :where :string :how c/strings :logo :string :color :string}))
+(defn- timeline-item-schema [depth]
+  (c/optional-map {:id [:or :int :string]
+                   :from [:or number? :string]
+                   :to [:?or number? :string]
+                   :what :string
+                   :position :string
+                   :where :string
+                   :how c/strings
+                   :logo :string
+                   :color :string
+                   :level [:int {:min 0}]
+                   :kind [:enum "regular" "container"]
+                   :children (if (zero? depth) [:vector {:max 0} :map]
+                               [:vector {:max 1000} (timeline-item-schema (dec depth))])}))
+(def timeline-item (timeline-item-schema 6))
 (def timeline-column
-  (c/optional-map {:category c/named :icon :string :height-ratio number?
+  (c/optional-map {:id :int :category c/named :icon :string :height-ratio number?
                    :things [:sequential timeline-item]}))
 (def cv-body
   (c/optional-map {:intro :string :caption :string :background-color-indexes [:sequential :int]

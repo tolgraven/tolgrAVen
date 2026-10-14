@@ -42,6 +42,8 @@
  ;; Once configured, CMS failures are errors, not a fallback to seed content.
  ;; :strapi-url "https://cms.example.com"
  ;; :strapi-read-token "PRIVATE-SERVER-READ-TOKEN"
+ ;; :strapi-write-token "PRIVATE-SERVER-WRITE-TOKEN"
+ ;; :strapi-admin-url "https://cms.example.com/admin" ; public admin origin, if different
  ;; STRAPI_URL / STRAPI_READ_TOKEN override these; build-time CMS config
  ;; resolution uses those environment variables too.
 

@@ -2,10 +2,11 @@
   (:require [website.schema.http :as schemas]
             [website.supabase.schema :as store-schema]
             [website.supabase.auth :as supabase-auth]
-            [website.supabase.storage :as storage]))
+            [website.supabase.storage :as storage]
+            [website.content.editor :as editor]))
 
 (defn routes []
-  (vec (remove nil?
+  (into (editor/routes) (remove nil?
    [["/supabase/profile"
     {:get {:summary "Read the signed-in user's linked profile"
            :handler (fn [request]

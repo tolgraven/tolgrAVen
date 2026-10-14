@@ -13,6 +13,7 @@
     [website.component.restore :as restore]
     [website.components.media :as media]
     [website.components.image :as img]
+    [website.content.fields :as fields]
     [website.modules.home.layout :as layout]
     [website.components.ui.layout :as ui-layout]))
 
@@ -40,12 +41,14 @@
         *showing-title (r/atom (if restored? (count title) 0))
         letter-delays (title-delays-ms title)]
   [:section#intro {:data-restored (when restored? true)}
-   [media/<bg-logo> logo-bg (get (:image-assets spec) logo-bg)]
+   [media/<bg-logo> logo-bg (get (:image-assets spec) logo-bg) spec [:logo-bg]]
    [img/<media-as-bg> (merge (first bg) {:id "top-banner"
                                       :loading "eager"
                                       :fetchPriority "high"})]
    [:div.h1-wrapper.center-content
-    [:h1.h-responsive.h-intro
+    (if (fields/editing? spec)
+      [fields/<text> :h1.h-responsive.h-intro spec [:title]]
+      [:h1.h-responsive.h-intro
      {:aria-label (when document-enter? (apply str title))}
      (if document-enter?
        ;; All letters exist in SSR. CSS owns the original typing clock before
@@ -68,15 +71,22 @@
           (map-indexed
            (fn [i letter]
              ^{:key (str "intro-letter-" i)} [<intro-letter> {:letter letter}])
-           (take @*showing-title title)))])]]
-   (into [:<>] (ln->br text))
+           (take @*showing-title title)))])])]
+   (if (fields/editing? spec)
+     (into [:<>]
+           (map-indexed (fn [i _] [fields/<text> :p spec [:text] nil i])
+                        (string/split-lines text)))
+     (into [:<>] (ln->br text)))
    [:br]
    [:div.buttons
-    (for [[text what] buttons] ^{:key (str "intro-button-" text)}
-      [(if (string? what) :a.button.background :button.background)
-       (if (string? what) {:href what} {:on-click #(r/dispatch what)})
+    (for [[i [text what]] (map-indexed vector buttons)] ^{:key (str "intro-button-" i)}
+      [(cond (fields/editing? spec) :span.button.background
+             (string? what) :a.button.background
+             :else :button.background)
+       (when-not (fields/editing? spec)
+         (if (string? what) {:href what} {:on-click #(r/dispatch what)}))
        [:span {:class "blur-bg"}]
-       [:span text]])]])
+       [fields/<text> :span spec [:buttons i 0]]])]])
 
 
 (defc <portfolio> "GOT NO PPORTFOLIE" [])
@@ -88,7 +98,7 @@
   [])
 
 (defc <service-category> {:features [[:seen "zoom-x"]]}
-  [{:keys [title icon-name lines full-screened? on-click] :as spec}]
+  [{:keys [title icon-name lines full-screened? on-click content] :as spec}]
   ;; Preserve the existing category box: moving the transform onto its list
   ;; would change sizing and fullscreen transitions. Motion adds no extra DOM.
   [:div
@@ -99,17 +109,23 @@
            (when-enabled :icon-catalog nil
              (when (and (seq icon-name) (not (icon-catalog/names icon-name)))
                [loader/<trigger> {:module :icon-catalog :lead-pages 0.25}]))
-           [icon/<icon> "fas" icon-name {}] [:h2.service-title title]]]
-         (for [line lines] ^{:key (str "service-" title "-" line)} [:li line]))])
+           [icon/<icon> "fas" icon-name {}]
+           [fields/<text> :h2.service-title (or content [title icon-name lines]) [0]]]]
+         (for [[i line] (map-indexed vector lines)] ^{:key (str "service-" title "-" i)}
+           [fields/<text> :li (or content [title icon-name lines]) [2 i]]))])
 
 (defc <service-categories> [{:keys [categories] :as spec}]
   (let [{:keys [full-screened?]} @(r/subscribe [:state [:services]])]
     [:div#services>div.categories
      {:class (when full-screened? "categories-fullscreened")
       :on-click #(r/dispatch [:state [:services :full-screened?] nil])}
-     (for [[title icon-name lines] categories] ^{:key (str "service-" title)}
+     (for [[i [title icon-name lines :as category]] (map-indexed vector categories)] ^{:key (str "service-" i)}
        [<service-category>
-        {:title title :icon-name icon-name :lines lines :full-screened? full-screened?
+        {:title title
+         :icon-name icon-name
+         :lines lines
+         :content category
+         :full-screened? full-screened?
          :on-click (fn [event]
                      (.stopPropagation event)
                      (r/dispatch [:state [:services :full-screened?]
@@ -140,16 +156,18 @@
   [:section#section-services
     {:class "link-anchor stick-up section-with-media-bg-wrapper"} ; want to  focus elem to zoomy zoom slow after reaching scroll
     [:a {:name "link-services"}]
-     [ui-layout/<inset> caption 4] ;auto-gen
+     (if (fields/editing? spec)
+       [fields/<text> :p.caption-inset spec [:caption] {:class "bottom right"}]
+       [ui-layout/<inset> caption 4]) ;auto-gen
      [img/<media-as-bg>
-      (merge bg {:id "services-bg"
+      (merge (fields/media spec [:bg]) {:id "services-bg"
                  :class "darken-5 parallax-bg"})]
      [<service-categories> {:categories categories}]])
 
 
 (defc <story-body> {:features [[:seen {:threshold 0, :restore? false}]]} [content]
   [:section#about.anim-gradient-bg.noborder
-   [:h1 (:title content)]
+   [fields/<text> :h1 content [:title]]
    [:br]
    [layout/<auto-layout-text-imgs> content]
    [:br] [:br]])

@@ -1,61 +1,230 @@
 (ns website.modules.cv.views
   (:require
     [website.content.schema :as schema]
+    [website.content.fields :as fields]
     [website.media.schema :as media-schema]
+    [website.modules.cv.schema :as cv-schema]
     [website.component.registry]
     [clojure.string :as string]
     [website.react :as r]
 
     [website.components.image :as img]
+    [website.components.portal :as portal]
     [website.components.ui.controls :as ui-controls]
     [website.components.ui.layout :as ui-layout]
     [website.util :as util])
   (:require-macros
     [website.macros :as m]))
 
-;; IDEA: make it possible for a box to contain its own timeline of boxes, so tapping it, "zooms in"
-;; and can put like projects, roles/promotions, courses etc for that specific thing
-;; either as a full new timeline of same type, or inside the existing big box (that'd be made bigger)
-(m/defc <box> "One thing, accomplishment, employment, etc"
-  [{:keys [from to what position how where logo color] :as all} :- schema/timeline-item
-   pos :- [:or :string number?] size :- [:or :string number?] overlap-level :- :int & [asset] :- [:maybe media-schema/asset]]
-  (let [expanded? (r/atom false)
-        closing? (r/atom false)]
-    (fn [{:keys [from to what position how where logo color] :as all} pos size overlap-level & [asset]]
-      [:div.cv-detail
-       {:on-click (fn []
-                    (swap! closing? not)
-                    (js/setTimeout #(do (swap! expanded? not)
-                                        (swap! closing? not))
-                                   250))
-        :style (merge {:background-color color}
-                      {:left pos
-                       :top 0}
-                      (when-not @expanded?
-                        {:top (str (+ 2.5 (* 19 overlap-level)) "%")
-                         :width size}))
-        :class (str (when @expanded? "cv-detail-expanded ")
-                    (when @closing? "cv-detail-closing"))}
+(defn bounds [element]
+  (let [rect (.getBoundingClientRect element)]
+    {:left (.-left rect), :top (.-top rect), :width (.-width rect), :height (.-height rect)}))
+
+(defn origin-transform [{:keys [left top width height]} target-width target-height viewport-width viewport-height]
+  (str "translate(-50%, -50%) translate(" (* 100 (/ (- (+ left (/ width 2)) (/ viewport-width 2)) viewport-width)) "vw, "
+       (* 100 (/ (- (+ top (/ height 2)) (/ viewport-height 2)) viewport-height)) "vh) scale("
+       (/ width target-width) ", " (/ height target-height) ")"))
+
+(declare <box>)
+
+(defn parent-key [entry]
+  (js/JSON.stringify (clj->js (if (some? (:id entry)) [(:id entry)]
+                              [(:from entry) (:to entry) (:what entry)]))))
+
+(m/defc <group-logo> [entry :- schema/timeline-item asset :- [:maybe media-schema/asset]]
+  (when (or (seq (:logo entry)) (fields/editing? entry))
+    [img/<picture> (fields/image-attrs entry [:logo]
+                    {:src (:logo entry), :asset asset, :alt "Group logo", :class "cv-group-logo", :sizes "4rem"})]))
+
+(defn logo-src [logo asset]
+  (or (:src asset)
+      (if (re-find #"^(?:https?://|/)" (or logo "")) logo (str "../../" logo))))
+
+(m/defc <box-content> [all :- schema/timeline-item expanded? :- :boolean asset :- [:maybe media-schema/asset]]
+  (let [{:keys [from to what position how where logo]} all]
+    [:<>
        [:div.cv-bg-logo
         {:aria-hidden true
          :style (when-not (string/blank? logo)
-                  {:background-image (str "url(" (or (:src asset) (str "../../" logo)) ")")})}]
+                  {:background-image (str "url(" (pr-str (logo-src logo asset)) ")")})}]
        [:p.cv-from from]
        [:p.cv-to (if (= from to)
                    ""
                    (or to "current"))]
-       [:p.cv-what [:strong what]]
-       (if @expanded?
-         (for [item how]
-           [:p.cv-how [:i.fas.fa-arrow-right] item])
-         [:p.cv-position position])
-       [:p.cv-where where]
-       (when-not (string/blank? logo)
-         [img/<picture> {:src logo
+       [:p.cv-what [fields/<text> :strong all [:what]]]
+       (if expanded?
+         (for [[i item] (map-indexed vector (if (and (fields/editing? all) (empty? how)) [nil] how))]
+           ^{:key i} [:p.cv-how [:i.fas.fa-arrow-right]
+                     (if (fields/editing? all) [fields/<text> :span all [:how i]] item)])
+         [fields/<text> :p.cv-position all [:position]])
+       [fields/<text> :p.cv-where all [:where]]
+       (when (or (not (string/blank? logo)) (fields/editing? all))
+         [img/<picture> (fields/image-attrs all [:logo] {:src logo
                          :asset asset
                          :alt "Company logo"
                          :class "cv-logo-picture"
-                         :sizes (if @expanded? "8rem" "4rem")}])])))
+                         :sizes (if expanded? "8rem" "4rem")})])]))
+
+(m/defc <add-entry> [context :- cv-schema/zoom-context count :- :int]
+  (let [editor @(r/subscribe [:get :state :content-editor])]
+    [:button.cv-add-entry
+     {:disabled (or (fields/busy? editor) (some? (:cv-entry editor)) (>= count 1000)
+                    (> (:column context) 100) (not (#{"education" "work" "life"} (:category context))))
+      :title (when (>= count 1000) "This timeline has reached its entry limit.")
+      :on-click (fn [event]
+                  (.stopPropagation event)
+                  (r/dispatch [:content-editor/cv-open (:column context) (:category context) count
+                                (:parents context) (:parent-keys context) (:column-id context)]))}
+     "Add entry"]))
+
+(m/defc <container-label> [entry :- schema/timeline-item asset :- [:maybe media-schema/asset]]
+  [:<>
+   [:p.cv-from (:from entry)]
+   [:p.cv-to (or (:to entry) "current")]
+   [:p.cv-what [fields/<text> :strong entry [:what]]]
+   [fields/<text> :p.cv-position entry [:position]]
+   [<group-logo> entry asset]
+   [:div.cv-container-glyphs {:aria-hidden true}
+    (for [[index child] (map-indexed vector (take 6 (:children entry)))]
+      ^{:key (or (:id child) index)}
+      [:span.cv-container-glyph {:style {:background-color (or (:color child) "var(--fg-4)")}}
+       (if (seq (:logo child))
+         [img/<picture> {:src (:logo child), :alt "", :sizes "1.5rem"}]
+         [:span (subs (:what child) 0 (min 1 (count (:what child))))])])
+    (when (> (count (:children entry)) 6) [:span.cv-container-more "+" (- (count (:children entry)) 6)])]
+   [:p.cv-container-hint "↳ Open timeline"]])
+
+(m/defc <container-timeline> [entry :- schema/timeline-item asset :- [:maybe media-schema/asset]
+                             context :- [:maybe cv-schema/zoom-context]]
+  (let [children (:children entry)
+        current-year (.getUTCFullYear (js/Date.))
+        first-year (apply min (:from entry) (map :from children))
+        last-year (apply max (inc first-year) (or (:to entry) (inc current-year))
+                         (map #(or (:to %) (inc current-year)) children))
+        span (- last-year first-year)]
+    [:section.cv-mini-timeline
+     [fields/<text> :h2 entry [:what]]
+     [fields/<text> :p entry [:position]]
+     [<group-logo> entry asset]
+     [:p.cv-mini-range first-year "–" last-year]
+     (when (and context (fields/editing? entry) (<= (count (:parents context)) 6))
+       [<add-entry> context (count children)])
+     (if (seq children)
+       [:div.cv-boxes.cv-mini-scroll
+        [:div.cv-mini-track
+         [:div.cv-mini-axis
+          (for [year (range first-year (inc last-year) (if (> span 15) 5 1))]
+            ^{:key year} [:span {:style {:left (str (* 90 (/ (- year first-year) span)) "%")}} year])]
+         [:div.cv-items
+          {:style {:height (str (* 13 (inc (apply max 0 (map #(or (:level %) 0) children)))) "em")}}
+          [:h1 (or (:category context) "Timeline")]
+         (for [[index child] (map-indexed vector children)]
+           ^{:key (or (:id child) index)}
+            [<box> child
+             (str (* 90 (/ (- (:from child) first-year) span)) "%")
+             (str (max 12 (* 90 (/ (- (or (:to child) (inc current-year)) (:from child)) span))) "%")
+             (or (:level child) 0) nil
+             (when context (-> context (update :parents conj index) (update :parent-keys conj (parent-key child))))])]]]
+       (when (fields/editing? entry) [:p "Add projects, roles, courses or other entries inside this box."]))]))
+
+(m/defc <box-overlay> [entry :- schema/timeline-item asset :- [:maybe media-schema/asset]
+                      context :- [:maybe cv-schema/zoom-context] source origin :- cv-schema/bounds close! :- fn?]
+  (let [[phase set-phase!] (r/use-state :measuring)
+        [transform set-transform!] (r/use-state nil)
+        surface (r/use-ref nil)
+        closing (r/use-ref false)
+        transform-for (fn [origin]
+                        (let [style (js/getComputedStyle (.-current surface))]
+                          (origin-transform origin (js/parseFloat (.-width style)) (js/parseFloat (.-height style))
+                                            (.-innerWidth js/window) (.-innerHeight js/window))))
+        begin-close! (fn []
+                       (when-not (.-current closing)
+                         (set! (.-current closing) true)
+                         (set-transform! (transform-for (bounds source)))
+                         (set-phase! :closing)))]
+    ;; The scrolling/transformed timeline clips fixed descendants. A body portal
+    ;; owns this measured FLIP transition; React still owns every style and node.
+    (r/use-layout-effect
+      (fn []
+        (let [element (.-current surface)]
+          (set-transform! (transform-for origin))
+          (set-phase! :origin)
+          (.focus element #js {:preventScroll true}))) [])
+    (r/use-effect
+      (fn []
+        (when (= :origin phase)
+          (let [second-frame (atom nil)
+                frame (js/requestAnimationFrame
+                        #(reset! second-frame (js/requestAnimationFrame (fn [] (set-phase! :open)))))]
+            (fn []
+              (js/cancelAnimationFrame frame)
+              (when @second-frame (js/cancelAnimationFrame @second-frame)))))) [phase])
+    (r/use-effect
+      (fn []
+        (when (= :closing phase)
+          ;; Transitionend can be absent for reduced motion or interrupted paint.
+          (let [timer (js/setTimeout close! 400)]
+            #(js/clearTimeout timer)))) [phase close!])
+    (r/use-effect
+      (fn [] #(when (.-isConnected source) (.focus source #js {:preventScroll true}))) [source])
+    [portal/<portal> js/document.body
+     [:div.cv-detail-layer
+      {:on-click (fn [event] (when (= (.-target event) (.-currentTarget event)) (begin-close!)))}
+      [:div.cv-detail.cv-detail-expanded.cv-detail-surface
+       {:ref surface
+        :role "dialog"
+        :aria-label (:what entry)
+        :tab-index -1
+        :class (str (when (#{:open :closing} phase) "cv-detail-surface--moving ")
+                    (when (= "container" (:kind entry)) "cv-container-surface"))
+        :style {:background-color (:color entry)
+                :visibility (when (= :measuring phase) "hidden")
+                :transform (if (= :open phase) "translate(-50%, -50%)" transform)}
+        :on-key-down (fn [event]
+                       (when (and (= "Escape" (.-key event)) (not (.-defaultPrevented event)))
+                         (.stopPropagation event)
+                         (.preventDefault event)
+                         (begin-close!)))
+        :on-transition-end (fn [event]
+                             (when (and (= :closing phase) (= (.-target event) (.-currentTarget event))
+                                        (= "transform" (.-propertyName event))) (close!)))}
+       [:button.cv-zoom-back {:on-click begin-close!} "← Zoom back out"]
+       (if (= "container" (:kind entry))
+         [<container-timeline> entry asset context]
+         [<box-content> entry true asset])]]]))
+
+(m/defc <box> "One thing, accomplishment, employment, etc"
+  {:args-schema [:cat schema/timeline-item [:or :string number?] [:or :string number?] :int
+                 [:? [:maybe media-schema/asset]] [:? [:maybe cv-schema/zoom-context]]]}
+  [all pos size overlap-level & [asset context]]
+  (let [expanded (r/atom nil)]
+    (fn [all pos size overlap-level & [asset context]]
+      (let [open! (fn [event]
+                    (when-not (.closest (.-target event) "input, textarea, button, a, label")
+                      (let [element (.-currentTarget event)]
+                        (reset! expanded {:source element, :origin (bounds element)}))))]
+        [:<>
+         [:div.cv-detail
+          {:role "button"
+           :class (when (= "container" (:kind all)) "cv-container")
+           :tab-index 0
+           :aria-expanded (boolean @expanded)
+           :on-click open!
+           :on-key-down (fn [event]
+                          (when (and (= (.-target event) (.-currentTarget event))
+                                     (#{"Enter" " "} (.-key event)))
+                            (.preventDefault event)
+                            (open! event)))
+           :style {:background-color (:color all)
+                   :left pos
+                   :top (if (> (count (:parents context)) 1)
+                          (str (+ 1 (* 12 overlap-level)) "em")
+                          (str (+ 2.5 (* 19 overlap-level)) "%"))
+                   :width size}}
+          (if (= "container" (:kind all)) [<container-label> all asset]
+              [<box-content> all false asset])]
+         (when @expanded
+           [<box-overlay> all asset context (:source @expanded) (:origin @expanded) #(reset! expanded nil)])]))))
 
 (m/defc <capabilities> "The various skills"
   [skills :- [:map-of [:or :string :keyword] [:sequential :string]]]
@@ -63,8 +232,8 @@
                 [:div.cv-skill
                  {:class (str "cv-" (name id))}
                  [:h2 [:i {:class icon}] (str " " (string/capitalize (name id)))]
-                 (for [line (id skills)] ^{:key line}
-                   [:p.cv-skill-line "- " [:span line]])])
+                 (for [[i line] (map-indexed vector (id skills))] ^{:key i}
+                   [:p.cv-skill-line "- " [fields/<text> :span skills [id i]]])])
         software (topic :software "fas fa-code")
         digital (topic :digital "fas fa-calculator")
         general (topic :general "fas fa-globe")
@@ -88,12 +257,12 @@
   (let [win-fullscreen? @(r/subscribe [:state [:window :fullscreen?]])]
     [:div.cv-intro
      [<intro-logo>]
-     [:p (:intro cv)]
+     [fields/<text> :p cv [:intro]]
      [:div.center-content
       [:div.cv-howto
        [:div.flex
         [:p "Click a box for further details."]
-        [:p.cv-caption (:caption cv)]]
+        [fields/<text> :p.cv-caption cv [:caption]]]
 
        (if-not win-fullscreen?
          "Scroll sideways to look back, or click "
@@ -113,6 +282,8 @@
   []
   (let [;_ (r/dispatch [:ls/get-path [:cv-visited] [:state :cv :visited]])
         visited (r/subscribe [:state [:cv :visited]])
+        timeline-ref (fn [element]
+                       (when element (set! (.-scrollLeft element) (.-scrollWidth element))))
         ref-fn (fn [el]
                  (when el
                    (r/dispatch [:ls/store-val [:cv-visited] true])
@@ -122,7 +293,7 @@
                      (r/dispatch [:dispatch-in/ms 4500 [:scroll/by -37]])
                      (r/dispatch [:dispatch-in/ms 5500 [:focus-element "fullscreen-btn"]]))))]
    (fn []
-    (let [{:keys [title caption cv image-assets]} @(r/subscribe [:content [:cv]])
+    (let [{:keys [title caption cv image-assets]} @(r/subscribe [:content/view [:cv]])
         {:keys [timeline skills]} cv
         total-width "200em"
         base-height 9
@@ -147,20 +318,25 @@
                        (inc last-year) 10)
         curr-end (atom 1970) ; literally the dawn of time lols
         overlap-level (r/atom 0)
-        gen-items (fn [things]
-                    (doall (for [{:keys [from to level what] :as thing} things
+        gen-items (fn [things column category column-id]
+                    (doall (for [[entry-index {:keys [from to level what] :as thing}] (util/for-i things)
                                  :let [last-end @curr-end
                                        new-end (reset! curr-end to)
                                        olevel (if (> last-end from)
                                                (swap! overlap-level inc)
                                                (reset! overlap-level 0))
-                                       id (str from "-" to "-" what)]]
+                                       id (or (:id thing) (str entry-index "-" from "-" to))]]
                             ^{:key id}
                             [<box> thing
                              (get-pos from to)
                              (get-size from to)
                              (or level @overlap-level)
-                             (get image-assets (:logo thing))])))
+                             (get image-assets (:logo thing))
+                             {:column column
+                              :column-id column-id
+                              :category (name category)
+                              :parents [entry-index]
+                              :parent-keys [(parent-key thing)]}])))
         fullscreen? (when @(r/subscribe [:fullscreen/get :cv])
                       "fullscreen")]
     [:section#cv.cv.nopadding.noborder
@@ -168,8 +344,7 @@
       :ref ref-fn}
      [<intro> cv]
      [:div.cv-boxes
-      {:ref #(when %
-               (set! (.-scrollLeft %) (.-scrollWidth %)))}
+      {:ref timeline-ref}
       [ui-controls/<close> #(r/dispatch [:state [:fullscreen :cv] false])]
       [:div.cv-decade-lines
        {:style {:width total-width}}
@@ -181,7 +356,7 @@
           [:div.cv-decade-label
            (str decade "s")]])]
 
-      (doall (for [[i {:keys [category icon things height-ratio]}] (util/for-i (:timeline cv))]
+      (doall (for [[i {:keys [category icon things height-ratio] :as column}] (util/for-i (:timeline cv))]
                ^{:key (str "cv-category-" (name category))}
                [:div.cv-items
                 {:class (str "cv-" (name category))
@@ -190,8 +365,14 @@
                          :background (str "linear-gradient(0deg, var(--bg-"
                                           (get (:background-color-indexes cv) (inc i)) ")"
                                           ", var(--bg-" (get (:background-color-indexes cv) i) "))")}}
-                [:h1 [:i {:class icon}] (name category)]
-                (gen-items things)]))]
+                [:h1 [:i {:class icon}] (name category)
+                 (when (fields/editing? cv)
+                   [<add-entry> {:column i
+                                 :column-id (:id column)
+                                 :category (name category)
+                                 :parents []
+                                 :parent-keys []} (count things)])]
+                (gen-items things i category (:id column))]))]
       [ui-layout/<fading> :dir "bottom"]
 
      [<capabilities> skills]]))))

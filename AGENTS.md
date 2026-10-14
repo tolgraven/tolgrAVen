@@ -91,6 +91,16 @@ sessions' tabs and restore any borrowed tab when finished.
   `doc/resource-controls.md` for legacy cache cleanup and the 2 GiB repository budget.
 
 ## Current architecture
+- Administrator inline CMS editing uses `:content/view` bindings, which retain
+  native values and attach field paths/mode as metadata. The lazy `content-editor`
+  owns account-bound drafts and effects; server writes verify current administrator
+  roles and use a separate private CMS write token. Configuration and section
+  ordering stay in Strapi admin. See `doc/strapi-content.md`.
+- CV regular boxes open measured, viewport-centered detail surfaces. Timeline
+  containers are a separate kind with bounded child timelines and a regular
+  starter entry; nested writes verify their parent identities and entry count.
+  Keep motion measurement/focus in the owned portal adapter and content writes
+  in the editor's re-frame events/effects.
 - Keep the full-featured `defc` based on upstream `reagent.core/defc`. Hooks delegate
   to upstream `reagent.hooks` through the existing shim; dependency collections
   use Clojure equality and equal state updates retain identity. Adapter review
