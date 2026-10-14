@@ -29,8 +29,8 @@ configuration is preserved, and production defaults are copied normally without 
 This lets plain agent Docker test commands use the public configuration layout.
 
 Shadow compiler data survives those fresh snapshots. The launcher binds only
-`.shadow-cljs/builds` from its private `shadow-caches` directory under
-`~/Library/Application Support/tolgraven/cpu-controls`; server/nREPL markers and
+`.shadow-cljs/builds` from the primary checkout's ignored
+`.local-wip/shadow-caches` directory, shared by its linked worktrees; server/nREPL markers and
 application output remain snapshot-local. Cache identities separate canonical
 worktrees, immutable prefab image IDs, Maven/npm dependency declarations, public
 site selection and declared Lein profiles. Helper reporting text, source revisions
@@ -50,10 +50,55 @@ Use `run --shadow-cache off -- <command>` for a cold comparison, or
 `run --shadow-cache refresh -- <command>` to discard and rebuild that invocation's
 cache identity under its lock. A custom Shadow `:cache-root` or unavailable local
 image identity bypasses cache mounting. Cache cleanup removes only unlocked,
-managed identities after seven idle days or oldest-first above an 8 GiB combined
-budget; active writers may temporarily exceed that budget. `tolgraven-cpu cache-prune`
+managed identities whose owner checkout disappeared, after seven idle days, or
+oldest-first above a 2 GiB repository budget; active writers may temporarily exceed that budget. `tolgraven-cpu cache-prune`
 runs the same cleanup explicitly. It preserves lock files to prevent inode races.
+Cache metadata records its originating checkout. Runtime state and the small
+original writer-lock files remain in Application Support: keeping those same
+lock inodes preserves coordination with older launchers and active guardians.
 Compiler cache cleanup is separate from finished output snapshot cleanup.
+
+### Finish a task and retire its resources
+
+Close task-created Chrome tabs/windows as soon as verification finishes; reuse
+one task tab during sequential checks. Additional private windows are temporary
+isolation fixtures, not permanent per-check resources. Preserve user-owned pages
+and another session's still-needed tests, and never quit Chrome. Stop only owned
+fixture servers before removing their output snapshots.
+
+`bb cleanup` reports cache candidates without deleting data. `bb cleanup --apply`
+prunes only unlocked managed caches. For a completed worktree, run from the primary
+checkout or another retained checkout:
+
+```sh
+bb cleanup --worktree /path/to/completed/tolgrAVen --remove-worktree
+bb cleanup --worktree /path/to/completed/tolgrAVen --remove-worktree --apply
+```
+
+Retirement requires a registered feature branch with no tracked/untracked source
+changes, an exact head matching a merged PR in `origin/master`, no open follow-up,
+and no process with a working directory inside the target. It rechecks these
+conditions before removal. Ignored private configuration and task/review records
+are archived with restricted permissions under `.local-wip/task-archives` before
+ordinary `git worktree remove`; reproducible compiler/dependency/output trees are
+omitted. Branch refs are retained. Main, detached and ambiguous worktrees are
+preserved for manual review. The script cannot infer another session's future
+intent; only retire a task whose owner has finished. A Git hook cannot establish
+that lifecycle, so cleanup is an explicit completion step rather than a destructive
+checkout/merge hook.
+
+The former Application Support caches have no owner metadata. Once a plan is
+reviewed, discard their unlocked managed entries using:
+
+```sh
+bb cleanup --legacy-caches --all-unused-caches
+bb cleanup --legacy-caches --all-unused-caches --apply
+```
+
+Active old writers and malformed/unmanaged directories are preserved. No cache
+migration is needed; Shadow rebuilds the disposable data at the new location.
+Update future launcher invocations without restarting the monitor or existing
+workers with `bb cpu install --project /path/to/tolgrAVen --launcher-only`.
 
 Reproduce compiler-cache measurements with
 `python3 scripts/test/shadow_cache.py --report /tmp/shadow-document.json` or

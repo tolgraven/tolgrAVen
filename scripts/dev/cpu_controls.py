@@ -743,12 +743,25 @@ def snapshot(checkout, destination):
 
 
 SHADOW_CACHE_VERSION = 1
-SHADOW_CACHE_BYTES = 8 * 1024 ** 3
+SHADOW_CACHE_BYTES = 2 * 1024 ** 3
 SHADOW_CACHE_AGE = 7 * 86400
 
 
-def shadow_cache_root():
-    return STATE / 'shadow-caches'
+def repository_root(checkout=None):
+    inventory = subprocess.check_output(
+        ['git', '-C', str(checkout or Path.cwd()), 'worktree', 'list', '--porcelain'], text=True)
+    first = inventory.splitlines()[0]
+    if not first.startswith('worktree '):
+        raise RuntimeError('Cannot resolve the primary repository checkout.')
+    return Path(first.removeprefix('worktree ')).resolve()
+
+
+def shadow_cache_root(checkout=None):
+    repository = repository_root(checkout).resolve()
+    root = repository / '.local-wip/shadow-caches'
+    if not root.resolve().is_relative_to(repository):
+        raise RuntimeError('Compiler cache directory escapes the repository.')
+    return root
 
 
 def shadow_cache_key(checkout, output, image_id, command):
@@ -772,7 +785,8 @@ def shadow_cache_key(checkout, output, image_id, command):
 
 
 def cache_lock(key, blocking=True):
-    locks = shadow_cache_root() / 'locks'
+    # Keep the original lock inodes while older installed launchers may still run.
+    locks = STATE / 'shadow-caches/locks'
     locks.mkdir(parents=True, exist_ok=True)
     handle = (locks / (key + '.lock')).open('a')
     try:
@@ -794,10 +808,10 @@ def cache_bytes(path):
     return size
 
 
-def prune_shadow_caches(now=None):
+def prune_shadow_caches(now=None, checkout=None, *, apply=True, legacy=False, all_unused=False):
     now = time.time() if now is None else now
     import re
-    root = shadow_cache_root()
+    root = STATE / 'shadow-caches' if legacy else shadow_cache_root(checkout)
     if root.is_symlink():
         raise RuntimeError('Refusing a symlinked compiler cache root.')
     records = []
@@ -819,8 +833,14 @@ def prune_shadow_caches(now=None):
             continue
     total = sum(size for _, _, size in records)
     removed = []
+    candidates = []
+    errors = []
     for record, path, size in sorted(records, key=lambda pair: pair[0]['used_at']):
-        if now - record['used_at'] < SHADOW_CACHE_AGE and total <= SHADOW_CACHE_BYTES:
+        owner = record.get('checkout')
+        obsolete = isinstance(owner, str) and not Path(owner).exists()
+        selected = owner is not None and checkout is not None and Path(owner).resolve() == Path(checkout).resolve()
+        if not ((all_unused and (legacy or selected)) or obsolete
+                or now - record['used_at'] >= SHADOW_CACHE_AGE or total > SHADOW_CACHE_BYTES):
             continue
         handle = cache_lock(record['key'], blocking=False)
         if handle is None:
@@ -833,10 +853,22 @@ def prune_shadow_caches(now=None):
                 continue
             if current != record:
                 continue
-            shutil.rmtree(path)
+            candidates.append(record['key'])
+            if apply:
+                try:
+                    shutil.rmtree(path)
+                except OSError as error:
+                    # Finder may recreate .DS_Store during traversal. Preserve the
+                    # ownership marker if deletion was partial; retry on a later pass.
+                    if path.exists():
+                        save_json(path / 'metadata.json', record)
+                    errors.append({'key': record['key'], 'error': str(error)})
+                    continue
+                removed.append(record['key'])
             total -= size
-            removed.append(record['key'])
-    return {'removed': removed, 'retained_bytes': total}
+    return {'root': str(root), 'candidates': candidates, 'removed': removed, 'errors': errors,
+            'retained_bytes': total if apply else sum(size for _, _, size in records),
+            'planned_retained_bytes': total}
 
 
 @contextmanager
@@ -857,17 +889,18 @@ def shadow_cache(args, output, command, endpoint):
         print('Shadow cache: bypassed (prefab image identity unavailable)', flush=True)
         yield None
         return
-    prune_shadow_caches()
+    prune_shadow_caches(checkout=args.checkout)
     key = shadow_cache_key(Path(args.checkout), output, image.stdout.strip(), command)
     with cache_lock(key) as handle:
-        directory = shadow_cache_root() / key
+        directory = shadow_cache_root(args.checkout) / key
         if directory.is_symlink():
             raise RuntimeError('Refusing a symlinked compiler cache directory.')
         if args.shadow_cache == 'refresh' and directory.exists():
             shutil.rmtree(directory)
         builds = directory / 'builds'
         builds.mkdir(parents=True, exist_ok=True)
-        record = {'version': SHADOW_CACHE_VERSION, 'key': key, 'used_at': time.time(), 'bytes': cache_bytes(builds)}
+        record = {'version': SHADOW_CACHE_VERSION, 'key': key, 'checkout': str(Path(args.checkout).resolve()),
+                  'used_at': time.time(), 'bytes': cache_bytes(builds)}
         save_json(directory / 'metadata.json', record)
         print('Shadow cache:', key, '(worktree-scoped disk cache)', flush=True)
         try:
@@ -877,7 +910,7 @@ def shadow_cache(args, output, command, endpoint):
             # can still write. No other invocation/pruner can enter that identity.
             record.update(used_at=time.time(), bytes=cache_bytes(builds))
             save_json(directory / 'metadata.json', record)
-    prune_shadow_caches()
+    prune_shadow_caches(checkout=args.checkout)
 
 
 def buildkit_options(cpus, memory):
@@ -1060,18 +1093,29 @@ def positive(value):
     return number
 
 
-def install(args):
+def install_launcher():
     STATE.mkdir(parents=True, exist_ok=True)
-    label = 'se.tolgraven.cpu-controls'
-    domain = f'gui/{os.getuid()}'
-    subprocess.run(['launchctl', 'bootout', f'{domain}/{label}'], capture_output=True)
     installed = STATE / 'cpu_controls.py'
     if Path(__file__).resolve() != installed.resolve():
-        shutil.copy2(__file__, installed)
+        temporary = STATE / ('cpu_controls-' + uuid.uuid4().hex + '.tmp')
+        shutil.copy2(__file__, temporary)
+        os.replace(temporary, installed)
     binary = Path.home() / '.local/bin/tolgraven-cpu'
     binary.parent.mkdir(parents=True, exist_ok=True)
     binary.write_text('#!/bin/sh\nexec ' + shlex.quote(sys.executable) + ' ' + shlex.quote(str(installed)) + ' "$@"\n')
     binary.chmod(0o755)
+    return binary
+
+
+def install(args):
+    if args.launcher_only:
+        print('Updated launcher:', install_launcher(), '(monitor and active workers preserved)')
+        return
+    STATE.mkdir(parents=True, exist_ok=True)
+    label = 'se.tolgraven.cpu-controls'
+    domain = f'gui/{os.getuid()}'
+    subprocess.run(['launchctl', 'bootout', f'{domain}/{label}'], capture_output=True)
+    binary = install_launcher()
     agent = Path.home() / 'Library/LaunchAgents' / (label + '.plist')
     agent.parent.mkdir(parents=True, exist_ok=True)
     config = {'Label': label,
@@ -1120,10 +1164,15 @@ def main():
     installer = commands.add_parser('install', help='Explicitly install/enable the scoped user LaunchAgent and launcher.')
     installer.add_argument('--project', required=True)
     installer.add_argument('--cpus', type=positive, default=1.5)
+    installer.add_argument('--launcher-only', action='store_true', help='Atomically update future launcher invocations without restarting the monitor or workers.')
     recovery = commands.add_parser('recover-build', help='Recover only a recorded orphan after exact endpoint/container/guardian confirmation.')
     recovery.add_argument('--name', help='Exact recorded build name when more than one reservation exists.')
     recovery.add_argument('--endpoint', help='Required original local Docker endpoint for legacy reservations.')
-    commands.add_parser('cache-prune', help='Remove only unlocked managed Shadow caches older than seven days or over the 8 GiB LRU budget.')
+    cache_parser = commands.add_parser('cache-prune', help='Prune unlocked repo caches; disappeared worktrees, seven idle days, or the 2 GiB budget.')
+    cache_parser.add_argument('--checkout', default=os.getcwd())
+    cache_parser.add_argument('--dry-run', action='store_true')
+    cache_parser.add_argument('--legacy', action='store_true', help='Inspect/prune the former Application Support cache directory.')
+    cache_parser.add_argument('--all-unused', action='store_true', help='Discard every unlocked cache owned by --checkout (all managed legacy identities with --legacy).')
     commands.add_parser('status')
     commands.add_parser('stop', help='Stop only the recorded monitor; watchdog resumes its owned paused targets.')
     wd = commands.add_parser('_watchdog')
@@ -1157,7 +1206,8 @@ def main():
     elif args.action == 'recover-build':
         recover_build(args)
     elif args.action == 'cache-prune':
-        print(json.dumps(prune_shadow_caches(), indent=2))
+        print(json.dumps(prune_shadow_caches(checkout=args.checkout, apply=not args.dry_run,
+                                              legacy=args.legacy, all_unused=args.all_unused), indent=2))
     elif args.action == 'status':
         print((STATE / 'status.json').read_text())
     elif args.action == 'stop':
