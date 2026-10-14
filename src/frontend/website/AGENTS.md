@@ -100,6 +100,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   use `.cljs`; portable routes/data contracts use `.cljc` and must not require
   browser implementation namespaces. Shared platform contracts remain in `src/cljc`.
 - `navigation/` owns routing, preload, transition and scroll adapters and contracts.
+  Component destinations are complete native Reitit children mounted with
+  `navigation/component-routes`; `:page-route` retains the host page identity.
+  Coerced controllers activate the normal module loader after route commit;
+  loaded actions and committed target scrolling reject obsolete paths. See
+  `doc/component-routes.md`.
   `validation/schema.cljs` assembles browser/Node app-db sections from their owners;
   small single-use shell-state contracts stay inline there.
 - Image readiness callbacks use the shared picture lifecycle: notify only a decoded,

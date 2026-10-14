@@ -1,5 +1,6 @@
 (ns website.modules.github.subs
   (:require [clojure.string :as string]
+            [website.modules.github.model :as model]
             [website.react :as r]))
 
 (r/reg-sub :github/get-from
@@ -38,8 +39,18 @@
  :<- [:github/commits]
  :<- [:form-field [:github :search]]
  (fn [[commits search] [_ override]]
-   (let [search (or override search)]
-     (cond->> commits
-       (not (string/blank? search)) (filter #(re-find (re-pattern search)
-                                                      (string/join (:message %))))))))
+   (filterv #(model/matches? % (or override search)) commits)))
+
+(r/reg-sub :github/route-target
+  :<- [:common/route]
+  (fn [match _] (model/route-target match)))
+
+(r/reg-sub :github/commit-error
+  :<- [:content [:github :commit-errors]]
+  (fn [errors [_ sha]] (get errors sha)))
+
+(r/reg-sub :github/commit-listed?
+  :<- [:github/commits]
+  (fn [commits [_ sha]]
+    (boolean (and sha (some #(string/starts-with? (:sha %) sha) commits)))))
 

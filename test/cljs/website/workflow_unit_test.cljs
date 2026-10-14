@@ -1380,6 +1380,10 @@
             (.appendChild (.-body js/document) element)
             (let [root (await! (support/create-root! element))]
               (try
+                ;; This test exercises an already loaded parser. Without an
+                ;; explicit warmup it depends on earlier tests acquiring it,
+                ;; and can instead observe the readable preformatted fallback.
+                (await! (loader/load! {:module :markdown}))
                 (await! (support/render! root ^{:key :feed} [<article>]))
                 (await! (support/render! root nil))
                 (await! (support/render! root ^{:key :permalink} [<article>]))

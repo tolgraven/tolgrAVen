@@ -26,6 +26,18 @@
  (fn [id]
    (util/scroll-to id)))
 
+(r/reg-event-fx :scroll/component-target
+  {:args [:tuple :string :string]}
+  (fn [{:keys [db]} [_ id path]]
+    (when (= path (get-in db [:common/route :path]))
+      {:scroll/component-target id})))
+
+(r/reg-fx :scroll/component-target
+  (fn [id]
+    ;; A committed component destination supersedes the page's earlier anchor
+    ;; restoration; keep the normal layout-settlement and user-cancel behavior.
+    (page-transition/ready! id nil)))
+
 (r/reg-event-fx :scroll/px
  (fn [db [_ px delay-ms]]
    (if delay-ms

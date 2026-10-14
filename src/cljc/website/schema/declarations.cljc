@@ -3,6 +3,7 @@
    and both runtimes. Extension keys stay open; declared keys have real types."
   (:require [website.schema.common :as c]
             [website.supabase.schema :as store]
+            [website.navigation.component-routes :as component-routes]
             [website.supabase.catalog :as catalog]))
 
 (def path [:vector {:min 1} :any])
@@ -76,6 +77,8 @@
    [:?preload-depends [:or dependencies fn?]]
    [:?parameters :map]
    [:?controllers [:sequential :map]]
+   [:?component-route component-routes/target]
+   [:?page-route :keyword]
    [:?data-plan data-plan]
    [:?snapshot fn?]
    [:?document-title fn?]])

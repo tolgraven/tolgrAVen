@@ -6,6 +6,7 @@
   (c/optional-map {:target [:tuple :string :string]
                    :generation c/nonnegative
                    :pages-pending [:set :int]
+                   :commits-pending [:set :string]
                    :headers-pending? :boolean
                    :pages-fetched [:sequential :int]
                    :commits-fetched c/strings}))
@@ -19,6 +20,11 @@
 
 (def commit
   (c/optional-map {:sha :string
+                   :sha7 :?string
+                   :date :?string
+                   :clock :?string
+                   :ts :?string
+                   :message parsed-message
                    :html_url :string
                    :url :string
                    :commit (c/optional-map {:message :string
@@ -34,5 +40,6 @@
   (c/optional-map {:commits [:sequential commit]
                    :repo [:sequential commit]
                    :commit [:map-of :string commit]
+                   :commit-errors [:map-of :string :any]
                    :repo-headers :map
                    :errors :any}))

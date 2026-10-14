@@ -119,7 +119,7 @@
 
 (r/reg-sub :common/page-id
   (fn [[_ last?]] (r/subscribe [:common/route last?]))
-  (fn [route _] (-> route :data :name)))
+  (fn [route _] (or (get-in route [:data :page-route]) (get-in route [:data :name]))))
 
 (r/reg-sub :common/page
   (fn [[_ last?]]  (r/subscribe [:common/route last?]))
