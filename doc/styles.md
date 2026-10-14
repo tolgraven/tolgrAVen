@@ -40,7 +40,11 @@ selectors: use `html[data-theme="light"]` for explicit light mode, and
 `@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { ... } }`
 for automatic light mode. A plain `:root` rule overrides the default root values
 and responsive root rules, while more specific component/theme declarations
-keep normal CSS precedence. Use relative units for sizes.
+keep normal CSS precedence. Existing visitor appearance controls and the blog route's
+line framing write inline custom properties, which take precedence over ordinary
+stylesheet declarations. An author can deliberately pin a value across those
+controls/routes with `--line-width: 0.125rem !important`; otherwise those existing
+local overrides remain available. Use relative units for sizes.
 
 `bb site:resolve` snapshots the authenticated `/api/site-config` response once:
 boolean selections go to `resources/site.overrides.edn`, and its optional `styles`
