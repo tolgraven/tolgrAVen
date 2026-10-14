@@ -4,6 +4,9 @@
   without redirects, and shared field/CV creation contracts. Disabled CV sites
   expose no CV creation route. Installing saved sections must
   retain their authoritative cache/shell state across older in-flight reads and refreshes.
+- Inline content publications also advance the source-owned SSR cache revision.
+  New page requests use the new revision; older in-flight renders cannot replace
+  its cache entry. Keep that identity server-only, outside public snapshots.
 
 - Successful public SSR documents use `private, no-cache` so native BFcache is
   available without shared HTTP caching. Errors known before headers, client-restoration templates,

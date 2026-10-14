@@ -38,6 +38,9 @@ durable media pipeline converts/uploads still images before a replacement become
 a saveable draft. Enriched pictures keep their original CMS source in `:cms-src`
 for conflict checks; it never enters native image markup. Saved sections update
 the shared cache/shell immediately and win over older pending refreshes.
+They also expire cached SSR HTML immediately; older renders cannot overwrite the
+new publication's page cache. Existing browser history returns retain their saved
+view state; a fresh network document uses the newly published content.
 
 The Strapi image must include `/api/site-content/field` before enabling the web
 write token. Disabling that token turns off inline writes without changing public
@@ -72,6 +75,9 @@ entries remain Strapi components; bounded JSON holds their nested children witho
 recursive component definitions. Existing entries default
 to regular boxes and their component/media IDs are preserved. Disabling the write
 token stops editing while keeping all saved content and containers readable.
+For rollback, disable writes while retaining the upgraded CMS schema. Back up the
+CMS database before removing its container fields; an older schema can discard
+persisted child timelines.
 
 The web app's public `:content` comes from the Clojure backend. Static editorial
 content has moved out of `db.cljs`; only UI state, routes and options remain there.

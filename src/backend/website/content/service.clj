@@ -96,7 +96,10 @@
        (throw (InterruptedException. "Module startup content refresh interrupted")))
      ;; An inline save can finish while the refresh is reading Strapi. Its
      ;; authoritative snapshot must win over this older request.
-     (if (compare-and-set! *immediate original {:source source, :content value})
+     (if (compare-and-set! *immediate original
+                          (cond-> {:source source, :content value}
+                            (and (= source (:source original)) (:edit-revision original))
+                            (assoc :edit-revision (:edit-revision original))))
        value (:content @*immediate)))))
 
 (defn install-edited! [sections]
@@ -109,7 +112,16 @@
       (swap! *immediate
              (fn [snapshot]
                (if (= source (:source snapshot))
-                 (update snapshot :content merge sections) snapshot))))))
+                 (-> snapshot
+                     (update :content merge sections)
+                     (update :edit-revision (fnil inc 0))) snapshot))))))
+
+(defn edit-revision
+  "Server-only cache identity: configured source plus its inline publication count."
+  []
+  (let [source (:url (settings))
+        snapshot @*immediate]
+    [source (if (= source (:source snapshot)) (or (:edit-revision snapshot) 0) 0)]))
 
 (defn immediate-content []
   (let [{:keys [source content]} @*immediate]

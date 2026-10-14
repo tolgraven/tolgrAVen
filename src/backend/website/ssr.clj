@@ -145,6 +145,7 @@
    [:selection [:map-of :keyword :any]]
    [:html :string]
    [:build :int]
+   [:editor-revision [:tuple [:maybe :string] [:int {:min 0}]]]
    [:at :int]])
 
 (defn- cache-entry! [cache-key entry]
@@ -154,21 +155,23 @@
     (when (< size 2000000)
       ;; Only bookkeeping is serialized. Fetching and rendering never hold this lock.
       (locking *cache
-        (swap! *cache dissoc cache-key)
-        (loop []
-          (when (and (seq @*cache)
-                     (or (>= (count @*cache) 64)
-                         (> (+ size (reduce + 0 (map :size (vals @*cache)))) 8000000)))
-            (swap! *cache dissoc (key (apply min-key (comp :at val) @*cache)))
-            (recur)))
-        (swap! *cache assoc cache-key (assoc entry :size size))))))
+        (when (= (:editor-revision entry) (content/edit-revision))
+          (swap! *cache dissoc cache-key)
+          (loop []
+            (when (and (seq @*cache)
+                       (or (>= (count @*cache) 64)
+                           (> (+ size (reduce + 0 (map :size (vals @*cache)))) 8000000)))
+              (swap! *cache dissoc (key (apply min-key (comp :at val) @*cache)))
+              (recur)))
+          (swap! *cache assoc cache-key (assoc entry :size size)))))))
 
 (defn- fresh?
   ([entry] (fresh? entry (renderer-build)))
-  ([{:keys [at build]} current-build]
+  ([{:keys [at build editor-revision]} current-build]
    (let [ttl (:cache-ttl-ms (settings))]
      (and at
           (= build current-build)
+          (= editor-revision (content/edit-revision))
           (pos? ttl)
           (< (- (System/nanoTime) at) (* 1000000 ttl))))))
 
@@ -184,6 +187,7 @@
 
 (defn- build-page! [uri selection query-params]
   (let [build (renderer-build)
+        editor-revision (content/edit-revision)
         key [uri query-params]
         cached (get @*cache key)]
     (if (and (= selection (:selection cached)) (fresh? cached build))
@@ -208,6 +212,7 @@
             entry (assoc rendered
                          :selection selection
                          :build build
+                         :editor-revision editor-revision
                          :at (or (:at reused) (System/nanoTime)))]
         (cache-entry! key entry)
         (assoc entry :cache (if unchanged? :hit :miss))))))
@@ -217,7 +222,7 @@
    Return a Future; failures are never cached and retries get a new flight."
   [uri & [query-params]]
   (if-let [selection (route uri)]
-    (let [key [uri query-params]]
+    (let [key [uri query-params (content/edit-revision)]]
       (locking *inflight
         (or (get @*inflight key)
             (let [result (CompletableFuture.)]
