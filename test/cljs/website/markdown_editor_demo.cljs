@@ -8,6 +8,7 @@
             [website.modules.markdown-editor.views :as editor]
             [website.components.content.upload :as upload]
             [website.modules.markdown.views :as markdown]
+            [website.modules.highlight.code-block :as code-block]
             [website.component.storage :as storage]
             [website.listener :as listener]
             [website.modules.blog-editor.editor :as blog-editor]
@@ -33,6 +34,40 @@
   (r/dispatch-sync [:test-editor/initialize])
   (-> (support/create-root! (.getElementById js/document "editor-demo"))
       (.then #(support/render! % [<fixture>]))))
+
+(defc <comment-fixture> []
+  (let [text @(r/subscribe [:form-field [:write-comment [42] :text]])]
+    [:main.editor-demo
+     [:h1 "Comment authoring"]
+     [editor/<editor> {:text (or text "")
+                       :on-change #(r/dispatch [:form-field [:write-comment [42] :text] %])}]
+     [:details [:summary "Saved Markdown"] [:pre#saved-markdown text]]
+     [:h2 "Published comment preview"]
+     [markdown/<parse-markdown-components> (or text "")]]))
+
+(defn ^:export init-comment! []
+  (r/dispatch-sync [:test-editor/initialize])
+  (r/dispatch-sync [:form-field [:write-comment [42] :text]
+                   "## A comment\n\n**Bold**, *italic*, lists, links and code use the full editor.\n\n- First point\n- Second point\n\n```clojure\n(map inc [1 2 3])\n```"])
+  (-> (support/create-root! (.getElementById js/document "editor-demo"))
+      (.then #(support/render! % [<comment-fixture>]))))
+
+(defc <code-fixture> []
+  :let [*source (r/atom "(defn example []\n  ;; A comment\n  (str \"Unicode λ — \" (range 100)))\n")]
+  [:main.editor-demo
+   [:h1 "Native code input geometry"]
+   [code-block/<code-block> @*source
+    {:editable? true
+     :language "cljs"
+     :line-numbers? true
+     :starting-line-number 98
+     :on-code-change #(reset! *source %)}]
+   [:details [:summary "Saved source"] [:pre#saved-markdown @*source]]])
+
+(defn ^:export init-code! []
+  (r/dispatch-sync [:test-editor/initialize])
+  (-> (support/create-root! (.getElementById js/document "editor-demo"))
+      (.then #(support/render! % [<code-fixture>]))))
 
 (defc <upload-fixture> []
   [:main.editor-demo

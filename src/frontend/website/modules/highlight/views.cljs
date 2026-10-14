@@ -34,7 +34,8 @@
 
 (def language-aliases
   ;; These fence tags share Clojure's grammar. Authoring retains the original tag.
-  {"clj" "clojure"
+  {"auto" nil
+   "clj" "clojure"
    "cljs" "clojure"
    "cljc" "clojure"
    "clojurescript" "clojure"})
@@ -62,13 +63,16 @@
 (defc <formatted-code>
   "Full language support and Bruvbox are acquired only by code consumers."
   [code & {:keys [language default-language auto-languages style basic? inline? inline-language
-                 line-numbers? starting-line-number line-props]
+                 line-numbers? starting-line-number line-props editable?]
            :or {basic? true
                 style theme/bruvbox}}]
   (let [language (or language (when inline? (or inline-language "bash")))
         numbered? (and (not inline?) (if (nil? line-numbers?) (not basic?) line-numbers?))
-        tree (r/use-memo #(code-tree code language default-language auto-languages)
-                         [code language default-language auto-languages])
+        ;; A pre normally drops the empty line after a final newline. The edit
+        ;; surface must retain that caret line without changing authored text.
+        display-code (if (and editable? (.endsWith code "\n")) (str code "\u200b") code)
+        tree (r/use-memo #(code-tree display-code language default-language auto-languages)
+                         [display-code language default-language auto-languages])
         ;; Reuse the selected AST instead of running auto-detection twice.
         generator (r/use-memo
                     #(clj->js {:listLanguages (fn [] #js [])
@@ -81,10 +85,23 @@
               :showLineNumbers numbered?
               :startingLineNumber (or starting-line-number 1)
               :lineNumberStyle {:userSelect "none"}
-              :children code
-              :PreTag font-pre
+              :children display-code
+              :PreTag (if editable? "pre" font-pre)
               :wrapLines (or numbered? (boolean line-props))}
        line-props (assoc :lineProps line-props)
+       (and editable? numbered?)
+       (assoc :lineProps
+              (fn [number]
+                ;; React Syntax Highlighter calls this native props adapter.
+                ;; Keep caller line attributes while adding hanging-indent rows
+                ;; so wrapped continuations align with the textarea's gutter.
+                (let [props (when line-props (line-props number))
+                      props' (if (map? props) props (js->clj props :keywordize-keys true))]
+                  (clj->js (update props' :className str " code-block-edit-line"))))
+              :lineNumberStyle {:width "var(--code-gutter)"
+                                :minWidth 0
+                                :textIndent 0
+                                :userSelect "none"})
        inline? (assoc :PreTag font-inline
                       :CodeTag "span"
                       :className "code-highlight"

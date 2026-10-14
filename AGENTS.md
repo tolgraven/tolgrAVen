@@ -15,6 +15,14 @@ the task's changes in `tolgraven/tolgrAVen`; do not ask for the same authorizati
 again. Follow an explicit user instruction to stop earlier or change the workflow.
 Read-only questions and investigations do not require artificial code changes or PRs.
 
+Chrome can crash, and the user or another agent can close windows or tabs at any
+time. Recover automatically: retry the existing installed Chrome connection,
+rediscover page IDs, and reopen only a missing task page when necessary. If the app
+is no longer running, reopen the installed Chrome and reconnect. Do not ask the
+user to restore a routine connection or reuse stale page IDs. Never launch a
+separate browser distribution or clone as a recovery shortcut; preserve other
+sessions' tabs and restore any borrowed tab when finished.
+
 1. **Use a managed worktree and feature branch.** Inspect the current checkout,
    worktrees and remote state first. Start from current `origin/master` on a
    task-specific `codex/<task>` branch in
@@ -60,6 +68,8 @@ Read-only questions and investigations do not require artificial code changes or
   it as soon as that check finishes. Close every completed task-created tab/window
   promptly, including older test runners; never quit Chrome or close user-owned
   tabs or another session's still-needed checks. Relay this rule to active subagents.
+  Close task pages before waiting for builds, reviews or provider availability;
+  reopen one only when browser checks resume. Do not retain idle test windows.
 - Cleanup is part of completion, not an optional later pass. After merge and local
   integration, stop only owned verification servers, remove finished isolated output
   snapshots, and retire the task worktree and its compiler caches. Preserve active

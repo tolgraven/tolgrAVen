@@ -1,0 +1,22 @@
+<!doctype html>
+<html data-theme="dark" lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comment authoring fixture</title>
+<link rel="stylesheet" href="/css/website/main.min.css">
+<link rel="stylesheet" href="/css/website/modules/markdown.min.css">
+<link rel="stylesheet" href="/css/website/modules/monospace.min.css">
+<link rel="stylesheet" href="/css/website/modules/blog.min.css">
+<link rel="stylesheet" href="/css/website/modules/markdown-components.min.css">
+<link rel="stylesheet" href="/css/website/modules/markdown-editor.min.css">
+<style>.editor-demo{width:min(90vw,100%,76rem);margin:2rem auto}.editor-demo>h2{margin-block-start:2rem}#saved-markdown{white-space:pre-wrap;overflow-wrap:anywhere}</style>
+<body><div id="editor-demo"></div>
+<script src="/js/test.js"></script>
+<script>
+if (new URLSearchParams(location.search).has('code')) {
+  website.markdown_editor_demo.init_code_BANG_();
+} else {
+  website.markdown_editor_demo.init_comment_BANG_();
+}
+</script>
+</body></html>
