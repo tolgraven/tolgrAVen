@@ -238,6 +238,15 @@ IntersectionObserver it falls back to appearing immediately after the initial
 frame. `:force true` skips waiting for visibility. Use either `:seen` or `:appear`;
 when both are selected, visibility controls the reveal.
 
+Intrinsic-height entrances (blog reply rows) use `:settle-offscreen? true` in
+their `:appear` options. An initially offscreen row commits as appeared without
+an observer or entrance animation, retaining the layout needed for scrolling.
+Visible rows use the ordinary painted entrance. Each reply's grid row grows
+from `0fr` to `1fr` with its own stagger; no large parent max-height bounds it.
+Folded rows become inert immediately and finish collapsing before their comment
+contents leave the retained visibility lifecycle. Restoration keeps open rows
+at their natural height on the first render.
+
 For removal, the parent selects `:presence` and its keyed direct children select
 `:exit`. Remove a child from the parent's collection normally. The parent keeps
 that same child instance only while exiting, removes `appeared`, adds `exiting`

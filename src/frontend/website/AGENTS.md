@@ -182,6 +182,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   loading and entrances; later SPA navigation must restore ordinary motion.
   Offscreen new `:appear` roots enter through the existing viewport observer.
   Presence commit history is nonreactive; only exit completion schedules a render.
+  Blog replies animate intrinsic height per row with their entrance stagger;
+  do not reintroduce a large parent max-height. Layout entrances opt into
+  `:settle-offscreen?` so hidden rows retain height without waiting on visibility.
   Unactivated module placeholders and departing skeletons have no shimmer animation.
   Appearance classes merge onto native roots; `appear-wrapper` is only a CSS
   class. Network SSR retains the original site/hero entrance in CSS across
