@@ -1,5 +1,47 @@
 # Strapi content, module dependencies and SSR preparation
 
+## In-site editing
+
+Administrators open **Edit site content** from the account panel. The same panel
+links to **Strapi admin**, where site configuration, content structure, section
+selection and ordering remain managed. Ordinary visitors render native headings,
+paragraphs, spans and responsive pictures. In edit mode, text fields retain their
+typography and pictures retain their pixels with a corner replacement control.
+The toolbar stays available after closing the account panel. **Save changes**
+publishes the changed fields; **Discard changes** restores their loaded values.
+Failed saves retain the draft and show the actual recovery message. Conflicts
+require reloading the field from Strapi before making another edit.
+
+`:content/view` wraps the existing managed content subscription, preserving its
+Clojure values and adding field path/mode metadata to maps and vectors. Renderers
+use `website.content.fields` for text and preserve metadata when merging media
+props. The lazy `content-editor` module owns account-bound re-frame drafts,
+authenticated request effects and existing media upload/status events. These
+drafts remain in memory; reloading discards unsaved edits. Signing out or changing
+accounts disables editing and prevents old asynchronous completions from applying.
+
+`GET /api/content/editor` returns only the administrator's public admin link and
+write availability. `PUT /api/content/field` verifies the session with Auth and
+checks the current `auth_roles` record before using the separate server-private
+`STRAPI_WRITE_TOKEN`. The CMS counterpart accepts `CMS_WRITE_TOKEN`; a read token
+cannot write. Provisioning's prepare/wire flow creates and wires that token.
+An optional `STRAPI_ADMIN_URL` sets a different public admin origin. When write
+configuration is missing, public content continues normally and the account
+panel explains why inline editing is unavailable.
+
+The CMS endpoint allows specific text/image leaves, compares their loaded values,
+serializes section writes, and updates only the owning stored field. Component IDs,
+unrelated properties and media relations survive edits. Replacing an image clears
+the old relation so it cannot override the replacement source. The site's existing
+durable media pipeline converts/uploads still images before a replacement becomes
+a saveable draft. Enriched pictures keep their original CMS source in `:cms-src`
+for conflict checks; it never enters native image markup. Saved sections update
+the shared cache/shell immediately and win over older pending refreshes.
+
+The Strapi image must include `/api/site-content/field` before enabling the web
+write token. Disabling that token turns off inline writes without changing public
+content or requiring a content migration.
+
 The web app's public `:content` comes from the Clojure backend. Static editorial
 content has moved out of `db.cljs`; only UI state, routes and options remain there.
 On a client-rendered page load the browser installs only the shared shell

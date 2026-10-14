@@ -7,17 +7,18 @@
   []
   (let [user @(r/subscribe [:user/active-user])
         admin? @(r/subscribe [:user/has-role? :admins])
-        {:keys [settings enabled? fields error]} @(r/subscribe [:get :state :content-editor])
-        busy? (some #(#{:saving :uploading} (:status %)) (vals fields))]
+        {:keys [settings enabled? error]} @(r/subscribe [:get :state :content-editor])]
     (r/use-effect #(when admin? (r/dispatch [:content-editor/open])) [admin? (:id user)])
     (when admin?
       [:div.content-editor-controls
        (when-let [url (:admin-url settings)]
          [:a.button {:href url :target "_blank" :rel "noopener noreferrer"} "Open Strapi admin"])
-       (if (:writable? settings)
+       (cond
+         (and (nil? settings) (nil? error)) [:p {:role "status"} "Loading content tools…"]
+         (:writable? settings)
          [:button {:on-click #(r/dispatch [:content-editor/toggle])
                    :aria-pressed (boolean enabled?)} (if enabled? "Finish editing" "Edit site content")]
-         [:p "Inline editing is not configured."])
+         :else [:p "Inline editing is not configured."])
        (when error [:p {:role "alert"} error])
        (when error [:button {:on-click #(r/dispatch [:content-editor/open])} "Retry"])])))
 
