@@ -14,8 +14,9 @@ failures stop the build. Credentials and webhook settings never enter the snapsh
  :pages {:about false}}
 ```
 
-Module IDs come from literal `:id` in discovered `modules/*/module.cljs`, including
-`:test` for the experiments directory. The shell and route coercion are required.
+Module IDs default to the parent namespace of discovered `modules/*/module.cljs`.
+A literal `:id` overrides that name, including `:test` for the experiments directory.
+The shell and route coercion are required.
 Dependencies are explicit: disabling a required module or service-config feature
 fails rather than silently enabling it. Unknown modules/options fail. Page IDs
 come from route `:name`; disabling a page removes its subtree from both routers.
