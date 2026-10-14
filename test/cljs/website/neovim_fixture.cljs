@@ -269,7 +269,7 @@
                           :files [{:path "before/added.txt", :text ""}
                                   {:path "after/added.txt", :text (apply str (repeat 256 "added line\n"))}]})
                        (.then #(runtime/request! session "nvim_exec_lua"
-                                 ["local wins = vim.api.nvim_list_wins(); assert(#wins == 2); assert(vim.fn.getwininfo(wins[2])[1].topline == 1, 'Added source inherited the previous viewport'); return true" []]))))))))
+                                 ["local wins = vim.api.nvim_list_wins(); assert(#wins == 2); local win = vim.fn.bufwinid('/workspace/after/added.txt'); local info = vim.fn.getwininfo(win)[1]; assert(info.topline == 1, 'Added source inherited the previous viewport: ' .. vim.inspect(info)); return true" []]))))))))
         (.then (fn [_]
                  (-> ready (.then (fn [session]
                    (-> (document/open! #(runtime/request! session %1 %2)

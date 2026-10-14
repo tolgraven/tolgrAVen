@@ -43,7 +43,26 @@
    end
    if mode == 'diff' then vim.cmd('silent wincmd h'); vim.cmd('silent diffupdate') end
    vim.cmd('silent wincmd =')
-   vim.api.nvim_win_set_cursor(0, {1, 0})")
+   -- Reset views after diff geometry exists. An empty/short side needs its
+   -- leading diff filler visible; topfill=0 would bind the other pane to EOF.
+   for _, win in ipairs(vim.api.nvim_list_wins()) do
+     vim.wo[win].scrollbind = false
+     vim.api.nvim_win_call(win, function()
+       local filler = mode == 'diff' and vim.fn.diff_filler(1) or 0
+       vim.fn.winrestview({topline = 1, lnum = 1, col = 0, topfill = filler})
+     end)
+   end
+   if mode == 'diff' then
+     for _, win in ipairs(vim.api.nvim_list_wins()) do vim.wo[win].scrollbind = true end
+     -- Focusing an empty side forces its only real line into view, binding a
+     -- long added/deleted side to EOF. Start in the side with actual content.
+     local before = vim.fn.bufnr('/workspace/' .. paths[1])
+     local after = vim.fn.bufnr('/workspace/' .. paths[2])
+     local focus = vim.api.nvim_buf_line_count(after) >= vim.api.nvim_buf_line_count(before) and paths[2] or paths[1]
+     vim.api.nvim_set_current_win(vim.fn.bufwinid('/workspace/' .. focus))
+   end
+   vim.api.nvim_win_set_cursor(0, {1, 0})
+   vim.cmd('silent normal! ggzt')")
 
 (defn open! [request! document]
   (if-let [message (error document)]

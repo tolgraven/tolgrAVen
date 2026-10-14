@@ -211,10 +211,12 @@
 
 (defn ignore-anchor-click? [router event element ^goog.Uri uri]
   ;; Only intercepted internal links may update the pending fragment.
-  (let [ignore? (or (= "true" (.getAttribute element "data-document-navigation"))
-                    #?(:module/neovim (neovim-policy/document-navigation? js/window.crossOriginIsolated (.getPath uri))
-                       :default false)
-                    (rfh/ignore-anchor-click? router event element uri))]
+  ;; Reitit's predicate ignores the anchor's *native default action* when true.
+  ;; Document navigation must therefore return false, preserving the real load.
+  (let [ignore? (and (not= "true" (.getAttribute element "data-document-navigation"))
+                     (not #?(:module/neovim (neovim-policy/document-navigation? js/window.crossOriginIsolated (.getPath uri))
+                             :default false))
+                     (rfh/ignore-anchor-click? router event element uri))]
     (when ignore?
       (r/dispatch [:state [:fragment] (.getFragment uri)]))
     ignore?))
