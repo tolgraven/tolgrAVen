@@ -12,6 +12,14 @@
 (defonce *path-resolver (atom nil))
 (defonce *dependencies-resolver (atom nil))
 (defonce parent-context (r/create-context nil))
+(defonce profiling-context (r/create-context true))
+
+(defn without-profiling
+  "Exclude the inspector host, including its ordinary deferred/module wrappers.
+   Inclusive ancestor Profilers would otherwise publish the console's own commits
+   back into the records that caused those commits. Keep instance metadata intact."
+  [form]
+  [:r> (r/context-provider profiling-context) #js {:value false} form])
 (defn register-dependencies-resolver! [resolve!] (reset! *dependencies-resolver resolve!))
 (defn register-path-resolver! [resolve!] (reset! *path-resolver resolve!))
 (defn identity-for [definition] [(:ns definition) (:name definition)])
@@ -31,6 +39,7 @@
         [hydrating?] (r/use-state #(or hydration-context? (restore/initial-hydration?)))
         _ @*client-commit
         parent (r/use-context parent-context)
+        profiling? (r/use-context profiling-context)
         interactive? @context/*interactive?
         attributed? (and (native-root? form) (.-current *committed) interactive?)
         _ (when-not (.-current *id) (set! (.-current *id) (str (random-uuid))))
@@ -103,7 +112,7 @@
        [:> r/profiler
         {:id qualified
          :onRender
-         (when (and connected? (not= false (get-in definition [:options :profile])))
+         (when (and connected? profiling? (not= false (get-in definition [:options :profile])))
            (fn [_ phase duration base start commit]
              (when @capture/*recording?
                (let [body (consumer/snapshot owner)
