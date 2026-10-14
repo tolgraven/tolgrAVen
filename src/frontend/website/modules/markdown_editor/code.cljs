@@ -1,6 +1,7 @@
 (ns website.modules.markdown-editor.code
   "The SDK owns code/language/meta; Highlight owns the rendered code UI."
-  (:require [website.macros :refer-macros [defc]]
+  (:require [clojure.string :as string]
+            [website.macros :refer-macros [defc]]
             [website.react :as r]
             [website.modules.highlight.code-block :as code-block]
             ["@mdxeditor/editor" :as editor]))
@@ -25,14 +26,20 @@
           (fn [] (.subscribe focusEmitter (fn [])))))
       [focusEmitter])
     [code-block/<code-block> (or code "")
-     {:language language
+     {:language (if (= "auto" language) "" language)
       :meta meta
       :editable? true
       :code-ref *input
       :on-code-focus on-focus!
       :on-code-change #(.setCode context %)
-      :on-language-change #(.setLanguage context %)
-      :on-meta-change #(.setMeta context %)}]))
+      ;; Markdown needs a language token before fence metadata; the SDK drops
+      ;; metadata on an untagged fence. Use explicit auto only when needed so
+      ;; automatic detection and metadata survive exporting/reopening the post.
+      :on-language-change #(.setLanguage context (if (and (string/blank? %) (seq meta)) "auto" %))
+      :on-meta-change (fn [meta']
+                        (when (or (string/blank? language) (= "auto" language))
+                          (.setLanguage context (if (seq meta') "auto" "")))
+                        (.setMeta context meta'))}]))
 
 ;; The SDK's descriptor slot requires a React component type. It renders the
 ;; same Reagent code component as the published page, with native edit callbacks.

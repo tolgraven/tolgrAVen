@@ -193,19 +193,19 @@
                    (is (< (.-height (.getBoundingClientRect (.querySelector element ".code-block-input")))
                           (* 0.4 (.-innerHeight js/window)))
                        "Public blog CSS must not impose its old source-editor minimum on nested code fields")
-                   (is (nil? (.querySelector element "[role=combobox]")) "No external language field occupies document space")
+                   (is (nil? (.querySelector element ".code-edit-popover [role=combobox]")) "No external language field occupies document space")
                    (change! ".code-block-input" "(+ 3 4)")))
           (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(+ 3 4)"))))
           (.then (fn [_]
                    (is (string/includes? (last @*changes) "```cljs sample") "Formatting aliases never rewrite the authored fence tag")
                    (.click (.querySelector element ".code-language"))
                    (support/settle!)))
-          (.then (fn [_] (change! "[role=combobox]" "javascript")))
+          (.then (fn [_] (change! ".code-edit-popover [role=combobox]" "javascript")))
           (.then (fn [_] (support/wait-for! #(.querySelector element ".search-select [role=option]"))))
           (.then (fn [_] (.click (.querySelector element ".search-select [role=option]"))))
           (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "```javascript"))))
           (.then (fn [_]
-                   (is (nil? (.querySelector element "[role=combobox]")) "Choosing a language dismisses the field")
+                   (is (nil? (.querySelector element ".code-edit-popover [role=combobox]")) "Choosing a language dismisses the field")
                    (.click (.querySelector element ".code-metadata"))
                    (support/settle!)))
           (.then (fn [_] (change! "input[aria-label='Fence metadata']" "title=Example")))
@@ -217,7 +217,17 @@
           (.then (fn [_]
                    (is (nil? (.querySelector element "input[aria-label='Fence metadata']")))
                    (is (identical? (.-activeElement js/document) (.querySelector element ".code-block-input")))
-                   (is (string/includes? (last @*changes) "(+ 3 4)"))))
+                   (is (string/includes? (last @*changes) "(+ 3 4)"))
+                   (.click (.querySelector element ".code-language"))
+                   (support/settle!)))
+          (.then (fn [_] (.click (.querySelector element ".search-select [role=option]"))))
+          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "```auto title=Example"))))
+          (.then (fn [_]
+                   (let [tree (fromMarkdown (last @*changes))
+                         code-node (some #(when (= "code" (.-type %)) %) (array-seq (.-children tree)))]
+                     (is (= "auto" (.-lang code-node)))
+                     (is (= "title=Example" (.-meta code-node)) "Auto detection retains metadata on a Markdown round trip"))
+                   (is (= "Language: Auto detect" (.getAttribute (.querySelector element ".code-language") "title")))))
           (.catch #(is false (str %)))
           (.finally (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))
 

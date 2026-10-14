@@ -15,6 +15,14 @@ the task's changes in `tolgraven/tolgrAVen`; do not ask for the same authorizati
 again. Follow an explicit user instruction to stop earlier or change the workflow.
 Read-only questions and investigations do not require artificial code changes or PRs.
 
+Chrome can crash, and the user or another agent can close windows or tabs at any
+time. Recover automatically: retry the existing installed Chrome connection,
+rediscover page IDs, and reopen only a missing task page when necessary. If the app
+is no longer running, reopen the installed Chrome and reconnect. Do not ask the
+user to restore a routine connection or reuse stale page IDs. Never launch a
+separate browser distribution or clone as a recovery shortcut; preserve other
+sessions' tabs and restore any borrowed tab when finished.
+
 1. **Use a managed worktree and feature branch.** Inspect the current checkout,
    worktrees and remote state first. Start from current `origin/master` on a
    task-specific `codex/<task>` branch in

@@ -226,14 +226,27 @@ div > pre[class*="language-"] {
     min-height: 3.5em;
     overflow: hidden !important;
     tab-size: 2;
+    font-size: inherit;
   }
   .code-block-highlight code {
     display: block;
+    min-width: 0;
+    transform: translateY(calc(-1 * var(--code-scroll-top, 0rem)));
+  }
+  .code-block-highlight code:last-child {
     transform: translate(calc(-1 * var(--code-scroll-left, 0rem)), calc(-1 * var(--code-scroll-top, 0rem)));
   }
-  .code-block-highlight code, .code-block-highlight code span {
-    font-weight: normal !important;
-    font-style: normal !important;
+  .code-block-edit-line {
+    display: block;
+    padding-inline-start: var(--code-gutter);
+    text-indent: calc(-1 * var(--code-gutter));
+    > .react-syntax-highlighter-line-number {
+      box-sizing: border-box;
+      margin: 0;
+      padding-inline: 0.5em 1em;
+      border-right: var(--line-width-sm) solid var(--blue);
+      white-space: pre !important;
+    }
   }
   textarea.code-block-input {
     position: absolute;
@@ -246,7 +259,9 @@ div > pre[class*="language-"] {
     max-height: none;
     margin: 0;
     padding: 1em;
+    padding-inline-start: calc(1em + var(--code-gutter, 0rem));
     border: 0;
+    border-top: var(--line-width-sm) solid transparent;
     border-radius: 0;
     resize: none;
     font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace);

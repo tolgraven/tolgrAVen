@@ -86,11 +86,16 @@ render's accepted text over newer typing. There is no whole-props ref.
 Fenced-code editor descriptors render the ordinary shared code-block component;
 the SDK supplies only code/language/metadata setters. A transparent native textarea
 over the highlighted text supplies selection, caret and keyboard input within
-the published code-block layout. Right-hand hover/focus controls open the shared
+the published code-block layout. Both surfaces share one font owner with fading
+disabled, so font upgrades cannot clone a focused native input. Numbered gutters
+and wrapped continuations share its inset; final newlines retain an empty caret line.
+Right-hand hover/focus controls open the shared
 searchable language picker (including Auto detect) or an optional metadata field;
 selection, Enter/Escape or focus exit closes the field. Fence metadata is text
 after the language in the opening fence; it round-trips without interpreting
-display options. Copy/wrap/fold controls and the formatter gate remain shared
+display options. Auto detection normally exports an untagged fence; with metadata
+it uses an explicit `auto` tag so Markdown can retain that metadata on reopening.
+Copy/wrap/fold controls and the formatter gate remain shared
 with public posts. Both authoring owners declare their highlight dependency.
 Source mode does not implement another fenced-code rendering system.
 

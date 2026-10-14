@@ -5,6 +5,7 @@
             [website.component.registry]
             [website.component.restore :as restore]
             [website.component.hydration :as hydration]
+            [website.component.font :as font]
             [website.browser-resources :as resources]
             [website.react :as r]
             [website.components.select :as select]
@@ -260,9 +261,26 @@
       copy! (merge handlers))))
 
 (defc ^:private <editing-controls> [options focus-code!]
-  :let [*active (r/atom nil)]
+  :let [*active (r/atom nil)
+        *return-focus? (r/atom false)]
   (let [close! #(reset! *active nil)
-        finish! (fn [] (close!) (focus-code!))]
+        finish! (fn [] (close!) (reset! *return-focus? true))
+        blur! (fn [event]
+                ;; Browser keyboard handlers may blur an input before its
+                ;; Escape event reaches React. Keep focus in code when no
+                ;; other element received it; respect actual outside focus.
+                (if (and (nil? (.-relatedTarget event)) (.hasFocus js/document))
+                  (finish!) (close!)))
+        toggle! (fn [field] (if (= field @*active) (finish!) (reset! *active field)))]
+    ;; Restore focus after React removes the active popover input. Focusing it
+    ;; during keydown can be undone by the commit's native focus restoration.
+    (r/use-effect
+      (fn []
+        (when (and (nil? @*active) @*return-focus?)
+          (focus-code!)
+          (reset! *return-focus? false))
+        nil)
+      [@*active @*return-focus? focus-code!])
     [:div.code-edit-controls
      {:content-editable false
       :on-key-down #(.stopPropagation %)}
@@ -271,14 +289,16 @@
        :title (str "Language: " (or (not-empty (:language options)) "Auto detect"))
        :aria-label "Choose code language"
        :aria-expanded (= :language @*active)
-       :on-click #(swap! *active (fn [active] (when-not (= active :language) :language)))}
+       :on-pointer-down #(.preventDefault %)
+       :on-click #(toggle! :language)}
       [:span {:aria-hidden true} "λ"]]
      [:button.code-metadata.blog-btn.noborder
       {:type "button"
        :title "Fence metadata (optional text after the language)"
        :aria-label "Edit fence metadata"
        :aria-expanded (= :meta @*active)
-       :on-click #(swap! *active (fn [active] (when-not (= active :meta) :meta)))}
+       :on-pointer-down #(.preventDefault %)
+       :on-click #(toggle! :meta)}
       [:span {:aria-hidden true} "⋯"]]
      (case @*active
        :language
@@ -286,7 +306,7 @@
         [select/<search-select>
          {:label "Code language"
           :auto-focus? true
-          :on-close close!
+          :on-close (fn [reason event] (if (= :escape reason) (finish!) (blur! event)))
           :value (or (:language options) "")
           :allow-custom? true
           :options (into [{:value "", :label "Auto detect"}]
@@ -309,7 +329,7 @@
                  :placeholder "Optional text after the language"
                  :title "Preserved in Markdown; no display options are currently interpreted."
                  :value (or (:meta options) "")
-                 :on-blur close!
+                 :on-blur blur!
                  :on-key-down (fn [event]
                                 (when (#{"Enter" "Escape"} (.-key event))
                                   (.preventDefault event)
@@ -322,6 +342,11 @@
   {:authoring {:category "Markdown"
                :defaults {:args ["(+ 1 2)" {:language "clojure"}]}}
    :args-schema args-schema
+   ;; Editing has two text surfaces; one font owner keeps their metrics and
+   ;; deferred face upgrade identical. Read-only blocks keep the pre's owner.
+   :features [[:font (fn [_ & options]
+                      (when (:editable? (options-map options))
+                        (assoc font/fira :fade? false)))]]
    :module :highlight
    :icons ["solid/copy" "solid/check" "solid/ellipsis-h" "solid/exclamation"
            "solid/align-left" "solid/angle-down" "solid/angle-up"]}
@@ -332,7 +357,7 @@
         [folded? set-folded!] (r/use-state (boolean (:folded? options)))
         *input (r/use-ref nil)
         [scroll set-scroll!] (r/use-state [0 0])
-        focus-code! #(some-> (.-current *input) .focus)
+        focus-code! (r/use-callback #(some-> (.-current *input) .focus) [])
         [copy-label copy!] (use-copy-feedback code)
         [ssr-pending? set-ssr-pending!]
         (r/use-state #(and (not context/*server?*)
@@ -344,6 +369,12 @@
         line-count (r/use-memo
                      #(count (string/split code #"\n" -1))
                      [code])
+        numbered? (if (nil? (:line-numbers? options))
+                    (false? (:basic? options)) (:line-numbers? options))
+        gutter (if numbered?
+                 (str "calc(" (count (str (+ (or (:starting-line-number options) 1) (dec line-count))))
+                      "ch + 1.5em + 0.5 * var(--space) + var(--line-width-sm))")
+                 "0rem")
         fold-lines (get options :fold-lines 8)
         foldable? (and (:foldable? options) (> line-count fold-lines))
         copy-button [:button.code-copy.blog-btn.noborder
@@ -402,7 +433,8 @@
          :on-key-down (when (:editable? options) #(.stopPropagation %))
          :style (when (:editable? options)
                   {"--code-scroll-left" (str (first scroll) "px")
-                   "--code-scroll-top" (str (second scroll) "px")})}
+                   "--code-scroll-top" (str (second scroll) "px")
+                   "--code-gutter" gutter})}
         (if (:editable? options)
           [:div.code-block-highlight {:aria-hidden true}
            [<formatter> code options on-ready!]]

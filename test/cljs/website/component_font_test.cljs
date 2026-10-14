@@ -19,6 +19,11 @@
   [options attrs]
   [:pre (update attrs :style merge {:font-family "var(--monospace-font)", :font-size "1rem"}) [:code {:style {:font-family "inherit"}} [:span "MWiw0123456789"]]])
 
+(defc <interactive-sample>
+  {:features [[:font (fn [options] options)]]}
+  [options]
+  [:div [:textarea {:default-value "native selection"}]])
+
 (defn- fixture! []
   (go-promise
     (let [element (.createElement js/document "div")
@@ -42,6 +47,33 @@
     {:loads *loads
      :original original
      :restore! #(r/reg-fx :font/load original)}))
+
+(deftest nonfading-font-owner-retains-a-single-native-input
+  (async done
+    (-> (go-promise
+          (let [{:keys [element root close!]} (await! (fixture!))
+                {:keys [loads restore!]} (capture-loads!)
+                opts (assoc (options) :fade? false)
+                face (js/FontFace. (:family opts) "url('/webfonts/FiraCode-Retina.woff2')")]
+            (.add (.-fonts js/document) face)
+            (try
+              (await! (support/render! root [<interactive-sample> opts]))
+              (let [owner (.-firstElementChild element)
+                    input (.querySelector element "textarea")]
+                (await! (until! owner "fallback"))
+                (.focus input)
+                (.setSelectionRange input 2 6)
+                (let [[options token] (first @loads)]
+                  (r/dispatch [:font/loaded (font/request options) token true])
+                  (await! (until! owner "ready")))
+                (is (identical? input (.querySelector element "textarea")))
+                (is (= 1 (.-length (.querySelectorAll element "textarea"))))
+                (is (identical? input (.-activeElement js/document)))
+                (is (= [2 6] [(.-selectionStart input) (.-selectionEnd input)]))
+                (is (nil? (.querySelector element ".font-text-stack"))))
+              (finally (close!) (restore!) (.delete (.-fonts js/document) face)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
 
 (deftest actual-font-load-crossfades-in-place-and-removes-original-text
   (async done
