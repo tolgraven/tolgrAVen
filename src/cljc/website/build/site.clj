@@ -1,12 +1,13 @@
 (ns website.build.site
   "Read the site's capability declaration during build/macro expansion."
   (:require [clojure.edn :as edn]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [website.page-layout :as layout]))
 
 (def resource "site.edn")
 (def overrides-resource "site.overrides.edn")
 (defn validate! [value]
-  (when-not (and (map? value) (every? #{:modules :pages} (keys value))
+  (when-not (and (map? value) (every? #{:modules :pages :layouts} (keys value))
                  (map? (:modules value)) (every? keyword? (keys (:modules value)))
                  (every? #(and (map? %) (every? keyword? (keys %))
                                 (every? boolean? (vals %))) (vals (:modules value)))
@@ -16,6 +17,7 @@
     (throw (ex-info "Site config needs boolean module options and page selections" {})))
   (when (some #(= false (get-in value [:modules % :enabled])) [:main :coercion])
     (throw (ex-info "The site shell and route coercion cannot be disabled" {})))
+  (when (contains? value :layouts) (layout/validate! (:layouts value)))
   value)
 
 (defn merge-config [defaults overrides]
@@ -41,7 +43,13 @@
 
 (defmacro configuration []
   (track! &env)
-  (settings))
+  (let [settings (settings)
+        declarations ((requiring-resolve 'website.build.modules/all-declarations))
+        selected ((requiring-resolve 'website.build.modules/select-declarations) declarations settings)]
+    ((requiring-resolve 'website.build.modules/track-declarations!) &env selected)
+    (let [choices (layout/available-components settings selected)]
+      (layout/validate-components! (:layouts settings) (layout/available-components {:modules {}} declarations))
+      (assoc settings :layout-components choices))))
 
 (defmacro when-enabled [module feature & forms]
   (track! &env)

@@ -166,7 +166,9 @@
 
 
 (defc <story-body> {:features [[:seen {:threshold 0, :restore? false}]]} [content]
-  [:section#about.anim-gradient-bg.noborder
+  [:section.anim-gradient-bg.noborder
+   {:id (or (:identity content) "about")
+    :class (when (:identity content) "page-story")}
    [fields/<text> :h1 content [:title]]
    [:br]
    [layout/<auto-layout-text-imgs> content]
@@ -174,10 +176,17 @@
 
 (defc <story> "Big img header + story" [{:keys [heading] :as content}]
   [:<>
-   [:div#about-intro {:class "section-with-media-bg-wrapper covering stick-up fullwidth"}
-    [ui-layout/<fading-bg-heading> heading]]
+   [:div {:id (if-let [identity (:identity content)] (str identity "-intro") "about-intro")
+          :class (if (and (:identity content) (not (:bg heading)))
+                   "page-story__text-heading"
+                   "section-with-media-bg-wrapper covering stick-up fullwidth")}
+    (if (and (:identity content) (not (:bg heading)))
+      [:header
+       [fields/<text> :h1 heading [:title]]
+       [fields/<text> :p heading [:caption]]]
+      [ui-layout/<fading-bg-heading> heading])]
    [:div.fader>div.fade-to-black.between]
 
-   [:a {:name "about"}]
+   [:a {:name (or (:identity content) "about")}]
    [<story-body> content]
    [ui-layout/<fading> :dir "bottom"]])

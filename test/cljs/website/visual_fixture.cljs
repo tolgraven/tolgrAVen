@@ -4,6 +4,8 @@
             [website.editor-visual :as editor]
             [website.component.restore :as restore]
             [website.modules.cv.views :as cv]
+            [website.modules.home.views :as home]
+            [website.page-layout :as page-layout]
             [website.modules.blog.comment-views :as comments]
             [website.modules.blog.events]
             [website.modules.blog.subs]
@@ -109,10 +111,15 @@
                                  :text "Fixed prose next to the original corner actions.")
           :appear false}])]]]])
 
+(defn <layout-fixture> []
+  [:main#main.main-content
+   [home/<layout> (update (page-layout/find-page page-layout/defaults "experiments") :sections
+                         (fn [sections] (filterv #(#{"story" "page-index"} (:component %)) sections)))]])
+
 (defn ^:export init! []
   (let [params (js/URLSearchParams. (.-search js/location))
         component (.get params "component")]
-    (if-not (#{"cv-regular" "cv-container" "comments" "thread" "search-mixed" "shell"} component)
+    (if-not (#{"page-layout" "cv-regular" "cv-container" "comments" "thread" "search-mixed" "shell"} component)
       (editor/init! false)
       (-> (js/fetch "/fixtures/editor-seed.json")
           (.then #(.json %))
@@ -133,6 +140,7 @@
                   (.then (fn [_]
                            (r/render (r/create-root (.getElementById js/document "app"))
                              (case component
+                               "page-layout" [<layout-fixture>]
                                "search-mixed" [<search-fixture>]
                                "shell" [<shell-fixture>]
                                ("comments" "thread") [<comment-fixture> (= component "thread")]

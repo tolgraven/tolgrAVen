@@ -72,6 +72,8 @@
         (when (and required-owners (not (and (set? required-owners) (every? keyword? required-owners))))
           (throw (ex-info "Module :site/requires must be a literal set of capability keywords" {:file (str file)})))
         (cond-> {:id id :entry (second ns-form) :depends-on dependencies}
+          (some #(and (map? %) (contains? % :view)) (tree-seq coll? seq (:view spec)))
+          (assoc :layout-view? true)
           owner (assoc :site/owner owner)
           required-owners (assoc :site/requires required-owners)
           (seq content) (assoc :content content)
@@ -165,7 +167,7 @@
                 [id {:entries [entry] :depends-on depends-on}]))
          (discover root development?))))
 
-(defn- track-declarations! [env declarations]
+(defn track-declarations! [env declarations]
   (site/track! env)
   (when (:ns env)
     ;; Shadow retains analysis between compiler processes too. Track each source
