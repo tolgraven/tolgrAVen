@@ -5,6 +5,13 @@ alters the architecture, build workflow, or contracts they describe. Keep
 instructions concise; detailed schemas, examples and user guides belong in `doc/`.
 Do not retain completed investigation diaries or historical test counts as current guidance.
 
+## Work completion and usage limits
+
+Agents have no token allowance to manage and must not reason about or report
+"tokens left." The user tracks their weekly usage cap. Continue the authorized
+work through completion; do not shorten, defer or stop work because of an assumed
+token budget.
+
 ## Required workflow for every request
 
 Every request that changes this repository follows the complete workflow below,
