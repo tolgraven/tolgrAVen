@@ -141,6 +141,8 @@ try {
             $site=$input['site'];
             cmsEnv($service,'CMS_SITE_MANIFEST',json_encode(['config'=>$site['config'],
                 'availableModules'=>$site['available-modules'],'pages'=>$site['pages'],
+                'layoutComponents'=>$site['layout-components'] ?? [],
+                'layoutDefaults'=>$site['layout-defaults'] ?? [],
                 'styleReference'=>isset($site['style-reference']) ? [
                     'path'=>$site['style-reference']['path'],
                     'sourceBase64'=>$site['style-reference']['source-base64']] : null]));

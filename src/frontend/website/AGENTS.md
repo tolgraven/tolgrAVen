@@ -640,3 +640,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Commit rows retain native external/permalink links without nested anchors;
   row intent dispatches the GitHub-owned document effect. Feed query resets keep
   immutable detail caches and separately keyed revision-viewer state independent.
+
+- Home's `<dynamic-page>` selects a published layout and `<layout>` renders typed
+  data through the original section/data/module boundaries. Story instances may
+  supply independent CMS article data; their identity owns anchors. Grid CSS owns
+  cold/SSR geometry and `website.breakpoints` exposes breaking-point's inherited
+  `:layout/responsive` subscription; `boot` still owns resize listener cleanup.

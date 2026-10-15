@@ -42,18 +42,18 @@
                     [:<>
                      [<story-line> line content i]
                      [:br]])
-         chunk-size (int (/ (count text-part)
-                            (count (:images content))))
-         result (->> (util/interleave-all (map-indexed
-                                           (fn [i [id image caption pos]]
-                                             [<float-img> (str "story-image-" id) image caption pos content [:images i 2]])
-                                           (:images content))
-                                          (map #(into [:div] %)
-                                               (partition chunk-size chunk-size
-                                                          (repeat "") text-part)))
-                      (map-indexed (fn [i v]
-                                     (with-meta
-                                      v {:key (str "auto-layout-part-" i)}))))] ;would need a parent id thingy as well tho
+        chunk-size (max 1 (int (/ (count text-part)
+                                  (max 1 (count (:images content))))))
+        image-parts (map-indexed
+                      (fn [i [id image caption pos]]
+                        [<float-img> (str (or (:identity content) "story") "-image-" id)
+                         image caption pos content [:images i 2]])
+                      (:images content))
+        text-parts (map #(into [:div] %)
+                        (partition chunk-size chunk-size (repeat "") text-part))
+        result (map-indexed
+                 (fn [i part] (with-meta part {:key (str "auto-layout-part-" i)}))
+                 (apply util/interleave-all (filter seq [image-parts text-parts])))]
      [:div.float-wrapper result]))
 
 

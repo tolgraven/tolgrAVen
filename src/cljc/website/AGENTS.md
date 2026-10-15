@@ -162,3 +162,9 @@ server format handlers retain their native JVM Java-time support.
 - `website.macros` parses bindings and emits schema data without loading Malli.
   Keep schema interpretation in runtime validation/coercion adapters so catalog
   extraction cannot initialize the schema engine during compiler macro loading.
+
+- `page_layout.cljc` owns portable page/section identity, grid settings and defaults.
+  `build.site/configuration` tracks the existing module inventory and publishes
+  enabled default-view choices; CMS layout data never supplies executable code.
+  Reserved module routes retain ownership. Layout edits use the existing publish
+  snapshot so browser routes, server routes and SSR agree.

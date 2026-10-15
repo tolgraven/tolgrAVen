@@ -568,6 +568,38 @@
       ],
       "path": "/fixtures/visual.html?component=shell-scroll",
       "action": "const header = document.querySelector('header'); const sticky = document.getElementById('footer-sticky'); const full = document.getElementById('footer-end'); const logo = header.querySelector('.header-logo'); const content = sticky.querySelector('.footer-content'); const initialHeight = header.getBoundingClientRect().height; if (initialHeight <= 0 || !content.children.length) throw new Error('Native shell did not start visible'); window.scrollTo({top:document.scrollingElement.scrollHeight,behavior:'instant'}); website.visual_fixture.shell_state_BANG_('bottom'); await window.visualFixture.ready(); const bounds = full.getBoundingClientRect(); if (header.classList.contains('hide') || !sticky.classList.contains('bottomed') || !sticky.classList.contains('hide') || !sticky.inert || sticky.getAttribute('aria-hidden') !== 'true' || getComputedStyle(content).opacity !== '0' || parseFloat(getComputedStyle(sticky).maxHeight) !== 0 || full.inert || full.hasAttribute('aria-hidden') || bounds.top >= innerHeight || bounds.bottom <= 0) throw new Error('Native full-footer handover left sticky content visible or full footer inactive'); if (header !== document.querySelector('header') || sticky !== document.getElementById('footer-sticky') || content !== sticky.querySelector('.footer-content')) throw new Error('Shell state replaced native DOM');"
+    },
+    {
+      "id": "page-layout-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=page-layout"
+    },
+    {
+      "id": "page-layout-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=page-layout"
+    },
+    {
+      "id": "page-layout-vertical-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=page-layout-vertical"
+    },
+    {
+      "id": "page-layout-vertical-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=page-layout-vertical"
     }
   ]
 }

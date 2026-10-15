@@ -1,7 +1,8 @@
 (ns website.page-test
   (:require [clojure.test :refer [deftest is]]
             [website.page :as page]
-            [website.page-router :as router]))
+            [website.page-router :as router]
+            [website.modules.main.layout :as landing]))
 
 (deftest title-selection-belongs-to-the-page-spec
   (let [snapshot {:content {:document {:title "Site title"}}
@@ -23,3 +24,13 @@
     (is (= ["img/hero.png"]
            (page/critical-images {:preload-images [[:hero :src]]}
                                  {:hero {:src "img/hero.png"}})))))
+
+(deftest landing-hydration-is-shared-only-within-the-same-layout
+  (with-redefs [landing/landing-pages {"/" {:layout "home"}
+                                      "/about" {:layout "home"}
+                                      "/experiments/layout" {:layout "experiments"}}]
+    (is (landing/same-layout? "/" "/about"))
+    (is (not (landing/same-layout? "/" "/experiments/layout")))
+    (is (not (landing/same-layout? "/experiments/layout" "/")))
+    (is (not (landing/same-layout? "/" "/missing")))
+    (is (vector? (:layout (landing/page-spec "/"))))))

@@ -5,6 +5,7 @@
             [cheshire.core :as json]
             [website.build.modules :as modules]
             [website.build.site :as site]
+            [website.page-layout :as layout]
             [website.site-catalog :as catalog]
             [website.supabase.catalog :as storage]
             [website.supabase.schema-plan :as plan]
@@ -30,6 +31,7 @@
   (let [settings (site/validate! settings)
         all (modules/all-declarations)
         selected (modules/select-declarations all settings)
+        _ (layout/validate-components! (:layouts settings) (layout/available-components {:modules {}} all))
         definitions (into {} (keep (fn [{:keys [id storage]}]
                                     (when storage
                                       (require (symbol (namespace storage)))
@@ -40,6 +42,8 @@
                        (not= false (get-in settings [:modules :blog :comments])))
         resources (plan/schema-resources tables server comments?)]
     {:config settings
+     :layout-components (layout/available-components settings selected)
+     :layout-defaults (layout/selected-pages (assoc settings :layout-components (layout/available-components settings selected)))
      :style-reference {:path "resources/scss/shell/_vars.scss"
                        :source-base64 (.encodeToString (java.util.Base64/getEncoder)
                                                        (.getBytes (slurp (io/resource "scss/shell/_vars.scss")) "UTF-8"))}

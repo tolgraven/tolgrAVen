@@ -10,6 +10,8 @@
             [website.modules.github.subs]
             [website.modules.cv.views :as cv]
             [website.modules.blog.views :as blog]
+            [website.modules.home.views :as home-view]
+            [website.page-layout :as page-layout]
             [website.modules.blog.comment-views :as comments]
             [website.modules.blog.events]
             [website.modules.blog.subs]
@@ -275,10 +277,28 @@
     {:tag-cloud? false
      :section [comments/<standalone-comment> "visual-comment"]}]])
 
+(m/defpage <layout-surface> [vertical?]
+  [home-view/<layout>
+    (let [page (page-layout/find-page page-layout/defaults "experiments")
+          page' (update page :sections (fn [sections] (filterv #(#{"story" "page-index"} (:component %)) sections)))
+          [story index] (:sections page')]
+      (if vertical?
+        (-> page'
+            (dissoc :columns)
+            (assoc :sections [index
+                              (update-in story [:content :text] #(str % "\n\n" % "\n\n" %))
+                              (assoc story :identity "second-story", :label "Second article")]))
+        page'))])
+
+(defn <layout-fixture> [vertical?]
+  [:main#main.main-content [<layout-surface> vertical?]])
+
+
 (defn ^:export init! []
   (let [params (js/URLSearchParams. (.-search js/location))
         component (.get params "component")]
-    (if-not (#{"cv-regular" "cv-container" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
+    (if-not (#{"page-layout" "page-layout-vertical"
+               "cv-regular" "cv-container" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
                "thread" "post" "standalone-comments" "search-mixed"
                "shell" "shell-scroll" "header" "footer" "post-footer" "services" "cv"
                "home-intro" "home-story" "home-image-media" "github"} component)
@@ -306,6 +326,12 @@
                 (r/dispatch-sync [:set [:common/route]
                                   (assoc (reitit/match-by-path routes/router "/blog/comment/visual-comment")
                                          :parameters {:path {:comment-id "visual-comment"}, :query {}})]))
+              (when (#{"page-layout" "page-layout-vertical"} component)
+                (r/dispatch-sync [:set [:common/route]
+                                  (assoc (reitit/match-by-path routes/router "/blog/post/42")
+                                         :parameters {:path {:permalink "42"}, :query {}}
+                                         :path (.-pathname js/location)
+                                         :query-params {:component component})]))
               ;; Only provider boundaries are fixed. Native comment markup,
               ;; actions, clip measurement and expansion events are unchanged.
               (r/reg-sub :user/user
@@ -361,6 +387,7 @@
                   (.then (fn [_]
                            (r/render (r/create-root (.getElementById js/document "app"))
                              (case component
+                               ("page-layout" "page-layout-vertical") [<layout-fixture> (= component "page-layout-vertical")]
                                "search-mixed" [<search-fixture>]
                                ("post" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge" "thread")
                                [<post-fixture> component]
