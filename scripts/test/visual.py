@@ -313,6 +313,8 @@ def hover_contract(case):
 
 def capture_tiles(client, case, output):
     """Paint the complete document through real, overlapping viewport captures."""
+    # Native startup focus/scroll must complete before selecting tile zero.
+    client.evaluate("async () => { await window.visualFixture.ready(); return true; }")
     states, tiles, target = [], [], 0
     for index in range(128):
         state = client.evaluate("async () => { window.visualFixture.motion.phase('tile-" + str(index) + "'); window.scrollTo({left:0,top:" + str(target) +

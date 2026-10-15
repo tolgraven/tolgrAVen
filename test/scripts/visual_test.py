@@ -1,8 +1,10 @@
 """The visual gate must reject a real one-pixel/padding/missing-element change."""
 import importlib.util
 import argparse
+import base64
 import hashlib
 import json
+import re
 from pathlib import Path
 import struct
 import tempfile
@@ -471,6 +473,69 @@ class VisualTest(unittest.TestCase):
             (actual / "capture.json").write_text(json.dumps(metadata))
             with self.assertRaisesRegex(ValueError, "Missing approved CSS motion"):
                 visual.compare(args)
+
+    def test_raster_settles_startup_before_first_scroll_and_still_rejects_displaced_tiles(self):
+        class Client(HoverClient):
+            def __init__(self, image, drift=None):
+                super().__init__()
+                self.image, self.drift = image, drift
+                self.startup = False
+                self.events = []
+                self.scrolls = 0
+
+            def evaluate(self, function, **arguments):
+                self.assert_readiness(function)
+                if 'window.scrollTo' not in function:
+                    self.events.append('startup-ready')
+                    self.startup = True
+                    # Native startup focus moves the viewport before tiling.
+                    self.y = 229
+                    return True
+                target = int(re.search(r'top:(\d+)', function).group(1))
+                self.events.extend([('scroll', target), 'post-scroll-ready'])
+                self.scrolls += 1
+                self.y = target if self.startup else 229
+                self.startup = True
+                state = self.state()
+                state['document'] = [0, self.y, 1610]
+                if self.drift == 'scroll': state['document'][1] += 1
+                if self.drift == 'viewport': state['viewport'][0] += 1
+                return state
+
+            @staticmethod
+            def assert_readiness(function):
+                if 'await window.visualFixture.ready()' not in function:
+                    raise AssertionError('Startup must use the actual fixture readiness API')
+
+            def call(self, name, **arguments):
+                self.calls.append((name, arguments))
+                if name != 'take_screenshot': raise AssertionError('Unexpected capture transport call')
+                return {'content': [{'type': 'image', 'data': self.image}]}
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            png = root / 'native.png'
+            visual.write_png(png, 1, 1, bytes([42, 23, 63, 255]))
+            image = base64.b64encode(png.read_bytes()).decode()
+            case = {'id': 'cv', 'viewport': [400, 800]}
+            for drift in (None, 'scroll', 'viewport'):
+                with self.subTest(drift=drift):
+                    output = root / str(drift); output.mkdir()
+                    client = Client(image, drift)
+                    if drift:
+                        message = 'requested scroll position' if drift == 'scroll' else 'invalid viewport'
+                        with self.assertRaisesRegex(RuntimeError, message):
+                            visual.capture_tiles(client, case, output)
+                        self.assertEqual([], list(output.iterdir()), 'No invalid tile may be captured')
+                        self.assertFalse(client.calls, 'Bounds must pass before taking a screenshot')
+                    else:
+                        visual.capture_tiles(client, case, output)
+                        state = json.loads((output / 'cv.json').read_text())
+                        self.assertEqual([[0, 0], [0, 640], [0, 810]], [tile['scroll'] for tile in state['tiles']])
+                        self.assertEqual(3, len(client.calls))
+                    self.assertEqual('startup-ready', client.events[0])
+                    self.assertEqual(('scroll', 0), client.events[1])
+                    self.assertEqual(client.scrolls, client.events.count('post-scroll-ready'))
 
     def test_below_fold_pixel_and_missing_tile_fail(self):
         with tempfile.TemporaryDirectory() as directory:

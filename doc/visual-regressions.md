@@ -144,8 +144,11 @@ cases retain their existing top-heading parking and explicit target interaction.
 
 Raster captures use the actual
 top-level viewport; both modes retain normal component lifecycles.
-Raster mode scrolls the document from its top through overlapping viewports to
-its bottom, saving each viewport's PNG and geometry separately. This covers
+Raster mode first awaits native fixture startup readiness, including its owned
+focus/scroll actions, before positioning the first tile. It then scrolls the
+document from its top through overlapping viewports to its bottom, retaining
+post-scroll readiness and exact viewport/scroll bounds for every tile. Each
+viewport's PNG and geometry are saved separately. This covers
 expanded code and trailing text below the fold without a full-page screenshot
 that can change native painting. Reports compare every tile and its scroll
 coverage; a missing tile fails. Nested independently scrolling regions still

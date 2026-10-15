@@ -6,6 +6,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - `test/visual.py` attaches through the configured shared Development-profile
   launcher (`codex-chrome-devtools`) and closes only its own reused task tab.
   Identify that new tab by its unique task URL and fresh observed page ID, never selection.
+  Raster capture awaits startup readiness before positioning tile zero, then
+  checks readiness and exact bounds after each scroll.
   Capture creates candidates; strict pixel/geometry comparison never updates
   approved baselines. Preserve
   environment checks and missing-case failures. See `doc/visual-regressions.md`.
