@@ -102,7 +102,7 @@ test('native form-control types are not pseudo targets, including parked start m
     assert.deepEqual(JSON.parse(JSON.stringify(observer.snapshot().gaps)), [],
       'An available parked definition matches the native start target');
     active.forEach(animation => { animation.playState = 'running'; });
-    starts();
+    listeners.get('pointerover')();
     const snapshot = JSON.parse(JSON.stringify(observer.snapshot()));
     assert.deepEqual(snapshot.gaps, [], 'Captured native starts match their real element or pseudo wrapper');
     assert.deepEqual(snapshot.triggered.map(value => [value.target, value.pseudo]).sort(),
@@ -150,15 +150,31 @@ function startFixture() {
 }
 
 test('a captured native start cannot excuse a later missing occurrence at the same target and property', () => {
-  const f = startFixture(), target = {nodeType: 1, localName: 'button', type: 'button'};
-  try {
-    f.active([f.clock(target)]); f.event(target);
-    f.active([]); f.observer.phase('action'); f.event(target);
-    const state = f.observer.snapshot();
-    assert.equal(state.triggered.length, 1);
-    assert.equal(state.gaps.length, 1);
-    assert.match(state.gaps[0], /no observable definition.*button.*opacity/);
-  } finally { f.observer.stop(); }
+  for (const retained of [false, true]) {
+    const f = startFixture(), target = {nodeType: 1, localName: 'button', type: 'button'};
+    const kind = retained ? 'animation' : 'transition', event = retained ? 'animationstart' : 'transitionrun';
+    const first = f.clock(target, kind);
+    if (retained) first.effect.getTiming = () => ({duration: 150, iterations: 1, fill: 'both'});
+    try {
+      f.active([first]); f.event(target, event);
+      first.playState = 'finished'; f.observer.sample();
+      if (!retained) f.active([]);
+      f.observer.phase('action');
+      // The second short clock disappeared before its queued native start.
+      // An old fill-both object can still be present at the identical target.
+      f.event(target, event);
+      const state = f.observer.snapshot();
+      assert.equal(state.triggered.length, 1);
+      assert.equal(state.gaps.length, 1, retained ? 'A retained finished object already consumed its start' : 'The old object disappeared');
+      assert.match(state.gaps[0], /no observable definition.*button.*opacity/);
+      if (retained) {
+        const second = f.clock(target, kind);
+        f.active([first, second]); f.event(target, event);
+        assert.equal(f.observer.snapshot().triggered.length, 2, 'A new observed object has its own definition');
+        assert.equal(f.observer.snapshot().gaps.length, 1, 'Its receipt is not confused with the retained old object');
+      }
+    } finally { f.observer.stop(); }
+  }
 });
 
 test('queued native starts consume one captured object receipt despite changed paths, never another DOM instance', () => {

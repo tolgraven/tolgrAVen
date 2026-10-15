@@ -112,7 +112,10 @@
             pseudo: effect?.pseudoElement || (effect?.target?.element && effect.target.type) || null});
         });
         if (['animationstart', 'transitionrun'].includes(event.type)) {
-          const available = matching.find(animation => pendingStarts.has(animation)) || matching[0];
+          // A retained fill-both object has already acknowledged its start;
+          // it cannot stand in for a later short clock that disappeared.
+          const available = matching.find(animation => pendingStarts.has(animation)) ||
+            matching.find(animation => !started.has(animation));
           const queued = available ? null : [...pendingStarts].find(([, entry]) => matches(entry));
           const animation = available || queued?.[0];
           if (animation) {
