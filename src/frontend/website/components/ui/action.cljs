@@ -18,18 +18,32 @@
 (defc ^:private <label>
   "Mounted only while its action is hovered or focused; owns dismissal listeners."
   [{:keys [id label right top above?]} close!]
-  (r/use-effect
-    #(listener/listen! :action-label
-       [{:target "window", :event "scroll", :capture? true, :handler close!}
-        {:target "window", :event "resize", :handler close!}])
-    [close!])
-  [portal/<portal> js/document.body
-   [:span.action-label
-    {:id id
-     :role "tooltip"
-     :class (when above? "action-label--above")
-     :style {:right (str right "rem"), :top (str top "rem")}}
-    label]])
+  (let [*element (r/use-ref nil)
+        [measured-right set-measured-right!] (r/use-state nil)]
+    ;; Label width changes with copy feedback. Measure the committed portal before
+    ;; paint; React owns the resulting position. Resize/scroll dismiss the owner.
+    (r/use-layout-effect
+      (fn []
+        (when-let [element (.-current *element)]
+          (let [bounds (.getBoundingClientRect element)
+                unit (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))
+                maximum-right (max 0.5 (- (/ (.-innerWidth js/window) unit)
+                                          (/ (.-width bounds) unit) 0.5))]
+            (set-measured-right! (min (max 0.5 right) maximum-right)))))
+      [right label])
+    (r/use-effect
+      #(listener/listen! :action-label
+         [{:target "window", :event "scroll", :capture? true, :handler close!}
+          {:target "window", :event "resize", :handler close!}])
+      [close!])
+    [portal/<portal> js/document.body
+     [:span.action-label
+      {:id id
+       :ref *element
+       :role "tooltip"
+       :class (when above? "action-label--above")
+       :style {:right (str (or measured-right 0.5) "rem"), :top (str top "rem")}}
+      label]]))
 
 (defc <action>
   "A native link or button whose label follows hover/focus and dismisses on Escape.

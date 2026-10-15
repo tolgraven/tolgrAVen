@@ -115,12 +115,21 @@
                   (.dispatchEvent js/window (js/Event. "resize"))
                   (await! (support/settle!))
                   (is (nil? (tooltip wrap)) "Geometry changes dismiss the label"))
-                (await! (support/render! root [code/<code-block> "inline" :inline? true]))
+                (await! (support/render! root
+                         [:div {:style {:position "fixed", :left "0rem", :top "1rem", :width "90vw"}}
+                          [code/<code-block> "inline" :inline? true]]))
                 (let [copy (.querySelector element ".code-copy")]
                   (.focus copy)
                   (await! (support/settle!))
                   (is (= "Copy code" (.-textContent (tooltip copy))))
-                  (is (seq (owners))))
+                  (is (seq (owners)))
+                  (r/reg-fx :code-block/copy (fn [{:keys [complete!]}] (complete! "Copy unavailable")))
+                  (.click copy)
+                  (await! (support/wait-for! #(= "Copy unavailable" (.-textContent (tooltip copy)))))
+                  (await! (support/settle!))
+                  (let [bounds (.getBoundingClientRect (tooltip copy))]
+                    (is (<= 0 (.-left bounds)) "Long feedback near the left edge stays visible")
+                    (is (<= (.-right bounds) (.-innerWidth js/window)))))
                 (finally (support/unmount! root)))
               (is (nil? (.querySelector js/document ".action-label")))
               (is (empty? (owners)) "Unmount releases every label listener")))
