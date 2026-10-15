@@ -143,7 +143,13 @@ application hover styles, DOM or event handlers are suppressed. Standalone hover
 cases retain their existing top-heading parking and explicit target interaction.
 
 Raster captures use the actual
-top-level viewport; both modes retain normal component lifecycles.
+top-level viewport; both modes retain normal component lifecycles. The wide grid
+page-layout case visits the document bottom and returns to the top before its
+first tile. Native evidence showed a one-unit channel difference in Chrome’s
+gradient raster until that ordinary repaint; a one-CSS-pixel scroll did not
+settle it. This changes only that fixture action, never application styles,
+DOM, animation policy or pixel tolerance. Retain prior failed captures when
+reviewing the updated case and baseline.
 Raster mode scrolls the document from its top through overlapping viewports to
 its bottom, saving each viewport's PNG and geometry separately. This covers
 expanded code and trailing text below the fold without a full-page screenshot
