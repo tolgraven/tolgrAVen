@@ -1,0 +1,3280 @@
+{
+  "viewport": [
+    1440,
+    1000,
+    1
+  ],
+  "document": [
+    0,
+    0,
+    1036
+  ],
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "platform": "MacIntel",
+    "calendarEpoch": 1792065600000,
+    "language": "en",
+    "viewport": [
+      1440,
+      1000,
+      1
+    ],
+    "fonts": [
+      [
+        "Fira Code Fallback",
+        "normal",
+        "normal",
+        "unloaded"
+      ],
+      [
+        "Fira Code Ready",
+        "normal",
+        "normal",
+        "unloaded"
+      ],
+      [
+        "Fira Code",
+        "normal",
+        "normal",
+        "loaded"
+      ],
+      [
+        "Font Awesome 5 Brands",
+        "normal",
+        "400",
+        "unloaded"
+      ],
+      [
+        "Font Awesome 5 Brands",
+        "normal",
+        "400",
+        "unloaded"
+      ],
+      [
+        "Font Awesome 5 Free",
+        "normal",
+        "900",
+        "unloaded"
+      ],
+      [
+        "Font Awesome 5 Free",
+        "normal",
+        "900",
+        "unloaded"
+      ],
+      [
+        "Open Sans Fallback",
+        "normal",
+        "normal",
+        "loaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "loaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ]
+    ]
+  },
+  "geometry": [
+    {
+      "tag": "DIV",
+      "id": "app",
+      "class": "",
+      "selector": "#app",
+      "role": null,
+      "text": null,
+      "box": [
+        216,
+        56.3125,
+        1008,
+        980
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        1008,
+        980,
+        1008,
+        980
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "MAIN",
+      "id": "main",
+      "class": "main-content perspective-top",
+      "selector": "#main",
+      "role": null,
+      "text": null,
+      "box": [
+        216,
+        56.3125,
+        1008,
+        980
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        1004,
+        976,
+        1004,
+        976
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "56.32px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "2px",
+        "2px",
+        "2px",
+        "2px"
+      ],
+      "display": "grid",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "linear-gradient(-77deg, rgb(21, 17, 23), rgb(19, 22, 22))",
+        "borderColor": "rgb(153, 153, 153)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "page-root",
+      "selector": "div.page-root",
+      "role": null,
+      "text": null,
+      "box": [
+        218,
+        58.3125,
+        1004,
+        899.6796875
+      ],
+      "relative": [
+        2,
+        2
+      ],
+      "scroll": [
+        1004,
+        900,
+        1004,
+        900
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "SECTION",
+      "id": "",
+      "class": "blog fullwide noborder",
+      "selector": "section.blog.fullwide.noborder",
+      "role": null,
+      "text": null,
+      "box": [
+        218,
+        58.3125,
+        1004,
+        899.6796875
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        1004,
+        900,
+        1004,
+        900
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "linear-gradient(-77deg, rgb(21, 17, 23), rgb(19, 22, 22))",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "center",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "SECTION",
+      "id": "",
+      "class": "blog-post",
+      "selector": "section.blog-post",
+      "role": null,
+      "text": null,
+      "box": [
+        218,
+        58.3125,
+        1004,
+        443.96875
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        1004,
+        444,
+        1004,
+        444
+      ],
+      "padding": [
+        "56.32px",
+        "56.32px",
+        "56.32px",
+        "56.32px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "56.32px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "flex",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "center",
+        "flexDirection": "column",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "flex blog-post-header",
+      "selector": "div.flex.blog-post-header",
+      "role": null,
+      "text": null,
+      "box": [
+        274.3125,
+        114.625,
+        891.375,
+        123.90625
+      ],
+      "relative": [
+        56.3125,
+        56.3125
+      ],
+      "scroll": [
+        891,
+        124,
+        891,
+        124
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "flex",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "appear-wrapper zoom slower appeared",
+      "selector": "div.appear-wrapper.zoom.slower.appeared",
+      "role": null,
+      "text": null,
+      "box": [
+        274.3125,
+        114.625,
+        115.2734375,
+        123.90625
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        115,
+        124,
+        115,
+        124
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "user-avatar-container",
+      "selector": "div.user-avatar-container",
+      "role": null,
+      "text": null,
+      "box": [
+        274.3125,
+        125.1796875,
+        115.2734375,
+        101.796875
+      ],
+      "relative": [
+        0,
+        10.5546875
+      ],
+      "scroll": [
+        115,
+        102,
+        115,
+        102
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "10.56px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "PICTURE",
+      "id": "",
+      "class": "",
+      "selector": "picture",
+      "role": null,
+      "text": null,
+      "box": [
+        274.3125,
+        202.9765625,
+        115.2734375,
+        24
+      ],
+      "relative": [
+        0,
+        77.796875
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "SOURCE",
+      "id": "",
+      "class": "",
+      "selector": "source",
+      "role": null,
+      "text": "",
+      "box": [
+        274.3125,
+        202.9765625,
+        0,
+        24
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "SOURCE",
+      "id": "",
+      "class": "",
+      "selector": "source",
+      "role": null,
+      "text": "",
+      "box": [
+        274.3125,
+        202.9765625,
+        0,
+        24
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "IMG",
+      "id": "",
+      "class": "user-avatar blog-user-avatar",
+      "selector": "img.user-avatar.blog-user-avatar",
+      "role": null,
+      "text": "",
+      "box": [
+        292.7890625,
+        125.1796875,
+        96.796875,
+        96.796875
+      ],
+      "relative": [
+        18.4765625,
+        -77.796875
+      ],
+      "scroll": [
+        95,
+        95,
+        95,
+        95
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "18.48px"
+      ],
+      "border": [
+        "1px",
+        "1px",
+        "1px",
+        "1px"
+      ],
+      "display": "inline-block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "hidden",
+        "hidden"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgb(19, 22, 22)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(153, 153, 153)",
+        "boxShadow": "rgba(204, 204, 255, 0.4) 0px 0px 8.8px 1.1px",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "blog-post-header-main",
+      "selector": "div.blog-post-header-main",
+      "role": null,
+      "text": null,
+      "box": [
+        426.5390625,
+        114.625,
+        323.9375,
+        123.90625
+      ],
+      "relative": [
+        152.2265625,
+        0
+      ],
+      "scroll": [
+        324,
+        124,
+        324,
+        124
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "36.96px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "class": "",
+      "selector": "a",
+      "role": null,
+      "text": null,
+      "box": [
+        426.5390625,
+        114.625,
+        323.9375,
+        48
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(128, 160, 179)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(128, 160, 179)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "H1",
+      "id": "",
+      "class": "blog-post-title",
+      "selector": "h1.blog-post-title",
+      "role": null,
+      "text": "Native post header",
+      "box": [
+        426.5390625,
+        114.625,
+        323.9375,
+        48
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        324,
+        48,
+        324,
+        48
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "35.2px",
+        "600",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(118, 146, 171)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(118, 146, 171)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "SPAN",
+      "id": "",
+      "class": "blog-info appear-wrapper slide-in appeared",
+      "selector": "span.blog-info.appear-wrapper.slide-in.appeared",
+      "role": null,
+      "text": null,
+      "box": [
+        426.5390625,
+        166.625,
+        177.2734375,
+        19
+      ],
+      "relative": [
+        0,
+        52
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "14.08px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "14.08px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "EM",
+      "id": "",
+      "class": "blog-user",
+      "selector": "em.blog-user",
+      "role": null,
+      "text": "Visual writer",
+      "box": [
+        426.5390625,
+        166.625,
+        89.7265625,
+        19
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "14.08px",
+        "700",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(172, 161, 160)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(172, 161, 160)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "SPAN",
+      "id": "",
+      "class": "",
+      "selector": "span",
+      "role": null,
+      "text": "2021-01-01",
+      "box": [
+        530.34375,
+        166.625,
+        73.46875,
+        19
+      ],
+      "relative": [
+        103.8046875,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "14.08px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "14.08px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "flex",
+      "selector": "div.flex",
+      "role": null,
+      "text": null,
+      "box": [
+        426.5390625,
+        186.625,
+        323.9375,
+        51.90625
+      ],
+      "relative": [
+        0,
+        72
+      ],
+      "scroll": [
+        324,
+        52,
+        324,
+        52
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "flex",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "blog-post-tags",
+      "selector": "div.blog-post-tags",
+      "role": null,
+      "text": null,
+      "box": [
+        426.5390625,
+        199.8203125,
+        208.53125,
+        35.1953125
+      ],
+      "relative": [
+        0,
+        13.1953125
+      ],
+      "scroll": [
+        209,
+        35,
+        209,
+        35
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "13.2px",
+        "0px",
+        "3.52px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "column",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "SPAN",
+      "id": "",
+      "class": "",
+      "selector": "span",
+      "role": null,
+      "text": null,
+      "box": [
+        426.5390625,
+        197.1875,
+        69.8515625,
+        29.265625
+      ],
+      "relative": [
+        0,
+        -2.6328125
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "2.64px",
+        "7.04px",
+        "2.64px",
+        "7.04px"
+      ],
+      "margin": [
+        "0px",
+        "36.96px",
+        "36.96px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgb(49, 44, 43)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "rgba(200, 200, 255, 0.03) 2.5px 2.5px 5px 1px",
+        "textShadow": "rgb(204, 166, 135) 1px 1px 1px",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": {
+          "content": "\"\"",
+          "display": "block",
+          "position": "absolute",
+          "width": "72.6406px",
+          "height": "29.2656px",
+          "offsets": [
+            "0px",
+            "-1.39844px",
+            "0px",
+            "-1.39062px"
+          ],
+          "padding": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "margin": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "border": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "borderColor": "rgb(226, 214, 212)",
+          "borderRadius": "0px",
+          "color": "rgb(226, 214, 212)",
+          "backgroundColor": "rgb(49, 44, 43)",
+          "backgroundImage": "none",
+          "mask": [
+            "none",
+            "auto",
+            "0% 0%"
+          ],
+          "font": [
+            "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+            "17.6px",
+            "400",
+            "normal",
+            "normal"
+          ],
+          "opacity": "1",
+          "visibility": "visible",
+          "zIndex": "-1",
+          "transform": "matrix(1, 0, -0.267949, 1, 0, 0)",
+          "filter": "none",
+          "boxShadow": "none",
+          "textShadow": "rgb(204, 166, 135) 1px 1px 1px"
+        },
+        "after": {
+          "content": "\"\"",
+          "display": "block",
+          "position": "absolute",
+          "width": "34.9219px",
+          "height": "14.6328px",
+          "offsets": [
+            "7.3125px",
+            "17.4688px",
+            "7.32031px",
+            "17.4609px"
+          ],
+          "padding": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "margin": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "border": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "borderColor": "rgb(226, 214, 212)",
+          "borderRadius": "0px",
+          "color": "rgb(226, 214, 212)",
+          "backgroundColor": "rgb(71, 80, 82)",
+          "backgroundImage": "none",
+          "mask": [
+            "none",
+            "auto",
+            "0% 0%"
+          ],
+          "font": [
+            "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+            "17.6px",
+            "400",
+            "normal",
+            "normal"
+          ],
+          "opacity": "1",
+          "visibility": "visible",
+          "zIndex": "-2",
+          "transform": "none",
+          "filter": "none",
+          "boxShadow": "none",
+          "textShadow": "rgb(204, 166, 135) 1px 1px 1px"
+        }
+      }
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "class": "blog-tag-link",
+      "selector": "a.blog-tag-link",
+      "role": null,
+      "text": "clojure",
+      "box": [
+        433.578125,
+        199.8203125,
+        55.7734375,
+        24
+      ],
+      "relative": [
+        7.0390625,
+        2.6328125
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(128, 160, 179)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(128, 160, 179)",
+        "boxShadow": "none",
+        "textShadow": "rgb(204, 166, 135) 1px 1px 1px",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "SPAN",
+      "id": "",
+      "class": "",
+      "selector": "span",
+      "role": null,
+      "text": null,
+      "box": [
+        533.34375,
+        197.1875,
+        64.7734375,
+        29.265625
+      ],
+      "relative": [
+        106.8046875,
+        -2.6328125
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "2.64px",
+        "7.04px",
+        "2.64px",
+        "7.04px"
+      ],
+      "margin": [
+        "0px",
+        "36.96px",
+        "36.96px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgb(49, 44, 43)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "rgba(200, 200, 255, 0.03) 2.5px 2.5px 5px 1px",
+        "textShadow": "rgb(204, 166, 135) 1px 1px 1px",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": {
+          "content": "\"\"",
+          "display": "block",
+          "position": "absolute",
+          "width": "67.3594px",
+          "height": "29.2656px",
+          "offsets": [
+            "0px",
+            "-1.29688px",
+            "0px",
+            "-1.28906px"
+          ],
+          "padding": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "margin": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "border": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "borderColor": "rgb(226, 214, 212)",
+          "borderRadius": "0px",
+          "color": "rgb(226, 214, 212)",
+          "backgroundColor": "rgb(49, 44, 43)",
+          "backgroundImage": "none",
+          "mask": [
+            "none",
+            "auto",
+            "0% 0%"
+          ],
+          "font": [
+            "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+            "17.6px",
+            "400",
+            "normal",
+            "normal"
+          ],
+          "opacity": "1",
+          "visibility": "visible",
+          "zIndex": "-1",
+          "transform": "matrix(1, 0, -0.267949, 1, 0, 0)",
+          "filter": "none",
+          "boxShadow": "none",
+          "textShadow": "rgb(204, 166, 135) 1px 1px 1px"
+        },
+        "after": {
+          "content": "\"\"",
+          "display": "block",
+          "position": "absolute",
+          "width": "32.3828px",
+          "height": "14.6328px",
+          "offsets": [
+            "7.3125px",
+            "16.2031px",
+            "7.32031px",
+            "16.1875px"
+          ],
+          "padding": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "margin": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "border": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "borderColor": "rgb(226, 214, 212)",
+          "borderRadius": "0px",
+          "color": "rgb(226, 214, 212)",
+          "backgroundColor": "rgb(71, 80, 82)",
+          "backgroundImage": "none",
+          "mask": [
+            "none",
+            "auto",
+            "0% 0%"
+          ],
+          "font": [
+            "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+            "17.6px",
+            "400",
+            "normal",
+            "normal"
+          ],
+          "opacity": "1",
+          "visibility": "visible",
+          "zIndex": "-2",
+          "transform": "none",
+          "filter": "none",
+          "boxShadow": "none",
+          "textShadow": "rgb(204, 166, 135) 1px 1px 1px"
+        }
+      }
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "class": "blog-tag-link",
+      "selector": "a.blog-tag-link",
+      "role": null,
+      "text": "layout",
+      "box": [
+        540.3828125,
+        199.8203125,
+        50.6953125,
+        24
+      ],
+      "relative": [
+        7.0390625,
+        2.6328125
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(128, 160, 179)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(128, 160, 179)",
+        "boxShadow": "none",
+        "textShadow": "rgb(204, 166, 135) 1px 1px 1px",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "blog-post-text",
+      "selector": "div.blog-post-text",
+      "role": null,
+      "text": null,
+      "box": [
+        274.3125,
+        238.53125,
+        820,
+        24
+      ],
+      "relative": [
+        56.3125,
+        180.21875
+      ],
+      "scroll": [
+        820,
+        25,
+        820,
+        24
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "link-preview-container",
+      "selector": "div.link-preview-container",
+      "role": null,
+      "text": null,
+      "box": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "relative": [
+        -274.3125,
+        -238.53125
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "contents",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "md-rendered",
+      "selector": "div.md-rendered",
+      "role": null,
+      "text": null,
+      "box": [
+        274.3125,
+        238.53125,
+        820,
+        24
+      ],
+      "relative": [
+        274.3125,
+        238.53125
+      ],
+      "scroll": [
+        820,
+        25,
+        820,
+        24
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "P",
+      "id": "",
+      "class": "",
+      "selector": "p",
+      "role": null,
+      "text": "Fixed public post content with its actual author avatar.",
+      "box": [
+        274.3125,
+        238.53125,
+        820,
+        24
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        820,
+        25,
+        820,
+        24
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "SECTION",
+      "id": "",
+      "class": "blog-comments appear-wrapper zoom-y appeared",
+      "selector": "section.blog-comments.appear-wrapper.zoom-y.appeared",
+      "role": null,
+      "text": null,
+      "box": [
+        237.359375,
+        318.84375,
+        965.28125,
+        127.125
+      ],
+      "relative": [
+        19.359375,
+        260.53125
+      ],
+      "scroll": [
+        965,
+        126,
+        965,
+        126
+      ],
+      "padding": [
+        "56.32px",
+        "36.96px",
+        "56.32px",
+        "36.96px"
+      ],
+      "margin": [
+        "56.32px",
+        "-36.96px",
+        "0px",
+        "-36.96px"
+      ],
+      "border": [
+        "1.5px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "relative",
+      "font": [
+        "Helvetica",
+        "15.84px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "rgba(200, 200, 255, 0.1) 2px 5px 11px 3px inset",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "center",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "H2",
+      "id": "",
+      "class": "blog-comments-title bottomborder",
+      "selector": "h2.blog-comments-title.bottomborder",
+      "role": null,
+      "text": "0 comments",
+      "box": [
+        274.3125,
+        376.65625,
+        891.375,
+        13
+      ],
+      "relative": [
+        36.953125,
+        57.8125
+      ],
+      "scroll": [
+        891,
+        12,
+        891,
+        12
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "1px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "Helvetica",
+        "10.6128px",
+        "600",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212) rgb(226, 214, 212) rgb(153, 153, 153)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "flex center-content",
+      "selector": "div.flex.center-content",
+      "role": null,
+      "text": null,
+      "box": [
+        218,
+        558.59375,
+        1004,
+        78.125
+      ],
+      "relative": [
+        0,
+        500.28125
+      ],
+      "scroll": [
+        1004,
+        78,
+        1004,
+        78
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "flex",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "class": "button blog-btn noborder",
+      "selector": "a.button.blog-btn.noborder",
+      "role": null,
+      "text": "Home",
+      "box": [
+        608.265625,
+        573.375,
+        84.84375,
+        48.5625
+      ],
+      "relative": [
+        390.265625,
+        14.78125
+      ],
+      "scroll": [
+        85,
+        49,
+        85,
+        49
+      ],
+      "padding": [
+        "14.784px",
+        "22.528px",
+        "14.784px",
+        "22.528px"
+      ],
+      "margin": [
+        "14.784px",
+        "22.528px",
+        "14.784px",
+        "22.528px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "14.08px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(128, 160, 179)",
+        "backgroundColor": "rgb(28, 32, 33)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(128, 160, 179)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "class": "button blog-btn noborder",
+      "selector": "a.button.blog-btn.noborder",
+      "role": null,
+      "text": "Archive",
+      "box": [
+        738.15625,
+        573.375,
+        93.578125,
+        48.5625
+      ],
+      "relative": [
+        520.15625,
+        14.78125
+      ],
+      "scroll": [
+        94,
+        49,
+        94,
+        49
+      ],
+      "padding": [
+        "14.784px",
+        "22.528px",
+        "14.784px",
+        "22.528px"
+      ],
+      "margin": [
+        "14.784px",
+        "22.528px",
+        "14.784px",
+        "22.528px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "14.08px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(128, 160, 179)",
+        "backgroundColor": "rgb(28, 32, 33)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(128, 160, 179)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "blog-powered-by center-content",
+      "selector": "div.blog-powered-by.center-content",
+      "role": null,
+      "text": null,
+      "box": [
+        218,
+        636.71875,
+        1004,
+        321.2734375
+      ],
+      "relative": [
+        0,
+        578.40625
+      ],
+      "scroll": [
+        1004,
+        321,
+        1004,
+        321
+      ],
+      "padding": [
+        "92.4px",
+        "0px",
+        "198.88px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "flex",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "22px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "P",
+      "id": "",
+      "class": "",
+      "selector": "p",
+      "role": null,
+      "text": null,
+      "box": [
+        550.109375,
+        729.1171875,
+        339.7734375,
+        30
+      ],
+      "relative": [
+        332.109375,
+        92.3984375
+      ],
+      "scroll": [
+        340,
+        31,
+        340,
+        30
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "22px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "class": "",
+      "selector": "a",
+      "role": null,
+      "text": "tolgrAVen",
+      "box": [
+        762.625,
+        729.1171875,
+        100.4453125,
+        30
+      ],
+      "relative": [
+        212.515625,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "22px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(128, 160, 179)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(128, 160, 179)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "I",
+      "id": "",
+      "class": "fab fa-github",
+      "selector": "i.fab.fa-github",
+      "role": null,
+      "text": "",
+      "box": [
+        863.0703125,
+        733.1171875,
+        26.8125,
+        22.25
+      ],
+      "relative": [
+        312.9609375,
+        4
+      ],
+      "scroll": [
+        27,
+        22,
+        27,
+        22
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "5.5px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline-block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "22px",
+        "400",
+        "22px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "drop-shadow(rgb(231, 228, 228) 1.1px 1.1px 1.65px)",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": {
+          "content": "\"\"",
+          "display": "inline-block",
+          "position": "static",
+          "width": "21.3125px",
+          "height": "22px",
+          "offsets": [
+            "auto",
+            "auto",
+            "auto",
+            "auto"
+          ],
+          "padding": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "margin": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "border": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "borderColor": "rgb(226, 214, 212)",
+          "borderRadius": "0px",
+          "color": "rgb(226, 214, 212)",
+          "backgroundColor": "rgb(226, 214, 212)",
+          "backgroundImage": "none",
+          "mask": [
+            "url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20496%20512%22%3E%3Cpath%20d%3D%22M166%20397Q166%20401%20161%20401Q155%20402%20155%20397Q155%20394%20160%20394Q166%20393%20166%20397ZM141%20391Q146%20392%20145%20396Q144%20400%20139%20398Q133%20397%20134.5%20393Q136%20389%20141%20391ZM179%20391Q184%20391%20184.5%20394Q185%20397%20180%20399Q175%20400%20174.5%20396Q174%20392%20179%20391ZM245%208Q313%208%20371%2040Q429%2072%20462.5%20128Q496%20184%20496%20252Q496%20335%20449.5%20400.5Q403%20466%20328%20491Q320%20493%20315.5%20489Q311%20485%20311%20479Q311%20478%20311%20446.5Q311%20415%20311%20395Q311%20363%20294%20349Q316%20346%20328%20344Q340%20342%20358%20335Q376%20328%20385.5%20317Q395%20306%20402%20286Q409%20266%20409%20238Q409%20219%20403%20207Q397%20195%20383%20180Q395%20149%20381%20112Q371%20109%20354%20115.5Q337%20122%20324%20130L312%20139Q281%20130%20248.5%20130Q216%20130%20186%20139Q181%20135%20172%20129.5Q163%20124%20144.5%20116.5Q126%20109%20117%20112Q102%20149%20114%20180Q91%20205%2091%20238Q91%20266%2098%20286Q105%20306%20114%20317Q123%20328%20140%20335Q157%20342%20169.5%20344.5Q182%20347%20203%20349Q190%20361%20187%20383Q177%20387%20166.5%20389Q156%20391%20140%20385Q124%20379%20114%20362Q108%20351%2098.5%20344.5Q89%20338%2082%20337L76%20336Q54%20336%2074%20351Q81%20355%2088%20364Q95%20373%2098%20380L102%20388Q106%20400%20116%20408Q126%20416%20138%20418Q150%20420%20161%20420Q172%20420%20179%20419L186%20418Q186%20430%20186.5%20454Q187%20478%20187%20479Q187%20485%20182.5%20489Q178%20493%20170%20491Q94%20466%2047%20400.5Q0%20335%200%20252Q0%20148%2070.5%2078Q141%208%20245%208ZM97%20353Q99%20351%20102%20354Q105%20357%20103%20359Q101%20361%2098%20358Q95%20355%2097%20353ZM86%20345Q88%20343%2091%20344Q94%20346%2093%20348Q92%20351%2089%20349Q85%20347%2086%20345ZM119%20380Q121%20377%20125%20381Q129%20385%20127%20388Q124%20391%20120%20387Q116%20383%20119%20380ZM107%20366Q110%20363%20113%20368Q116%20372%20113%20374Q110%20376%20107.5%20371.5Q105%20367%20107%20366Z%22%2F%3E%3C%2Fsvg%3E\")",
+            "100% 100%",
+            "50% 50%"
+          ],
+          "font": [
+            "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+            "22px",
+            "400",
+            "22px",
+            "normal"
+          ],
+          "opacity": "1",
+          "visibility": "visible",
+          "zIndex": "auto",
+          "transform": "none",
+          "filter": "none",
+          "boxShadow": "none",
+          "textShadow": "none"
+        },
+        "after": null
+      }
+    }
+  ],
+  "errors": []
+}

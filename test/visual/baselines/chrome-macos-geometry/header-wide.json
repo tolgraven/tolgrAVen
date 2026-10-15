@@ -1,0 +1,4714 @@
+{
+  "viewport": [
+    1440,
+    1000,
+    1
+  ],
+  "document": [
+    0,
+    0,
+    1188
+  ],
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "platform": "MacIntel",
+    "calendarEpoch": 1792065600000,
+    "language": "en",
+    "viewport": [
+      1440,
+      1000,
+      1
+    ],
+    "fonts": [
+      [
+        "Fira Code Fallback",
+        "normal",
+        "normal",
+        "unloaded"
+      ],
+      [
+        "Fira Code Ready",
+        "normal",
+        "normal",
+        "unloaded"
+      ],
+      [
+        "Fira Code",
+        "normal",
+        "normal",
+        "loaded"
+      ],
+      [
+        "Font Awesome 5 Brands",
+        "normal",
+        "400",
+        "unloaded"
+      ],
+      [
+        "Font Awesome 5 Brands",
+        "normal",
+        "400",
+        "unloaded"
+      ],
+      [
+        "Font Awesome 5 Free",
+        "normal",
+        "900",
+        "unloaded"
+      ],
+      [
+        "Font Awesome 5 Free",
+        "normal",
+        "900",
+        "unloaded"
+      ],
+      [
+        "Open Sans Fallback",
+        "normal",
+        "normal",
+        "loaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "loaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ],
+      [
+        "Open Sans",
+        "normal",
+        "300 800",
+        "unloaded"
+      ]
+    ]
+  },
+  "geometry": [
+    {
+      "tag": "DIV",
+      "id": "app",
+      "class": "",
+      "selector": "#app",
+      "role": null,
+      "text": null,
+      "box": [
+        216,
+        35.1953125,
+        1008,
+        1152.703125
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        1224,
+        1153,
+        1008,
+        1153
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "INPUT",
+      "id": "nav-menu-open",
+      "class": "burger-check",
+      "selector": "#nav-menu-open",
+      "role": null,
+      "text": "",
+      "box": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "relative": [
+        -216,
+        -35.1953125
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "5.28px",
+        "8.448px",
+        "5.28px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "none",
+      "position": "static",
+      "font": [
+        "Arial",
+        "21.12px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgb(19, 22, 22)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "HEADER",
+      "id": "",
+      "class": "",
+      "selector": "header",
+      "role": null,
+      "text": null,
+      "box": [
+        216,
+        35.1953125,
+        1006,
+        79.1953125
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        1006,
+        81,
+        1006,
+        79
+      ],
+      "padding": [
+        "0px",
+        "36.96px",
+        "0px",
+        "36.96px"
+      ],
+      "margin": [
+        "35.2px",
+        "2px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "flex",
+      "position": "sticky",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "auto",
+        "hidden"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgb(19, 22, 22)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "matrix(1, 0, 0, 1, 0, 0)",
+        "filter": "none",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "cover cover-clip",
+      "selector": "div.cover.cover-clip",
+      "role": null,
+      "text": "",
+      "box": [
+        216,
+        35.1953125,
+        0,
+        0
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "absolute",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgb(19, 22, 22)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "header-logo",
+      "selector": "div.header-logo",
+      "role": null,
+      "text": null,
+      "box": [
+        252.953125,
+        50.7890625,
+        200.859375,
+        48
+      ],
+      "relative": [
+        36.953125,
+        15.59375
+      ],
+      "scroll": [
+        201,
+        48,
+        201,
+        48
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "class": "",
+      "selector": "a",
+      "role": null,
+      "text": null,
+      "box": [
+        252.953125,
+        69.2890625,
+        167.7421875,
+        24
+      ],
+      "relative": [
+        0,
+        18.5
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "H1",
+      "id": "",
+      "class": "",
+      "selector": "h1",
+      "role": null,
+      "text": "tolgrAVen",
+      "box": [
+        252.953125,
+        50.7890625,
+        167.7421875,
+        48
+      ],
+      "relative": [
+        0,
+        -18.5
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "35.2px",
+        "600",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "header-logo-text",
+      "selector": "div.header-logo-text",
+      "role": null,
+      "text": null,
+      "box": [
+        420.6953125,
+        63.546875,
+        33.1171875,
+        26.484375
+      ],
+      "relative": [
+        167.7421875,
+        12.7578125
+      ],
+      "scroll": [
+        33,
+        29,
+        33,
+        26
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline-block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "12.32px",
+        "400",
+        "6.16px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "P",
+      "id": "",
+      "class": "",
+      "selector": "p",
+      "role": null,
+      "text": "audio",
+      "box": [
+        420.6953125,
+        63.546875,
+        33.1171875,
+        13.2421875
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        33,
+        16,
+        33,
+        13
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "12.32px",
+        "400",
+        "6.16px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "P",
+      "id": "",
+      "class": "",
+      "selector": "p",
+      "role": null,
+      "text": "visual",
+      "box": [
+        420.6953125,
+        76.7890625,
+        33.1171875,
+        13.2421875
+      ],
+      "relative": [
+        0,
+        13.2421875
+      ],
+      "scroll": [
+        33,
+        16,
+        33,
+        13
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "12.32px",
+        "400",
+        "6.16px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "MENU",
+      "id": "",
+      "class": "",
+      "selector": "menu",
+      "role": null,
+      "text": null,
+      "box": [
+        554.09375,
+        55.4296875,
+        112.6328125,
+        38.71875
+      ],
+      "relative": [
+        338.09375,
+        20.234375
+      ],
+      "scroll": [
+        113,
+        39,
+        113,
+        39
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "36.96px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "flex",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": {
+          "content": "\"\"",
+          "display": "block",
+          "position": "absolute",
+          "width": "0px",
+          "height": "0px",
+          "offsets": [
+            "0px",
+            "112.633px",
+            "38.7188px",
+            "0px"
+          ],
+          "padding": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "margin": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "border": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "borderColor": "rgb(226, 214, 212)",
+          "borderRadius": "0px",
+          "color": "rgb(226, 214, 212)",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "mask": [
+            "none",
+            "auto",
+            "0% 0%"
+          ],
+          "font": [
+            "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+            "17.6px",
+            "400",
+            "normal",
+            "normal"
+          ],
+          "opacity": "1",
+          "visibility": "visible",
+          "zIndex": "auto",
+          "transform": "matrix(1, 0, 0, 0, 0, 0)",
+          "filter": "none",
+          "boxShadow": "none",
+          "textShadow": "none"
+        },
+        "after": {
+          "content": "\"\"",
+          "display": "block",
+          "position": "absolute",
+          "width": "0px",
+          "height": "0px",
+          "offsets": [
+            "0px",
+            "112.633px",
+            "38.7188px",
+            "0px"
+          ],
+          "padding": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "margin": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "border": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "borderColor": "rgb(226, 214, 212)",
+          "borderRadius": "0px",
+          "color": "rgb(226, 214, 212)",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "mask": [
+            "none",
+            "auto",
+            "0% 0%"
+          ],
+          "font": [
+            "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+            "17.6px",
+            "400",
+            "normal",
+            "normal"
+          ],
+          "opacity": "1",
+          "visibility": "visible",
+          "zIndex": "auto",
+          "transform": "none",
+          "filter": "none",
+          "boxShadow": "none",
+          "textShadow": "none"
+        }
+      }
+    },
+    {
+      "tag": "NAV",
+      "id": "",
+      "class": "",
+      "selector": "nav",
+      "role": null,
+      "text": null,
+      "box": [
+        554.09375,
+        55.4296875,
+        112.6328125,
+        38.71875
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        113,
+        38,
+        113,
+        38
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "1px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "flex",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "linear-gradient(-77deg, rgb(19, 22, 22) -10%, rgba(31, 63, 71, 0.35) 80%)",
+        "borderColor": "rgb(153, 153, 153) rgb(226, 214, 212) rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "center",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "nav-section",
+      "selector": "div.nav-section",
+      "role": null,
+      "text": null,
+      "box": [
+        554.09375,
+        68.2421875,
+        93.8125,
+        14.09375
+      ],
+      "relative": [
+        0,
+        12.8125
+      ],
+      "scroll": [
+        94,
+        14,
+        94,
+        14
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "UL",
+      "id": "",
+      "class": "nav-links",
+      "selector": "ul.nav-links",
+      "role": null,
+      "text": null,
+      "box": [
+        586.9281005859375,
+        75.2890625,
+        28.143798828125,
+        0
+      ],
+      "relative": [
+        32.8343505859375,
+        7.046875
+      ],
+      "scroll": [
+        94,
+        24,
+        94,
+        14
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "matrix(0.3, 0, 0, 0, 0, 0)",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "LI",
+      "id": "",
+      "class": "",
+      "selector": "li",
+      "role": null,
+      "text": null,
+      "box": [
+        589.5671997070312,
+        75.2890625,
+        22.8656005859375,
+        0
+      ],
+      "relative": [
+        2.63909912109375,
+        0
+      ],
+      "scroll": [
+        76,
+        14,
+        76,
+        4
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "8.8px",
+        "0px",
+        "8.8px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "list-item",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "menu-link-services",
+      "class": "",
+      "selector": "#menu-link-services",
+      "role": null,
+      "text": "SERVICES",
+      "box": [
+        589.5671997070312,
+        75.2890625,
+        22.8656005859375,
+        0
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "LI",
+      "id": "",
+      "class": "",
+      "selector": "li",
+      "role": null,
+      "text": null,
+      "box": [
+        589.5671997070312,
+        75.2890625,
+        22.8656005859375,
+        0
+      ],
+      "relative": [
+        2.63909912109375,
+        0
+      ],
+      "scroll": [
+        76,
+        14,
+        76,
+        4
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "8.8px",
+        "0px",
+        "8.8px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "list-item",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "menu-link-story",
+      "class": "",
+      "selector": "#menu-link-story",
+      "role": null,
+      "text": "STORY",
+      "box": [
+        589.5671997070312,
+        75.2890625,
+        16.1226806640625,
+        0
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "LI",
+      "id": "",
+      "class": "",
+      "selector": "li",
+      "role": null,
+      "text": null,
+      "box": [
+        589.5671997070312,
+        75.2890625,
+        22.8656005859375,
+        0
+      ],
+      "relative": [
+        2.63909912109375,
+        0
+      ],
+      "scroll": [
+        76,
+        14,
+        76,
+        4
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "8.8px",
+        "0px",
+        "8.8px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "list-item",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "menu-link-hire me",
+      "class": "",
+      "selector": "#menu-link-hire me",
+      "role": null,
+      "text": "HIRE ME",
+      "box": [
+        589.5671997070312,
+        75.2890625,
+        20.6156005859375,
+        0
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "LI",
+      "id": "",
+      "class": "",
+      "selector": "li",
+      "role": null,
+      "text": null,
+      "box": [
+        589.5671997070312,
+        75.2890625,
+        22.8656005859375,
+        0
+      ],
+      "relative": [
+        2.63909912109375,
+        0
+      ],
+      "scroll": [
+        76,
+        14,
+        76,
+        4
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "8.8px",
+        "0px",
+        "8.8px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "list-item",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "menu-link-cv",
+      "class": "",
+      "selector": "#menu-link-cv",
+      "role": null,
+      "text": "CV",
+      "box": [
+        589.5671997070312,
+        75.2890625,
+        6.47576904296875,
+        0
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "nav-section",
+      "selector": "div.nav-section",
+      "role": null,
+      "text": null,
+      "box": [
+        647.90625,
+        75.2890625,
+        0,
+        0
+      ],
+      "relative": [
+        93.8125,
+        19.859375
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "UL",
+      "id": "",
+      "class": "nav-links",
+      "selector": "ul.nav-links",
+      "role": null,
+      "text": null,
+      "box": [
+        624.6085815429688,
+        62.4765625,
+        19.4390869140625,
+        0
+      ],
+      "relative": [
+        -23.29766845703125,
+        -12.8125
+      ],
+      "scroll": [
+        65,
+        24,
+        65,
+        14
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "absolute",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "matrix(0.3, 0, 0, 0, 0, 0)",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "right"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "LI",
+      "id": "",
+      "class": "",
+      "selector": "li",
+      "role": null,
+      "text": null,
+      "box": [
+        627.2476806640625,
+        62.4765625,
+        14.160888671875,
+        0
+      ],
+      "relative": [
+        2.63909912109375,
+        0
+      ],
+      "scroll": [
+        47,
+        14,
+        47,
+        4
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "8.8px",
+        "0px",
+        "8.8px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "list-item",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "right"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "menu-link-blog",
+      "class": "",
+      "selector": "#menu-link-blog",
+      "role": null,
+      "text": "BLOG",
+      "box": [
+        627.2945556640625,
+        62.4765625,
+        14.11407470703125,
+        0
+      ],
+      "relative": [
+        0.046875,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "right"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "LI",
+      "id": "",
+      "class": "",
+      "selector": "li",
+      "role": null,
+      "text": null,
+      "box": [
+        627.2476806640625,
+        62.4765625,
+        14.160888671875,
+        0
+      ],
+      "relative": [
+        2.63909912109375,
+        0
+      ],
+      "scroll": [
+        47,
+        14,
+        47,
+        4
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "8.8px",
+        "0px",
+        "8.8px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "list-item",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "right"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "menu-link-docs",
+      "class": "",
+      "selector": "#menu-link-docs",
+      "role": null,
+      "text": "DOCS",
+      "box": [
+        627.2476806640625,
+        62.4765625,
+        14.16094970703125,
+        0
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "right"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "LI",
+      "id": "",
+      "class": "",
+      "selector": "li",
+      "role": null,
+      "text": null,
+      "box": [
+        627.2476806640625,
+        62.4765625,
+        14.160888671875,
+        0
+      ],
+      "relative": [
+        2.63909912109375,
+        0
+      ],
+      "scroll": [
+        47,
+        14,
+        47,
+        4
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "8.8px",
+        "0px",
+        "8.8px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "list-item",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "right"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "menu-link-test",
+      "class": "",
+      "selector": "#menu-link-test",
+      "role": null,
+      "text": "TEST",
+      "box": [
+        629.7625122070312,
+        62.4765625,
+        11.6461181640625,
+        0
+      ],
+      "relative": [
+        2.51483154296875,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "right"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "LI",
+      "id": "",
+      "class": "",
+      "selector": "li",
+      "role": null,
+      "text": null,
+      "box": [
+        627.2476806640625,
+        62.4765625,
+        14.160888671875,
+        0
+      ],
+      "relative": [
+        2.63909912109375,
+        0
+      ],
+      "scroll": [
+        47,
+        14,
+        47,
+        4
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "8.8px",
+        "0px",
+        "8.8px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "list-item",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "right"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "menu-link-log",
+      "class": "",
+      "selector": "#menu-link-log",
+      "role": null,
+      "text": "LOG",
+      "box": [
+        630.7047119140625,
+        62.4765625,
+        10.70391845703125,
+        0
+      ],
+      "relative": [
+        3.45703125,
+        0
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "3.52px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "right"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "menu-toggles",
+      "selector": "div.menu-toggles",
+      "role": null,
+      "text": "",
+      "box": [
+        666.7265625,
+        94.1484375,
+        0,
+        0
+      ],
+      "relative": [
+        112.6328125,
+        38.71875
+      ],
+      "scroll": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "absolute",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "header-icons",
+      "selector": "div.header-icons",
+      "role": null,
+      "text": null,
+      "box": [
+        730.0546875,
+        46.28125,
+        454.9921875,
+        57.015625
+      ],
+      "relative": [
+        514.0546875,
+        11.0859375
+      ],
+      "scroll": [
+        455,
+        70,
+        455,
+        57
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "flex",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "center",
+        "justifyContent": "space-evenly",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "class": "button blog-link-btn noborder nomargin",
+      "selector": "a.button.blog-link-btn.noborder.nomargin",
+      "role": null,
+      "text": null,
+      "box": [
+        751.15625,
+        48.0078125,
+        66.1640625,
+        53.5625
+      ],
+      "relative": [
+        21.1015625,
+        1.7265625
+      ],
+      "scroll": [
+        66,
+        54,
+        66,
+        54
+      ],
+      "padding": [
+        "14.784px",
+        "22.528px",
+        "14.784px",
+        "22.528px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "center"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "I",
+      "id": "",
+      "class": "fa fa-pen-fancy",
+      "selector": "i.fa.fa-pen-fancy",
+      "role": null,
+      "text": "",
+      "box": [
+        773.6796875,
+        63.2890625,
+        21.1171875,
+        21.1328125
+      ],
+      "relative": [
+        22.5234375,
+        15.28125
+      ],
+      "scroll": [
+        21,
+        21,
+        21,
+        21
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline-block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "21.12px",
+        "400",
+        "21.12px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "center"
+      },
+      "generated": {
+        "before": {
+          "content": "\"\"",
+          "display": "inline-block",
+          "position": "static",
+          "width": "21.1172px",
+          "height": "21.1562px",
+          "offsets": [
+            "auto",
+            "auto",
+            "auto",
+            "auto"
+          ],
+          "padding": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "margin": [
+            "-0.0412499px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "border": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "borderColor": "rgb(231, 228, 228)",
+          "borderRadius": "0px",
+          "color": "rgb(231, 228, 228)",
+          "backgroundColor": "rgb(231, 228, 228)",
+          "backgroundImage": "none",
+          "mask": [
+            "url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%20-1%20512%20513%22%3E%3Cpath%20d%3D%22M79%20283%20163%20250%20262%20349%20229%20433Q224%20448%20209%20453L32%20512L27%20507L120%20414Q126%20416%20128%20416Q141%20416%20150.5%20406.5Q160%20397%20160%20384Q160%20371%20150.5%20361.5Q141%20352%20128%20352Q115%20352%20105.5%20361.5Q96%20371%2096%20384Q96%20386%2098%20392L5%20485L0%20480L59%20303Q64%20288%2079%20283ZM369%2028Q404%20-11%20450.5%204Q497%2019%20508%2061Q519%20103%20483%20143L284%20326L186%20228Z%22%2F%3E%3C%2Fsvg%3E\")",
+            "100% 100%",
+            "50% 50%"
+          ],
+          "font": [
+            "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+            "21.12px",
+            "400",
+            "21.12px",
+            "normal"
+          ],
+          "opacity": "1",
+          "visibility": "visible",
+          "zIndex": "auto",
+          "transform": "none",
+          "filter": "none",
+          "boxShadow": "none",
+          "textShadow": "none"
+        },
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "class": "button settings-btn noborder nomargin",
+      "selector": "a.button.settings-btn.noborder.nomargin",
+      "role": null,
+      "text": null,
+      "box": [
+        838.4296875,
+        48.0078125,
+        66.1640625,
+        53.5625
+      ],
+      "relative": [
+        108.375,
+        1.7265625
+      ],
+      "scroll": [
+        66,
+        54,
+        66,
+        54
+      ],
+      "padding": [
+        "14.784px",
+        "22.528px",
+        "14.784px",
+        "22.528px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "center"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "I",
+      "id": "",
+      "class": "settings-btn fa fa-cog",
+      "selector": "i.settings-btn.fa.fa-cog",
+      "role": null,
+      "text": "",
+      "box": [
+        860.953125,
+        63.2890625,
+        21.1171875,
+        21.1328125
+      ],
+      "relative": [
+        22.5234375,
+        15.28125
+      ],
+      "scroll": [
+        21,
+        21,
+        21,
+        21
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline-block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "21.12px",
+        "400",
+        "21.12px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "center"
+      },
+      "generated": {
+        "before": {
+          "content": "\"\"",
+          "display": "inline-block",
+          "position": "static",
+          "width": "21.1172px",
+          "height": "21.1172px",
+          "offsets": [
+            "auto",
+            "auto",
+            "auto",
+            "auto"
+          ],
+          "padding": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "margin": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "border": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "borderColor": "rgb(231, 228, 228)",
+          "borderRadius": "0px",
+          "color": "rgb(231, 228, 228)",
+          "backgroundColor": "rgb(231, 228, 228)",
+          "backgroundImage": "none",
+          "mask": [
+            "url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Cpath%20d%3D%22M487%20316Q496%20320%20493%20330Q476%20383%20438%20424Q432%20431%20424%20427L381%20402Q354%20425%20320%20437V486Q320%20496%20311%20498Q256%20510%20202%20498Q192%20496%20192%20486V437Q158%20425%20131%20402L89%20427Q80%20431%2074%20424Q36%20383%2019%20330Q16%20321%2025%20316L67%20291Q64%20274%2064%20256Q64%20238%2067%20221L25%20196Q16%20192%2019%20182Q36%20129%2074%2088Q80%2081%2089%2086L131%20110Q158%2087%20192%2075V26Q192%2016%20201%2014Q256%202%20311%2014Q320%2016%20320%2026V75Q354%2087%20381%20110L423%2085Q432%2081%20438%2088Q476%20129%20493%20182Q496%20192%20487%20196L445%20221Q451%20256%20445%20291ZM199.5%20312.5Q223%20336%20256%20336Q289%20336%20312.5%20312.5Q336%20289%20336%20256Q336%20223%20312.5%20199.5Q289%20176%20256%20176Q223%20176%20199.5%20199.5Q176%20223%20176%20256Q176%20289%20199.5%20312.5Z%22%2F%3E%3C%2Fsvg%3E\")",
+            "100% 100%",
+            "50% 50%"
+          ],
+          "font": [
+            "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+            "21.12px",
+            "400",
+            "21.12px",
+            "normal"
+          ],
+          "opacity": "1",
+          "visibility": "visible",
+          "zIndex": "auto",
+          "transform": "none",
+          "filter": "none",
+          "boxShadow": "none",
+          "textShadow": "none"
+        },
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "before-loading-container",
+      "selector": "div.before-loading-container",
+      "role": null,
+      "text": null,
+      "box": [
+        925.703125,
+        50.2578125,
+        61.046875,
+        49.0625
+      ],
+      "relative": [
+        195.6484375,
+        3.9765625
+      ],
+      "scroll": [
+        61,
+        49,
+        61,
+        49
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "BUTTON",
+      "id": "",
+      "class": "search-ui-btn noborder nomargin",
+      "selector": "button.search-ui-btn.noborder.nomargin",
+      "role": null,
+      "text": null,
+      "box": [
+        925.703125,
+        50.2578125,
+        61.046875,
+        49.0625
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        61,
+        49,
+        61,
+        49
+      ],
+      "padding": [
+        "14.784px",
+        "22.528px",
+        "14.784px",
+        "22.528px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline-block",
+      "position": "relative",
+      "font": [
+        "Arial",
+        "13.3333px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "center"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "IMG",
+      "id": "",
+      "class": "",
+      "selector": "img",
+      "role": null,
+      "text": "",
+      "box": [
+        948.2265625,
+        65.0390625,
+        16,
+        16
+      ],
+      "relative": [
+        22.5234375,
+        14.78125
+      ],
+      "scroll": [
+        16,
+        16,
+        16,
+        16
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline",
+      "position": "static",
+      "font": [
+        "Arial",
+        "13.3333px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "clip",
+        "clip"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "invert(1)",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "center"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "before-loading-container",
+      "selector": "div.before-loading-container",
+      "role": null,
+      "text": null,
+      "box": [
+        1007.859375,
+        33.2265625,
+        108.5703125,
+        83.125
+      ],
+      "relative": [
+        277.8046875,
+        -13.0546875
+      ],
+      "scroll": [
+        109,
+        83,
+        109,
+        83
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "A",
+      "id": "",
+      "class": "button user-btn noborder",
+      "selector": "a.button.user-btn.noborder",
+      "role": null,
+      "text": null,
+      "box": [
+        1030.3828125,
+        48.0078125,
+        63.5234375,
+        53.5625
+      ],
+      "relative": [
+        22.5234375,
+        14.78125
+      ],
+      "scroll": [
+        64,
+        54,
+        64,
+        54
+      ],
+      "padding": [
+        "14.784px",
+        "22.528px",
+        "14.784px",
+        "22.528px"
+      ],
+      "margin": [
+        "14.784px",
+        "22.528px",
+        "14.784px",
+        "22.528px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline-block",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "I",
+      "id": "",
+      "class": "user-btn fa fa-user",
+      "selector": "i.user-btn.fa.fa-user",
+      "role": null,
+      "text": "",
+      "box": [
+        1052.90625,
+        63.2890625,
+        18.4765625,
+        21.1328125
+      ],
+      "relative": [
+        22.5234375,
+        15.28125
+      ],
+      "scroll": [
+        18,
+        21,
+        18,
+        21
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "inline-block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "21.12px",
+        "400",
+        "21.12px"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(231, 228, 228)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(231, 228, 228)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": {
+          "content": "\"\"",
+          "display": "inline-block",
+          "position": "static",
+          "width": "18.4766px",
+          "height": "21.1172px",
+          "offsets": [
+            "auto",
+            "auto",
+            "auto",
+            "auto"
+          ],
+          "padding": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "margin": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "border": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "borderColor": "rgb(231, 228, 228)",
+          "borderRadius": "0px",
+          "color": "rgb(231, 228, 228)",
+          "backgroundColor": "rgb(231, 228, 228)",
+          "backgroundImage": "none",
+          "mask": [
+            "url(\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20448%20512%22%3E%3Cpath%20d%3D%22M314.5%20218.5Q277%20256%20224%20256Q171%20256%20133.5%20218.5Q96%20181%2096%20128Q96%2075%20133.5%2037.5Q171%200%20224%200Q277%200%20314.5%2037.5Q352%2075%20352%20128Q352%20181%20314.5%20218.5ZM314%20288Q369%20288%20408.5%20327.5Q448%20367%20448%20422V464Q448%20484%20434%20498Q420%20512%20400%20512H48Q28%20512%2014%20498Q0%20484%200%20464V422Q0%20367%2039.5%20327.5Q79%20288%20134%20288H151Q186%20304%20224%20304Q262%20304%20297%20288Z%22%2F%3E%3C%2Fsvg%3E\")",
+            "100% 100%",
+            "50% 50%"
+          ],
+          "font": [
+            "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+            "21.12px",
+            "400",
+            "21.12px",
+            "normal"
+          ],
+          "opacity": "1",
+          "visibility": "visible",
+          "zIndex": "auto",
+          "transform": "none",
+          "filter": "none",
+          "boxShadow": "none",
+          "textShadow": "none"
+        },
+        "after": null
+      }
+    },
+    {
+      "tag": "LABEL",
+      "id": "",
+      "class": "burger",
+      "selector": "label.burger",
+      "role": null,
+      "text": "",
+      "box": [
+        1137.53125,
+        61.5859375,
+        26.3984375,
+        26.3984375
+      ],
+      "relative": [
+        407.4765625,
+        15.3046875
+      ],
+      "scroll": [
+        26,
+        22,
+        26,
+        22
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "4px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": {
+          "content": "\"\"",
+          "display": "block",
+          "position": "absolute",
+          "width": "26.3984px",
+          "height": "0px",
+          "offsets": [
+            "0px",
+            "0px",
+            "18.3984px",
+            "0px"
+          ],
+          "padding": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "margin": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "border": [
+            "0px",
+            "0px",
+            "4px",
+            "0px"
+          ],
+          "borderColor": "rgb(226, 214, 212)",
+          "borderRadius": "0px",
+          "color": "rgb(226, 214, 212)",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "mask": [
+            "none",
+            "auto",
+            "0% 0%"
+          ],
+          "font": [
+            "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+            "17.6px",
+            "400",
+            "normal",
+            "normal"
+          ],
+          "opacity": "1",
+          "visibility": "visible",
+          "zIndex": "auto",
+          "transform": "none",
+          "filter": "none",
+          "boxShadow": "none",
+          "textShadow": "none"
+        },
+        "after": {
+          "content": "\"\"",
+          "display": "block",
+          "position": "absolute",
+          "width": "26.3984px",
+          "height": "0px",
+          "offsets": [
+            "0px",
+            "0px",
+            "7.20312px",
+            "0px"
+          ],
+          "padding": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "margin": [
+            "11.2px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "border": [
+            "4px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "borderColor": "rgb(226, 214, 212)",
+          "borderRadius": "0px",
+          "color": "rgb(226, 214, 212)",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "mask": [
+            "none",
+            "auto",
+            "0% 0%"
+          ],
+          "font": [
+            "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+            "17.6px",
+            "400",
+            "normal",
+            "normal"
+          ],
+          "opacity": "1",
+          "visibility": "visible",
+          "zIndex": "auto",
+          "transform": "none",
+          "filter": "none",
+          "boxShadow": "none",
+          "textShadow": "none"
+        }
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "fill-side-top",
+      "selector": "div.fill-side-top",
+      "role": null,
+      "text": null,
+      "box": [
+        1222,
+        0,
+        218,
+        79.1953125
+      ],
+      "relative": [
+        1006,
+        -35.1953125
+      ],
+      "scroll": [
+        218,
+        79,
+        218,
+        79
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "fixed",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "hidden",
+        "hidden"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "hide ",
+      "selector": "div.hide",
+      "role": null,
+      "text": "",
+      "box": [
+        1222,
+        0,
+        218,
+        0
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        216,
+        0,
+        216,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "2px"
+      ],
+      "display": "block",
+      "position": "sticky",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "linear-gradient(-135deg, rgb(19, 22, 22) 10%, rgb(118, 146, 171) 335%)",
+        "borderColor": "rgb(226, 214, 212) rgb(226, 214, 212) rgb(226, 214, 212) rgb(153, 153, 153)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "0",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "fill-above-line-header",
+      "selector": "div.fill-above-line-header",
+      "role": null,
+      "text": "",
+      "box": [
+        216,
+        114.390625,
+        1008,
+        0
+      ],
+      "relative": [
+        0,
+        79.1953125
+      ],
+      "scroll": [
+        1008,
+        0,
+        1008,
+        0
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "sticky",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "line line-header",
+      "selector": "div.line.line-header",
+      "role": null,
+      "text": "",
+      "box": [
+        216,
+        149.5859375,
+        1224,
+        2
+      ],
+      "relative": [
+        0,
+        114.390625
+      ],
+      "scroll": [
+        1224,
+        2,
+        1224,
+        2
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "35.2px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "sticky",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgb(153, 153, 153)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "MAIN",
+      "id": "main",
+      "class": "main-content perspective-top",
+      "selector": "#main",
+      "role": null,
+      "text": null,
+      "box": [
+        216,
+        207.8984375,
+        1008,
+        980
+      ],
+      "relative": [
+        0,
+        172.703125
+      ],
+      "scroll": [
+        1004,
+        976,
+        1004,
+        976
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "56.32px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "2px",
+        "2px",
+        "2px",
+        "2px"
+      ],
+      "display": "grid",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "linear-gradient(-77deg, rgb(21, 17, 23), rgb(19, 22, 22))",
+        "borderColor": "rgb(153, 153, 153)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "DIV",
+      "id": "",
+      "class": "page-root",
+      "selector": "div.page-root",
+      "role": null,
+      "text": null,
+      "box": [
+        218,
+        209.8984375,
+        1004,
+        186.625
+      ],
+      "relative": [
+        2,
+        2
+      ],
+      "scroll": [
+        1004,
+        187,
+        1004,
+        187
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "SECTION",
+      "id": "",
+      "class": "",
+      "selector": "section",
+      "role": null,
+      "text": null,
+      "box": [
+        218,
+        209.8984375,
+        1004,
+        186.625
+      ],
+      "relative": [
+        0,
+        0
+      ],
+      "scroll": [
+        1004,
+        185,
+        1004,
+        185
+      ],
+      "padding": [
+        "56.32px",
+        "56.32px",
+        "56.32px",
+        "56.32px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "2px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "relative",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(153, 153, 153) rgb(226, 214, 212) rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "center",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "H1",
+      "id": "",
+      "class": "",
+      "selector": "h1",
+      "role": null,
+      "text": "Shared shell",
+      "box": [
+        274.3125,
+        268.2109375,
+        891.375,
+        48
+      ],
+      "relative": [
+        56.3125,
+        58.3125
+      ],
+      "scroll": [
+        891,
+        48,
+        891,
+        48
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "35.2px",
+        "600",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "center"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "tag": "P",
+      "id": "",
+      "class": "",
+      "selector": "p",
+      "role": null,
+      "text": "Fixed page content.",
+      "box": [
+        274.3125,
+        316.2109375,
+        891.375,
+        24
+      ],
+      "relative": [
+        56.3125,
+        106.3125
+      ],
+      "scroll": [
+        891,
+        25,
+        891,
+        24
+      ],
+      "padding": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "margin": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "border": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "display": "block",
+      "position": "static",
+      "font": [
+        "\"Open Sans\", \"Open Sans Fallback\", sans-serif",
+        "17.6px",
+        "400",
+        "normal"
+      ],
+      "gap": [
+        "normal",
+        "normal"
+      ],
+      "overflow": [
+        "visible",
+        "visible"
+      ],
+      "appearance": {
+        "color": "rgb(226, 214, 212)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderColor": "rgb(226, 214, 212)",
+        "boxShadow": "none",
+        "textShadow": "none",
+        "opacity": "1",
+        "visibility": "visible",
+        "transform": "none",
+        "filter": "none",
+        "alignItems": "normal",
+        "justifyContent": "normal",
+        "flexDirection": "row",
+        "textAlign": "start"
+      },
+      "generated": {
+        "before": null,
+        "after": null
+      }
+    }
+  ],
+  "errors": []
+}
