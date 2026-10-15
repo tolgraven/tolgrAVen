@@ -1,9 +1,16 @@
 (ns website.visual-fixture
   "Fixed public content and native components for pixel/geometry comparisons."
-  (:require [website.react :as r]
+  (:require [clojure.string :as string]
+            [website.react :as r]
             [website.editor-visual :as editor]
             [website.component.restore :as restore]
             [website.component.data :as data]
+            [website.modules.docs.views :as docs]
+            [website.modules.docs.events]
+            [website.modules.docs.subs]
+            [website.modules.instagram.views :as instagram]
+            [website.modules.instagram.subs]
+            [website.components.ui.overlays :as overlays]
             [website.modules.github.views :as github]
             [website.modules.github.model :as github-model]
             [website.modules.github.events]
@@ -90,6 +97,35 @@
                      (select-keys url-params [:user :repo]))
           (throw (js/Error. "GitHub fixture requested a different repository")))
         (r/dispatch (conj on-success response))))))
+
+(def instagram-posts
+  (into {}
+    (map-indexed
+      (fn [index image]
+        (let [id (str "visual-instagram-" index)]
+          [id {:id id
+               :caption (str "A native gallery photograph " (inc index) ". Keep its caption and image framing.")
+               :timestamp (str "2026-10-" (+ 10 index) "T12:00:00Z")
+               :media_url image}]))
+      ["/img/tolgrav-square.png" "/img/Leg-tasteful-small.jpg" "/img/tolgrav.png"
+       "/img/Leg-tasteful-small.jpg" "/img/tolgrav.png" "/img/tolgrav-square.png"])))
+
+(defn public-read-transport! []
+  ;; Only read I/O is fixed. Native dependency installation and module-owned
+  ;; subscriptions still determine when Docs and Instagram render their views.
+  (data/register-source! :url
+    {:load! (fn [{:keys [url]}]
+              (if (= url "/api/integrations/instagram")
+                (js/Promise.resolve {:posts instagram-posts})
+                (if-let [[_ page] (re-matches #"/api/doc\?path=(index|docs)" url)]
+                  (-> (js/fetch (str "/fixtures/docs/" page ".html"))
+                      (.then (fn [response]
+                               (when-not (.-ok response)
+                                 (throw (js/Error. (str "Missing generated Codox fixture: " page))))
+                               (.text response)))
+                      ;; Match the backend's trusted generated-body contract.
+                      (.then #(string/replace % #"^[\s\S]*<body[^\>]*>([\s\S]*)<\/body>[\s\S]*$" "$1")))
+                  (js/Promise.reject (js/Error. (str "Unexpected public fixture resource: " url))))))}))
 
 (def entry
   {:id "visual-entry"
@@ -184,6 +220,23 @@
 (defn <main-fixture> [content]
   [:main#main.main-content.perspective-top
    [<fixture-page> content]])
+
+(m/defpage <instagram-page>
+  {:depends [{:source :url
+              :url "/api/integrations/instagram"
+              :into [:content :instagram]}]}
+  []
+  [instagram/<instagram>])
+
+(defn <instagram-fixture> []
+  [:<>
+   ;; The native fullscreen owner is a page sibling, outside main's perspective.
+   [overlays/<zoom-to-modal> :fullscreen]
+   [:main#main.main-content.perspective-top [<instagram-page>]]])
+
+(defn <docs-fixture> []
+  ;; Docs already owns a defpage container; do not nest another page surface.
+  [:main#main.main-content.perspective-top [docs/<page>]])
 
 (defn <home-fixture> [component]
   (let [content' #(editor/section % false)]
@@ -301,7 +354,8 @@
                "cv-regular" "cv-container" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
                "thread" "post" "standalone-comments" "search-mixed"
                "shell" "shell-scroll" "header" "footer" "post-footer" "services" "cv"
-               "home-intro" "home-story" "home-image-media" "github"} component)
+               "home-intro" "home-story" "home-image-media" "github"
+               "docs-index" "docs-topic" "instagram"} component)
       (editor/init! false)
       (-> (js/fetch "/fixtures/editor-seed.json")
           (.then #(.json %))
@@ -322,6 +376,10 @@
                 (r/dispatch-sync [:set [:common/route]
                                   (assoc (reitit/match-by-path routes/router "/blog/post/42")
                                          :parameters {:path {:permalink "42"}, :query {}})]))
+              (when (#{"docs-index" "docs-topic"} component)
+                (r/dispatch-sync [:set [:common/route]
+                                  (reitit/match-by-path routes/router
+                                    (if (= component "docs-index") "/docs" "/docs/codox/docs"))]))
               (when (= "standalone-comments" component)
                 (r/dispatch-sync [:set [:common/route]
                                   (assoc (reitit/match-by-path routes/router "/blog/comment/visual-comment")
@@ -379,11 +437,18 @@
                 (r/reg-sub :search/selected (fn [_ _] -1))
                 (r/reg-sub :search/get (fn [_ _] 0)))
               (when (= "github" component) (github-transport!))
-              (restore/begin! {:back? true})
+              (when (#{"docs-index" "docs-topic" "instagram"} component)
+                (public-read-transport!))
+              (when (#{"docs-index" "docs-topic"} component)
+                (r/dispatch-sync [:docs/set-page (if (= component "docs-index") "index" "docs")]))
+              (restore/begin! (if (#{"docs-index" "docs-topic" "instagram"} component) {} {:back? true}))
               (-> (loader/load! {:module :markdown})
                   (.then (fn [_]
-                           (when (= "github" component)
-                             (loader/load! {:module :github}))))
+                           (case component
+                             "github" (loader/load! {:module :github})
+                             ("docs-index" "docs-topic") (loader/acquire-code! :docs)
+                             "instagram" (loader/acquire-code! :instagram)
+                             nil)))
                   (.then (fn [_]
                            (r/render (r/create-root (.getElementById js/document "app"))
                              (case component
@@ -396,5 +461,7 @@
                                "services" [<main-fixture> [home/<services> (editor/section :services false)]]
                                "cv" [<main-fixture> [cv/<cv>]]
                                "github" [<main-fixture> [github/<commits>]]
+                               ("docs-index" "docs-topic") [<docs-fixture>]
+                               "instagram" [<instagram-fixture>]
                                ("home-intro" "home-story" "home-image-media") [<home-fixture> component]
                                [<box-fixture> (= component "cv-container")])))))))))))

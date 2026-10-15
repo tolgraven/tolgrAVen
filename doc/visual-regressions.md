@@ -61,6 +61,25 @@ The fixture head uses Highlight's declared monospace/Markdown sheets and the
 styled input's declared sheet, matching the native owners rather than a nonexistent
 `highlight.css` file.
 
+Docs cases render the native Docs page directly under main and read the actual
+Codox index/topic generated in the served build. Run `lein docs` through the bounded
+worker when preparing that snapshot; `/fixtures/docs/index.html` and
+`/fixtures/docs/docs.html` expose only those generated files. The fixture applies
+the backend's body extraction before the existing Docs view rewrites links. Missing
+documents fail capture. Keep the generated input revision identical for repeat
+comparisons; these states do not freeze a copy of generated documentation.
+Instagram cases keep the native gallery under its page container and the fullscreen
+zoom owner outside main, as in the application. Six keyed posts use local images
+through a managed URL dependency; native subscriptions, image decoding, click,
+modal loading and delayed close remain active. Each new case acquires its own
+native module code/styles; the shared fixture head and prior cases stay unchanged.
+This provider fixture does not
+establish live Instagram API acquisition. Grid, opened modal and completed close
+are captured at both widths, including native image/gallery DOM retention.
+These new cases use ordinary mount motion. Docs sidebar and Instagram caption
+hover states remain unverified until the driver performs genuine pointer actions;
+synthetic events cannot establish native CSS hover behavior.
+
 Keep the installed Chrome running with its configured DevTools connection:
 
 ```sh

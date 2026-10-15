@@ -177,6 +177,9 @@
   (is (nil? (server/route-file "/%2e%2e/private")))
   (is (= 400 (:status (server/handler {:uri "/%2e%2e/private"}))))
   (is (= 200 (:status (server/handler {:uri "/fixtures/live.html"}))))
+  (is (= "resources/docs/codox/index.html" (str (server/route-file "/fixtures/docs/index.html"))))
+  (is (= "resources/docs/codox/docs.html" (str (server/route-file "/fixtures/docs/docs.html"))))
+  (is (= "test/browser/docs/private.html" (str (server/route-file "/fixtures/docs/private.html"))))
   (is (= "resources/public/js/tests/js/test.js" (str (server/route-file "/js/test.js")))))
 
 (deftest child-timeout-is-enforced

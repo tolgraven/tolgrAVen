@@ -600,6 +600,96 @@
         800
       ],
       "path": "/fixtures/visual.html?component=page-layout-vertical"
+    },
+    {
+      "id": "docs-index-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=docs-index",
+      "action": "const deadline = performance.now() + 10000; while (!document.querySelector('.docs .codox .namespace-index')) { if (performance.now() > deadline) throw new Error('Native generated Codox document did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (!document.querySelector('.docs .codox .sidebar.primary') || [...document.querySelectorAll('.codox a[href]')].some(link => /^(?:\\.\\/)?[A-Za-z0-9_.-]+\\.html(?:[?#].*)?$/.test(link.getAttribute('href')))) throw new Error('Codox framing or native route links were lost');"
+    },
+    {
+      "id": "docs-index-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=docs-index",
+      "action": "const deadline = performance.now() + 10000; while (!document.querySelector('.docs .codox .namespace-index')) { if (performance.now() > deadline) throw new Error('Native generated Codox document did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (!document.querySelector('.docs .codox .sidebar.primary') || [...document.querySelectorAll('.codox a[href]')].some(link => /^(?:\\.\\/)?[A-Za-z0-9_.-]+\\.html(?:[?#].*)?$/.test(link.getAttribute('href')))) throw new Error('Codox framing or native route links were lost');"
+    },
+    {
+      "id": "docs-topic-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=docs-topic",
+      "action": "const deadline = performance.now() + 10000; while (!document.querySelector('.docs .codox .document')) { if (performance.now() > deadline) throw new Error('Native generated Codox document did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (!document.querySelector('.docs .codox .sidebar.primary') || [...document.querySelectorAll('.codox a[href]')].some(link => /^(?:\\.\\/)?[A-Za-z0-9_.-]+\\.html(?:[?#].*)?$/.test(link.getAttribute('href')))) throw new Error('Codox framing or native route links were lost');"
+    },
+    {
+      "id": "docs-topic-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=docs-topic",
+      "action": "const deadline = performance.now() + 10000; while (!document.querySelector('.docs .codox .document')) { if (performance.now() > deadline) throw new Error('Native generated Codox document did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (!document.querySelector('.docs .codox .sidebar.primary') || [...document.querySelectorAll('.codox a[href]')].some(link => /^(?:\\.\\/)?[A-Za-z0-9_.-]+\\.html(?:[?#].*)?$/.test(link.getAttribute('href')))) throw new Error('Codox framing or native route links were lost');"
+    },
+    {
+      "id": "instagram-grid-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=instagram",
+      "action": "const deadline = performance.now() + 10000; while (document.querySelectorAll('#gallery-3 .instagram-item').length !== 6) { if (performance.now() > deadline) throw new Error('Native Instagram provider data did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); }"
+    },
+    {
+      "id": "instagram-grid-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=instagram",
+      "action": "const deadline = performance.now() + 10000; while (document.querySelectorAll('#gallery-3 .instagram-item').length !== 6) { if (performance.now() > deadline) throw new Error('Native Instagram provider data did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); }"
+    },
+    {
+      "id": "instagram-modal-open-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=instagram",
+      "action": "const deadline = performance.now() + 10000; while (document.querySelectorAll('#gallery-3 .instagram-item').length !== 6) { if (performance.now() > deadline) throw new Error('Native Instagram provider data did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } const item = document.querySelector('#gallery-3 .instagram-item'); const picture = item.querySelector('img'); const source = picture.src; item.click(); const modalDeadline = performance.now() + 5000; while (!document.querySelector('.modal-bg-open .modal-zoomed img')) { if (performance.now() > modalDeadline) throw new Error('Native Instagram fullscreen modal did not open'); await new Promise(resolve => requestAnimationFrame(resolve)); } await window.visualFixture.ready(); const modal = document.querySelector('.modal-bg'); const main = document.querySelector('main'); if (main.contains(modal) || modal.parentElement !== main.parentElement || modal.querySelector('img').src !== source) throw new Error('Fullscreen image lost its native page-sibling owner or source');"
+    },
+    {
+      "id": "instagram-modal-open-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=instagram",
+      "action": "const deadline = performance.now() + 10000; while (document.querySelectorAll('#gallery-3 .instagram-item').length !== 6) { if (performance.now() > deadline) throw new Error('Native Instagram provider data did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } const item = document.querySelector('#gallery-3 .instagram-item'); const picture = item.querySelector('img'); const source = picture.src; item.click(); const modalDeadline = performance.now() + 5000; while (!document.querySelector('.modal-bg-open .modal-zoomed img')) { if (performance.now() > modalDeadline) throw new Error('Native Instagram fullscreen modal did not open'); await new Promise(resolve => requestAnimationFrame(resolve)); } await window.visualFixture.ready(); const modal = document.querySelector('.modal-bg'); const main = document.querySelector('main'); if (main.contains(modal) || modal.parentElement !== main.parentElement || modal.querySelector('img').src !== source) throw new Error('Fullscreen image lost its native page-sibling owner or source');"
+    },
+    {
+      "id": "instagram-modal-closed-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=instagram",
+      "action": "const deadline = performance.now() + 10000; while (document.querySelectorAll('#gallery-3 .instagram-item').length !== 6) { if (performance.now() > deadline) throw new Error('Native Instagram provider data did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } const item = document.querySelector('#gallery-3 .instagram-item'); const picture = item.querySelector('img'); const source = picture.src; item.click(); const modalDeadline = performance.now() + 5000; while (!document.querySelector('.modal-bg-open .modal-zoomed img')) { if (performance.now() > modalDeadline) throw new Error('Native Instagram fullscreen modal did not open'); await new Promise(resolve => requestAnimationFrame(resolve)); } await window.visualFixture.ready(); const modal = document.querySelector('.modal-bg'); const main = document.querySelector('main'); if (main.contains(modal) || modal.parentElement !== main.parentElement || modal.querySelector('img').src !== source) throw new Error('Fullscreen image lost its native page-sibling owner or source'); modal.querySelector('[aria-label=\"Close\"]').click(); const closeDeadline = performance.now() + 5000; while (document.querySelector('.modal-bg')) { if (performance.now() > closeDeadline) throw new Error('Native Instagram modal did not finish closing'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (item !== document.querySelector('#gallery-3 .instagram-item') || picture !== item.querySelector('img')) throw new Error('Closing fullscreen replaced the native gallery DOM');"
+    },
+    {
+      "id": "instagram-modal-closed-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=instagram",
+      "action": "const deadline = performance.now() + 10000; while (document.querySelectorAll('#gallery-3 .instagram-item').length !== 6) { if (performance.now() > deadline) throw new Error('Native Instagram provider data did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } const item = document.querySelector('#gallery-3 .instagram-item'); const picture = item.querySelector('img'); const source = picture.src; item.click(); const modalDeadline = performance.now() + 5000; while (!document.querySelector('.modal-bg-open .modal-zoomed img')) { if (performance.now() > modalDeadline) throw new Error('Native Instagram fullscreen modal did not open'); await new Promise(resolve => requestAnimationFrame(resolve)); } await window.visualFixture.ready(); const modal = document.querySelector('.modal-bg'); const main = document.querySelector('main'); if (main.contains(modal) || modal.parentElement !== main.parentElement || modal.querySelector('img').src !== source) throw new Error('Fullscreen image lost its native page-sibling owner or source'); modal.querySelector('[aria-label=\"Close\"]').click(); const closeDeadline = performance.now() + 5000; while (document.querySelector('.modal-bg')) { if (performance.now() > closeDeadline) throw new Error('Native Instagram modal did not finish closing'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (item !== document.querySelector('#gallery-3 .instagram-item') || picture !== item.querySelector('img')) throw new Error('Closing fullscreen replaced the native gallery DOM');"
     }
   ]
 }

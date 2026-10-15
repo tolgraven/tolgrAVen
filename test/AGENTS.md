@@ -94,6 +94,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   SPA Back and external Back, looking for flashes, jumps and replayed animations.
   SSR query variants retain separate HTML/state, reuse only matching fresh public
   data, and never extend freshness without a successful provider read.
+- Docs visual fixtures require the served snapshot's generated Codox index/topic
+  resources. Acquire each new public module's native sheets only in its own case;
+  shared-head additions change every case's dormant motion declaration inventory.
 - Regenerate Node-rendered fixtures before the browser suite. Check final assertion
   results, running Shadow warnings and browser logs; successful compilation is not
   a passing browser test or proof of live CMS integration.

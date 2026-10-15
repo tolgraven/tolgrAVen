@@ -32,6 +32,8 @@
           (and glass-output (str/starts-with? path "js/")) (fs/path glass-output "tests" path)
           (= "" path) (fs/path "resources/public/js/tests/index.html")
           (= path "fixtures/editor-seed.json") (fs/path "resources/content-seed.json")
+          (#{"fixtures/docs/index.html" "fixtures/docs/docs.html"} path)
+          (fs/path "resources/docs/codox" (fs/file-name path))
           (str/starts-with? path "fixtures/") (fs/path "test/browser" (subs path 9))
           (some #{path} (map #(str avatar "." %) ["png" "webp" "avif"]))
           (fs/path "resources/public/img" (str "tolgrav." (fs/extension path)))
