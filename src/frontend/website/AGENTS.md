@@ -174,6 +174,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   enabled tools and a form path. Comment owners allow file uploads but never
   subscribe to the server library or enable site components. Comment rendering
   disables authored component parsing and raw HTML, including trusted authors.
+  Normalize absent canonical form text to an empty string at both rich SDK reads;
+  mounting or clearing an empty draft must not write normalization into the form.
   Each editor lifetime owns its upload anchors and writes only its own form;
   pending comment uploads block submission without blocking a post draft.
   Comment links share the original corner action group with Reply/Edit. Preserve

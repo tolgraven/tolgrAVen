@@ -608,7 +608,7 @@
             (fn [& [method uri body success failure]]
               (swap! calls conj {:method method, :uri uri, :success success})))
       (r/dispatch-sync [:form-field [:post-blog :text] "Keep post draft"])
-      (r/dispatch-sync [:form-field path "Comment text"])
+      (r/dispatch-sync [:form-field path nil])
       (-> (go-promise
             (let [mounted (await! (support/create-root! element))]
               (reset! root mounted)
@@ -617,6 +617,26 @@
                                                  :kind :comment
                                                  :form-path path
                                                  :library? false}]))
+              (await! (support/wait-for! #(.querySelector element ".md-editor-content p")))
+              (is (= "" (.-textContent (.querySelector element ".md-editor-content")))
+                  "A new empty comment mounts the actual rich editor")
+              (is (nil? (await! (support/state-at! (into [:state :form-field] path))))
+                  "SDK initialization must not write normalization into the draft")
+              (let [editable (.querySelector element ".md-editor-content")]
+                (r/dispatch-sync [:form-field path "Temporary comment"])
+                (await! (support/wait-for! #(= "Temporary comment" (.-textContent editable))))
+                (r/dispatch-sync [:form-field path nil])
+                (await! (support/wait-for! #(= "" (.-textContent editable))))
+                (is (identical? editable (.querySelector element ".md-editor-content"))
+                    "Clearing the canonical draft retains the mounted editor"))
+              (.click (.querySelector element "nav button:nth-child(2)"))
+              (await! (support/wait-for! #(.querySelector element ".md-source-content")))
+              (is (= "" (.-textContent (.querySelector element ".md-source-content"))))
+              (.click (.querySelector element "nav button:first-child"))
+              (await! (support/wait-for! #(.querySelector element ".md-editor-content p")))
+              (is (= "" (.-textContent (.querySelector element ".md-editor-content"))))
+              (is (empty? @calls) "Empty editing and mode switches acquire no provider data")
+              (r/dispatch-sync [:form-field path "Comment text"])
               (await! (support/wait-for! #(= "Comment text" (some-> (.querySelector element ".md-editor-content p") .-textContent))))
               (is (not (.includes (.-textContent element) "Component")))
               (is (.querySelector element ".md-image-picker") "Images retain the owned upload picker")

@@ -334,7 +334,7 @@
         [input-revision input-changed!] (r/use-state 0)
         *document (r/use-ref document-id)
         *text (when text-query (r/subscribe text-query))
-        text' (if *text @*text text)
+        text' (or (if *text @*text text) "")
         on-change' (r/use-callback
                      (fn [markdown & args]
                        (set! (.-current *pending?) true)
@@ -357,7 +357,7 @@
         (when source? (set! (.-current *pending?) false))
         (when-let [instance (.-current editor-ref)]
           (let [document-changed? (not= document-id (.-current *document))
-                text'' (if *text @*text text')
+                text'' (or (if *text @*text text') "")
                 external? (or document-changed? (not (.-current *pending?)))
                 current-text (.getMarkdown instance)]
             (when (and external? (not= text'' current-text)) (.setMarkdown instance text''))
