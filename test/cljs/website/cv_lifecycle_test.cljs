@@ -146,3 +146,37 @@
                   (when (.-isConnected active-element) (.focus active-element #js {:preventScroll true}))
                   (.scrollTo js/window #js {:top scroll-y, :behavior "instant"})
                   (done)))))))))
+
+(defn- event-effects [id db event]
+  ;; Invoke the actual registered handler without installing native timers.
+  (let [handler (:before (last (r/get-handler :event id)))]
+    (:effects (handler {:coeffects {:db db, :event event}}))))
+
+(deftest dispatch-in-cancellation-releases-only-the-requested-owner-and-timers
+  (let [first-timer {:js-id 101}
+        second-timer {:js-id 102}
+        other {:js-id 201}
+        db {:cv-demo {1 first-timer, 2 second-timer}, :other {1 other}}
+        cancel #(event-effects :dispatch-in/cancel db %)
+        all (cancel [:dispatch-in/cancel :cv-demo])
+        single (cancel [:dispatch-in/cancel :cv-demo 1])
+        only (event-effects :dispatch-in/cancel {:cv-demo {1 first-timer}, :other {1 other}}
+                            [:dispatch-in/cancel :cv-demo])]
+    (is (= {:other {1 other}} (:db all)))
+    (is (= #{[:dispatch-in/stop [:cv-demo 1 101]] [:dispatch-in/stop [:cv-demo 2 102]]}
+           (set (:fx all))))
+    (is (= {:cv-demo {2 second-timer}, :other {1 other}} (:db single)))
+    (is (= [[:dispatch-in/stop [:cv-demo 1 101]]] (:fx single)))
+    (is (= {:other {1 other}} (:db only)))
+    (is (= [[:dispatch-in/stop [:cv-demo 1 101]]] (:fx only)))
+    (is (empty? (cancel [:dispatch-in/cancel :missing])))
+    (is (empty? (cancel [:dispatch-in/cancel :cv-demo 999])))))
+
+(deftest cancelled-timer-acknowledgement-stops-the-native-handle-without-resurrecting-state
+  (let [pending {:state {:dispatch-in {:cv-demo {1 {:ms 2000, :js-id nil}}}}}
+        acknowledged (event-effects :dispatch-in/save-timeout-id pending
+                                    [:dispatch-in/save-timeout-id :cv-demo 1 101])
+        cancelled (event-effects :dispatch-in/save-timeout-id {:state {:dispatch-in {}}}
+                                 [:dispatch-in/save-timeout-id :cv-demo 1 101])]
+    (is (= 101 (get-in acknowledged [:db :state :dispatch-in :cv-demo 1 :js-id])))
+    (is (= {:dispatch-in/stop [:cv-demo 1 101]} cancelled))))

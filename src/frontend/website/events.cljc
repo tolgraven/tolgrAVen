@@ -194,18 +194,24 @@
 
 (r/reg-event-fx :dispatch-in/save-timeout-id
   (fn [{:keys [db]} [_ k id js-id]]
-    {:db (assoc-in db [:state :dispatch-in k id :js-id] js-id)}))
+    (let [path [:state :dispatch-in k id]]
+      ;; Cancellation may precede this queued acknowledgement. Stop the native
+      ;; handle without recreating a removed owner's timer entry.
+      (if (get-in db path)
+        {:db (assoc-in db (conj path :js-id) js-id)}
+        {:dispatch-in/stop [k id js-id]}))))
 
 (r/reg-event-fx
  :dispatch-in/cancel      [(r/path [:state :dispatch-in])]
  (fn [{:keys [db]} [_ k & [id]]]
-   (let [ids (or id (-> db k keys))]
-     (if (= 1 (count ids))
-       (let [js-id (get-in db [k id :js-id])]
-         {:db (dissoc db k)
-          :dispatch-in/stop [k id js-id]})
-       {:dispatch-n (for [single-id ids]
-                      [:dispatch-in/cancel k single-id])}))))
+   (let [entries (get db k)
+         ids (if (some? id) [id] (keys entries))
+         selected (select-keys entries ids)
+         remaining (apply dissoc entries ids)]
+     (when (seq selected)
+       {:db (if (seq remaining) (assoc db k remaining) (dissoc db k))
+        :fx (mapv (fn [[timer-id {:keys [js-id]}]]
+                    [:dispatch-in/stop [k timer-id js-id]]) selected)}))))
 
 (r/reg-event-fx
  :dispatch-in/pause     [(r/inject-cofx :now-ct)

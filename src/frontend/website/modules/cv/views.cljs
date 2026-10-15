@@ -304,16 +304,26 @@
   []
   (let [;_ (r/dispatch [:ls/get-path [:cv-visited] [:state :cv :visited]])
         visited (r/subscribe [:state [:cv :visited]])
+        timer-key (keyword (str (gensym "cv-demo-")))
+        cancel! #(r/dispatch [:dispatch-in/cancel timer-key])
         timeline-ref (fn [element]
                        (when element (set! (.-scrollLeft element) (.-scrollWidth element))))
         ref-fn (fn [el]
-                 (when el
-                   (r/dispatch [:ls/store-val [:cv-visited] true])
-                   (r/dispatch [:dispatch-in/ms 2000 [:state [:fullscreen :cv] true]])
-                   (when (not @visited)
-                     (r/dispatch [:dispatch-in/ms 3000 [:scroll/by 50]])
-                     (r/dispatch [:dispatch-in/ms 4500 [:scroll/by -37]])
-                     (r/dispatch [:dispatch-in/ms 5500 [:focus-element "fullscreen-btn"]]))))]
+                 (if el
+                   (do
+                     (r/dispatch [:ls/store-val [:cv-visited] true])
+                     (doseq [[ms event] (cond-> [[2000 [:state [:fullscreen :cv] true]]]
+                                         (not @visited)
+                                         (into [[3000 [:scroll/by 50]]
+                                                [4500 [:scroll/by -37]]
+                                                [5500 [:focus-element "fullscreen-btn"]]]))]
+                       (r/dispatch [:dispatch-in/set {:k timer-key
+                                                     :ms ms
+                                                     :dispatch-n [event]}]))
+                     ;; React owns this native ref's lifetime, including ref
+                     ;; replacement and StrictMode's setup/cleanup replay.
+                     cancel!)
+                   (cancel!)))]
    (fn []
     (let [{:keys [title caption cv image-assets]} @(r/subscribe [:content/view [:cv]])
         {:keys [timeline skills]} cv

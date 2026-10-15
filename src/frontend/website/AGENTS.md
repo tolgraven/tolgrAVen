@@ -14,6 +14,10 @@
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/ssr.md`, and `doc/dev-console.md`.
 
+- The CV first-visit demo uses its original delayed events under an instance-owned
+  `:dispatch-in` key. Its native ref cleanup cancels only that instance's timers;
+  late native-handle acknowledgements stop canceled work without restoring it.
+
 - Action labels measure their committed native anchor and portal. Follow finite
   ancestor motion and observe ancestor size changes only while the label is open;
   release frame sampling, resize observation and dismissal listeners on close.
