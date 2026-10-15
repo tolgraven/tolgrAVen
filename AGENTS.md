@@ -47,7 +47,11 @@ sessions' tabs and restore any borrowed tab when finished.
    check cold loading, hydration, SPA navigation and history returns as relevant;
    inspect narrow and wide layouts when appearance changes. Compilation or unit
    tests alone do not establish working UI. Report any genuinely blocked check.
-4. **Publish a draft PR.** Push the feature branch and open a draft PR against
+4. **Publish a draft PR.** Use `bb pr` instead of raw `gh pr` to create or edit
+   PRs; it retains the owning session and appends contributing session IDs. Install
+   tracked hooks with `bb hooks` so commits carry `Codex-Session` trailers. Pass
+   `--contributor UUID` for contributing sessions whose work has no commit trailer.
+   See `doc/tooling.md`. Push the feature branch and open a draft PR against
    `master` once a coherent committed checkpoint exists. Keep its head and
    description current, with concrete behavior, verification evidence, relevant
    screenshots and remaining limits. Do not stop at a local-only handoff.

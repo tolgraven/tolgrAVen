@@ -115,3 +115,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   Never infer browser ownership or close browsers from a Git hook. Agents close
   their own verification tabs and servers when finished; the script preserves
   existing compiler writer locks and cannot replace session ownership checks.
+
+- `dev/pr.clj` owns `bb pr` description attribution and the tracked
+  `prepare-commit-msg` session trailer hook. Preserve the original owner and
+  recorded contributors on every body rewrite; attribution comes only from
+  explicit IDs, the current session, and commit trailers. See `doc/tooling.md`.

@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+# Git invokes this from the worktree root; paths may contain spaces.
+exec bb --classpath scripts -m dev.pr commit-session "$1"
