@@ -1,6 +1,7 @@
 (ns website.visual-fixture
   "Fixed public content and native components for pixel/geometry comparisons."
   (:require [website.react :as r]
+            [website.macros :refer-macros [defpage]]
             [website.editor-visual :as editor]
             [website.component.restore :as restore]
             [website.modules.cv.views :as cv]
@@ -111,9 +112,8 @@
                                  :text "Fixed prose next to the original corner actions.")
           :appear false}])]]]])
 
-(defn <layout-fixture> [vertical?]
-  [:main#main.main-content
-   [home/<layout>
+(defpage <layout-surface> [vertical?]
+  [home/<layout>
     (let [page (page-layout/find-page page-layout/defaults "experiments")
           page' (update page :sections (fn [sections] (filterv #(#{"story" "page-index"} (:component %)) sections)))
           [story index] (:sections page')]
@@ -123,7 +123,10 @@
             (assoc :sections [index
                               (update-in story [:content :text] #(str % "\n\n" % "\n\n" %))
                               (assoc story :identity "second-story", :label "Second article")]))
-        page'))]])
+        page'))])
+
+(defn <layout-fixture> [vertical?]
+  [:main#main.main-content [<layout-surface> vertical?]])
 
 
 (defn ^:export init! []
