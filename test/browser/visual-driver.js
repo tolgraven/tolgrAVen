@@ -20,6 +20,7 @@ window.visualDriver = {
         if (item.action) {
           // Actions are trusted checked-in test code, executed in that fixture's
           // own realm so native handlers/portals use its document and viewport.
+          target.visualFixture.motion.phase('action');
           await target.eval('(async () => {' + item.action + '})()');
           await target.visualFixture.ready();
         }
@@ -27,6 +28,7 @@ window.visualDriver = {
       } catch (error) {
         output.push({id: item.id, error: String(error)});
       } finally {
+        frame.contentWindow.visualFixture?.motion?.stop();
         frame.remove();
       }
     }

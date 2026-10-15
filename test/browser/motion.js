@@ -92,6 +92,72 @@ const sampleStartup = async path => {
   }
   throw new Error('Page did not reach interactive startup');
 };
+// The parent survives the unrelated, genuinely cross-origin document. Observe
+// BFCache's retained document before departure and every returned document from
+// its first accessible parent frame. This does not inject into the app response.
+const externalBack = async () => {
+  const previous = doc(), observers = new Map(), evidence = [], cleanups = [];
+  const attach = document => {
+    if (!document || document.URL === 'about:blank' || observers.has(document)) return;
+    const observer = window.visualFixture.createMotionObserver(document.defaultView, document === previous ? 'pre-departure' : 'external-back');
+    observers.set(document, observer);
+    const record = {url: document.URL, persisted: null, navigation:
+      document.defaultView.performance.getEntriesByType('navigation')[0]?.type};
+    const pageshow = event => { record.persisted = event.persisted; };
+    document.defaultView.addEventListener('pageshow', pageshow, {once: true});
+    cleanups.push(() => document.defaultView?.removeEventListener('pageshow', pageshow));
+    evidence.push(record);
+  };
+  // Previously completed objects are not restarted motion. Keep observing this
+  // document across BFCache; a newly created CSS object after Back is a failure.
+  attach(previous);
+  let request, active = true;
+  const poll = () => {
+    if (!active) return;
+    const document = doc();
+    if (document?.location.pathname === '/') attach(document);
+    request = requestAnimationFrame(poll);
+  };
+  try {
+    const away = new URL('/__tests/away.html', location.href);
+    away.hostname = location.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
+    check(away.origin !== location.origin, 'Back leaves for a genuinely different origin');
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { frame.onload = null; reject(new Error('External document did not load')); }, 15000);
+      frame.onload = () => { clearTimeout(timer); frame.onload = null; resolve(); };
+      frame.src = away.href;
+    });
+    check(!doc(), 'External document is cross-origin, rather than substituted application state');
+    request = requestAnimationFrame(poll);
+    // Native session history is shared by this frame tree. Traverse the actual
+    // away entry; do not forge PerformanceNavigationTiming or a restore flag.
+    observers.get(previous).phase('external-back');
+    history.back();
+    await wait(() => doc()?.location.pathname === '/' && doc()?.querySelector('#intro') &&
+      doc()?.documentElement.hasAttribute('data-image-direct'));
+    await sleep(3500);
+    const returned = doc(), observer = observers.get(returned);
+    check(!!observer, 'Returned document was observed before post-return interactions');
+    const measured = observer.snapshot();
+    const triggered = measured.triggered.filter(entry => entry.phase === 'external-back');
+    const running = returned.getAnimations().filter(animation =>
+      (animation instanceof frame.contentWindow.CSSAnimation || animation instanceof frame.contentWindow.CSSTransition) &&
+      animation.playState === 'running').map(animation => ({name: animation.animationName || animation.transitionProperty,
+        timing: animation.effect.getTiming(), keyframes: animation.effect.getKeyframes()}));
+    results.dataset.externalBack = JSON.stringify({documents: evidence, sameDocument: returned === previous,
+      motion: {...measured, triggered}, running, observationWindowMs: 3500,
+      observation: 'parent-frame first accessible document; BFCache listener retained across departure'});
+    check(returned === previous || evidence.some(value => value.url === returned.URL &&
+      (value.persisted === true || value.navigation === 'back_forward')),
+      'Real native history return is evidenced by retained document or browser navigation timing', evidence);
+    check(!measured.gaps.length && !triggered.length && !running.length,
+      'External Back starts no CSS animation or transition before any interaction', {triggered, running, gaps: measured.gaps});
+  } finally {
+    active = false; cancelAnimationFrame(request);
+    for (const observer of observers.values()) observer.stop();
+    cleanups.forEach(cleanup => cleanup());
+  }
+};
 document.querySelector('#run').onclick = async () => {
   results.replaceChildren();
   try {
@@ -143,14 +209,9 @@ document.querySelector('#run').onclick = async () => {
           'Paired document restoration stays visible without replaying its entrance');
     check(!doc().querySelector('[data-image-preview]'),
           'Saved HTML/state pair contains only final image candidates');
-    // Leave the application document and use the unrelated document's native
-    // Back button. A saved pair alone is not proof of native Back classification.
-    frame.src = '/__tests/away.html';
-    await wait(() => doc()?.location.pathname === '/__tests/away.html' &&
-      doc()?.querySelector('button'));
-    doc().querySelector('button').click();
-    await wait(() => doc()?.location.pathname === '/' &&
-      doc()?.documentElement.hasAttribute('data-image-direct') && doc()?.querySelector('#intro'));
+    // Traverse real history from an unrelated cross-origin document. A saved
+    // pair alone is not proof of native Back classification.
+    await externalBack();
     await wait(() => {
       if (doc().querySelector('.search-ui-open')) return true;
       doc().querySelector('button.search-ui-btn')?.click(); return false;

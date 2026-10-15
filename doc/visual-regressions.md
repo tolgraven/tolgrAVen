@@ -88,9 +88,13 @@ that configured launcher, which reuses port 9223 and the persistent Development
 profile and opens that same installed Chrome profile if needed. Never substitute
 the daily profile, `--autoConnect` or a throwaway browser after a crash.
 
-Capture waits for native mounting, loaded consumer fonts, decoded images and
+Capture waits for native mounting, loaded consumer fonts, decoded required images and
 finite motion, then pauses infinite animation clocks at zero before checking
-stable geometry/computed appearance. A fading caret otherwise never has stable
+stable geometry/computed appearance. Eager, already acquired and visible lazy
+images must decode; offscreen lazy images retain native loading policy. Each
+readiness call, including every scroll tile, reevaluates their visibility and
+acquisition. This prevents an offscreen footer from blocking a scroll that would
+otherwise acquire its lazy images. A fading caret otherwise never has stable
 opacity. Native error fallbacks, failed images, unsettled layout and an
 unexpected viewport/DPR fail capture. Set only this fixture origin's Chrome zoom
 to 100%; do not hide environment changes behind a tolerance.
@@ -111,6 +115,60 @@ that can change native painting. Reports compare every tile and its scroll
 coverage; a missing tile fails. Nested independently scrolling regions still
 need explicit suite states for their additional positions. The bounded runner
 rejects documents requiring more than 128 tiles.
+
+## Native CSS motion contracts
+
+New captures include `native-css-motion-v1` alongside geometry in both modes.
+An observer is installed before native fixture initialization and marks initial,
+action and raster-scroll phases before those actions run. It records every
+observed native `CSSAnimation` and `CSSTransition` once: target/pseudo, name or
+property, full `KeyframeEffect.getTiming()` and `getKeyframes()`, composition and
+playback rate. Delayed animation objects are recorded while pending; finite
+objects remain in the record after finishing. Start/current times, frame clocks
+and elapsed progress are deliberately excluded. Infinite clocks are measured
+before the existing raster alignment pauses them.
+
+Snapshots also record the computed animation/transition declaration list for
+every light-DOM element and standard pseudo, plus stylesheet-declared and
+observed runtime pseudos. A shared style table keeps repeated contracts compact.
+This includes inactive hover/state declarations, while actual triggers prove
+only the checked-in interactions. Zero-duration changes, easing/delay/keyframe
+changes, missing triggers and pseudo changes fail exact comparison even when the
+settled geometry and pixels match. Unobservable native start events, inaccessible
+stylesheets and embedded/shadow roots needing separate observation are explicit
+capture gaps; they cannot be approved as complete observations. Add native
+interaction cases for states not exercised by the suite.
+
+Motion coverage requires a separately reviewed candidate and a repeat capture:
+
+```sh
+bb test:visual compare --require-motion --baseline <reviewed-motion-baseline> \
+  --actual .local-wip/visual/candidate --output .local-wip/visual/motion-report
+```
+
+Old layout-only baselines stay layout-only. Mixing them with a motion capture
+fails with a coverage message; `--require-motion` also rejects two old captures.
+No command populates approval or refreshes the existing approved layout files.
+Reports include exact motion paths independently of geometry/pixel changes.
+
+The live `/__tests/motion.html` driver, served through the unchanged-HTTP proxy
+in `scripts/test/integration_server.py`, also leaves the application for the
+other loopback hostname (`localhost` versus `127.0.0.1`), then traverses genuine
+joint session history Back. It observes the retained document across BFCache
+and new documents from their first accessible parent frame, before any return
+interaction. It requires native retained-document or `back_forward` evidence,
+no newly triggered or running CSS animations/transitions (including pseudos),
+and observes for 3.5 seconds, covering the native two-second title delay. It
+stores bounded observation evidence in `#results.dataset.externalBack`. It does
+not rewrite application HTML, seed return state or forge navigation timing.
+The existing ordinary Search and navigation interactions follow restoration;
+return suppression must not disable subsequent user-triggered motion.
+
+This parent-frame check cannot claim observation before a new document is
+accessible, nor prove indefinitely delayed/provider-triggered behavior after its
+bounded window. Keep cold/paired/external Back live evidence separate from fixed
+fixture parity. Browser execution and a repeat remain required; Node adapter
+checks alone establish neither actual CSS timing nor BFCache behavior.
 
 ## Approve and compare
 
@@ -158,5 +216,15 @@ The comparator's own test deliberately changes a pixel, subpixel position,
 padding and icon presence:
 
 ```sh
+python3 -m unittest discover -s test/scripts -p visual_test.py
+```
+
+The motion adapter checks native-object retention, phase attribution, pseudos,
+delays and cleanup; comparator checks deliberately mutate duration, easing,
+keyframes, transition properties, pseudo declarations and missing triggers,
+then restore an exact pass:
+
+```sh
+node --test test/scripts/visual_clock_test.cjs test/scripts/visual_motion_test.cjs
 python3 -m unittest discover -s test/scripts -p visual_test.py
 ```

@@ -21,6 +21,7 @@ import zlib
 ROOT = Path(__file__).resolve().parents[2]
 SIGNATURE = b"\x89PNG\r\n\x1a\n"
 RASTER = "overlapping-viewports-v1"
+MOTION = "native-css-motion-v1"
 
 
 def read_png(path):
@@ -252,9 +253,10 @@ def capture_tiles(client, case, output):
     """Paint the complete document through real, overlapping viewport captures."""
     states, tiles, target = [], [], 0
     for index in range(128):
-        state = client.evaluate("async () => { window.scrollTo({left:0,top:" + str(target) +
+        state = client.evaluate("async () => { window.visualFixture.motion.phase('tile-" + str(index) + "'); window.scrollTo({left:0,top:" + str(target) +
                                 ",behavior:'instant'}); await window.visualFixture.ready(); return window.visualFixture.snapshot(); }")
         width, height = case["viewport"]
+        motion_changes(state, state, case["id"])
         if state["viewport"] != [width, height, 1] or state.get("errors"):
             raise RuntimeError(f"{case['id']}: invalid viewport/DPR or fixture readiness errors")
         x, y, document_height = state["document"]
@@ -319,6 +321,7 @@ def capture(args):
                             failures.append(case["id"] + ": " + result["error"])
                         else:
                             state = result["state"]
+                            motion_changes(state, state, case["id"])
                             if state["viewport"] != case["viewport"] + [1] or state.get("errors"):
                                 failures.append(case["id"] + ": invalid viewport or native errors")
                             (args.output / (case["id"] + ".json")).write_text(json.dumps(state, indent=2) + "\n")
@@ -331,13 +334,15 @@ def capture(args):
                 client.call("emulate", viewport=f"{width}x{height}x1")
                 client.call("navigate_page", url=args.origin + case["path"])
                 if case.get("action"):
-                    client.evaluate("async () => { await window.visualFixture.ready(); " + case["action"] + "; return true; }")
+                    client.evaluate("async () => { await window.visualFixture.ready(); window.visualFixture.motion.phase('action'); " + case["action"] + "; return true; }")
                 capture_tiles(client, case, args.output)
+                client.evaluate("() => {window.visualFixture.motion.stop(); return true;}")
                 print(f"Captured {case['id']}", flush=True)
             metadata = {"schema": 1, "suite_sha256": hashlib.sha256(args.suite.read_bytes()).hexdigest(),
                         "cases": [case["id"] for case in cases],
                         "git_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                         "pixels": not args.geometry_only, "raster": RASTER if not args.geometry_only else None,
+                        "motion": MOTION,
                         "approval": None}
             (args.output / "capture.json").write_text(json.dumps(metadata, indent=2) + "\n")
         finally:
@@ -347,6 +352,18 @@ def capture(args):
                 except Exception as error:
                     print(f"Owned task tab {page} needs closing: {error}", file=sys.stderr)
             client.close()
+
+
+def motion_changes(expected, actual, label):
+    for state in (expected, actual):
+        motion = state.get("motion")
+        if not isinstance(motion, dict) or motion.get("version") != MOTION:
+            raise ValueError(label + ": missing native CSS motion observation")
+        if motion.get("gaps"):
+            raise ValueError(label + ": incomplete CSS motion observation: " + str(motion["gaps"]))
+        if not all(key in motion for key in ("properties", "styles", "declarations", "triggered")):
+            raise ValueError(label + ": incomplete CSS declaration/runtime contract")
+    return geometry_changes(expected["motion"], actual["motion"], label + ".motion")
 
 
 def compare(args):
@@ -369,6 +386,13 @@ def compare(args):
         raise ValueError("Actual capture mode differs from the approved baseline")
     if metadata.get("pixels", True) and (metadata.get("raster") != RASTER or actual_metadata.get("raster") != RASTER):
         raise ValueError("Raster captures must include the current complete-document viewport tile strategy")
+    motion_version = metadata.get("motion")
+    if motion_version != actual_metadata.get("motion"):
+        raise ValueError("Motion coverage differs: old layout baselines require separately reviewed motion candidates")
+    if motion_version not in (None, MOTION):
+        raise ValueError("Unsupported CSS motion capture contract")
+    if getattr(args, "require_motion", False) and motion_version != MOTION:
+        raise ValueError("Missing approved CSS motion coverage; settled layout is not a motion pass")
     for case in suite["cases"]:
         ident = case["id"]
         try:
@@ -376,6 +400,7 @@ def compare(args):
             actual = json.loads((args.actual / (ident + ".json")).read_text())
             environment = geometry_changes(expected["environment"], actual["environment"], "environment")
             geometry = geometry_changes(expected["geometry"], actual["geometry"], "geometry")
+            motion = motion_changes(expected, actual, ident) if motion_version else []
             tiles = []
             if metadata.get("pixels", True):
                 if not expected.get("tiles") or expected["tiles"] != actual.get("tiles"):
@@ -391,6 +416,8 @@ def compare(args):
                     if index:
                         environment.extend(geometry_changes(before["environment"], after["environment"], stem + ".environment"))
                         geometry.extend(geometry_changes(before["geometry"], after["geometry"], stem + ".geometry"))
+                        if motion_version:
+                            motion.extend(motion_changes(before, after, stem))
                     raster = compare_pixels(args.baseline / (stem + ".png"), args.actual / (stem + ".png"), args.output / (stem + ".diff.png"))
                     tiles.append({**tile, "pixels": raster})
                 pixels = {"passed": all(tile["pixels"]["passed"] for tile in tiles),
@@ -398,19 +425,21 @@ def compare(args):
                           "total_pixels": sum(tile["pixels"].get("total_pixels", 0) for tile in tiles)}
             else:
                 pixels = {"passed": True, "mode": "geometry-only"}
-            result = {"id": ident, "passed": pixels["passed"] and not geometry and not environment,
-                      "pixels": pixels, "tiles": tiles, "geometry": geometry, "environment": environment}
+            result = {"id": ident, "passed": pixels["passed"] and not geometry and not environment and not motion,
+                      "pixels": pixels, "tiles": tiles, "geometry": geometry, "environment": environment,
+                      "motion": motion, "motion_coverage": motion_version or "unmeasured"}
         except (OSError, ValueError, KeyError) as error:
             result = {"id": ident, "passed": False, "error": str(error)}
         results.append(result)
         if result.get("error"):
             detail = result["error"]
         elif result["pixels"].get("mode") == "geometry-only":
-            detail = f"geometry-only; {len(result['geometry'])} geometry/style changes"
+            detail = f"geometry-only; {len(result['geometry'])} geometry/style changes; {len(result['motion'])} motion changes"
         else:
-            detail = f"{result['pixels'].get('changed_pixels', '?')} pixels; {len(result['geometry'])} geometry changes"
+            detail = f"{result['pixels'].get('changed_pixels', '?')} pixels; {len(result['geometry'])} geometry changes; {len(result['motion'])} motion changes"
         print(f"{'PASS' if result['passed'] else 'FAIL'} {ident}: {detail}")
-    report = {"passed": all(result["passed"] for result in results), "cases": results}
+    report = {"passed": all(result["passed"] for result in results),
+              "motion_coverage": motion_version or "unmeasured", "cases": results}
     (args.output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     rows = []
     for result in results:
@@ -436,6 +465,7 @@ def main():
     take.add_argument("--geometry-only", action="store_true", help="Explicit geometry/style gate without raster comparison; baseline must use the same mode")
     take.add_argument("--mcp-command", help="Optional configured MCP executable; default relays JSON-lines to the existing extension session")
     check = commands.add_parser("compare", help="Fail on any pixel/geometry/environment difference or missing case")
+    check.add_argument("--require-motion", action="store_true", help="Reject layout-only baselines; require reviewed native CSS motion contracts")
     check.add_argument("--baseline", type=Path, required=True)
     check.add_argument("--actual", type=Path, required=True)
     check.add_argument("--output", type=Path, required=True)

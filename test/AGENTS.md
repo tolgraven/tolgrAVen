@@ -5,7 +5,10 @@
   conceal a regression. Missing/unapproved baselines are verification gaps, not
   passing results. Geometry mode verifies boxes and computed appearance; pixel
   parity requires matching raster captures. Keep native page/component parents
-  in fixtures. Extend `test/visual/suite.json` for new rendered states.
+  in fixtures. Compare native CSS declarations and triggered keyframes/timing with
+  `--require-motion`; settled geometry is not a motion pass. Observe real external
+  Back before interaction, including delayed and pseudo motion, without fabricated
+  history/restore state. Missing motion baselines remain explicit gaps. Extend `test/visual/suite.json` for new rendered states.
 - CMS visual comparisons use `editor-visual.html` and the original commit's
   components, identical seed data/assets and viewport dimensions. Capture actual
   viewports and separate scrolled sections; full-page capture can repaint filtered

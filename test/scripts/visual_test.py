@@ -15,6 +15,72 @@ SPEC.loader.exec_module(visual)
 
 
 class VisualTest(unittest.TestCase):
+    def test_motion_contract_changes_fail_without_geometry_changes(self):
+        import copy
+        contract = {"version": visual.MOTION, "properties": ["animation-duration"],
+                    "styles": [["2s"]], "declarations": [["article", "::before", 0]],
+                    "triggered": [{"kind": "transition", "name": "height", "phase": "action",
+                                   "timing": {"duration": 300, "easing": "ease-in"},
+                                   "keyframes": [{"offset": 0, "height": "0px"},
+                                                 {"offset": 1, "height": "100px"}]}], "gaps": []}
+        expected = {"motion": contract}
+        self.assertEqual([], visual.motion_changes(expected, copy.deepcopy(expected), "comment"))
+        mutations = [lambda c: c["styles"][0].__setitem__(0, "3s"),
+                     lambda c: c["declarations"][0].__setitem__(1, "::after"),
+                     lambda c: c["triggered"][0]["timing"].__setitem__("duration", 0),
+                     lambda c: c["triggered"][0]["timing"].__setitem__("easing", "linear"),
+                     lambda c: c["triggered"][0].__setitem__("name", "opacity"),
+                     lambda c: c["triggered"][0]["keyframes"][1].__setitem__("height", "101px"),
+                     lambda c: c["triggered"].clear()]
+        for mutate in mutations:
+            actual = copy.deepcopy(expected)
+            mutate(actual["motion"])
+            self.assertTrue(visual.motion_changes(expected, actual, "comment"))
+        with self.assertRaisesRegex(ValueError, "missing native CSS"):
+            visual.motion_changes(expected, {}, "comment")
+        incomplete = copy.deepcopy(expected)
+        incomplete["motion"]["gaps"].append("Unobservable start")
+        with self.assertRaisesRegex(ValueError, "incomplete CSS"):
+            visual.motion_changes(expected, incomplete, "comment")
+
+    def test_motion_command_rejects_regression_restores_pass_and_requires_coverage(self):
+        import copy
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suite = root / "suite.json"
+            suite.write_text(json.dumps({"cases": [{"id": "comment"}]}))
+            before = {"environment": {}, "geometry": [], "motion": {
+                "version": visual.MOTION, "properties": ["transition-duration"],
+                "styles": [[".3s"]], "declarations": [["article", None, 0]],
+                "triggered": [], "gaps": []}}
+            baseline, actual = root / "baseline", root / "actual"
+            metadata = {"suite_sha256": hashlib.sha256(suite.read_bytes()).hexdigest(),
+                        "pixels": False, "motion": visual.MOTION,
+                        "approval": {"reviewer": "test", "reference": "synthetic", "reason": "test"}}
+            for folder in (baseline, actual):
+                folder.mkdir()
+                (folder / "capture.json").write_text(json.dumps(metadata))
+                (folder / "comment.json").write_text(json.dumps(before))
+            args = argparse.Namespace(suite=suite, baseline=baseline, actual=actual,
+                                      output=root / "report", require_motion=True)
+            self.assertEqual(0, visual.compare(args))
+            after = copy.deepcopy(before)
+            after["motion"]["styles"][0][0] = "0s"
+            (actual / "comment.json").write_text(json.dumps(after))
+            self.assertEqual(1, visual.compare(args))
+            report = json.loads((args.output / "report.json").read_text())
+            self.assertEqual([], report["cases"][0]["geometry"])
+            self.assertEqual("comment.motion.styles[0][0]", report["cases"][0]["motion"][0]["path"])
+            (actual / "comment.json").write_text(json.dumps(before))
+            self.assertEqual(0, visual.compare(args))
+            metadata.pop("motion")
+            (baseline / "capture.json").write_text(json.dumps(metadata))
+            with self.assertRaisesRegex(ValueError, "Motion coverage differs"):
+                visual.compare(args)
+            (actual / "capture.json").write_text(json.dumps(metadata))
+            with self.assertRaisesRegex(ValueError, "Missing approved CSS motion"):
+                visual.compare(args)
+
     def test_below_fold_pixel_and_missing_tile_fail(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
