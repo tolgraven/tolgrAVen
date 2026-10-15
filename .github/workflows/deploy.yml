@@ -26,6 +26,8 @@ jobs:
         with:
           bb: '1.13.225'
       - run: npm ci --ignore-scripts
+      - run: node --test test/scripts/css_pruning_test.mjs
+      - run: bb -cp scripts:src/cljc:resources test/scripts/neovim_workspace_test.clj
       - run: npm run build
 
   build-and-deploy:
