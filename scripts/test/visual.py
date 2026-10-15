@@ -47,9 +47,11 @@ def read_png(path):
     width, height, depth, color, compression, filtering, interlace = header
     if depth != 8 or color not in (2, 6) or any((compression, filtering, interlace)):
         raise ValueError("Expected noninterlaced 8-bit RGB/RGBA PNG")
+    if not width or not height or width * height > 16000000:
+        raise ValueError("PNG dimensions exceed the bounded viewport capture budget")
     channels = 3 if color == 2 else 4
     stride = width * channels
-    raw = zlib.decompress(compressed)
+    raw = zlib.decompressobj().decompress(compressed, height * (stride + 1) + 1)
     if len(raw) != height * (stride + 1):
         raise ValueError("PNG data length does not match dimensions")
     pixels, previous = bytearray(), bytearray(stride)
@@ -93,6 +95,7 @@ def write_png(path, width, height, pixels):
 
 
 def compare_pixels(expected, actual, diff):
+    Path(diff).unlink(missing_ok=True)
     ew, eh, before = read_png(expected)
     aw, ah, after = read_png(actual)
     if (ew, eh) != (aw, ah):
@@ -246,7 +249,7 @@ def capture(args):
     if args.case and set(args.case) - {case["id"] for case in cases}:
         raise ValueError("Unknown visual case")
     args.output.mkdir(parents=True, exist_ok=True)
-    if (args.output / "capture.json").exists():
+    if any(args.output.glob("*.json")) or any(args.output.glob("*.png")):
         raise ValueError("Capture output already exists; use a fresh candidate directory, preserving previous evidence")
     page = None
     with (args.output / "chrome-mcp.log").open("w") as log:
@@ -270,6 +273,8 @@ def capture(args):
                 for start in range(0, len(cases), 4):
                     batch = cases[start:start + 4]
                     results = client.evaluate("async () => await window.visualDriver.capture(" + json.dumps(batch) + ")")
+                    if [result.get("id") for result in results] != [case["id"] for case in batch]:
+                        raise ValueError("Native layout driver omitted or reordered declared cases")
                     for result, case in zip(results, batch):
                         if result.get("error"):
                             failures.append(case["id"] + ": " + result["error"])
@@ -314,6 +319,8 @@ def capture(args):
 
 
 def compare(args):
+    if args.output.resolve() in (args.baseline.resolve(), args.actual.resolve()):
+        raise ValueError("Reports require a separate output directory; capture inputs stay read-only")
     suite = json.loads(args.suite.read_text())
     args.output.mkdir(parents=True, exist_ok=True)
     results = []

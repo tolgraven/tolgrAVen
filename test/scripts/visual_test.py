@@ -1,6 +1,5 @@
 """The visual gate must reject a real one-pixel/padding/missing-element change."""
 import importlib.util
-import json
 from pathlib import Path
 import struct
 import tempfile
@@ -27,6 +26,8 @@ class VisualTest(unittest.TestCase):
             self.assertEqual(1, result["changed_pixels"])
             self.assertEqual([1, 1, 1, 1], result["changed_bounds"])
             self.assertEqual((3, 2), visual.read_png(root / "diff.png")[:2])
+            self.assertTrue(visual.compare_pixels(root / "same.png", root / "same.png", root / "diff.png")["passed"])
+            self.assertFalse((root / "diff.png").exists(), "A passing rerun must remove stale red difference imagery")
 
     def test_png_filters_and_crc(self):
         with tempfile.TemporaryDirectory() as directory:
