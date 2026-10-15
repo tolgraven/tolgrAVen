@@ -44,7 +44,7 @@
                       buttons (.querySelectorAll element "button")]
                   (is (.querySelector (aget buttons 0) "i.fa-copy"))
                   (is (.querySelector (aget buttons 1) "i.fa-align-left"))
-                  (is (= "Wrap lines" (.getAttribute (aget buttons 1) "title")))
+                  (is (= "Wrap lines" (.getAttribute (aget buttons 1) "aria-label")))
                   (is (empty? (.-textContent (.querySelector element ".code-block-controls"))))
                   (is (= "0" (.getAttribute (.querySelector element ".code-block") "tabindex")))
                   (.click (aget buttons 0))
@@ -61,6 +61,85 @@
           (.catch #(is false (str %)))
           (.finally (fn [] (set! loader/acquire-code! old-acquire)
                       (reset! restore/*context before) (restore!) (done)))))))
+
+(deftest icon-labels-follow-hover-focus-feedback-and-owned-lifetime
+  (async done
+    (let [restore! (r/make-restore-fn)
+          old-acquire loader/acquire-code!
+          before @restore/*context
+          element (.createElement js/document "div")]
+      (reset! restore/*context {:hydrate? false})
+      (set! loader/acquire-code!
+        (fn [_]
+          (js/Promise.resolve {:view {:formatted-code (fn [text & _] [:pre [:code text]])}})))
+      (r/reg-fx :code-block/copy (fn [{:keys [complete!]}] (complete! "Copied")))
+      (.appendChild (.-body js/document) element)
+      (-> (go-promise
+            (let [root (await! (support/create-root! element))
+                  tooltip #(when-let [id (.getAttribute % "aria-describedby")]
+                             (.getElementById js/document id))
+                  owners #(filter (fn [binding] (= :action-label (:owner binding)))
+                                  (vals @listener/*bindings))]
+              (try
+                (await! (support/render! root [code/<code-block> "(inc 1)"]))
+                (await! (support/settle!))
+                (let [copy (.querySelector element ".code-copy")
+                      wrap (.querySelector element ".code-wrap")]
+                  (is (nil? (.getAttribute copy "title")) "No duplicate native tooltip")
+                  (is (nil? (tooltip copy)))
+                  (is (empty? (owners)) "Closed labels install no listeners")
+                  (.dispatchEvent copy (js/PointerEvent. "pointerover" #js {:bubbles true}))
+                  (await! (support/settle!))
+                  (is (= "Copy code" (.-textContent (tooltip copy))))
+                  (is (= "tooltip" (.getAttribute (tooltip copy) "role")))
+                  (is (not (.contains element (tooltip copy))) "Label escapes code clipping")
+                  (.click copy)
+                  (await! (support/wait-for! #(= "Copied" (.-textContent (tooltip copy)))))
+                  (.dispatchEvent copy (js/PointerEvent. "pointerout" #js {:bubbles true}))
+                  (await! (support/settle!))
+                  (is (nil? (tooltip copy)))
+                  (is (empty? (owners)))
+                  (.focus wrap)
+                  (await! (support/settle!))
+                  (is (= "Wrap lines" (.-textContent (tooltip wrap))))
+                  (.click wrap)
+                  (await! (support/settle!))
+                  (is (= "true" (.getAttribute wrap "aria-pressed")))
+                  (.dispatchEvent wrap (js/KeyboardEvent. "keydown" #js {:key "Escape", :bubbles true}))
+                  (await! (support/settle!))
+                  (is (nil? (tooltip wrap)))
+                  (is (identical? wrap (.-activeElement js/document)) "Dismissal retains focus")
+                  (.blur wrap)
+                  (.focus wrap)
+                  (await! (support/settle!))
+                  (.dispatchEvent js/window (js/Event. "resize"))
+                  (await! (support/settle!))
+                  (is (nil? (tooltip wrap)) "Geometry changes dismiss the label"))
+                (await! (support/render! root
+                         [:div {:style {:position "fixed", :left "0rem", :top "1rem", :width "90vw"}}
+                          [code/<code-block> "inline" :inline? true]]))
+                (let [copy (.querySelector element ".code-copy")]
+                  (.focus copy)
+                  (await! (support/settle!))
+                  (is (= "Copy code" (.-textContent (tooltip copy))))
+                  (is (seq (owners)))
+                  (r/reg-fx :code-block/copy (fn [{:keys [complete!]}] (complete! "Copy unavailable")))
+                  (.click copy)
+                  (await! (support/wait-for! #(= "Copy unavailable" (.-textContent (tooltip copy)))))
+                  (await! (support/settle!))
+                  (let [bounds (.getBoundingClientRect (tooltip copy))]
+                    (is (<= 0 (.-left bounds)) "Long feedback near the left edge stays visible")
+                    (is (<= (.-right bounds) (.-innerWidth js/window)))))
+                (finally (support/unmount! root)))
+              (is (nil? (.querySelector js/document ".action-label")))
+              (is (empty? (owners)) "Unmount releases every label listener")))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (.remove element)
+                      (set! loader/acquire-code! old-acquire)
+                      (reset! restore/*context before)
+                      (restore!)
+                      (done)))))))
 
 (deftest unmount-cancels-the-owned-after-page-gate
   (async done
@@ -308,3 +387,13 @@
                       (set! loader/acquire-code! old-acquire)
                       (reset! restore/*context before)
                       (restore!) (done)))))))
+
+(defn ^:export show-controls! []
+  (restore/begin! {:hydrate? false})
+  (-> (support/create-root! (.getElementById js/document "code-controls"))
+      (.then #(support/render! %
+                [:main.code-controls-demo
+                 [:h1 "Code actions"]
+                 [:p "Inline source " [code/<code-block> "(inc 1)" :inline? true] " stays in the text flow."]
+                 [code/<code-block> "(defn example []\n  (str \"Hover or focus the controls\"\n       \" — this intentionally long line can wrap at the edge of its code block.\"))"
+                  :language "clojure"]]))))

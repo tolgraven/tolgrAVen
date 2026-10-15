@@ -754,3 +754,22 @@ html[data-image-direct] .progressive-image {
 .disclosure-menu__content summary { cursor: pointer; }
 
 .disclosure-menu__content button { margin: 0; padding: .5em .75em; text-align: start; }
+
+.action-label {
+  position: fixed;
+  transform: translateY(0.2rem);
+  z-index: 100;
+  width: max-content;
+  max-width: min(14rem, calc(100vw - 1rem));
+  padding: 0.35rem 0.55rem;
+  border: 0.05rem solid var(--bg-4);
+  border-radius: 0.25rem;
+  background: var(--bg-1);
+  color: var(--fg-1);
+  box-shadow: 0 0.2rem 0.6rem rgb(0 0 0 / 25%);
+  font-size: 0.8rem;
+  line-height: 1.3;
+  pointer-events: none;
+}
+
+.action-label--above { transform: translateY(calc(-100% - 0.2rem)); }
