@@ -181,3 +181,38 @@ test('parked CSS clocks record actual pointer/focus activations and release ever
   savedWake({type: 'pointerover', target: element});
   assert.equal(frames.size, 0, 'An already queued wake cannot resurrect a stopped observer');
 });
+
+function replyEvidence(samples) {
+  const context = {document: {querySelector: () => ({style: {}})}, location: {search: ''}, URLSearchParams};
+  vm.runInNewContext(readFileSync('test/browser/motion.js', 'utf8') + '\nthis.inspectReplies = replyMotionEvidence;', context);
+  return JSON.parse(JSON.stringify(context.inspectReplies(samples)));
+}
+
+function replyFrames(heights, opacity, translation) {
+  return heights.map((values, index) => ({time: index * 16, rows: values.map((height, row) => ({
+    id: row, height, opacity: opacity[index], translateY: translation[index],
+    delay: row * 48, bodyDelay: row * 48, duration: 180, bodyDuration: 180,
+    properties: ['grid-template-rows'], bodyProperties: ['opacity', 'transform'], inViewport: true, settling: false
+  }))}));
+}
+
+test('reply motion evidence requires real intermediate row growth and body fade/slide', () => {
+  const evidence = replyEvidence(replyFrames([[0, 0], [5, 0], [25, 5], [65, 30], [100, 70], [100, 100]],
+    [0, .1, .25, .65, 1, 1], [-12, -10, -8, -4, 0, 0]));
+  assert.ok(evidence.every(row => row.visible && row.continuous && row.fading && row.sliding && row.settled));
+  assert.ok(evidence[1].started > evidence[0].started);
+  assert.ok(evidence.every(row => row.intermediateHeights.length >= 2));
+  assert.equal(evidence[1].delay, 48);
+});
+
+test('reply motion evidence rejects height teleports and opacity-only layout jumps', () => {
+  const jumped = replyEvidence(replyFrames([[0, 0], [100, 100], [100, 100]], [0, .5, 1], [-12, -6, 0]));
+  assert.ok(jumped.every(row => !row.continuous));
+  const reversed = replyEvidence(replyFrames([[0, 0], [5, 0], [25, 5], [20, 10], [65, 70], [100, 100]],
+    [0, .1, .25, .65, 1, 1], [-12, -10, -8, -4, 0, 0]));
+  assert.equal(reversed[0].continuous, false, 'A shrinking intrinsic box is not continuous expansion');
+  assert.equal(reversed[1].continuous, true);
+  const staticBody = replyEvidence(replyFrames([[0, 0], [5, 0], [25, 5], [65, 30], [100, 70], [100, 100]],
+    [1, 1, 1, 1, 1, 1], [0, 0, 0, 0, 0, 0]));
+  assert.ok(staticBody.every(row => row.continuous && !row.fading && !row.sliding));
+});

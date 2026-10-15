@@ -16,12 +16,38 @@ const check = (value, label, details) => {
   if (!value) throw new Error(label + (details ? ` ${JSON.stringify(details)}` : ""));
   const row = document.createElement('li'); row.className = 'passed'; row.textContent = label; results.append(row);
 };
-const sample = async (action, read, ms = 1400) => {
-  const values = [read()], end = performance.now() + ms;
+const sample = async (action, read, ms = 1400, ready) => {
+  const values = [read()], deadline = performance.now() + 30000;
+  let end = ready ? null : performance.now() + ms;
   action();
-  while (performance.now() < end) { await new Promise(resolve => requestAnimationFrame(resolve)); values.push(read()); }
+  while (end === null || performance.now() < end) {
+    if (performance.now() >= deadline) throw new Error('Motion sampling did not reach its native content');
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    const value = read(); values.push(value);
+    if (end === null && ready(value)) end = performance.now() + ms;
+  }
   return values;
 };
+// Evaluate measured layout and body motion, never the presence of a CSS class.
+const replyMotionEvidence = samples => [...new Set(samples.flatMap(value => value.rows.map(row => row.id)))].map(id => {
+  const captured = samples.flatMap(value => {
+    const row = value.rows.find(row => row.id === id);
+    return row ? [{...row, time: value.time}] : [];
+  });
+  const first = captured[0], final = captured.at(-1);
+  const intermediate = captured.filter(row => row.height > 1 && row.height < final.height - 1);
+  const steps = captured.map((row, index) => row.height - (captured[index - 1]?.height || 0));
+  return {id, delay: final.delay, bodyDelay: final.bodyDelay,
+    duration: final.duration, bodyDuration: final.bodyDuration,
+    properties: final.properties, bodyProperties: final.bodyProperties,
+    visible: first.inViewport && !first.settling,
+    started: captured.find(row => row.height > 1)?.time,
+    finalHeight: final.height, intermediateHeights: [...new Set(intermediate.map(row => Math.round(row.height * 10) / 10))],
+    continuous: intermediate.length >= 2 && steps.every(step => step >= -1 && step < final.height * .75),
+    fading: captured.some(row => row.opacity > .01 && row.opacity < .99),
+    sliding: captured.some(row => Math.abs(row.translateY) > .1),
+    settled: final.height > 1 && final.opacity >= .99 && Math.abs(final.translateY) < .1};
+});
 const settleLayout = async element => {
   await doc().fonts.ready;
   const animations = doc().getAnimations().filter(animation => {
@@ -276,22 +302,77 @@ document.querySelector('#run').onclick = async () => {
     doc().querySelector('button.search-ui-btn').click();
     const placeholder = doc().querySelector('.blog-comment-collapsed-placeholder');
     const outer = placeholder.closest('.blog-comment-reply-outer');
-    // Measure a stable footprint, not an in-flight document/font entrance.
-    await settleLayout(outer);
+    // Exercise a visible user action: offscreen replies intentionally settle
+    // without entrances. Allow viewport owners to commit before enumerating
+    // their native animation clocks, then wait for the parent source footprint.
     const parent = outer.previousElementSibling;
+    const settleComment = async trigger => {
+      trigger.scrollIntoView({block: 'center'});
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      await wait(() => parent.getBoundingClientRect().height > 1 &&
+        !parent.querySelector('.module-load-placeholder,.component-skeleton,.component-render-skeleton'));
+      await settleLayout(outer);
+    };
+    await settleComment(placeholder);
     const parentHeight = parent.getBoundingClientRect().height;
-    const read = () => ({parent: parent.getBoundingClientRect().height, outer: outer.getBoundingClientRect().height});
-    const frames = await sample(() => placeholder.click(), read);
+    const ids = new WeakMap(); let nextRow = 0;
+    const milliseconds = value => parseFloat(value) * (value.trim().endsWith('ms') ? 1 : 1000);
+    const read = () => {
+      const win = frame.contentWindow, replies = outer.querySelector(':scope > .blog-comment-reply');
+      return {time: performance.now(), parent: parent.getBoundingClientRect().height,
+        outer: outer.getBoundingClientRect().height,
+        rows: [...replies.children].filter(row => row.matches('.blog-comment-reply-row')).map(row => {
+          if (!ids.has(row)) ids.set(row, ++nextRow);
+          const body = row.querySelector(':scope > .blog-comment-reply-body');
+          const box = row.getBoundingClientRect(), style = win.getComputedStyle(row), bodyStyle = win.getComputedStyle(body);
+          return {id: ids.get(row), height: box.height, opacity: Number(bodyStyle.opacity),
+            translateY: bodyStyle.transform === 'none' ? 0 : new win.DOMMatrixReadOnly(bodyStyle.transform).m42,
+            delay: milliseconds(style.transitionDelay), bodyDelay: milliseconds(bodyStyle.transitionDelay),
+            duration: milliseconds(style.transitionDuration), bodyDuration: milliseconds(bodyStyle.transitionDuration),
+            properties: style.transitionProperty.split(',').map(value => value.trim()),
+            bodyProperties: bodyStyle.transitionProperty.split(',').map(value => value.trim()),
+            inViewport: box.top < win.innerHeight && box.bottom > 0,
+            settling: row.hasAttribute('data-appear-settling'),
+            expanded: !row.classList.contains('collapsed'), hasContent: !!body.querySelector('.blog-comment-title')};
+        })};
+    };
+    const ready = value => value.rows.some(row => row.expanded && row.hasContent);
+    const verifyReplies = (samples, label) => {
+      const evidence = replyMotionEvidence(samples), visible = evidence.filter(row => row.visible);
+      window.replyMotionSamples ||= {};
+      window.replyMotionSamples[label] = {samples, evidence};
+      check(visible.length > 0, `${label} samples a visible native reply entrance`, evidence);
+      check(visible.every(row => row.continuous && row.intermediateHeights.length >= 2 && row.settled),
+        `${label} reply rows grow continuously through intermediate heights without teleporting`, evidence);
+      check(visible.every(row => row.fading && row.sliding),
+        `${label} reply bodies visibly fade and slide while their rows grow`, evidence);
+      check(visible.every(row => row.duration > 0 && row.bodyDuration === row.duration && row.bodyDelay === row.delay &&
+        row.properties.includes('grid-template-rows') && row.bodyProperties.includes('opacity') && row.bodyProperties.includes('transform')),
+        `${label} row height and body motion share the native timing contract`, evidence);
+      // A live branch may be a single-child chain. Only real siblings can
+      // establish stagger order; the mounted three-sibling fixture covers it too.
+      if (visible.length > 1) {
+        const staggered = visible.slice(1).filter((row, index) => row.delay > visible[index].delay);
+        check(staggered.length > 0 && visible.slice(1).every((row, index) =>
+          row.delay <= visible[index].delay || row.started > visible[index].started),
+          `${label} measured sibling growth starts in its stagger order`, evidence);
+      }
+    };
+    const frames = await sample(() => placeholder.click(), read, 1400, ready);
+    window.replyMotionSamples ||= {};
+    window.replyMotionSamples['First expansion'] = {samples: frames, evidence: replyMotionEvidence(frames)};
     check(frames.every(value => value.parent >= parentHeight - 1), 'Expanding a thread never empties its parent comment');
     check(frames.every(value => value.outer >= frames[0].outer - 1), 'Reply loading never drops the collapsed thread footprint');
     await wait(() => outer.querySelector('.blog-comment-title'));
-    const descendant = outer.querySelector('.blog-comment-around');
-    check(descendant.classList.contains('slide-behind'), 'Replies retain their original slide-behind entrance');
-    check(parseFloat(frame.contentWindow.getComputedStyle(descendant).transitionDelay) > 0, 'Nested replies have staggered entrance timing');
+    verifyReplies(frames, 'First expansion');
     const border = parent.querySelector('.blog-comment-border');
     border.click(); await sleep(1200);
-    const reopened = await sample(() => outer.querySelector('.blog-comment-collapsed-placeholder').click(), read);
+    const collapsed = outer.querySelector('.blog-comment-collapsed-placeholder');
+    await settleComment(collapsed);
+    const reopened = await sample(() => collapsed.click(), read, 1400, ready);
+    window.replyMotionSamples['Cached reopening'] = {samples: reopened, evidence: replyMotionEvidence(reopened)};
     check(reopened.every(value => value.parent >= parentHeight - 1), 'Reopening a cached thread retains its parent layout');
+    verifyReplies(reopened, 'Cached reopening');
     await wait(() => outer.querySelector('.blog-comment-title'));
     // Exercise the same application with the optional native capability absent.
     // Only the test driver changes API availability; app state/markup stay real.
