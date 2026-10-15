@@ -160,8 +160,10 @@ only the checked-in interactions. Zero-duration changes, easing/delay/keyframe
 changes, missing triggers and pseudo changes fail exact comparison even when the
 settled geometry and pixels match. Unobservable native start events, inaccessible
 stylesheets and embedded/shadow roots needing separate observation are explicit
-capture gaps; they cannot be approved as complete observations. Add native
-interaction cases for states not exercised by the suite.
+capture gaps; they cannot be approved as complete observations. Queued native
+starts consume one receipt tied to the captured animation and actual DOM target;
+a historical path/property match cannot excuse a later missing instance. Add
+native interaction cases for states not exercised by the suite.
 
 Motion coverage requires a separately reviewed candidate and a repeat capture:
 

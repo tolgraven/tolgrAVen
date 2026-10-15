@@ -124,6 +124,91 @@ test('unobservable native starts are explicit gaps rather than motion passes', (
   observer.stop();
 });
 
+function startFixture() {
+  const {createMotionObserver} = fixture(), listeners = new Map();
+  class CSSAnimation {}
+  class CSSTransition {}
+  let active = [];
+  const win = {document: {getAnimations: () => active, querySelectorAll: () => [],
+    addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name)},
+    CSSAnimation, CSSTransition,
+    MutationObserver: class {observe() {} disconnect() {}}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}};
+  const observer = createMotionObserver(win);
+  const clock = (target, kind = 'transition', pseudo = null, state = 'running') => Object.assign(
+    kind === 'animation' ? new CSSAnimation() : new CSSTransition(), {
+      animationName: kind === 'animation' ? 'opacity' : undefined,
+      transitionProperty: kind === 'transition' ? 'opacity' : undefined,
+      playState: state, playbackRate: 1,
+      effect: {target, pseudoElement: pseudo, getTiming: () => ({duration: 150, iterations: 1}),
+        getKeyframes: () => [{offset: 0, opacity: '0'}, {offset: 1, opacity: '1'}]}
+    });
+  const event = (target, type = 'transitionrun', pseudoElement = '') => listeners.get(type)({
+    type, target, pseudoElement, animationName: type.startsWith('animation') ? 'opacity' : undefined,
+    propertyName: type.startsWith('transition') ? 'opacity' : undefined
+  });
+  return {observer, clock, event, active(values) { active = values; }, listeners};
+}
+
+test('a captured native start cannot excuse a later missing occurrence at the same target and property', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'button', type: 'button'};
+  try {
+    f.active([f.clock(target)]); f.event(target);
+    f.active([]); f.observer.phase('action'); f.event(target);
+    const state = f.observer.snapshot();
+    assert.equal(state.triggered.length, 1);
+    assert.equal(state.gaps.length, 1);
+    assert.match(state.gaps[0], /no observable definition.*button.*opacity/);
+  } finally { f.observer.stop(); }
+});
+
+test('queued native starts consume one captured object receipt despite changed paths, never another DOM instance', () => {
+  const f = startFixture(), parent = {nodeType: 1, localName: 'section', children: []};
+  const target = {nodeType: 1, localName: 'button', parentElement: parent}, other = {...target};
+  parent.children = [target, other];
+  try {
+    f.active([f.clock(target)]); f.observer.sample(); f.active([]);
+    parent.children = [other, target];
+    f.observer.phase('action'); f.event(target);
+    assert.equal(f.observer.snapshot().gaps.length, 0, 'A queued native event retains its actual DOM owner');
+    f.event(target);
+    assert.equal(f.observer.snapshot().gaps.length, 1, 'The receipt is consumed exactly once');
+    f.active([f.clock(target)]); f.observer.sample(); f.active([]);
+    const replacement = {...target}; parent.children = [other, replacement];
+    f.event(replacement);
+    assert.equal(f.observer.snapshot().gaps.length, 2, 'A replacement at the same path cannot borrow a receipt');
+  } finally { f.observer.stop(); }
+});
+
+test('queued animation receipts cannot acknowledge transition or different pseudo events and retire on cancellation', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'article'};
+  try {
+    f.active([f.clock(target, 'animation', '::before')]); f.observer.sample(); f.active([]);
+    f.event(target, 'transitionrun', '::before');
+    f.event(target, 'animationstart', '::after');
+    assert.equal(f.observer.snapshot().gaps.length, 2);
+    f.event(target, 'animationstart', '::before');
+    assert.equal(f.observer.snapshot().gaps.length, 2, 'The original queued event still has its own receipt');
+    f.active([f.clock(target)]); f.observer.sample(); f.active([]);
+    f.event(target, 'transitioncancel'); f.event(target);
+    assert.equal(f.observer.snapshot().gaps.length, 3, 'Canceled unclaimed receipts cannot authorize later starts');
+  } finally { f.observer.stop(); }
+});
+
+test('a parked native start and later pointer resumes do not accumulate receipts for vanished clocks', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'figure'};
+  const clock = f.clock(target, 'animation', null, 'paused');
+  try {
+    f.active([clock]); f.event(target, 'animationstart');
+    assert.equal(f.observer.snapshot().triggered.length, 0);
+    clock.playState = 'running'; f.listeners.get('pointerover')();
+    clock.playState = 'paused'; f.listeners.get('pointerout')();
+    clock.playState = 'running'; f.listeners.get('focusin')();
+    assert.equal(f.observer.snapshot().triggered.length, 2);
+    f.active([]); f.event(target, 'animationstart');
+    assert.equal(f.observer.snapshot().gaps.length, 1, 'Resume records cannot conceal an unrelated missing clock');
+  } finally { f.observer.stop(); }
+});
+
 test('dormant hover, conditional motion and keyframes remain comparable before activation', () => {
   const {createMotionObserver} = fixture();
   const style = values => Object.assign(Object.keys(values), {

@@ -46,6 +46,7 @@
   // have vanished. Read native definitions; never compare wall-clock progress.
   function createMotionObserver(win, initialPhase = 'initial') {
     const doc = win.document, states = new WeakMap(), triggered = [], gaps = [];
+    const pendingStarts = new Map(), started = new WeakSet();
     const CSSAnimation = win.CSSAnimation, CSSTransition = win.CSSTransition;
     const requestFrame = win.requestAnimationFrame.bind(win), cancelFrame = win.cancelAnimationFrame.bind(win);
     let phase = initialPhase, stopped = false, request = null;
@@ -72,11 +73,17 @@
           const pseudo = effect.pseudoElement || (effect.target?.element && effect.target.type) || null;
           if (pseudo) pseudoElements.add(pseudo);
           if (triggered.length >= 4096) throw new Error('CSS motion observation exceeds 4096 instances');
-          triggered.push(canonical({phase, target: elementPath(target), pseudo, kind,
-            name: kind === 'animation' ? animation.animationName : animation.transitionProperty,
+          const name = kind === 'animation' ? animation.animationName : animation.transitionProperty;
+          triggered.push(canonical({phase, target: elementPath(target), pseudo, kind, name,
             timing: effect.getTiming(), keyframes: effect.getKeyframes(),
             composite: effect.composite, iterationComposite: effect.iterationComposite,
             playbackRate: animation.playbackRate}));
+          // A native event can be queued until after this object disappears.
+          // Each captured start may acknowledge one event, never later clocks
+          // at the same DOM path. Parked starts already observed do not leave
+          // fresh receipts every time pointer/focus resumes that same object.
+          if (previous === 'finished') started.delete(animation);
+          if (!started.has(animation)) pendingStarts.set(animation, {target, pseudo, kind, name});
         } catch (error) { gaps.push(String(error)); }
       }
     }
@@ -89,20 +96,35 @@
     function wake(event) {
       if (stopped) return;
       sample();
-      if (event && ['animationstart', 'transitionrun'].includes(event.type)) {
+      if (event && /^(animation|transition)(start|run|cancel|end)$/.test(event.type)) {
+        const kind = event.type.startsWith('animation') ? 'animation' : 'transition';
         const name = event.animationName || event.propertyName;
-        const target = elementPath(event.target);
-        const parked = doc.getAnimations().some(animation => {
-          const effect = animation.effect, nativeTarget = effect?.target?.element || effect?.target;
-          return nativeTarget && ['paused', 'idle'].includes(animation.playState) &&
-            (animation instanceof CSSAnimation || animation instanceof CSSTransition) &&
-            (animation.animationName || animation.transitionProperty) === name &&
-            elementPath(nativeTarget) === target &&
-            (effect.pseudoElement || (effect.target?.element && effect.target.type) || null) === (event.pseudoElement || null);
+        const pseudo = event.pseudoElement || null;
+        const matches = entry => entry.target === event.target && entry.kind === kind &&
+          entry.name === name && entry.pseudo === pseudo;
+        const current = doc.getAnimations();
+        const matching = current.filter(animation => {
+          const effect = animation.effect;
+          return matches({target: effect?.target?.element || effect?.target,
+            kind: animation instanceof CSSAnimation ? 'animation' :
+              animation instanceof CSSTransition ? 'transition' : null,
+            name: animation.animationName || animation.transitionProperty,
+            pseudo: effect?.pseudoElement || (effect?.target?.element && effect.target.type) || null});
         });
-        if (!parked && !triggered.some(entry => entry.target === target && entry.name === name &&
-          entry.pseudo === (event.pseudoElement || null)))
-          gaps.push('Native CSS start had no observable definition: ' + target + ' ' + name);
+        if (['animationstart', 'transitionrun'].includes(event.type)) {
+          const available = matching.find(animation => pendingStarts.has(animation)) || matching[0];
+          const queued = available ? null : [...pendingStarts].find(([, entry]) => matches(entry));
+          const animation = available || queued?.[0];
+          if (animation) {
+            pendingStarts.delete(animation);
+            started.add(animation);
+          } else gaps.push('Native CSS start had no observable definition: ' + elementPath(event.target) + ' ' + name);
+        } else {
+          // End/cancel retires unavailable receipts even if observation began
+          // after their start event; it cannot excuse a future unobserved start.
+          for (const [animation, entry] of pendingStarts)
+            if (matches(entry) && !current.includes(animation)) pendingStarts.delete(animation);
+        }
       }
       if (!stopped && request === null) request = requestFrame(tick);
     }
@@ -121,6 +143,7 @@
         sample(); stopped = true;
         if (request !== null) cancelFrame(request);
         mutations.disconnect();
+        pendingStarts.clear();
         events.forEach(name => doc.removeEventListener(name, wake, true));
       },
       snapshot() {
