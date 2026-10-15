@@ -218,3 +218,111 @@ test('reply motion evidence rejects height teleports and opacity-only layout jum
     [1, 1, 1, 1, 1, 1], [0, 0, 0, 0, 0, 0]));
   assert.ok(staticBody.every(row => row.continuous && !row.fading && !row.sliding));
 });
+
+function returnFixture({gaps = [], policy = true, readinessFailure = false} = {}) {
+  const calls = [], frames = new Map(), listeners = new Map(), timers = new Map();
+  const results = {dataset: {}, append() {}}, observers = [];
+  const url = 'http://127.0.0.1:4114/cv?motion-return=proof#skills';
+  let next = 0, now = 0, current;
+  class CSSAnimation {}
+  class CSSTransition {}
+  const documentFor = navigation => {
+    const app = {pending: false, spinner: false,
+      hasAttribute: () => app.pending,
+      querySelector: selector => selector === 'main' || app.spinner ? {} : null};
+    const document = {URL: url, readyState: 'complete', app, present: true, getAnimations: () => [],
+      querySelector: selector => selector === '#app' ? app : selector === '#app .cv-intro' && document.present ? {} : null,
+      documentElement: {hasAttribute(name) {calls.push('policy:' + name); return policy;}}};
+    const win = {document, CSSAnimation, CSSTransition,
+      performance: {getEntriesByType: () => [{type: navigation}]},
+      addEventListener: (name, callback) => listeners.set(document, callback),
+      removeEventListener: (name, callback) => {assert.equal(listeners.get(document), callback); listeners.delete(document);}};
+    document.defaultView = win;
+    return document;
+  };
+  const previous = documentFor('navigate'), returned = documentFor('back_forward');
+  returned.readyState = 'loading'; current = previous;
+  const frame = {style: {}, get contentDocument() {return current;}, get contentWindow() {return current?.defaultView;},
+    set src(value) {current = null; queueMicrotask(() => frame.onload());}};
+  const context = {URL, URLSearchParams, location: {href: 'http://127.0.0.1:4114/__tests/motion.html',
+    origin: 'http://127.0.0.1:4114', hostname: '127.0.0.1', search: ''},
+    document: {querySelector: selector => selector === '#app' ? frame : selector === '#results' ? results : {},
+      createElement: () => ({})},
+    performance: {now: () => readinessFailure ? now += 10000 : 1},
+    requestAnimationFrame(callback) {frames.set(++next, callback); return next;},
+    cancelAnimationFrame(id) {frames.delete(id);},
+    setTimeout(callback, ms) {
+      const id = ++next; timers.set(id, callback);
+      if (ms === 3500 || ms === 20) queueMicrotask(() => {
+        if (ms === 3500) calls.push('observation-window');
+        timers.delete(id); callback();
+      });
+      return id;
+    },
+    clearTimeout(id) {timers.delete(id);},
+    history: {back() {
+      current = returned;
+      const [id, callback] = frames.entries().next().value; frames.delete(id); callback();
+      assert.ok(calls.includes('attach-returned'), 'Attach occurs while route readiness is still false');
+      calls.push('ready'); if (!readinessFailure) returned.readyState = 'complete';
+    }},
+    window: {visualFixture: {createMotionObserver(win, phase) {
+      calls.push(win.document === previous ? 'attach-previous' : 'attach-returned');
+      const observer = {stopped: false, phase() {}, stop() {observer.stopped = true;},
+        snapshot() {calls.push('snapshot'); return {triggered: [], gaps};}};
+      observers.push(observer); return observer;
+    }}}};
+  vm.runInNewContext(readFileSync('test/browser/motion.js', 'utf8') +
+    '\nthis.observeBack = externalBack; this.matchesReturn = returnMatches; this.readyReturn = returnReady;', context);
+  return {context, returned, previous, frames, timers, listeners, observers, calls, results, url};
+}
+
+test('native Back matches the complete departing URL and readiness never depends on policy flags', () => {
+  const fixture = returnFixture(), {context, returned, url} = fixture;
+  assert.equal(context.matchesReturn(returned, url), true);
+  assert.equal(context.matchesReturn(returned, url.replace('proof', 'different')), false);
+  assert.equal(context.matchesReturn(returned, url.replace('#skills', '#other')), false);
+  assert.equal(context.matchesReturn(null, url), false);
+  assert.equal(context.readyReturn(returned, ['#app .cv-intro']), false);
+  returned.readyState = 'complete';
+  assert.equal(context.readyReturn(returned, ['#app .cv-intro']), true);
+  returned.app.pending = true;
+  assert.equal(context.readyReturn(returned, ['#app .cv-intro']), false);
+  returned.app.pending = false; returned.app.spinner = true;
+  assert.equal(context.readyReturn(returned, ['#app .cv-intro']), false);
+  returned.app.spinner = false; returned.present = false;
+  assert.equal(context.readyReturn(returned, ['#app .cv-intro']), false);
+  assert.deepEqual(fixture.calls, [], 'Readiness does not inspect return-policy attributes or interact');
+});
+
+test('native Back observes before readiness, saves route evidence, and cleans successful and failed checks', async () => {
+  for (const options of [{}, {gaps: ['unobservable start']}, {policy: false}]) {
+    const fixture = returnFixture(options), {context, calls, results, url} = fixture;
+    const run = context.observeBack({label: 'CV', selectors: ['#app .cv-intro']});
+    if (options.gaps) await assert.rejects(run, /external Back starts no CSS/);
+    else if (options.policy === false) await assert.rejects(run, /native image return policy/);
+    else await run;
+    assert.ok(calls.indexOf('attach-returned') < calls.indexOf('ready'));
+    assert.ok(calls.indexOf('observation-window') < calls.indexOf('snapshot'));
+    if (options.policy !== undefined) assert.ok(calls.indexOf('snapshot') < calls.indexOf('policy:data-image-direct'));
+    const evidence = JSON.parse(results.dataset.externalBackCases)[url];
+    assert.equal(evidence.documents[1].navigation, 'back_forward');
+    assert.equal(evidence.observationWindowMs, 3500);
+    assert.equal(results.dataset.externalBack, undefined, 'Route checks preserve the separate home proof');
+    assert.ok(fixture.observers.every(observer => observer.stopped));
+    assert.equal(fixture.frames.size, 0); assert.equal(fixture.timers.size, 0); assert.equal(fixture.listeners.size, 0);
+  }
+});
+
+
+test('home native Back retains its original proof shape and a failed readiness wait releases observers', async () => {
+  const home = returnFixture();
+  await home.context.observeBack({selectors: ['#app .cv-intro']});
+  assert.deepEqual(Object.keys(JSON.parse(home.results.dataset.externalBack)).sort(),
+    ['documents', 'motion', 'observation', 'observationWindowMs', 'running', 'sameDocument']);
+  const failed = returnFixture({readinessFailure: true});
+  await assert.rejects(failed.context.observeBack({label: 'CV', selectors: ['#app .cv-intro']}), /did not settle/);
+  assert.equal(failed.calls.includes('observation-window'), false);
+  assert.ok(failed.observers.every(observer => observer.stopped));
+  assert.equal(failed.frames.size, 0); assert.equal(failed.timers.size, 0); assert.equal(failed.listeners.size, 0);
+});

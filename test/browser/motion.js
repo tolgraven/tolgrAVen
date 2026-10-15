@@ -121,8 +121,17 @@ const sampleStartup = async path => {
 // The parent survives the unrelated, genuinely cross-origin document. Observe
 // BFCache's retained document before departure and every returned document from
 // its first accessible parent frame. This does not inject into the app response.
-const externalBack = async () => {
-  const previous = doc(), observers = new Map(), evidence = [], cleanups = [];
+const returnMatches = (document, url) => document?.URL === url;
+const returnReady = (document, selectors) => {
+  const app = document?.querySelector('#app');
+  return !!app?.querySelector('main') && document.readyState === 'complete' &&
+    !app.hasAttribute('data-document-pending') &&
+    selectors.every(selector => document.querySelector(selector)) &&
+    !app.querySelector('main .component-spinner,main .loading-spinner');
+};
+const externalBack = async ({label = 'Home', selectors = ['#app #intro']} = {}) => {
+  const previous = doc(), expectedURL = new URL(previous.URL).href;
+  const observers = new Map(), evidence = [], cleanups = [];
   const attach = document => {
     if (!document || document.URL === 'about:blank' || observers.has(document)) return;
     const observer = window.visualFixture.createMotionObserver(document.defaultView, document === previous ? 'pre-departure' : 'external-back');
@@ -141,7 +150,7 @@ const externalBack = async () => {
   const poll = () => {
     if (!active) return;
     const document = doc();
-    if (document?.location.pathname === '/') attach(document);
+    if (returnMatches(document, expectedURL)) attach(document);
     request = requestAnimationFrame(poll);
   };
   try {
@@ -159,8 +168,7 @@ const externalBack = async () => {
     // away entry; do not forge PerformanceNavigationTiming or a restore flag.
     observers.get(previous).phase('external-back');
     history.back();
-    await wait(() => doc()?.location.pathname === '/' && doc()?.querySelector('#intro') &&
-      doc()?.documentElement.hasAttribute('data-image-direct'));
+    await wait(() => returnMatches(doc(), expectedURL) && returnReady(doc(), selectors));
     await sleep(3500);
     const returned = doc(), observer = observers.get(returned);
     check(!!observer, 'Returned document was observed before post-return interactions');
@@ -170,22 +178,62 @@ const externalBack = async () => {
       (animation instanceof frame.contentWindow.CSSAnimation || animation instanceof frame.contentWindow.CSSTransition) &&
       animation.playState === 'running').map(animation => ({name: animation.animationName || animation.transitionProperty,
         timing: animation.effect.getTiming(), keyframes: animation.effect.getKeyframes()}));
-    results.dataset.externalBack = JSON.stringify({documents: evidence, sameDocument: returned === previous,
+    const observation = {documents: evidence, sameDocument: returned === previous,
       motion: {...measured, triggered}, running, observationWindowMs: 3500,
-      observation: 'parent-frame first accessible document; BFCache listener retained across departure'});
+      observation: 'parent-frame first accessible document; BFCache listener retained across departure'};
+    if (label === 'Home') results.dataset.externalBack = JSON.stringify(observation);
+    const cases = JSON.parse(results.dataset.externalBackCases || '{}');
+    cases[expectedURL] = observation;
+    results.dataset.externalBackCases = JSON.stringify(cases);
+    check(returnMatches(returned, expectedURL), `${label} Back restores the exact document URL`);
     check(returned === previous || evidence.some(value => value.url === returned.URL &&
       (value.persisted === true || value.navigation === 'back_forward')),
-      'Real native history return is evidenced by retained document or browser navigation timing', evidence);
+      `${label}: real native history return is evidenced by retained document or browser navigation timing`, evidence);
     check(!measured.gaps.length && !triggered.length && !running.length,
-      'External Back starts no CSS animation or transition before any interaction', {triggered, running, gaps: measured.gaps});
+      `${label}: external Back starts no CSS animation or transition before any interaction`, {triggered, running, gaps: measured.gaps});
+    // Policy is evidence to assert after observing the actual page, never a
+    // prerequisite that conceals motion when the return policy itself breaks.
+    check(returned.documentElement.hasAttribute('data-image-direct'), `${label} Back retains the native image return policy`);
   } finally {
     active = false; cancelAnimationFrame(request);
     for (const observer of observers.values()) observer.stop();
     cleanups.forEach(cleanup => cleanup());
   }
 };
+const externalBackCases = [
+  {label: 'Blog post', path: '/blog/post/New-features-27', selectors: ['#app .blog-post .blog-post-text']},
+  {label: 'CV', path: '/cv', selectors: ['#app .cv-intro', '#app .cv-skills']},
+  {label: 'Docs', path: '/docs', selectors: ['#app .codox h1']}
+];
+const externalBackRoutes = async () => {
+  for (const test of externalBackCases) {
+    await resetTestOrigin(frame, wait);
+    const url = new URL(test.path, location.href);
+    url.searchParams.set('motion-return', Date.now());
+    frame.src = url.href;
+    await wait(() => returnMatches(doc(), url.href) && returnReady(doc(), test.selectors));
+    // Establish hydrated controls before departure. Returned pages receive no
+    // interaction until externalBack has saved its complete observation window.
+    await wait(() => {
+      if (doc().querySelector('.search-ui-open')) return true;
+      doc().querySelector('button.search-ui-btn')?.click(); return false;
+    });
+    doc().querySelector('button.search-ui-btn').click();
+    await wait(() => !doc().querySelector('.search-ui-open'));
+    await settleLayout(doc().body);
+    await externalBack(test);
+    doc().querySelector('button.search-ui-btn').click();
+    await wait(() => doc().querySelector('.search-ui-open'));
+    doc().querySelector('button.search-ui-btn').click();
+    await wait(() => !doc().querySelector('.search-ui-open'));
+    check(true, `${test.label} Search responds after native Back observation`);
+  }
+  await resetTestOrigin(frame, wait);
+};
 document.querySelector('#run').onclick = async () => {
   results.replaceChildren();
+  delete results.dataset.externalBack;
+  results.dataset.externalBackCases = '{}';
   try {
     await resetTestOrigin(frame, wait);
     const path = `/?motion-entrance=${Date.now()}`;
@@ -292,6 +340,7 @@ document.querySelector('#run').onclick = async () => {
     const cached = await sampleStartup(path);
     check(!cached.some(value => value.shell), 'Fresh SSR cache bypasses the skeleton');
     checkEntrance(cached, 'Cached SSR');
+    await externalBackRoutes();
     frame.src = '/blog/post/New-features-27';
     await wait(() => doc()?.querySelector('.blog-comment-collapsed-placeholder'));
     await wait(() => {
@@ -321,6 +370,10 @@ document.querySelector('#run').onclick = async () => {
       const win = frame.contentWindow, replies = outer.querySelector(':scope > .blog-comment-reply');
       return {time: performance.now(), parent: parent.getBoundingClientRect().height,
         outer: outer.getBoundingClientRect().height,
+        outerChildren: [...outer.children].map(child => ({className: child.className,
+          height: child.getBoundingClientRect().height,
+          animations: child.getAnimations().map(animation => ({
+            name: animation.animationName || animation.transitionProperty, playState: animation.playState}))})),
         rows: [...replies.children].filter(row => row.matches('.blog-comment-reply-row')).map(row => {
           if (!ids.has(row)) ids.set(row, ++nextRow);
           const body = row.querySelector(':scope > .blog-comment-reply-body');
