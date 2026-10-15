@@ -21,10 +21,13 @@ It defaults to no action without an explicit command; `plan` only reports.
 2. `coolify-storage.py precopy` copies current Docker/Coolify data while services
    remain available. This copy is not authoritative until the offline sync.
 3. Wait for Coolify's deployment queues to drain. `coolify-storage.py migrate`
-   refuses active/queued deployments, records running containers and the scoped
+   quiesces webhook admission and Horizon workers, refuses active/queued
+   deployments (resuming admission on refusal), records running containers and the scoped
    runtime policy, gracefully stops them, stops Docker, syncs again and verifies
    file checksums before switching the bind mounts. It then restarts the same
-   containers and runtime policy. This step requires a short maintenance window.
+   containers and runtime policy, then resumes admission/workers. Preexisting
+   maintenance/paused workers require manual inspection. This step requires a
+   short maintenance window.
 4. Verify mounts, all previously healthy services, web/CMS/provider endpoints,
    container volumes, Docker root directory, and queue operation. Then explicitly
    run `coolify-storage.py retire-originals` to reclaim the old root-disk copies.
@@ -36,7 +39,9 @@ inspect its phase, current mounts and containers first. Before retiring original
 rollback requires Docker stopped, new bind mounts unmounted, original directories
 restored, original fstab restored from `/etc/fstab.before-tolgraven-storage`, and
 the managed Docker drop-in removed. Then reload systemd/start Docker and the
-recorded container/service identities. Never operate on mounted backup paths.
+recorded container/service identities. Run `docker exec coolify php artisan up`
+and `docker exec coolify php artisan horizon:continue` to restore admission/jobs.
+Never operate on mounted backup paths.
 After retirement, restore data from the SSD or normal backups; old root copies
 are no longer a recovery source. This volume is persistent storage, not a backup.
 

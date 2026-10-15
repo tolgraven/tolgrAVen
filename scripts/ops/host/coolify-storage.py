@@ -83,19 +83,54 @@ def copy_data(final=False):
             raise RuntimeError(f'Copy failed for {source}; exit {result.returncode}')
 
 
+def resume_admission():
+    # Container restart order can briefly precede database/Redis readiness.
+    deadline = time.monotonic() + 120
+    while True:
+        try:
+            run('docker', 'exec', 'coolify', 'php', 'artisan', 'up')
+            run('docker', 'exec', 'coolify', 'php', 'artisan', 'horizon:continue')
+            return
+        except subprocess.CalledProcessError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(2)
+
+
+def quiesce_admission():
+    # Refuse preexisting maintenance/paused workers rather than overwrite them.
+    run('docker', 'exec', 'coolify', 'test', '!', '-e', '/var/www/html/storage/framework/down')
+    status = run('docker', 'exec', 'coolify', 'php', 'artisan', 'horizon:status', capture=True)
+    if 'Horizon is running' not in status:
+        raise RuntimeError('Coolify workers must be running before migration')
+    run('docker', 'exec', 'coolify', 'php', 'artisan', 'down', '--retry=60')
+    run('docker', 'exec', 'coolify', 'php', 'artisan', 'horizon:pause')
+
+
 def migrate():
     verify_volume()
     state = json.loads(STATE.read_text())
     if state['phase'] != 'prepared':
         raise RuntimeError('Migration already started; inspect recovery state before proceeding')
-    # Refuse the cutover while any Coolify deployment is queued or running.
+    # Block webhook admission and new jobs before checking the drained queue.
     probe = r"""<?php
 require '/var/www/html/vendor/autoload.php';
 $app=require '/var/www/html/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if(App\Models\ApplicationDeploymentQueue::whereIn('status',['queued','in_progress'])->exists())exit(42);
 """
-    subprocess.run(['docker', 'exec', '-i', 'coolify', 'php'], input=probe, text=True, check=True)
+    state['phase'] = 'quiescing'
+    save(state)
+    try:
+        quiesce_admission()
+        # Existing jobs may still be running. Abort and resume instead of
+        # interrupting them; the operator retries once they have completed.
+        subprocess.run(['docker', 'exec', '-i', 'coolify', 'php'], input=probe, text=True, check=True)
+    except Exception:
+        resume_admission()
+        state['phase'] = 'prepared'
+        save(state)
+        raise
     state['services'] = [unit for unit in ['tolgraven-runtime-policy.service', 'coolify-site-runtime-policy.service']
                          if subprocess.run(['systemctl', 'is-active', '--quiet', unit]).returncode == 0]
     state.update(phase='stopping', running=run('docker', 'ps', '-q', capture=True).split())
@@ -137,6 +172,7 @@ if(App\Models\ApplicationDeploymentQueue::whereIn('status',['queued','in_progres
     run('systemctl', 'start', 'docker.service')
     if state['running']:
         run('docker', 'start', *state['running'])
+    resume_admission()
     for unit in state.get('services', []):
         run('systemctl', 'start', unit)
     state['phase'] = 'running-awaiting-verification'
