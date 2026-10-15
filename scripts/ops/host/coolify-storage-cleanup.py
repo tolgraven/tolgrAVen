@@ -76,7 +76,7 @@ def main():
                 print('Retained image after concurrent reference or deletion failure:', tag, flush=True)
         # Docker protects in-use cache records. Named/active images and all
         # containers, networks and data volumes remain outside these prune calls.
-        print(docker('builder', 'prune', '--force', '--filter', 'until=24h', '--max-used-space', '8GB'), flush=True)
+        print(docker('buildx', 'prune', '--force', '--filter', 'until=24h', '--max-used-space', '8GB'), flush=True)
         print(docker('image', 'prune', '--force', '--filter', 'until=168h'), flush=True)
 
 

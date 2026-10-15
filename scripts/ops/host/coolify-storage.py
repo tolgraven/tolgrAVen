@@ -96,7 +96,7 @@ $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if(App\Models\ApplicationDeploymentQueue::whereIn('status',['queued','in_progress'])->exists())exit(42);
 """
     subprocess.run(['docker', 'exec', '-i', 'coolify', 'php'], input=probe, text=True, check=True)
-    state['services'] = [unit for unit in ['coolify-site-runtime-policy.service']
+    state['services'] = [unit for unit in ['tolgraven-runtime-policy.service', 'coolify-site-runtime-policy.service']
                          if subprocess.run(['systemctl', 'is-active', '--quiet', unit]).returncode == 0]
     state.update(phase='stopping', running=run('docker', 'ps', '-q', capture=True).split())
     save(state)
@@ -152,7 +152,14 @@ def retire_originals():
         if not mounted(source) or os.stat(source).st_dev != os.stat(VOLUME).st_dev:
             raise RuntimeError('A managed path is not on the SSD')
         backup = Path(source + '.before-ssd')
-        if mounted(backup) or backup.is_symlink():
+        mount_tree = json.loads(run('findmnt', '--json', '--output', 'TARGET', capture=True))
+        def targets(items):
+            for item in items:
+                yield item['target']
+                yield from targets(item.get('children', []))
+        nested_mount = any(path == str(backup) or path.startswith(str(backup) + '/')
+                           for path in targets(mount_tree['filesystems']))
+        if nested_mount or backup.is_symlink():
             raise RuntimeError('Refusing mounted or linked recovery directory')
     for source in SOURCES:
         shutil.rmtree(source + '.before-ssd')
