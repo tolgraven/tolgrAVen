@@ -193,3 +193,6 @@ before a write so existing provenance cannot be silently discarded.
 
 Run focused wrapper/hook tests with
 `bb --classpath scripts:test/scripts -m pr-test` (also in `bb test:scripts`).
+
+Bux's persistent SSD mounts and scheduled deployment-image/cache retention are
+managed by the explicit host tools in [Coolify storage](coolify-storage.md).
