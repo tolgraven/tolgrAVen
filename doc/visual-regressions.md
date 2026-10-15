@@ -126,7 +126,12 @@ PNGs for a faster layout-only gate. It must match the approved baseline's mode;
 it cannot silently downgrade a pixel baseline. Use raster captures for states
 whose painted appearance is under review. Ordinary geometry cases mount one
 same-origin native fixture frame at a time with exact viewport dimensions, collects its
-actual DOM and removes it before the next state. Raster captures use the actual
+actual DOM and removes it before the next state. Each MCP geometry response
+contains one complete fixture, bounding serialization without dropping native
+geometry or motion data. Suite bytes/hash and Git head are pinned before browser
+work. If the suite bytes change before completion, the runner fails without
+`capture.json`; partial case artifacts remain available for diagnosis.
+Raster captures use the actual
 top-level viewport; both modes retain normal component lifecycles.
 Raster mode scrolls the document from its top through overlapping viewports to
 its bottom, saving each viewport's PNG and geometry separately. This covers
@@ -138,7 +143,7 @@ rejects documents requiring more than 128 tiles.
 
 Native hover cases use the configured Chrome MCP's real `hover` action, including
 in geometry-only mode. These cases run serially in the owned top-level tab while
-ordinary geometry cases keep their existing iframe batching. Before navigation,
+ordinary geometry cases reuse the driver with one iframe response at a time. Before navigation,
 the pointer hovers an observed UID for the test driver's neutral heading. The
 fixture target must initially be unhovered. Its role/name is matched from the
 latest accessibility snapshot and its observed UID is verified against the

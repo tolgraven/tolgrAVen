@@ -106,7 +106,7 @@ class VisualTest(unittest.TestCase):
             if options.get('initially_hovered'):
                 self.assertFalse(any(name == 'hover' for name, _ in client.calls))
 
-    def test_hover_cases_use_one_standalone_owned_tab_in_geometry_mode_and_preserve_script_batching(self):
+    def test_hover_cases_use_one_standalone_owned_tab_and_preserve_ordinary_iframe_capture(self):
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -128,6 +128,92 @@ class VisualTest(unittest.TestCase):
             self.assertNotIn('observed-edit', json.dumps(state), 'Ephemeral snapshot IDs cannot change a repeat comparison')
             self.assertEqual(('navigate_page', {'pageId': 73, 'type': 'url', 'url': 'about:blank'}), client.calls[-3])
             self.assertTrue((args.output / 'ordinary.json').exists())
+
+    def test_large_geometry_cases_return_one_complete_fixture_per_request(self):
+        from unittest.mock import patch
+
+        class Client(HoverClient):
+            def __init__(self):
+                super().__init__()
+                self.batches = []
+
+            def evaluate(self, function, **arguments):
+                if 'visualDriver.capture' in function:
+                    batch = json.loads(function.split('capture(', 1)[1].rsplit(')', 1)[0])
+                    self.batches.append([case['id'] for case in batch])
+                    if len(batch) != 1:
+                        raise RuntimeError('Large native geometries must return individually')
+                    state = self.state(batch[0]['viewport'] + [1])
+                    state['geometry'] = [{'text': 'x' * (1024 * 1024)}]
+                    return [{'id': batch[0]['id'], 'state': state}]
+                return super().evaluate(function, **arguments)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cases = [{'id': f'large-docs-{index}', 'viewport': [1440, 1000]} for index in range(4)]
+            suite = root / 'suite.json'; suite.write_text(json.dumps({'cases': cases}))
+            args = argparse.Namespace(suite=suite, origin='http://127.0.0.1:4098', output=root / 'capture',
+                                      case=[], geometry_only=True, mcp_command=None)
+            client = Client()
+            with patch.object(visual, 'Relay', return_value=client):
+                visual.capture(args)
+            self.assertEqual([[case['id']] for case in cases], client.batches)
+            self.assertEqual(1, sum(name == 'new_page' for name, _ in client.calls))
+            self.assertEqual(1, sum(name == 'close_page' for name, _ in client.calls))
+            for case in cases:
+                state = json.loads((args.output / (case['id'] + '.json')).read_text())
+                self.assertEqual('x' * (1024 * 1024), state['geometry'][0]['text'])
+            self.assertEqual([case['id'] for case in cases], json.loads((args.output / 'capture.json').read_text())['cases'])
+
+    def test_capture_pins_suite_bytes_and_head_before_browser_work(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suite = root / 'suite.json'
+            original_bytes = b'{"cases": [{"id": "ordinary", "viewport": [400, 800]}]}\n'
+            suite.write_bytes(original_bytes)
+            args = argparse.Namespace(suite=suite, origin='http://127.0.0.1:4098', output=root / 'capture',
+                                      case=[], geometry_only=True, mcp_command=None)
+            client = HoverClient()
+            original_call = client.call
+            current_head = ['startup-head']
+            def call(name, **arguments):
+                self.assertEqual(1, head.call_count, 'Git head must be pinned before the browser is opened')
+                current_head[0] = 'head-changed-while-capturing'
+                return original_call(name, **arguments)
+            client.call = call
+            with patch.object(visual, 'Relay', return_value=client), patch.object(
+                    visual.subprocess, 'check_output', side_effect=lambda *args, **kwargs: current_head[0]) as head:
+                visual.capture(args)
+            metadata = json.loads((args.output / 'capture.json').read_text())
+            self.assertEqual('startup-head', metadata['git_head'])
+            self.assertEqual(hashlib.sha256(original_bytes).hexdigest(), metadata['suite_sha256'])
+            self.assertEqual(1, head.call_count)
+
+    def test_midrun_suite_byte_change_rejects_completion_and_cleans_owned_page(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suite = root / 'suite.json'
+            original_bytes = b'{"cases": [{"id": "ordinary", "viewport": [400, 800]}]}'
+            suite.write_bytes(original_bytes)
+            args = argparse.Namespace(suite=suite, origin='http://127.0.0.1:4098', output=root / 'capture',
+                                      case=[], geometry_only=True, mcp_command=None)
+            client = HoverClient()
+            original_evaluate = client.evaluate
+            def evaluate(function, **arguments):
+                result = original_evaluate(function, **arguments)
+                # Semantically identical JSON is still different suite bytes.
+                suite.write_bytes(original_bytes + b'\n')
+                return result
+            client.evaluate = evaluate
+            with patch.object(visual, 'Relay', return_value=client):
+                with self.assertRaisesRegex(ValueError, 'suite changed during capture'):
+                    visual.capture(args)
+            self.assertFalse((args.output / 'capture.json').exists())
+            self.assertTrue((args.output / 'ordinary.json').exists(), 'Partial evidence must remain available')
+            self.assertEqual(('navigate_page', {'pageId': 73, 'type': 'url', 'url': 'about:blank'}), client.calls[-3])
+            self.assertEqual(('close_page', {'pageId': 73}), client.calls[-2])
 
     def test_native_hover_capture_keeps_strict_motion_gaps_and_viewport_failures(self):
         from unittest.mock import patch

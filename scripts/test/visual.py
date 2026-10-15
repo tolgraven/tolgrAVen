@@ -333,7 +333,10 @@ def capture(args):
     from urllib.parse import urlparse
     if urlparse(args.origin).hostname not in ("127.0.0.1", "localhost", "::1"):
         raise ValueError("Captures require an isolated loopback fixture server")
-    suite = json.loads(args.suite.read_text())
+    suite_bytes = args.suite.read_bytes()
+    suite_sha256 = hashlib.sha256(suite_bytes).hexdigest()
+    git_head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    suite = json.loads(suite_bytes)
     cases = [case for case in suite["cases"] if not args.case or case["id"] in args.case]
     if args.case and set(args.case) - {case["id"] for case in cases}:
         raise ValueError("Unknown visual case")
@@ -355,26 +358,25 @@ def capture(args):
             client.page = page
             script_cases = [case for case in cases if not case.get("native_hover")]
             if args.geometry_only and script_cases:
-                # Avoid repeated extension navigation/snapshot overhead. Native
-                # components still render in exact independent viewport realms.
+                # Keep the owned driver tab, but return one complete geometry at
+                # a time: a single generated Docs surface can be tens of MB.
                 client.call("emulate", viewport="1440x1000x1")
                 client.call("navigate_page", url=args.origin + "/fixtures/visual-driver.html")
                 failures = []
-                for start in range(0, len(script_cases), 4):
-                    batch = script_cases[start:start + 4]
-                    results = client.evaluate("async () => await window.visualDriver.capture(" + json.dumps(batch) + ")")
-                    if [result.get("id") for result in results] != [case["id"] for case in batch]:
+                for case in script_cases:
+                    results = client.evaluate("async () => await window.visualDriver.capture(" + json.dumps([case]) + ")")
+                    if len(results) != 1 or results[0].get("id") != case["id"]:
                         raise ValueError("Native layout driver omitted or reordered declared cases")
-                    for result, case in zip(results, batch):
-                        if result.get("error"):
-                            failures.append(case["id"] + ": " + result["error"])
-                        else:
-                            state = result["state"]
-                            motion_changes(state, state, case["id"])
-                            if state["viewport"] != case["viewport"] + [1] or state.get("errors"):
-                                failures.append(case["id"] + ": invalid viewport or native errors")
-                            (args.output / (case["id"] + ".json")).write_text(json.dumps(state, indent=2) + "\n")
-                            print(f"Captured geometry {case['id']}", flush=True)
+                    result = results[0]
+                    if result.get("error"):
+                        failures.append(case["id"] + ": " + result["error"])
+                    else:
+                        state = result["state"]
+                        motion_changes(state, state, case["id"])
+                        if state["viewport"] != case["viewport"] + [1] or state.get("errors"):
+                            failures.append(case["id"] + ": invalid viewport or native errors")
+                        (args.output / (case["id"] + ".json")).write_text(json.dumps(state, indent=2) + "\n")
+                        print(f"Captured geometry {case['id']}", flush=True)
                 if failures:
                     raise ValueError("; ".join(failures))
             standalone = [case for case in cases if case.get("native_hover")] if args.geometry_only else cases
@@ -400,9 +402,11 @@ def capture(args):
                     capture_tiles(client, case, args.output)
                 client.evaluate("() => {window.visualFixture.motion.stop(); return true;}")
                 print(f"Captured {case['id']}", flush=True)
-            metadata = {"schema": 1, "suite_sha256": hashlib.sha256(args.suite.read_bytes()).hexdigest(),
+            if args.suite.read_bytes() != suite_bytes:
+                raise ValueError("Visual suite changed during capture; partial evidence has no completion metadata")
+            metadata = {"schema": 1, "suite_sha256": suite_sha256,
                         "cases": [case["id"] for case in cases],
-                        "git_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+                        "git_head": git_head,
                         "pixels": not args.geometry_only, "raster": RASTER if not args.geometry_only else None,
                         "motion": MOTION,
                         "approval": None}
