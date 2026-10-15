@@ -374,6 +374,15 @@ document.querySelector('#run').onclick = async () => {
           height: child.getBoundingClientRect().height,
           animations: child.getAnimations().map(animation => ({
             name: animation.animationName || animation.transitionProperty, playState: animation.playState}))})),
+        nestedThreads: [...outer.querySelectorAll('.blog-comment-reply-outer')].map(thread => ({
+          height: thread.getBoundingClientRect().height,
+          children: [...thread.children].map(child => ({className: child.className,
+            height: child.getBoundingClientRect().height,
+            document: child.hasAttribute('data-document-appear'),
+            animations: child.getAnimations({subtree: true}).map(animation => ({
+              target: animation.effect?.target?.className,
+              name: animation.animationName || animation.transitionProperty,
+              playState: animation.playState, currentTime: animation.currentTime}))}))})),
         rows: [...replies.children].filter(row => row.matches('.blog-comment-reply-row')).map(row => {
           if (!ids.has(row)) ids.set(row, ++nextRow);
           const body = row.querySelector(':scope > .blog-comment-reply-body');
