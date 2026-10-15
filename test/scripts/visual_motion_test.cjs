@@ -82,6 +82,38 @@ test('unobservable native starts are explicit gaps rather than motion passes', (
   observer.stop();
 });
 
+test('dormant hover, conditional motion and keyframes remain comparable before activation', () => {
+  const {createMotionObserver} = fixture();
+  const style = values => Object.assign(Object.keys(values), {
+    getPropertyValue: name => values[name]?.[0] || '',
+    getPropertyPriority: name => values[name]?.[1] || ''
+  });
+  const keyframe = {keyText: '100%', style: style({opacity: ['1', '']})};
+  const hover = {selectorText: 'article:hover::before', style: style({
+    'animation-name': ['dormant', ''], 'animation-duration': ['2s', 'important']})};
+  const media = {type: 4, conditionText: '(width > 40rem)', cssRules: [hover]};
+  const sheet = {href: '/native.css', media: {mediaText: ''}, cssRules: [
+    media, {type: 7, name: 'dormant', cssRules: [keyframe]}]};
+  const win = {document: {styleSheets: [sheet], getAnimations: () => [], querySelectorAll: () => [],
+    addEventListener() {}, removeEventListener() {}},
+    CSSAnimation: class {}, CSSTransition: class {},
+    MutationObserver: class {observe() {} disconnect() {}}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}};
+  const observer = createMotionObserver(win);
+  const before = JSON.parse(JSON.stringify(observer.snapshot()));
+  assert.deepEqual(before.triggered, [], 'No hover or animation needs to be fabricated');
+  assert.deepEqual(before.gaps, []);
+  assert.equal(before.sourceRules[0].selector, 'article:hover::before');
+  assert.deepEqual(before.sourceRules[0].properties['animation-duration'], ['2s', 'important']);
+  assert.equal(before.sourceRules[0].scope[1].condition, '(width > 40rem)');
+  assert.equal(before.sourceRules[1].frames[0].properties.opacity[0], '1');
+  keyframe.style = style({opacity: ['0.5', '']});
+  const after = JSON.parse(JSON.stringify(observer.snapshot()));
+  assert.deepEqual(after.declarations, before.declarations);
+  assert.deepEqual(after.triggered, before.triggered);
+  assert.notDeepEqual(after.sourceRules, before.sourceRules, 'A dormant keyframe edit cannot hide behind identical rendered motion');
+  observer.stop();
+});
+
 test('parked CSS clocks record actual pointer/focus activations and release every wake listener', () => {
   const {createMotionObserver} = fixture();
   const element = {nodeType: 1, localName: 'figure', parentElement: null};

@@ -119,7 +119,7 @@ rejects documents requiring more than 128 tiles.
 
 ## Native CSS motion contracts
 
-New captures include `native-css-motion-v1` alongside geometry in both modes.
+New captures include `native-css-motion-v2` alongside geometry in both modes.
 An observer is installed before native fixture initialization and marks initial,
 action and raster-scroll phases before those actions run. It records every
 activation of native `CSSAnimation` and `CSSTransition` objects: target/pseudo,
@@ -134,7 +134,9 @@ before the existing raster alignment pauses them.
 Snapshots also record the computed animation/transition declaration list for
 every light-DOM element and standard pseudo, plus stylesheet-declared and
 observed runtime pseudos. A shared style table keeps repeated contracts compact.
-This includes inactive hover/state declarations, while actual triggers prove
+The native stylesheet rules also retain dormant hover/state motion declarations,
+conditional scopes, declaration priority and every keyframe definition. These
+remain comparable even when no captured interaction activates them. Actual triggers prove
 only the checked-in interactions. Zero-duration changes, easing/delay/keyframe
 changes, missing triggers and pseudo changes fail exact comparison even when the
 settled geometry and pixels match. Unobservable native start events, inaccessible

@@ -19,6 +19,7 @@ class VisualTest(unittest.TestCase):
         import copy
         contract = {"version": visual.MOTION, "properties": ["animation-duration"],
                     "styles": [["2s"]], "declarations": [["article", "::before", 0]],
+                    "sourceRules": [{"keyframes": "dormant", "frames": [{"offset": "100%", "properties": {"opacity": ["1", ""]}}]}],
                     "triggered": [{"kind": "transition", "name": "height", "phase": "action",
                                    "timing": {"duration": 300, "easing": "ease-in"},
                                    "keyframes": [{"offset": 0, "height": "0px"},
@@ -31,7 +32,8 @@ class VisualTest(unittest.TestCase):
                      lambda c: c["triggered"][0]["timing"].__setitem__("easing", "linear"),
                      lambda c: c["triggered"][0].__setitem__("name", "opacity"),
                      lambda c: c["triggered"][0]["keyframes"][1].__setitem__("height", "101px"),
-                     lambda c: c["triggered"].clear()]
+                     lambda c: c["triggered"].clear(),
+                     lambda c: c["sourceRules"][0]["frames"][0]["properties"]["opacity"].__setitem__(0, "0.5")]
         for mutate in mutations:
             actual = copy.deepcopy(expected)
             mutate(actual["motion"])
@@ -52,7 +54,7 @@ class VisualTest(unittest.TestCase):
             before = {"environment": {}, "geometry": [], "motion": {
                 "version": visual.MOTION, "properties": ["transition-duration"],
                 "styles": [[".3s"]], "declarations": [["article", None, 0]],
-                "triggered": [], "gaps": []}}
+                "sourceRules": [], "triggered": [], "gaps": []}}
             baseline, actual = root / "baseline", root / "actual"
             metadata = {"suite_sha256": hashlib.sha256(suite.read_bytes()).hexdigest(),
                         "pixels": False, "motion": visual.MOTION,

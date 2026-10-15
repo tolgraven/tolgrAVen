@@ -17,7 +17,7 @@
   function backgroundURLs(value) {
     return [...value.matchAll(/url\(["']?(.*?)["']?\)/g)].map(match => match[1]);
   }
-  const MOTION = 'native-css-motion-v1';
+  const MOTION = 'native-css-motion-v2';
   const motionProperties = [
     'animation-name', 'animation-duration', 'animation-delay', 'animation-timing-function',
     'animation-iteration-count', 'animation-direction', 'animation-fill-mode',
@@ -123,25 +123,43 @@
       },
       snapshot() {
         sample();
-        const styles = [], indexes = new Map(), declarations = [], sheets = new Set();
-        const inspectRules = rules => {
+        const styles = [], indexes = new Map(), declarations = [], sourceRules = [], sheets = new Set();
+        const declared = (style, properties) => Object.fromEntries(properties
+          .filter(name => style.getPropertyValue(name))
+          .map(name => [name, [style.getPropertyValue(name), style.getPropertyPriority(name)]]));
+        const inspectRules = (rules, scope) => {
           for (const rule of rules) {
             for (const match of (rule.selectorText || '').matchAll(/::[a-z-]+(?:\([^()]*\))?/gi))
               pseudoElements.add(match[0]);
-            if (rule.cssRules) inspectRules(rule.cssRules);
-            if (rule.styleSheet) inspectSheet(rule.styleSheet);
+            if (rule.type === 7) {
+              // Include dormant keyframes too: their next hover or viewport
+              // activation must not escape a technical-change comparison.
+              sourceRules.push({scope, keyframes: rule.name, frames: [...rule.cssRules].map(frame =>
+                ({offset: frame.keyText, properties: declared(frame.style, [...frame.style])}))});
+            } else {
+              if (rule.selectorText && rule.style) {
+                const properties = declared(rule.style, ['animation', 'transition', ...motionProperties]);
+                if (Object.keys(properties).length) sourceRules.push({scope, selector: rule.selectorText, properties});
+              }
+              if (rule.cssRules) inspectRules(rule.cssRules,
+                [...scope, {type: rule.type, condition: rule.conditionText || null, name: rule.name || null}]);
+            }
+            if (rule.styleSheet) inspectSheet(rule.styleSheet, [...scope, {import: rule.href,
+              media: rule.media?.mediaText || '', supports: rule.supportsText || null,
+              layer: rule.layerName ?? null}]);
           }
         };
-        const inspectSheet = sheet => {
+        const inspectSheet = (sheet, scope = []) => {
           if (sheets.has(sheet)) return;
           sheets.add(sheet);
-          try { inspectRules(sheet.cssRules); }
+          try { inspectRules(sheet.cssRules, [...scope, {sheet: sheet.href || 'inline',
+            media: sheet.media?.mediaText || '', disabled: sheet.disabled === true}]); }
           catch (error) {
-            const gap = 'Cannot inspect CSS pseudo declarations: ' + (sheet.href || 'inline') + ': ' + error.name;
+            const gap = 'Cannot inspect CSS motion declarations: ' + (sheet.href || 'inline') + ': ' + error.name;
             if (!gaps.includes(gap)) gaps.push(gap);
           }
         };
-        [...doc.styleSheets || []].forEach(inspectSheet);
+        [...doc.styleSheets || [], ...doc.adoptedStyleSheets || []].forEach(sheet => inspectSheet(sheet));
         for (const element of doc.querySelectorAll('*')) {
           if (['SCRIPT', 'STYLE', 'LINK', 'META', 'TITLE', 'HEAD'].includes(element.tagName)) continue;
           if (element.shadowRoot || element.tagName === 'IFRAME') {
@@ -162,7 +180,7 @@
             declarations.push([elementPath(element), pseudo, indexes.get(key)]);
           }
         }
-        return {version: MOTION, properties: motionProperties, styles, declarations,
+        return {version: MOTION, properties: motionProperties, styles, declarations, sourceRules,
           triggered: [...triggered].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
           gaps: [...gaps]};
       }

@@ -21,7 +21,7 @@ import zlib
 ROOT = Path(__file__).resolve().parents[2]
 SIGNATURE = b"\x89PNG\r\n\x1a\n"
 RASTER = "overlapping-viewports-v1"
-MOTION = "native-css-motion-v1"
+MOTION = "native-css-motion-v2"
 
 
 def read_png(path):
@@ -361,7 +361,7 @@ def motion_changes(expected, actual, label):
             raise ValueError(label + ": missing native CSS motion observation")
         if motion.get("gaps"):
             raise ValueError(label + ": incomplete CSS motion observation: " + str(motion["gaps"]))
-        if not all(key in motion for key in ("properties", "styles", "declarations", "triggered")):
+        if not all(key in motion for key in ("properties", "styles", "declarations", "sourceRules", "triggered")):
             raise ValueError(label + ": incomplete CSS declaration/runtime contract")
     return geometry_changes(expected["motion"], actual["motion"], label + ".motion")
 
