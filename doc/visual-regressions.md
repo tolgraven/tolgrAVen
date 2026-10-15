@@ -39,6 +39,8 @@ footer context rather than rendering its flex content directly in the main grid.
 Services and CV fixtures use a native `defpage` container so the main grid cannot
 stretch individual sections. Isolated CV boxes retain the production timeline
 column width/height; absolute-positioned entries cannot establish those dimensions.
+Their dates determine position/size within the seed's shared timeline range;
+the case scrolls the native timeline to that historical entry before capture.
 The original editor comparison fixture remains unchanged.
 Post/comment cases render the native blog container and post, including the
 post-owned comment section. Standalone comment cases use the native standalone
@@ -77,9 +79,10 @@ reuses an installed copy. Keep its configured autoConnect/extension environment;
 an ordinary CDP connection is not a substitute for an unavailable extension
 transport. Reconnect installed Chrome and retry if it crashes.
 
-Capture waits for native mounting, loaded consumer fonts, decoded images, stable
-element geometry and finite motion. It pauses infinite animation clocks at zero
-after settling. Native error fallbacks, failed images, unsettled layout and an
+Capture waits for native mounting, loaded consumer fonts, decoded images and
+finite motion, then pauses infinite animation clocks at zero before checking
+stable geometry/computed appearance. A fading caret otherwise never has stable
+opacity. Native error fallbacks, failed images, unsettled layout and an
 unexpected viewport/DPR fail capture. Set only this fixture origin's Chrome zoom
 to 100%; do not hide environment changes behind a tolerance.
 

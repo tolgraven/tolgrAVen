@@ -133,17 +133,25 @@
        [shell/<footer> (content' :footer)])]))
 
 (defn <box-fixture> [container?]
-  [<main-fixture>
-   [:section.cv.nopadding.noborder
-    [:div.cv-boxes
-     ;; Match the native timeline column in cv/<cv>. Absolutely positioned boxes
-     ;; cannot establish their parent's width by themselves.
-     [:div.cv-items.cv-work {:style {:width "200em", :height "9em"}}
-      [cv/<box> (cond-> entry container?
-                  (assoc :kind "container" :what "Festival day"
-                         :children [(assoc entry :id "performance" :what "Main stage")]))
-       "10%" "70%" 0 nil
-       {:column 0, :category "work", :parents [], :parent-keys []}]]]]])
+  (let [items (mapcat :things (get-in @(r/subscribe [:content/view [:cv]]) [:cv :timeline]))
+        current-year (.getUTCFullYear (js/Date.))
+        first-year (apply min (map :from items))
+        last-year (apply max (map #(if (number? (:to %)) (:to %) (+ 3 current-year)) items))
+        span (- last-year first-year)
+        position (str (* 95 (/ (- (:from entry) first-year) span)) "%")
+        size (str (* 92 (/ (- (:to entry) (:from entry)) span)) "%")]
+    [<main-fixture>
+     [:section.cv.nopadding.noborder
+      [:div.cv-boxes
+       ;; Match the native timeline column in cv/<cv>. Absolutely positioned boxes
+       ;; cannot establish their parent's width by themselves. This fixed single-row
+       ;; column has native height-ratio 1; dates use the seed's actual shared range.
+       [:div.cv-items.cv-work {:style {:width "200em", :height "9em"}}
+        [cv/<box> (cond-> entry container?
+                    (assoc :kind "container" :what "Festival day"
+                           :children [(assoc entry :id "performance" :what "Main stage")]))
+         position size 0 nil
+         {:column 0, :category "work", :parents [], :parent-keys []}]]]]]))
 
 (defn <post-fixture> []
   [<main-fixture>
@@ -160,7 +168,7 @@
 (defn ^:export init! []
   (let [params (js/URLSearchParams. (.-search js/location))
         component (.get params "component")]
-    (if-not (#{"cv-regular" "cv-container" "comments" "thread" "post" "standalone-comments" "search-mixed"
+    (if-not (#{"cv-regular" "cv-container" "comments" "comments-auth" "thread" "post" "standalone-comments" "search-mixed"
                "shell" "header" "footer" "post-footer" "services" "cv"} component)
       (editor/init! false)
       (-> (js/fetch "/fixtures/editor-seed.json")
@@ -169,7 +177,7 @@
             (fn [seed]
               (rfe/start! routes/router (fn [_ _]) {:use-fragment false})
               (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) false])
-              (when (#{"comments" "thread" "post" "search-mixed"} component)
+              (when (#{"comments" "comments-auth" "thread" "post" "search-mixed"} component)
                 (r/dispatch-sync [:set [:common/route]
                                   (assoc (reitit/match-by-path routes/router "/blog/post/42")
                                          :parameters {:path {:permalink "42"}, :query {}})]))
@@ -183,13 +191,14 @@
                          (fn [_ _]
                            (cond-> writer (= "post" component)
                              (assoc :avatar "/img/Leg-tasteful-small.jpg"))))
-              (r/reg-sub :user/active-user (fn [_ _] nil))
+              (r/reg-sub :user/active-user (fn [_ _] (when (= "comments-auth" component) writer)))
+              (r/reg-sub :blog/vote (fn [_ _] nil))
               (r/reg-sub :comments/visible-thread
                          (fn [_ [_ _ parent-id]]
                            (if (= "thread" component) (get replies parent-id {}) {})))
               (r/reg-sub :comments/root-page
                          (fn [_ _]
-                           {:records (if (#{"comments" "thread"} component)
+                           {:records (if (#{"comments" "comments-auth" "thread"} component)
                                        {"visual-comment" (cond-> comment-row
                                                            (= "thread" component) (assoc :reply-count 2))}
                                        {})
@@ -219,7 +228,7 @@
                            (r/render (r/create-root (.getElementById js/document "app"))
                              (case component
                                "search-mixed" [<search-fixture>]
-                               ("post" "comments" "thread") [<post-fixture>]
+                               ("post" "comments" "comments-auth" "thread") [<post-fixture>]
                                "standalone-comments" [<standalone-fixture>]
                                ("shell" "header" "footer" "post-footer") [<shell-fixture> component]
                                "services" [<main-fixture> [home/<services> (editor/section :services false)]]

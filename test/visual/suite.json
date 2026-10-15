@@ -71,7 +71,8 @@
         1440,
         1000
       ],
-      "path": "/fixtures/visual.html?component=cv-regular"
+      "path": "/fixtures/visual.html?component=cv-regular",
+      "action": "document.querySelector('.cv-detail[role=button]').scrollIntoView({block:'nearest',inline:'center',behavior:'instant'})"
     },
     {
       "id": "cv-regular-narrow",
@@ -79,7 +80,8 @@
         400,
         800
       ],
-      "path": "/fixtures/visual.html?component=cv-regular"
+      "path": "/fixtures/visual.html?component=cv-regular",
+      "action": "document.querySelector('.cv-detail[role=button]').scrollIntoView({block:'nearest',inline:'center',behavior:'instant'})"
     },
     {
       "id": "cv-regular-open-wide",
@@ -88,7 +90,7 @@
         1000
       ],
       "path": "/fixtures/visual.html?component=cv-regular",
-      "action": "document.querySelector('.cv-detail[role=button]').click()"
+      "action": "const box = document.querySelector('.cv-detail[role=button]'); box.scrollIntoView({block:'nearest',inline:'center',behavior:'instant'}); box.click()"
     },
     {
       "id": "cv-regular-open-narrow",
@@ -97,7 +99,7 @@
         800
       ],
       "path": "/fixtures/visual.html?component=cv-regular",
-      "action": "document.querySelector('.cv-detail[role=button]').click()"
+      "action": "const box = document.querySelector('.cv-detail[role=button]'); box.scrollIntoView({block:'nearest',inline:'center',behavior:'instant'}); box.click()"
     },
     {
       "id": "cv-container-open-wide",
@@ -106,7 +108,7 @@
         1000
       ],
       "path": "/fixtures/visual.html?component=cv-container",
-      "action": "document.querySelector('.cv-detail[role=button]').click()"
+      "action": "const box = document.querySelector('.cv-detail[role=button]'); box.scrollIntoView({block:'nearest',inline:'center',behavior:'instant'}); box.click()"
     },
     {
       "id": "cv-container-open-narrow",
@@ -115,7 +117,7 @@
         800
       ],
       "path": "/fixtures/visual.html?component=cv-container",
-      "action": "document.querySelector('.cv-detail[role=button]').click()"
+      "action": "const box = document.querySelector('.cv-detail[role=button]'); box.scrollIntoView({block:'nearest',inline:'center',behavior:'instant'}); box.click()"
     },
     {
       "id": "comments-folded-wide",
@@ -265,6 +267,30 @@
         1000
       ],
       "path": "/fixtures/visual.html?component=standalone-comments"
+    },
+    {
+      "id": "comments-thread-deep-wide",
+      "viewport": [1440, 1000],
+      "path": "/fixtures/visual.html?component=thread",
+      "action": "document.querySelector('.blog-comment-collapsed-placeholder').click()"
+    },
+    {
+      "id": "comments-thread-deep-narrow",
+      "viewport": [400, 800],
+      "path": "/fixtures/visual.html?component=thread",
+      "action": "document.querySelector('.blog-comment-collapsed-placeholder').click()"
+    },
+    {
+      "id": "comments-owner-controls-wide",
+      "viewport": [1440, 1000],
+      "path": "/fixtures/visual.html?component=comments-auth",
+      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})"
+    },
+    {
+      "id": "comments-owner-controls-narrow",
+      "viewport": [400, 800],
+      "path": "/fixtures/visual.html?component=comments-auth",
+      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})"
     },
     {
       "id": "comments-standalone-narrow",

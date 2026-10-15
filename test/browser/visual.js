@@ -98,12 +98,20 @@
       image.onerror = () => reject(new Error('Fixture background failed: ' + src));
       image.src = src;
     }))), 'Background images did not decode');
-    // Native finite entrances/expansions run to completion. Infinite shimmer,
-    // spinner and caret clocks are paused only after the component has settled.
+    // Finish native finite entrances first, then align infinite clocks before
+    // comparing computed appearance: a fading caret never has stable opacity.
     let stable = 0, previous = '';
     while (performance.now() < deadline) {
-      const finite = document.getAnimations().filter(animation =>
+      const animations = document.getAnimations();
+      const finite = animations.filter(animation =>
         animation.playState === 'running' && animation.effect.getTiming().iterations !== Infinity);
+      if (!finite.length) {
+        for (const animation of animations) {
+          if (animation.effect.getTiming().iterations === Infinity && animation.playState === 'running') {
+            animation.pause(); animation.currentTime = 0;
+          }
+        }
+      }
       const current = JSON.stringify(geometry());
       stable = current === previous && !finite.length ? stable + 1 : 0;
       if (stable >= 4) break;
@@ -111,11 +119,6 @@
       await pause(100);
     }
     if (stable < 4) throw new Error('Layout or native motion did not settle');
-    for (const animation of document.getAnimations()) {
-      if (animation.effect.getTiming().iterations === Infinity) {
-        animation.pause(); animation.currentTime = 0;
-      }
-    }
     await frame(); await frame();
     if (document.querySelector('[role="alert"], .component-error')) throw new Error('Native fixture contains an error fallback');
     if (errors.length) throw new Error(errors.join('\n'));
