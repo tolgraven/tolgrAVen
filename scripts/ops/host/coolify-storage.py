@@ -77,7 +77,7 @@ def copy_data(final=False):
     for source in SOURCES:
         args = ['rsync', '-aHAXx', '--numeric-ids']
         if final:
-            args.append('--delete')
+            args.extend(['--delete', '--checksum'])
         result = subprocess.run([*args, source + '/', str(destination(source)) + '/'])
         if result.returncode and not (not final and result.returncode == 24):
             raise RuntimeError(f'Copy failed for {source}; exit {result.returncode}')
