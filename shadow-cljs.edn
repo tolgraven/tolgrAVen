@@ -97,6 +97,8 @@
                   :autorun true}
 
   :neovim-check {:target :browser
+                 :build-hooks [(website.build.modules/configure-site)
+                               (website.build.modules/check-site-sources)]
                  :devtools {:enabled false}
                  :output-dir "resources/public/js/neovim-check"
                  :asset-path "/js/neovim-check"

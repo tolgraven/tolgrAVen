@@ -2,6 +2,9 @@
   "One real readonly editor per standalone visual document; no provider I/O."
   (:require-macros [website.test-async :refer [go-promise await!]])
   (:require [website.react :as r]
+            [website.component]
+            [website.subs]
+            [website.macros :refer-macros [defpage]]
             [website.test-support :as support]
             [website.modules.neovim.views :as views]
             [website.modules.neovim.runtime :as runtime]))
@@ -41,6 +44,10 @@
         (-> promise
             (.then resolve reject)
             (.finally #(js/clearTimeout timer)))))))
+
+(defpage <readonly-page> [source-document]
+  [:section.github-diff
+   [views/<editor> {:document source-document, :rows 36}]])
 
 (defn init! []
   (let [mode (keyword (.get (js/URLSearchParams. (.-search js/location)) "visual"))
@@ -111,10 +118,15 @@
                                 (not (.querySelector js/document ".neovim__progress"))))
                         "Configured readonly text did not paint"))))
           (assert (= "true" (.getAttribute (.querySelector js/document ".neovim__grid") "aria-readonly")) "Native readonly accessibility contract missing")
-          (await! (original-ready)))))
+          (await! (original-ready))
+          (assert (.querySelector js/document "#main > .page-root > .github-diff") "Native readonly page container missing")
+          (doseq [selector [".neovim" ".neovim__toolbar > .disclosure-menu > summary"]]
+            (let [control (.querySelector js/document selector)
+                  bounds (when control (.getBoundingClientRect control))]
+              (assert (and bounds (<= 0 (.-left bounds)) (<= (.-right bounds) js/window.innerWidth))
+                      (str "Readonly surface or menu exceeds the viewport: " selector)))))))
     (r/render root
-      [:main#main.main-content
-       ;; Same direct parent as the public readonly GitHub viewer, without its
-       ;; remote query/controller. Neovim owns the real buffers, rows and menu.
-       [:section.github-diff
-        [views/<editor> {:document source-document, :rows 36}]]])))
+      ;; Public Neovim routes omit shell chrome. Keep both its native main and
+      ;; defpage container: grid intrinsic sizing depends on the page owner.
+      [:main#main.main-content.perspective-top.main-content--bare
+       [<readonly-page> source-document]])))

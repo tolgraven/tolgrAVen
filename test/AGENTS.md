@@ -298,5 +298,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   Java build is involved.
 - Readonly Neovim visual states are standalone top-level cases even in geometry
   mode. Keep the native grid/worker and scoped COOP/COEP policy; the unsupported
-  document omits isolation. Await the fixture's owned disposal hook after capture
-  and on failure, asserting worker termination before starting the next session.
+  document omits isolation. Its native defpage owner needs the target's ordinary
+  site-reader hooks and registered route subscriptions. Await the fixture's owned
+  disposal hook after capture and on failure, asserting worker termination before
+  starting the next session.

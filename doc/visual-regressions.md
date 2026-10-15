@@ -357,7 +357,8 @@ Neovim's hook unmounts the real editor and verifies its real worker terminated.
 Readiness checks the painted native grid, exact local buffer contents, immutable
 buffers, absolute line numbers, equal diff panes and native diff highlighting via
 real RPC. It attempts an edit only to assert Neovim rejects it. No worker/grid,
-provider read or write is simulated. The direct `.github-diff` parent and editor
-are retained; these component cases do not exercise GitHub's revision controller,
+provider read or write is simulated. The native bare `main`, `defpage` boundary
+and container, `.github-diff` parent and editor are retained; these component
+cases do not exercise GitHub's revision controller,
 menu metadata or remote acquisition. Missing approved raster/motion baselines
 remain verification gaps; captures never approve them automatically.
