@@ -3,6 +3,9 @@
   (:require [cljs.test :refer-macros [async deftest is]]
             [website.components.shell :as shell]
             [website.events]
+            [website.module-transport :as transport]
+            [website.modules.search.module :as search-module]
+            [website.modules.user.module :as user-module]
             [website.modules.user.subs]
             [website.react :as r]
             [website.render-context :as context]
@@ -13,17 +16,24 @@
   (async done
     (let [restore! (r/make-restore-fn)
           interactive? @context/*interactive?
+          acquisition (transport/install! {:search search-module/spec, :user user-module/spec})
           element (.createElement js/document "div")
           *root (atom nil)]
       (.appendChild (.-body js/document) element)
       (reset! context/*interactive? true)
-      (doseq [module [:search :user]]
-        (r/dispatch-sync [:component-data/remove [:state :init :scope module]]))
-      (r/dispatch-sync [:state [:active-user] nil])
-      (r/dispatch-sync [:state [:menu] false])
       (-> (go-promise
             (let [root (await! (support/create-root! element))]
               (reset! *root root)
+              ;; Drain older queued completions before installing this case's
+              ;; controlled pending state. No intent releases these native gates.
+              (doseq [module [:search :user]
+                      path [[:state :init :scope module]
+                            [:loader :requested module]
+                            [:loader :code-ready module]
+                            [:loader :errors module]]]
+                (r/dispatch-sync [:component-data/remove path]))
+              (r/dispatch-sync [:state [:active-user] nil])
+              (r/dispatch-sync [:state [:menu] false])
               (await! (support/render! root [shell/<header> {:menu {:work [], :personal []}}]))
               (await! (support/wait-for! #(.querySelector element ".search-ui-btn img")))
               (let [search (.querySelector element ".search-ui-btn")
@@ -43,6 +53,7 @@
           (.finally (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
+                      ((:restore! acquisition))
                       (restore!)
                       (reset! context/*interactive? interactive?)
                       (done)))))))

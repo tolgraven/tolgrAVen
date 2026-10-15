@@ -156,8 +156,10 @@
                    ;; have committed. Its inherited hydration must keep every
                    ;; formatter gated while those controls become interactive.
                    (-> (support/wait-for!
-                         #(= (.-length (.querySelectorAll element ".code-block, .code-highlight"))
-                             (count @*release))
+                         #(let [blocks (.-length (.querySelectorAll element ".code-block, .code-highlight"))]
+                            (and (pos? blocks)
+                                 (.querySelector element ".code-block button[aria-pressed]")
+                                 (= blocks (count @*release))))
                          "Delayed Markdown did not retain its formatter gates")
                        (.then (fn [_]
                                 (is (false? (restore/initial-hydration?)))

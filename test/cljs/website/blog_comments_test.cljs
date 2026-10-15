@@ -24,12 +24,35 @@
 
 (defn- tick! [ms] (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
 
+(defn- make-loader-restore-fn []
+  (let [restore-db! (r/make-restore-fn)
+        loads @loader/*loads
+        code-loads @loader/*code-loads
+        installed @loader/*installed]
+    ;; These cases temporarily replace :user's spec. Restore its promises and
+    ;; the matching app-db together; never leak a dependency-pruned fake owner
+    ;; or a newly acquired editor promise whose readiness was reset afterwards.
+    (fn []
+      (reset! loader/*loads loads)
+      (reset! loader/*code-loads code-loads)
+      (reset! loader/*installed installed)
+      (restore-db!))))
+
+(defn- load-module! [module]
+  (-> (loader/load! {:module module})
+      (.then (fn [spec]
+               ;; init/app-db intentionally clears this case's readiness while
+               ;; genuine code/CSS may already be cached by another native case.
+               (r/dispatch-sync [:loader/code-ready module])
+               (r/dispatch-sync [:scope/init module])
+               spec))))
+
 (deftest root-comments-toggle-keeps-pagination-and-focused-old-threads
   (async done
     (-> (go-promise
           (let [element (.createElement js/document "div")
                 root (await! (support/create-root! element))
-                restore-db! (r/make-restore-fn)
+                restore-db! (make-loader-restore-fn)
                 before-context @restore/*context
                 subscribe (r/subscribe-function)
                 author {:id "writer", :name "Writer"}
@@ -42,7 +65,7 @@
               (r/dispatch-sync [:init/app-db])
               (r/dispatch-sync [:set [:common/route] (reitit/match-by-path routes/router "/blog/post/42")])
               (restore/begin! {:back? true})
-              (await! (loader/load! {:module :markdown}))
+              (await! (load-module! :markdown))
               (r/with-framework-bindings
                 [loader/modules
                  (assoc modules :user (reify lazy/ILoadable
@@ -103,7 +126,7 @@
     (-> (go-promise
           (let [element (.createElement js/document "div")
                 root (await! (support/create-root! element))
-                restore-db! (r/make-restore-fn)
+                restore-db! (make-loader-restore-fn)
                 before-context @restore/*context
                 subscribe (r/subscribe-function)
                 author {:id "writer", :name "Writer"}
@@ -135,8 +158,9 @@
               (r/dispatch-sync [:set [:common/route]
                                 (assoc (reitit/match-by-path routes/router "/blog/comment/113")
                                        :parameters {:path {:comment-id "113"}, :query {}})])
-              (await! (loader/load! {:module :markdown}))
-              (await! (loader/load! {:module :styled-input}))
+              (await! (load-module! :markdown))
+              (await! (load-module! :styled-input))
+              (await! (load-module! :markdown-editor))
               (await! (styles/acquire! :user))
               (r/with-framework-bindings
                 [loader/modules (assoc modules :user (ready user-module/spec))
@@ -196,7 +220,7 @@
     (-> (go-promise
           (let [element (.createElement js/document "div")
                 root (await! (support/create-root! element))
-                before @r/*app-db
+                restore-db! (make-loader-restore-fn)
                 context @restore/*context
                 subscribe (r/subscribe-function)
                 modules loader/modules
@@ -217,7 +241,7 @@
               (restore/begin! {:hydrate? false, :back? false})
               (r/dispatch-sync [:set [:common/route] (reitit/match-by-path routes/router "/blog/post/42")])
               (r/dispatch-sync [:blog/expand-comment-thread [42 "root"] true])
-              (await! (loader/load! {:module :markdown}))
+              (await! (load-module! :markdown))
               (doseq [[parent rows] [["root" [replies]] ["reply" [grandchild]] ["grandchild" []]]]
                 (r/dispatch-sync [:store/scoped (scoped/query-key (comments/thread-query 42 parent))
                                   {:docs (mapv #(hash-map :id (:id %) :data %) rows)}]))
@@ -308,7 +332,7 @@
               (finally
                 (support/unmount! root)
                 (.remove element)
-                (reset! r/*app-db before)
+                (restore-db!)
                 (reset! restore/*context context)))))
         (.catch #(is false (str %)))
         (.finally done))))
@@ -316,7 +340,7 @@
 (deftest trusted-comment-markdown-never-renders-site-components-or-iframes
   (async done
     (let [element (.createElement js/document "div")
-          restore-db! (r/make-restore-fn)
+          restore-db! (make-loader-restore-fn)
           root (atom nil)]
       (.appendChild (.-body js/document) element)
       (-> (go-promise
@@ -326,7 +350,7 @@
             ;; the actual loaded JavaScript and stylesheet resources.
             (swap! loader/*loads dissoc :markdown)
             (swap! loader/*code-loads dissoc :markdown)
-            (await! (loader/load! {:module :markdown}))
+            (await! (load-module! :markdown))
             (let [mounted (await! (support/create-root! element))]
               (reset! root mounted)
               (await! (support/render! mounted
