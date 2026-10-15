@@ -33,7 +33,10 @@ is ignored and is not searched by the config loader.
 Analytics is an explicit production choice, not a startup requirement. A site can
 run without analytics. A storage-free site's disabled Supabase modules do not
 need Supabase settings. A configured CMS is checked during public-content startup,
-so an unavailable CMS can prevent startup. Feature selection belongs to
+so an unavailable CMS prevents production startup. Development logs the initial
+failure and keeps HTTP and the REPL running; the existing shell refresh worker
+retries automatically (every 120 seconds by default). CMS-backed requests remain
+unavailable until recovery, without substituting seed content. Feature selection belongs to
 `resources/site.edn` plus CMS overrides, not a parallel list in runtime config;
 see [Site capabilities](site-capabilities.md).
 

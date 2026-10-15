@@ -131,9 +131,17 @@
 
 (mount/defstate startup-content
   :start (do
-           ;; Only the shared shell gates HTTP readiness. The owned refresh
-           ;; worker warms module headings after this initial snapshot.
-           (refresh-immediate! false)
+           ;; Keep the development REPL available during CMS maintenance.
+           ;; The owned refresh worker recovers content without substituting seed.
+           (try (refresh-immediate! false)
+                (catch InterruptedException error
+                  (.interrupt (Thread/currentThread))
+                  (throw error))
+                (catch Exception error
+                  (when (or (not (:dev config/env))
+                            (.isInterrupted (Thread/currentThread)))
+                    (throw error))
+                  (log/warn "CMS shell unavailable; development startup continues and content refresh will retry")))
            (let [executor (java.util.concurrent.Executors/newSingleThreadScheduledExecutor)
                  interval (max 1 (long (get-in config/env [:ssr :shell-refresh-seconds] 120)))]
              (.scheduleWithFixedDelay executor
