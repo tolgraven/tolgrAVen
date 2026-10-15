@@ -14,8 +14,8 @@
 - Change only document-root attributes/custom properties. React owns image nodes.
   Native route declarations may supply a `:document-target`; completed cold SSR
   holds the existing entrance while `destination.cljs` waits for that target and
-  fonts, positions against untransformed layout offsets, then releases the same
-  animation clock. Missing targets release after a bounded wait; mounted SPA
+  fonts, measures untransformed layout offsets, then releases the same animation
+  clock before scrolling smoothly. Missing targets release after a bounded wait; mounted SPA
   targets use the normal smooth scroll. Do not replay the entrance on hydration.
   The sole removal exception is `#ssr-shell`: this unhydrated document-owned
   wrapper lives outside React's `#app`. Remove it at its opacity animation end

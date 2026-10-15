@@ -7,7 +7,7 @@
     [ajax.core :as ajax]
     [website.modules.docs.pages :as docs-pages]
     [website.test-support :as support]
-    [cljs.test :refer-macros [deftest is testing async]]
+    [cljs.test :refer-macros [deftest is testing async use-fixtures]]
     [website.react :as r]
 
     [website.test-support :refer [mount-subscriptions! subscription-value! state-at! wait-for!]]
@@ -68,6 +68,9 @@
     [website.modules.strava.module]
     [website.modules.instagram.module]
     [website.modules.experiments.module]))
+
+(use-fixtures :each {:after page-transition/cancel-restoration!})
+
 (defn- fake-scoped-transport!
   [*rows]
   ;; Only the external boundary is fake. Production managed readers still batch,
@@ -835,6 +838,29 @@
                                                (assoc-in pending [:match :path] "/blog")))
         "An unrelated address is never substituted")))
 
+(deftest code-arriving-before-the-native-commit-keeps-the-original-navigation
+  (let [home {:path "/", :data {:view identity}}
+        shell {:path "/blog", :data {:view (fn [] [:div "Loading blog"])}}
+        page (assoc-in shell [:data :view] (fn [] [:div "Blog"]))
+        pending {:generation 7, :match shell}
+        coeffects {:db {:common/route home}
+                   :page/destination pending
+                   :scroll-position 700
+                   :id {:id {:navigations 2}}}
+        replacement (event-effects :common/navigate coeffects
+                                   [:common/navigate page {:replace-shell? true}])
+        completion {:transition-id 7, :resolve! identity}
+        committed (event-effects :common/navigate
+                                 (assoc coeffects :page/destination
+                                        (assoc pending :match (:page/replace-destination replacement)))
+                                 [:common/navigate shell completion])]
+    (is (= {:page/replace-destination page} replacement)
+        "Code readiness must not commit the route before the native update")
+    (is (= "/" (get-in committed [:db :common/route-last :path])))
+    (is (= page (dissoc (get-in committed [:db :common/route]) :controllers)))
+    (is (some #{[:scroll/on-navigate "/blog" 2 completion]} (:dispatch-n committed))
+        "The original commit still positions the destination")))
+
 (deftest code-ready-navigation-does-not-await-managed-data
   (async done
          (-> (go-promise
@@ -1018,13 +1044,15 @@
               (let [position (.-scrollY js/window)]
                 (is (some? @page-transition/*restore-cleanup)
                     "Anchor positioning also guards the controlled scroll")
+                (is (.hasAttribute (.-documentElement js/document) "data-scroll-controlled"))
                 (is (= position @page-transition/*restored-position)))
               (.dispatchEvent js/window (js/Event. "wheel"))
               (is (nil? @page-transition/*restore-cleanup))
+              (is (not (.hasAttribute (.-documentElement js/document) "data-scroll-controlled")))
               (is (nil? @page-transition/*restored-position))
               (is (empty? @restore/*layout-listeners))
               (finally
-                (when-let [cleanup! @page-transition/*restore-cleanup] (cleanup!))
+                (page-transition/cancel-restoration!)
                 (support/unmount! root) (.remove element)
                 (set! (.-scrollRestoration js/history) original-mode)
                 (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
@@ -1048,7 +1076,42 @@
     (let [other (reitit/match-by-path routes/router "/blog/post/25/comment/113")
           effects' (event-effects :scroll/on-navigate {:db (assoc db :common/route other)}
                                  [:scroll/on-navigate (:path other) 3 nil])]
-      (is (= "main" (get-in effects' [:dispatch-n 2 1]))))))
+      (is (nil? (get-in effects' [:dispatch-n 2 1]))
+          "Another post's component target also skips the intermediate page landing"))))
+
+(deftest comment-destination-does-not-land-at-the-page-top-before-its-target
+  (let [blog (reitit/match-by-path routes/router "/blog")
+        comment (reitit/match-by-path routes/router "/blog/post/24/comment/113")
+        db {:common/route-last blog
+            :common/route comment
+            :state {:scroll-position {(:path comment) 499}}}
+        effects (event-effects :scroll/on-navigate {:db db}
+                               [:scroll/on-navigate (:path comment) 3 nil])
+        history (event-effects :scroll/on-navigate
+                               {:db (assoc-in db [:state :browser-nav :got-nav] true)}
+                               [:scroll/on-navigate (:path comment) 3 nil])]
+    (is (some #{[:page/ready nil nil]} (:dispatch-n effects))
+        "The mounted target owns the only destination scroll")
+    (is (some #{[:page/ready 499 nil]} (:dispatch-n history))
+        "History restores its saved reading position instead")))
+
+(deftest mounted-component-intent-skips-page-acquisition-and-keeps-history-navigation
+  (let [view identity
+        post (assoc-in (reitit/match-by-path routes/router "/blog/post/24") [:data :view] view)
+        comment (reitit/match-by-path routes/router "/blog/post/24/comment/113")
+        other (reitit/match-by-path routes/router "/blog/post/25/comment/113")
+        db {:common/route post}]
+    (with-redefs [loader/code-spec (constantly {:view {:post view}})]
+      (let [effects (event-effects :navigation/route-ready {:db db} [:navigation/route-ready comment])]
+        (is (= [:common/navigate (assoc-in comment [:data :view] view) nil] (:dispatch effects)))
+        (is (nil? (:navigation/page effects)))
+        (is (= {:path (:path comment), :scroll? true} (get-in effects [:db :state :scroll :component-focus]))))
+      (is (= other (:navigation/page
+                     (event-effects :navigation/route-ready {:db db} [:navigation/route-ready other]))))
+      (is (= comment (:navigation/page
+                       (event-effects :navigation/route-ready
+                         {:db (assoc-in db [:state :browser-nav :got-nav] true)}
+                         [:navigation/route-ready comment])))))))
 
 (deftest history-component-mounts-cannot-replace-saved-scroll-and-explicit-intent-can-refocus
   (let [route (reitit/match-by-path routes/router "/blog/post/24/comment/113")
@@ -1773,6 +1836,7 @@
             (try
               (restore/begin! {:back? true})
               (r/dispatch-sync [:set [:common/route] (reitit/match-by-path routes/router "/blog/post/42")])
+              (r/dispatch-sync [:blog/expand-comment-thread [42 "root" "child"] true])
               (r/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] true])
               (doseq [parent [nil "root" "child" "grandchild" "deep"]]
                 (let [query (if parent (comments/thread-query 42 parent)

@@ -62,6 +62,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   need or demonstrated performance benefit. Keep them behind small shared adapters,
   preserve normal re-frame event tracing, and document the reason. Do not create a
   second state machine/store merely to use a React API.
+  The navigation adapter owns document-root `data-scroll-controlled` outside React:
+  suppress browser anchoring during controlled landings and late data settlement,
+  release it on user input/navigation/pagehide, and keep numeric history restoration
+  separate from following a page/component anchor.
 - Through `website.react`, hooks delegate to upstream `reagent.hooks`. Effects
   may return implicit nil; cleanup functions run on dependency changes/unmount.
   Hook dependencies use Clojure value equality without converting their contents;
@@ -140,6 +144,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Accepted navigation owns a path-scoped component-focus policy. Explicit link
   intent reveals/scrolls its target; history restores its saved position and folds
   even when a newly mounted target view becomes ready later.
+  Component destinations skip the intermediate page-top landing, including when
+  the host view changes. Code arriving before a native transition's update only
+  replaces its pending destination; the original commit still owns route/history
+  and scroll positioning.
   Blog comment UI lives in `modules/blog/comment_views.cljs`, required only by
   the `:feature/blog-comments` reader feature.
   `comment_exports.cljc` pairs its conditional import with the original Var

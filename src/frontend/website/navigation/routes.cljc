@@ -208,6 +208,29 @@
 (defonce *route-request (atom 0))
 (declare coercion-failed!)
 
+(r/reg-event-fx :navigation/route-ready
+  {:args [:tuple navigation-schema/route]}
+  (fn [{:keys [db]} [_ match]]
+    (let [previous (:common/route db)
+          view (get-in (l/code-spec (get-in match [:data :module]))
+                       [:view (get-in match [:data :page])])
+          component-only? (and (get-in match [:data :component-route])
+                               (not (get-in db [:state :browser-nav :got-nav]))
+                               view
+                               (= view (get-in previous [:data :view]))
+                               (component-routes/same-page? previous match))]
+      (if component-only?
+        ;; A component tail changes intent within this mounted host. Retain its
+        ;; restoration/appearance context and skip page acquisition/transition.
+        {:db (assoc-in db [:state :scroll :component-focus] {:path (:path match), :scroll? true})
+         :dispatch [:common/navigate (assoc-in match [:data :view] view) nil]}
+        {:navigation/page match}))))
+
+(r/reg-fx :navigation/page
+  (fn [match]
+    (when-let [path (:path match)] (ssr/leave! path))
+    (navigate! *navigation r/dispatch l/load-code! match)))
+
 (defn initial-parameters
   "Only the first matching network SSR route may use the server's typed values."
   [match snapshot initial? hydrating?]
@@ -224,8 +247,7 @@
                     ;; Only same-document routing takes ownership from native restoration.
                     (when (pos? @*navigation)
                       (set! (.-scrollRestoration js/history) "manual"))
-                    (when-let [path (:path match)] (ssr/leave! path))
-                    (navigate! *navigation r/dispatch l/load-code! match)))
+                    (r/dispatch [:navigation/route-ready match])))
         parameters (initial-parameters match @ssr/*snapshot
                                        (zero? @*navigation) (:hydrate? @restore/*context))]
     (cond

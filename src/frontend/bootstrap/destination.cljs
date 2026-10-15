@@ -1,5 +1,5 @@
 (ns bootstrap.destination
-  "Position native completed SSR before the document entrance, without app imports.")
+  "Measure native completed SSR and scroll on reveal, without app imports.")
 
 (defn- layout-top [element]
   ;; Paused entrance transforms change client rectangles; layout offsets retain
@@ -7,11 +7,15 @@
   (loop [node element, top 0]
     (if node (recur (.-offsetParent node) (+ top (.-offsetTop node))) top)))
 
+(defn- target-top [element]
+  (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle element)))]
+    (- (layout-top element) (if (js/isNaN margin) 0 margin))))
+
 (defn await! [root complete!]
   (if-let [id (.getAttribute root "data-document-target")]
     (let [path (.-pathname js/location)
           owner #js {:active true :frame nil :previous nil :deadline nil :observer nil}]
-      (letfn [(finish! []
+      (letfn [(finish! [& [scroll!]]
                 (when (.-active owner)
                   (set! (.-active owner) false)
                   (js/clearTimeout (.-deadline owner))
@@ -19,7 +23,7 @@
                   (.disconnect (.-observer owner))
                   (.removeEventListener js/window "pagehide" finish!)
                   (.removeEventListener js/document "load" schedule! true)
-                  (complete!)))
+                  (complete! (when (fn? scroll!) scroll!))))
               (measure! []
                 (set! (.-frame owner) nil)
                 (when (.-active owner)
@@ -29,14 +33,20 @@
                       (when (and (> (.-offsetHeight element) 0)
                                  (not (identical? "none" (.-display (js/getComputedStyle root))))
                                  (not (identical? "loading" (some-> js/document .-fonts .-status))))
-                        (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle element)))
-                              top (- (layout-top element) (if (js/isNaN margin) 0 margin))
+                        (let [top (target-top element)
                               geometry (.join #js [top (.-scrollHeight (.-documentElement js/document)) js/innerWidth] ":")]
                           (if (identical? geometry (.-previous owner))
                             (do
-                              (.scrollTo js/window #js {:top top :left 0 :behavior "instant"})
                               (.setAttribute root "data-document-positioned" id)
-                              (finish!))
+                              ;; Entrance owns the visible commit, including its
+                              ;; hero gate. Hand it the measured scroll to run then.
+                              (finish!
+                                #(when (and (identical? path (.-pathname js/location))
+                                            (identical? element (.getElementById js/document id)))
+                                   (.scrollTo js/window #js {:top (target-top element)
+                                                            :left 0
+                                                            :behavior (if (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))
+                                                                        "instant" "smooth")}))))
                             (do (set! (.-previous owner) geometry)
                                 (schedule!)))))))))
               (schedule! [& _]
@@ -54,4 +64,4 @@
         ;; component owns any later smooth scroll after this bounded fallback.
         (set! (.-deadline owner) (js/setTimeout finish! 5000))
         (schedule!)))
-    (complete!)))
+    (complete! nil)))

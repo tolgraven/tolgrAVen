@@ -22,7 +22,7 @@ implementation in `src/frontend/website/modules/<module>/`, also on the JVM sour
   with `navigation/component-routes` under a named host page; retain typed native
   parameters and complete matching instead of parsing unmatched URL prefixes.
   `:document-target` declares a constant target ID or a prefix plus selection
-  parameter for positioning cold SSR before its document entrance. It is data,
+  parameter for smoothly positioning cold SSR as its document entrance opens. It is data,
   consumed by `page/document-target` and the standalone native document gate.
 - Public data plans are adapter-independent. Server reads and managed browser
   subscriptions consume the same filters, projections, batching and row shape.

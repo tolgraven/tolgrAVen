@@ -45,20 +45,32 @@
                                      (r/inject-cofx :scroll-position)
                                      (r/inject-cofx :gen-id [:navigations])]
   (fn [{:as cofx :keys [db scroll-position id]} [_ match complete!]]
-    (let [match (page-transition/latest-match match complete! (:page/destination cofx))
+    (let [pending (:page/destination cofx)
+          match (page-transition/latest-match match complete! pending)
+          awaiting-commit? (and (:replace-shell? complete!)
+                                (not= (:path match) (get-in db [:common/route :path]))
+                                (= (:path match) (get-in pending [:match :path])))
           navigation-count (get-in id [:id :navigations])
           old-match (:common/route db)
-          new-match (assoc match :controllers
-                           (when @render-context/*interactive?
-                             (rfc/apply-controllers (:controllers old-match) match)))
+          new-match (cond-> match
+                      (not awaiting-commit?)
+                      (assoc :controllers
+                             (when @render-context/*interactive?
+                               (rfc/apply-controllers (:controllers old-match) match))))
           same (fn [& path]
                  (= (get-in new-match path)
                     (get-in old-match path)))]
-      (if-not (and (nil? (get-in db [:state :error-page]))
-                   (same :data :view)
-                   (same :path-params)
-                   (same :query-params) ; causes some trouble with settingsbox getting stuck?
-                   (same :path))
+      (cond
+        awaiting-commit?
+        ;; Code can arrive before the native transition commits its shell.
+        ;; Update that pending destination without publishing it early: the
+        ;; original commit still owns controllers, history and page positioning.
+        {:page/replace-destination match}
+        (not (and (nil? (get-in db [:state :error-page]))
+                  (same :data :view)
+                  (same :path-params)
+                  (same :query-params) ; causes some trouble with settingsbox getting stuck?
+                  (same :path)))
         (cond-> {:db (cond-> (-> db
                    (assoc :common/route new-match)
                    (update-in [:state] dissoc :error-page)  ; reset 404 page in case was triggered
@@ -82,15 +94,16 @@
                    [:page/ready nil complete!])))}
           (:replace-shell? complete!) (assoc :page/replace-destination new-match))
 
-      (let [fragment (-> db :state :fragment)]              ;; matches are equal (fragment not part of match)
-        (if (pos? (count (seq fragment)))
-          {:db (update-in db [:state] dissoc :fragment)
-           :dispatch-n
-           [[:later/dispatch {:ms       200                 ; obv too much. but maybe scroll issues partly from swapper bs?
-                              :dispatch [:scroll/to fragment]}]
-            [:page/ready nil complete!]]}
-          {:dispatch-n [(when (get-in new-match [:data :component-route]) [:navigation/activate-component])
-                        [:page/ready nil complete!]]}))))))
+        :else
+        (let [fragment (-> db :state :fragment)]              ;; matches are equal (fragment not part of match)
+          (if (pos? (count (seq fragment)))
+            {:db (update-in db [:state] dissoc :fragment)
+             :dispatch-n
+             [[:later/dispatch {:ms       200                 ; obv too much. but maybe scroll issues partly from swapper bs?
+                                :dispatch [:scroll/to fragment]}]
+              [:page/ready nil complete!]]}
+            {:dispatch-n [(when (get-in new-match [:data :component-route]) [:navigation/activate-component])
+                          [:page/ready nil complete!]]}))))))
 
 (r/reg-fx :common/navigate-fx!
   (fn [[k & [params query]]]
