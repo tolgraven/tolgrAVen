@@ -20,9 +20,10 @@ It defaults to no action without an explicit command; `plan` only reports.
    mount, backs up fstab and installs the persistent SSD entry. It never formats.
 2. `coolify-storage.py precopy` copies current Docker/Coolify data while services
    remain available. This copy is not authoritative until the offline sync.
-3. Wait for Coolify's deployment queues to drain. `coolify-storage.py migrate`
-   quiesces webhook admission and Horizon workers, refuses active/queued
-   deployments (resuming admission on refusal), records running containers and the scoped
+3. Wait for Coolify's running deployments to finish. `coolify-storage.py migrate`
+   quiesces webhook admission and Horizon workers, refuses active
+   deployments (resuming admission on refusal); queued jobs remain persisted
+   and resume after maintenance. It records running containers and the scoped
    runtime policy, gracefully stops them, stops Docker, syncs again and verifies
    file checksums before switching the bind mounts. It then restarts the same
    containers and runtime policy, then resumes admission/workers. Preexisting

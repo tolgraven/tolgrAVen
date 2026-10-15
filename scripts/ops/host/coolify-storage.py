@@ -128,13 +128,14 @@ def migrate():
 require '/var/www/html/vendor/autoload.php';
 $app=require '/var/www/html/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-if(App\Models\ApplicationDeploymentQueue::whereIn('status',['queued','in_progress'])->exists())exit(42);
+if(App\Models\ApplicationDeploymentQueue::where('status','in_progress')->exists())exit(42);
 """
     check_admission()
     state['phase'] = 'quiescing'
     save(state)
     try:
         quiesce_admission()
+        # Queued jobs remain persisted while admission/workers are paused.
         # Existing jobs may still be running. Abort and resume instead of
         # interrupting them; the operator retries once they have completed.
         subprocess.run(['docker', 'exec', '-i', 'coolify', 'php'], input=probe, text=True, check=True)
