@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Native Chrome captures and exact pixel/geometry comparisons. No browser launch."""
+"""Configured shared Chrome captures and exact pixel/geometry comparisons."""
 import argparse
 import base64
 import binascii
@@ -140,10 +140,10 @@ def geometry_changes(before, after, path=""):
 
 
 class MCP:
-    """Attach to the installed browser using the configured autoConnect server."""
+    """Attach through the configured shared Development Chrome launcher."""
     def __init__(self, command, stderr):
-        if "--autoConnect" not in command or any(arg in ("--no-autoConnect", "--autoConnect=false") for arg in command):
-            raise ValueError("The configured Chrome adapter must retain --autoConnect; browser launching is not supported")
+        if command != [str(Path.home() / ".local/bin/codex-chrome-devtools")]:
+            raise ValueError("Use only ~/.local/bin/codex-chrome-devtools for the shared Development profile")
         self.process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=stderr, text=True)
         self.messages, self.ident, self.page = queue.Queue(), 0, None

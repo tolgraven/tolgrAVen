@@ -70,7 +70,7 @@ bb test:visual capture --origin http://127.0.0.1:4098 \
 
 The runner defaults to a JSON-lines relay through the **existing configured MCP
 session**, creates one owned tab, reuses it and closes it in cleanup. It never
-launches a browser, quits Chrome, clears storage or modifies another tab.
+launches a separate browser, quits Chrome, clears storage or modifies another tab.
 An MCP-capable driver forwards each `{"visual_tool":"tool_name","arguments":{...}}`
 line to its configured Chrome tools and writes the unmodified MCP result back
 as one JSON line. Image blocks stay in the protocol, never the human transcript.
@@ -82,11 +82,11 @@ relay supplies only transport. With an agent exec tool, allocate a task-owned PT
 so stdin remains available between calls. The runner disables echo/canonical mode
 on that PTY to safely accept full screenshot payloads.
 
-Where the configured adapter also supports standalone MCP attachment, optional
-`--mcp-command 'node /path/to/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js --autoConnect'`
-reuses an installed copy. Keep its configured autoConnect/extension environment;
-an ordinary CDP connection is not a substitute for an unavailable extension
-transport. Reconnect installed Chrome and retry if it crashes.
+For standalone attachment use
+`--mcp-command /Users/tol/.local/bin/codex-chrome-devtools`. The runner accepts only
+that configured launcher, which reuses port 9223 and the persistent Development
+profile and opens that same installed Chrome profile if needed. Never substitute
+the daily profile, `--autoConnect` or a throwaway browser after a crash.
 
 Capture waits for native mounting, loaded consumer fonts, decoded images and
 finite motion, then pauses infinite animation clocks at zero before checking

@@ -229,7 +229,7 @@
        (when scroll?
          ;; Native paragraph layout keeps the full footer beyond its real
          ;; observation margin until the case navigates to the page bottom.
-         (for [index (range 40)]
+         (for [index (range 100)]
            ^{:key index}
            [:p "Fixed page context for minimized, restored and bottom-of-page shell states."]))]]
      ;; Production footers are siblings of main. The full footer already owns
