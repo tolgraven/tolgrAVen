@@ -23,6 +23,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - `ops/`: isolated site provisioning and Coolify adapters. `ops/coolify/*.php`
   executes inside the existing Laravel container. Preserve persisted ownership
   markers even when their historical script names differ from current paths.
+  CMS upgrades reconcile the write-token Compose reference on existing services;
+  storing a credential alone does not install it into a running container.
 - `ops/host/`: installed server programs. Keep each program's declared host/service scope, recovery
   metadata, locks, graceful suspension and rollback protections intact. Relocation
   does not authorize running provisioning, seeding, deployment or installation.

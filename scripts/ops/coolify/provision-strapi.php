@@ -124,7 +124,7 @@ try {
         $service=App\Models\Service::whereKey($service->id)->lockForUpdate()->firstOrFail();
         $compose=Symfony\Component\Yaml\Yaml::parse($service->docker_compose_raw);
         $compose['services']['cms']['image']=$image;
-        $keys=['CMS_SITE_MANIFEST','CMS_REBUILD_WEBHOOK_URL','CMS_REBUILD_WEBHOOK_TOKEN',
+        $keys=['CMS_WRITE_TOKEN','CMS_SITE_MANIFEST','CMS_REBUILD_WEBHOOK_URL','CMS_REBUILD_WEBHOOK_TOKEN',
                'CMS_REPROVISION_WEBHOOK_URL','CMS_REPROVISION_WEBHOOK_TOKEN'];
         foreach ($keys as $key) {
             $declaration=$key.'=${'.$key.'}';
