@@ -214,6 +214,15 @@
       ],
       "path": "/fixtures/visual.html?component=comments",
       "action": "document.querySelector('.blog-comment-text .fade-to-black').dispatchEvent(new MouseEvent('mouseover', {bubbles:true})); await new Promise(resolve => setTimeout(resolve, 100)); document.querySelector('[aria-label=\"Show full comment text\"]').click()"
+    },
+    {
+      "id": "comments-expanded-short",
+      "viewport": [
+        400,
+        400
+      ],
+      "path": "/fixtures/visual.html?component=comments",
+      "action": "document.querySelector('.blog-comment-text .fade-to-black').dispatchEvent(new MouseEvent('mouseover', {bubbles:true})); await new Promise(resolve => setTimeout(resolve, 100)); document.querySelector('[aria-label=\"Show full comment text\"]').click()"
     }
   ]
 }

@@ -1,5 +1,8 @@
 """The visual gate must reject a real one-pixel/padding/missing-element change."""
 import importlib.util
+import argparse
+import hashlib
+import json
 from pathlib import Path
 import struct
 import tempfile
@@ -12,6 +15,38 @@ SPEC.loader.exec_module(visual)
 
 
 class VisualTest(unittest.TestCase):
+    def test_below_fold_pixel_and_missing_tile_fail(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suite = root / "suite.json"
+            suite.write_text(json.dumps({"cases": [{"id": "comment"}]}))
+            baseline, actual = root / "baseline", root / "actual"
+            tiles = [{"stem": "comment", "scroll": [0, 0], "document_height": 3},
+                     {"stem": "comment.tile-1", "scroll": [0, 1], "document_height": 3}]
+            for folder in (baseline, actual):
+                folder.mkdir()
+                (folder / "capture.json").write_text(json.dumps({
+                    "suite_sha256": hashlib.sha256(suite.read_bytes()).hexdigest(),
+                    "pixels": True, "raster": visual.RASTER,
+                    "approval": {"reviewer": "comparator test", "reference": "synthetic", "reason": "test"}}))
+                for index, tile in enumerate(tiles):
+                    state = {"environment": {}, "geometry": []}
+                    if not index:
+                        state["tiles"] = tiles
+                    (folder / (tile["stem"] + ".json")).write_text(json.dumps(state))
+                    visual.write_png(folder / (tile["stem"] + ".png"), 1, 2, bytes([42, 23, 63, 255] * 2))
+            args = argparse.Namespace(suite=suite, baseline=baseline, actual=actual, output=root / "report")
+            self.assertEqual(0, visual.compare(args))
+            # Only the second, scrolled viewport changes; the initial image and
+            # every measured element remain identical.
+            visual.write_png(actual / "comment.tile-1.png", 1, 2, bytes([43, 23, 63, 255, 42, 23, 63, 255]))
+            self.assertEqual(1, visual.compare(args))
+            report = json.loads((args.output / "report.json").read_text())
+            self.assertEqual(1, report["cases"][0]["pixels"]["changed_pixels"])
+            self.assertIn("comment.tile-1.diff.png", (args.output / "index.html").read_text())
+            (actual / "comment.tile-1.png").unlink()
+            self.assertEqual(1, visual.compare(args))
+
     def test_identical_pixels_pass_but_one_changed_pixel_fails(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

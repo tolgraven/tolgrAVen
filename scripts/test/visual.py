@@ -20,6 +20,7 @@ import zlib
 
 ROOT = Path(__file__).resolve().parents[2]
 SIGNATURE = b"\x89PNG\r\n\x1a\n"
+RASTER = "overlapping-viewports-v1"
 
 
 def read_png(path):
@@ -247,6 +248,37 @@ class Relay(MCP):
         pass
 
 
+def capture_tiles(client, case, output):
+    """Paint the complete document through real, overlapping viewport captures."""
+    states, tiles, target = [], [], 0
+    for index in range(128):
+        state = client.evaluate("async () => { window.scrollTo({left:0,top:" + str(target) +
+                                ",behavior:'instant'}); await window.visualFixture.ready(); return window.visualFixture.snapshot(); }")
+        width, height = case["viewport"]
+        if state["viewport"] != [width, height, 1] or state.get("errors"):
+            raise RuntimeError(f"{case['id']}: invalid viewport/DPR or fixture readiness errors")
+        x, y, document_height = state["document"]
+        maximum = max(0, document_height - height)
+        if x != 0 or y != target:
+            raise RuntimeError(f"{case['id']}: viewport did not reach requested scroll position {target}: {state['document']}")
+        stem = case["id"] + (f".tile-{index}" if index else "")
+        image = client.call("take_screenshot", format="png")
+        block = next(block for block in image.get("content", []) if block.get("type") == "image")
+        (output / (stem + ".png")).write_bytes(base64.b64decode(block["data"]))
+        states.append(state)
+        tiles.append({"stem": stem, "scroll": [x, y], "document_height": document_height})
+        if y >= maximum:
+            break
+        target = min(maximum, y + max(1, int(height * .8)))
+    else:
+        raise RuntimeError(f"{case['id']}: document exceeds the bounded 128 viewport capture budget")
+    # Keep the initial snapshot canonical; later snapshots detect sticky/scroll
+    # dependent geometry too. A missing tile is a failed comparison.
+    states[0]["tiles"] = tiles
+    for tile, state in zip(tiles, states):
+        (output / (tile["stem"] + ".json")).write_text(json.dumps(state, indent=2) + "\n")
+
+
 def capture(args):
     from urllib.parse import urlparse
     if urlparse(args.origin).hostname not in ("127.0.0.1", "localhost", "::1"):
@@ -300,21 +332,13 @@ def capture(args):
                 client.call("navigate_page", url=args.origin + case["path"])
                 if case.get("action"):
                     client.evaluate("async () => { await window.visualFixture.ready(); " + case["action"] + "; return true; }")
-                state = client.evaluate("async () => { await window.visualFixture.ready(); return window.visualFixture.snapshot(); }")
-                if state["viewport"] != [width, height, 1]:
-                    raise RuntimeError(f"{case['id']}: expected viewport/DPR {[width, height, 1]}, got {state['viewport']}; restore this fixture origin's Chrome zoom to 100%")
-                if state.get("errors"):
-                    raise RuntimeError(f"{case['id']}: fixture readiness errors: {state['errors']}")
-                if not args.geometry_only:
-                    image = client.call("take_screenshot", format="png")
-                    block = next(block for block in image.get("content", []) if block.get("type") == "image")
-                    (args.output / (case["id"] + ".png")).write_bytes(base64.b64decode(block["data"]))
-                (args.output / (case["id"] + ".json")).write_text(json.dumps(state, indent=2) + "\n")
+                capture_tiles(client, case, args.output)
                 print(f"Captured {case['id']}", flush=True)
             metadata = {"schema": 1, "suite_sha256": hashlib.sha256(args.suite.read_bytes()).hexdigest(),
                         "cases": [case["id"] for case in cases],
                         "git_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
-                        "pixels": not args.geometry_only, "approval": None}
+                        "pixels": not args.geometry_only, "raster": RASTER if not args.geometry_only else None,
+                        "approval": None}
             (args.output / "capture.json").write_text(json.dumps(metadata, indent=2) + "\n")
         finally:
             if page is not None:
@@ -343,6 +367,8 @@ def compare(args):
         raise ValueError("Actual captures used a different state/viewport suite")
     if actual_metadata.get("pixels", True) != metadata.get("pixels", True):
         raise ValueError("Actual capture mode differs from the approved baseline")
+    if metadata.get("pixels", True) and (metadata.get("raster") != RASTER or actual_metadata.get("raster") != RASTER):
+        raise ValueError("Raster captures must include the current complete-document viewport tile strategy")
     for case in suite["cases"]:
         ident = case["id"]
         try:
@@ -350,11 +376,30 @@ def compare(args):
             actual = json.loads((args.actual / (ident + ".json")).read_text())
             environment = geometry_changes(expected["environment"], actual["environment"], "environment")
             geometry = geometry_changes(expected["geometry"], actual["geometry"], "geometry")
-            pixels = (compare_pixels(args.baseline / (ident + ".png"), args.actual / (ident + ".png"),
-                                     args.output / (ident + ".diff.png")) if metadata.get("pixels", True)
-                      else {"passed": True, "mode": "geometry-only"})
+            tiles = []
+            if metadata.get("pixels", True):
+                if not expected.get("tiles") or expected["tiles"] != actual.get("tiles"):
+                    raise ValueError("Missing or changed viewport tiles/scroll coverage")
+                for index, tile in enumerate(expected["tiles"]):
+                    stem = tile["stem"]
+                    # Artifact names are derived from the declared case, never
+                    # arbitrary paths supplied by capture metadata.
+                    if stem != ident + (f".tile-{index}" if index else ""):
+                        raise ValueError("Invalid viewport tile artifact name")
+                    before = expected if not index else json.loads((args.baseline / (stem + ".json")).read_text())
+                    after = actual if not index else json.loads((args.actual / (stem + ".json")).read_text())
+                    if index:
+                        environment.extend(geometry_changes(before["environment"], after["environment"], stem + ".environment"))
+                        geometry.extend(geometry_changes(before["geometry"], after["geometry"], stem + ".geometry"))
+                    raster = compare_pixels(args.baseline / (stem + ".png"), args.actual / (stem + ".png"), args.output / (stem + ".diff.png"))
+                    tiles.append({**tile, "pixels": raster})
+                pixels = {"passed": all(tile["pixels"]["passed"] for tile in tiles),
+                          "changed_pixels": sum(tile["pixels"].get("changed_pixels", 0) for tile in tiles),
+                          "total_pixels": sum(tile["pixels"].get("total_pixels", 0) for tile in tiles)}
+            else:
+                pixels = {"passed": True, "mode": "geometry-only"}
             result = {"id": ident, "passed": pixels["passed"] and not geometry and not environment,
-                      "pixels": pixels, "geometry": geometry, "environment": environment}
+                      "pixels": pixels, "tiles": tiles, "geometry": geometry, "environment": environment}
         except (OSError, ValueError, KeyError) as error:
             result = {"id": ident, "passed": False, "error": str(error)}
         results.append(result)
@@ -370,10 +415,11 @@ def compare(args):
     rows = []
     for result in results:
         ident = result["id"]
-        pictures = "".join(f'<figure><figcaption>{label}</figcaption><img src="{html.escape(os.path.relpath(path, args.output))}"></figure>'
-                           for label, path in [("Expected", args.baseline / (ident + ".png")),
-                                               ("Actual", args.actual / (ident + ".png")),
-                                               ("Changed pixels", args.output / (ident + ".diff.png"))] if path.exists())
+        pictures = "".join(f'<figure><figcaption>{html.escape(stem)} — {label}</figcaption><img src="{html.escape(os.path.relpath(path, args.output))}"></figure>'
+                           for tile in result.get("tiles", []) for stem in [tile["stem"]]
+                           for label, path in [("Expected", args.baseline / (stem + ".png")),
+                                               ("Actual", args.actual / (stem + ".png")),
+                                               ("Changed pixels", args.output / (stem + ".diff.png"))] if path.exists())
         rows.append(f"<section><h2>{html.escape(ident)}: {'PASS' if result['passed'] else 'FAIL'}</h2><div class='images'>{pictures}</div><pre>{html.escape(json.dumps(result, indent=2))}</pre></section>")
     (args.output / "index.html").write_text("<!doctype html><meta charset='utf-8'><title>Visual regression report</title><style>body{font:1rem system-ui;margin:2rem} .images{display:flex;gap:1rem;overflow:auto}figure{margin:0;flex:0 0 30%}img{width:100%}pre{white-space:pre-wrap}section{border-bottom:.0625rem solid #888}</style><h1>Pixel and geometry comparison</h1>" + "".join(rows))
     return 0 if report["passed"] else 1

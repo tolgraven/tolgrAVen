@@ -124,6 +124,7 @@
     ready, backgroundURLs,
     snapshot: () => ({
       viewport: [innerWidth, innerHeight, devicePixelRatio],
+      document: [scrollX, scrollY, document.scrollingElement.scrollHeight],
       environment: {userAgent: navigator.userAgent, platform: navigator.platform,
         calendarEpoch: window.visualClockEpoch,
         language: navigator.language, viewport: [innerWidth, innerHeight, devicePixelRatio],

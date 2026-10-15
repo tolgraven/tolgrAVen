@@ -73,6 +73,13 @@ whose painted appearance is under review. Its driver mounts one same-origin
 native fixture frame at a time with exact viewport dimensions, collects its
 actual DOM and removes it before the next state. Raster captures use the actual
 top-level viewport; both modes retain normal component lifecycles.
+Raster mode scrolls the document from its top through overlapping viewports to
+its bottom, saving each viewport's PNG and geometry separately. This covers
+expanded code and trailing text below the fold without a full-page screenshot
+that can change native painting. Reports compare every tile and its scroll
+coverage; a missing tile fails. Nested independently scrolling regions still
+need explicit suite states for their additional positions. The bounded runner
+rejects documents requiring more than 128 tiles.
 
 ## Approve and compare
 
