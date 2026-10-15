@@ -124,8 +124,8 @@ still requires every declared case; missing captures cannot silently pass.
 `--geometry-only` explicitly captures element geometry/computed appearance without
 PNGs for a faster layout-only gate. It must match the approved baseline's mode;
 it cannot silently downgrade a pixel baseline. Use raster captures for states
-whose painted appearance is under review. Its driver mounts one same-origin
-native fixture frame at a time with exact viewport dimensions, collects its
+whose painted appearance is under review. Ordinary geometry cases mount one
+same-origin native fixture frame at a time with exact viewport dimensions, collects its
 actual DOM and removes it before the next state. Raster captures use the actual
 top-level viewport; both modes retain normal component lifecycles.
 Raster mode scrolls the document from its top through overlapping viewports to
@@ -135,6 +135,20 @@ that can change native painting. Reports compare every tile and its scroll
 coverage; a missing tile fails. Nested independently scrolling regions still
 need explicit suite states for their additional positions. The bounded runner
 rejects documents requiring more than 128 tiles.
+
+Native hover cases use the configured Chrome MCP's real `hover` action, including
+in geometry-only mode. These cases run serially in the owned top-level tab while
+ordinary geometry cases keep their existing iframe batching. Before navigation,
+the pointer hovers an observed UID for the test driver's neutral heading. The
+fixture target must initially be unhovered. Its role/name is matched from the
+latest accessibility snapshot and its observed UID is verified against the
+checked-in selector in that document before hovering. No UID is inferred from a
+selector, and no application node is marked, restyled or replaced. Capture then
+requires native `:hover` plus the case's actual sidebar/caption/tooltip result.
+The canonical case state records the semantic target and initial-pointer contract,
+not ephemeral UIDs; comparison rejects missing interaction evidence even when
+geometry matches. Genuine keyboard traversal remains separate from existing
+programmatic focus cases.
 
 ## Native CSS motion contracts
 
@@ -155,7 +169,10 @@ every light-DOM element and standard pseudo, plus stylesheet-declared and
 observed runtime pseudos. A shared style table keeps repeated contracts compact.
 The native stylesheet rules also retain dormant hover/state motion declarations,
 conditional scopes, declaration priority and every keyframe definition. These
-remain comparable even when no captured interaction activates them. Actual triggers prove
+remain comparable even when no captured interaction activates them. This does
+not include arbitrary non-motion endpoint declarations in dormant selectors: for
+example, an unvisited `:hover` color/transform rule needs a real interaction state
+to compare its resulting appearance and native transition keyframes. Actual triggers prove
 only the checked-in interactions. Zero-duration changes, easing/delay/keyframe
 changes, missing triggers and pseudo changes fail exact comparison even when the
 settled geometry and pixels match. Unobservable native start events, inaccessible

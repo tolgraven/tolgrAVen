@@ -94,6 +94,11 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   SPA Back and external Back, looking for flashes, jumps and replayed animations.
   SSR query variants retain separate HTML/state, reuse only matching fresh public
   data, and never extend freshness without a successful provider read.
+- Hover visual states use observed accessibility snapshot UIDs through configured
+  Chrome MCP, verify their native selector/`:hover` result, and park the pointer
+  on task-owned driver markup before navigation. Keep real keyboard traversal
+  distinct from programmatic focus. Dormant motion rules omit ordinary endpoint
+  declarations unless an actual captured state exercises them.
 - Docs visual fixtures require the served snapshot's generated Codox index/topic
   resources. Acquire each new public module's native sheets only in its own case;
   shared-head additions change every case's dormant motion declaration inventory.

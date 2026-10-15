@@ -195,8 +195,8 @@ class MCP:
             arguments["waitForStableDom"] = False
         return self.rpc("tools/call", {"name": name, "arguments": arguments})
 
-    def evaluate(self, function):
-        result = self.call("evaluate_script", function=function)
+    def evaluate(self, function, **arguments):
+        result = self.call("evaluate_script", function=function, **arguments)
         for item in result.get("content", []):
             if item.get("type") == "text":
                 match = re.search(r"```json\s*(.*?)\s*```", item["text"], re.S)
@@ -249,12 +249,60 @@ class Relay(MCP):
         pass
 
 
+def observed_target(client, selector, role, name):
+    """Resolve only UIDs supplied by the latest native accessibility snapshot."""
+    snapshot = client.call("take_snapshot", verbose=True)
+    candidates = []
+    for block in snapshot.get("content", []):
+        if block.get("type") != "text":
+            continue
+        for match in re.finditer(r'^\s*uid=(\S+)\s+(\S+)\s+("(?:\\.|[^"\\])*")', block["text"], re.M):
+            uid, observed_role, encoded_name = match.groups()
+            if observed_role == role and json.loads(encoded_name) == name and uid not in candidates:
+                candidates.append(uid)
+    verified = []
+    for uid in candidates:
+        if client.evaluate("element => element.ownerDocument === document && element.isConnected && "
+                           "element.matches(" + json.dumps(selector) + ")", args=[uid]) is True:
+            verified.append(uid)
+    if len(verified) != 1:
+        raise RuntimeError(f"Expected one observed {role} {name!r} matching {selector}; found {len(verified)}")
+    return verified[0]
+
+
+def park_pointer(client, origin):
+    """Known native pointer position in task-owned driver markup, never app DOM."""
+    client.call("navigate_page", url=origin + "/fixtures/visual-driver.html")
+    uid = observed_target(client, "body > h1", "heading", "Native pointer parking")
+    client.call("hover", uid=uid)
+
+
+def native_hover(client, case):
+    target = case["native_hover"]
+    selector = json.dumps(target["selector"])
+    client.evaluate("async () => { await window.visualFixture.ready(); const element = document.querySelector(" + selector +
+                    "); if (!element || element.matches(':hover')) throw new Error('Native hover target missing or already hovered'); return true; }")
+    uid = observed_target(client, target["selector"], target["role"], target["name"])
+    client.evaluate("() => { window.visualFixture.motion.phase('native-hover'); return true; }")
+    client.call("hover", uid=uid)
+    client.evaluate("async () => { await window.visualFixture.ready(); const element = document.querySelector(" + selector +
+                    "); if (!element?.matches(':hover')) throw new Error('Configured native hover did not reach its target'); " +
+                    target["assert"] + "; return true; }")
+
+
+def hover_contract(case):
+    return {"target": {key: case["native_hover"][key] for key in ("selector", "role", "name")},
+            "pointer_start": "observed driver heading; target initially not hovered"}
+
+
 def capture_tiles(client, case, output):
     """Paint the complete document through real, overlapping viewport captures."""
     states, tiles, target = [], [], 0
     for index in range(128):
         state = client.evaluate("async () => { window.visualFixture.motion.phase('tile-" + str(index) + "'); window.scrollTo({left:0,top:" + str(target) +
                                 ",behavior:'instant'}); await window.visualFixture.ready(); return window.visualFixture.snapshot(); }")
+        if case.get("native_hover"):
+            state["native_hover"] = hover_contract(case)
         width, height = case["viewport"]
         motion_changes(state, state, case["id"])
         if state["viewport"] != [width, height, 1] or state.get("errors"):
@@ -305,14 +353,15 @@ def capture(args):
             if page is None:
                 raise RuntimeError("Cannot identify owned task tab; no existing tab will be modified")
             client.page = page
-            if args.geometry_only:
+            script_cases = [case for case in cases if not case.get("native_hover")]
+            if args.geometry_only and script_cases:
                 # Avoid repeated extension navigation/snapshot overhead. Native
                 # components still render in exact independent viewport realms.
                 client.call("emulate", viewport="1440x1000x1")
                 client.call("navigate_page", url=args.origin + "/fixtures/visual-driver.html")
                 failures = []
-                for start in range(0, len(cases), 4):
-                    batch = cases[start:start + 4]
+                for start in range(0, len(script_cases), 4):
+                    batch = script_cases[start:start + 4]
                     results = client.evaluate("async () => await window.visualDriver.capture(" + json.dumps(batch) + ")")
                     if [result.get("id") for result in results] != [case["id"] for case in batch]:
                         raise ValueError("Native layout driver omitted or reordered declared cases")
@@ -328,14 +377,27 @@ def capture(args):
                             print(f"Captured geometry {case['id']}", flush=True)
                 if failures:
                     raise ValueError("; ".join(failures))
-            for case in ([] if args.geometry_only else cases):
+            standalone = [case for case in cases if case.get("native_hover")] if args.geometry_only else cases
+            for case in standalone:
                 client.call("select_page", pageId=page)
                 width, height = case["viewport"]
                 client.call("emulate", viewport=f"{width}x{height}x1")
+                if case.get("native_hover"):
+                    park_pointer(client, args.origin)
                 client.call("navigate_page", url=args.origin + case["path"])
                 if case.get("action"):
                     client.evaluate("async () => { await window.visualFixture.ready(); window.visualFixture.motion.phase('action'); " + case["action"] + "; return true; }")
-                capture_tiles(client, case, args.output)
+                if case.get("native_hover"):
+                    native_hover(client, case)
+                if args.geometry_only:
+                    state = client.evaluate("async () => { await window.visualFixture.ready(); return window.visualFixture.snapshot(); }")
+                    state["native_hover"] = hover_contract(case)
+                    motion_changes(state, state, case["id"])
+                    if state["viewport"] != case["viewport"] + [1] or state.get("errors"):
+                        raise RuntimeError(case["id"] + ": invalid viewport or native errors")
+                    (args.output / (case["id"] + ".json")).write_text(json.dumps(state, indent=2) + "\n")
+                else:
+                    capture_tiles(client, case, args.output)
                 client.evaluate("() => {window.visualFixture.motion.stop(); return true;}")
                 print(f"Captured {case['id']}", flush=True)
             metadata = {"schema": 1, "suite_sha256": hashlib.sha256(args.suite.read_bytes()).hexdigest(),
@@ -401,6 +463,9 @@ def compare(args):
         try:
             expected = json.loads((args.baseline / (ident + ".json")).read_text())
             actual = json.loads((args.actual / (ident + ".json")).read_text())
+            if case.get("native_hover") and any(state.get("native_hover") != hover_contract(case)
+                                                for state in (expected, actual)):
+                raise ValueError("Missing or changed native hover interaction evidence")
             environment = geometry_changes(expected["environment"], actual["environment"], "environment")
             geometry = geometry_changes(expected["geometry"], actual["geometry"], "geometry")
             motion = motion_changes(expected, actual, ident) if motion_version else []

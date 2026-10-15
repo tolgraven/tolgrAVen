@@ -14,7 +14,166 @@ visual = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(visual)
 
 
+def hover_case():
+    return {'id': 'native-edit-hover', 'viewport': [400, 800], 'path': '/fixtures/visual.html?component=comments-auth',
+            'native_hover': {'selector': '.native-edit', 'role': 'button', 'name': 'Edit comment',
+                             'assert': "if (!document.querySelector('[role=tooltip]')) throw new Error('Missing native tooltip')"}}
+
+
+class HoverClient:
+    """Fake only the MCP transport; assertions exercise the real capture protocol."""
+    def __init__(self, target_mode='normal', initially_hovered=False, hover_reached=True, gaps=None, wrong_viewport=False):
+        self.calls = []
+        self.target_mode = target_mode
+        self.initially_hovered = initially_hovered
+        self.hover_reached = hover_reached
+        self.gaps = gaps or []
+        self.wrong_viewport = wrong_viewport
+        self.url = 'about:blank'
+        self.viewport = [400, 800, 1]
+
+    def call(self, name, **arguments):
+        self.calls.append((name, arguments))
+        if name == 'new_page':
+            return {'content': [{'type': 'text', 'text': '73: about:blank [selected]'}]}
+        if name == 'navigate_page': self.url = arguments['url']
+        if name == 'emulate': self.viewport = [int(value) for value in arguments['viewport'].split('x')]
+        if name == 'take_snapshot':
+            if self.url.endswith('visual-driver.html'):
+                text = 'uid=observed-parking heading "Native pointer parking" level="1"'
+            elif self.target_mode == 'missing': text = 'uid=observed-unrelated button "Another action"'
+            else: text = 'uid=observed-decoy button "Edit comment"\n  uid=observed-edit button "Edit comment"'
+            return {'content': [{'type': 'text', 'text': text}]}
+        return {}
+
+    def state(self, viewport=None):
+        return {'viewport': viewport or ([401, 800, 1] if self.wrong_viewport else self.viewport), 'errors': [],
+                'geometry': [], 'motion': {'version': visual.MOTION, 'properties': [], 'styles': [],
+                                         'declarations': [], 'sourceRules': [], 'triggered': [], 'gaps': self.gaps}}
+
+    def evaluate(self, function, **arguments):
+        self.calls.append(('evaluate_script', {'function': function, **arguments}))
+        if 'args' in arguments:
+            uid = arguments['args'][0]
+            if uid == 'observed-parking': return True
+            return self.target_mode == 'ambiguous' or (uid == 'observed-edit' and self.target_mode != 'wrong-selector')
+        if 'Native hover target missing' in function and self.initially_hovered:
+            raise RuntimeError('Native hover target missing or already hovered')
+        if 'Configured native hover did not reach' in function and not self.hover_reached:
+            raise RuntimeError('Configured native hover did not reach its target')
+        if 'visualDriver.capture' in function:
+            cases = json.loads(function.split('capture(', 1)[1].rsplit(')', 1)[0])
+            return [{'id': case['id'], 'state': self.state(case['viewport'] + [1])} for case in cases]
+        if 'visualFixture.snapshot()' in function: return self.state()
+        return True
+
+    def close(self): self.calls.append(('disconnect', {}))
+
+
 class VisualTest(unittest.TestCase):
+    def test_observed_hover_uid_requires_snapshot_role_name_and_native_selector_identity(self):
+        client = HoverClient()
+        uid = visual.observed_target(client, '.native-edit', 'button', 'Edit comment')
+        self.assertEqual('observed-edit', uid)
+        evaluations = [arguments['args'] for name, arguments in client.calls if name == 'evaluate_script' and 'args' in arguments]
+        self.assertEqual([['observed-decoy'], ['observed-edit']], evaluations)
+        self.assertFalse(any(name == 'hover' for name, _ in client.calls))
+        for mode in ('missing', 'ambiguous', 'wrong-selector'):
+            client = HoverClient(target_mode=mode)
+            with self.assertRaisesRegex(RuntimeError, 'Expected one observed'):
+                visual.observed_target(client, '.native-edit', 'button', 'Edit comment')
+            self.assertFalse(any(name == 'hover' for name, _ in client.calls))
+
+    def test_native_hover_parks_real_pointer_then_verifies_native_state_without_dom_marking(self):
+        client = HoverClient()
+        visual.park_pointer(client, 'http://127.0.0.1:4098')
+        client.call('navigate_page', url='http://127.0.0.1:4098/fixtures/visual.html?component=comments-auth')
+        visual.native_hover(client, hover_case())
+        moves = [arguments['uid'] for name, arguments in client.calls if name == 'hover']
+        self.assertEqual(['observed-parking', 'observed-edit'], moves)
+        phases = [index for index, (name, arguments) in enumerate(client.calls)
+                  if name == 'evaluate_script' and "phase('native-hover')" in arguments['function']]
+        final_hover = max(index for index, (name, _) in enumerate(client.calls) if name == 'hover')
+        self.assertLess(phases[0], final_hover)
+        scripts = '\n'.join(arguments['function'] for name, arguments in client.calls if name == 'evaluate_script')
+        self.assertIn("element.matches(':hover')", scripts)
+        self.assertNotRegex(scripts, r'dispatchEvent|setAttribute|innerHTML|\.style\s*=|classList\.(add|remove)')
+        for options, message in [({'initially_hovered': True}, 'already hovered'),
+                                 ({'hover_reached': False}, 'did not reach')]:
+            client = HoverClient(**options)
+            with self.assertRaisesRegex(RuntimeError, message):
+                visual.native_hover(client, hover_case())
+            if options.get('initially_hovered'):
+                self.assertFalse(any(name == 'hover' for name, _ in client.calls))
+
+    def test_hover_cases_use_one_standalone_owned_tab_in_geometry_mode_and_preserve_script_batching(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suite = root / 'suite.json'
+            suite.write_text(json.dumps({'cases': [{'id': 'ordinary', 'viewport': [400, 800]}, hover_case()]}))
+            args = argparse.Namespace(suite=suite, origin='http://127.0.0.1:4098', output=root / 'capture',
+                                      case=[], geometry_only=True, mcp_command=None)
+            client = HoverClient()
+            with patch.object(visual, 'Relay', return_value=client):
+                visual.capture(args)
+            batches = [arguments['function'] for name, arguments in client.calls
+                       if name == 'evaluate_script' and 'visualDriver.capture' in arguments['function']]
+            self.assertEqual(1, len(batches)); self.assertIn('ordinary', batches[0]); self.assertNotIn('native-edit-hover', batches[0])
+            self.assertEqual(1, sum(name == 'new_page' for name, _ in client.calls))
+            self.assertEqual(1, sum(name == 'close_page' for name, _ in client.calls))
+            state = json.loads((args.output / 'native-edit-hover.json').read_text())
+            self.assertEqual([400, 800, 1], state['viewport'])
+            self.assertEqual('.native-edit', state['native_hover']['target']['selector'])
+            self.assertNotIn('observed-edit', json.dumps(state), 'Ephemeral snapshot IDs cannot change a repeat comparison')
+            self.assertEqual(('navigate_page', {'pageId': 73, 'type': 'url', 'url': 'about:blank'}), client.calls[-3])
+            self.assertTrue((args.output / 'ordinary.json').exists())
+
+    def test_native_hover_capture_keeps_strict_motion_gaps_and_viewport_failures(self):
+        from unittest.mock import patch
+        for options, message in [({'gaps': ['missing start']}, 'incomplete CSS'),
+                                 ({'wrong_viewport': True}, 'invalid viewport')]:
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                suite = root / 'suite.json'; suite.write_text(json.dumps({'cases': [hover_case()]}))
+                args = argparse.Namespace(suite=suite, origin='http://127.0.0.1:4098', output=root / 'capture',
+                                          case=[], geometry_only=True, mcp_command=None)
+                client = HoverClient(**options)
+                with patch.object(visual, 'Relay', return_value=client):
+                    with self.assertRaisesRegex((ValueError, RuntimeError), message):
+                        visual.capture(args)
+                self.assertFalse((args.output / 'capture.json').exists())
+                self.assertEqual('about:blank', client.calls[-3][1]['url'])
+
+    def test_hover_comparison_requires_native_interaction_evidence_even_when_geometry_matches(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case = hover_case()
+            suite = root / 'suite.json'; suite.write_text(json.dumps({'cases': [case]}))
+            baseline, actual = root / 'baseline', root / 'actual'
+            state = {'environment': {}, 'geometry': [], 'native_hover': visual.hover_contract(case)}
+            metadata = {'suite_sha256': hashlib.sha256(suite.read_bytes()).hexdigest(), 'pixels': False,
+                        'approval': {'reviewer': 'test', 'reference': 'synthetic', 'reason': 'test'}}
+            for folder in (baseline, actual):
+                folder.mkdir(); (folder / 'capture.json').write_text(json.dumps(metadata))
+                (folder / (case['id'] + '.json')).write_text(json.dumps(state))
+            args = argparse.Namespace(suite=suite, baseline=baseline, actual=actual, output=root / 'report', require_motion=False)
+            self.assertEqual(0, visual.compare(args))
+            state.pop('native_hover')
+            (actual / (case['id'] + '.json')).write_text(json.dumps(state))
+            self.assertEqual(1, visual.compare(args))
+            report = json.loads((args.output / 'report.json').read_text())
+            self.assertIn('native hover interaction evidence', report['cases'][0]['error'])
+
+    def test_evaluate_forwards_only_observed_uid_arguments_through_configured_mcp(self):
+        client = object.__new__(visual.MCP)
+        calls = []
+        client.call = lambda name, **arguments: calls.append((name, arguments)) or {
+            'content': [{'type': 'text', 'text': '```json\ntrue\n```'}]}
+        self.assertTrue(client.evaluate('element => element.isConnected', args=['observed-uid']))
+        self.assertEqual([('evaluate_script', {'function': 'element => element.isConnected',
+                                              'args': ['observed-uid']})], calls)
+
     def test_failed_capture_releases_its_owned_page_before_chrome_refuses_last_close(self):
         from unittest.mock import patch
         calls = []
