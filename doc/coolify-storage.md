@@ -46,18 +46,19 @@ Install `coolify-storage-cleanup.py` beside the migration tool and the matching
 service/timer from `scripts/ops/host/` into `/etc/systemd/system/`, then run
 `systemctl daemon-reload` and `systemctl enable --now coolify-storage-cleanup.timer`.
 
-The daily timer runs at 04:15 UTC with up to 30 minutes of randomized delay,
+The timer runs every six hours at 00:15, 06:15, 12:15 and 18:15 UTC,
+with up to ten minutes of randomized delay,
 catching missed runs after boot. A shared lock prevents cleanup during migration;
 cleanup also refuses an unverified migration phase. Run the Python tool without
 `--apply` to inspect its plan. Applied maintenance:
 
 - Removes only immutable tolgrAVen production/staging/CMS image references older
-  than seven days, retaining the newest three images per repository and every
+  than 24 hours, retaining the newest three images per repository and every
   image referenced by any container, including stopped containers.
 - Preserves `latest`, infrastructure images and unrelated repositories. Image
   deletion never uses force; container ownership is checked again before each.
-- Prunes unused build cache older than 24 hours with an 8 GB target, plus dangling
-  images older than seven days. In-use records are protected by Docker.
+- Prunes unused build cache older than six hours with an 8 GB target, plus dangling
+  images older than 24 hours. In-use records are protected by Docker.
 - Never prunes containers, networks or data volumes. Existing bounded Docker log
   rotation stays in place. Registry/S3 rollback artifacts are outside this policy.
 

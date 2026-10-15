@@ -10,7 +10,7 @@ import subprocess
 
 APPLICATIONS = {'bsok8o8csgso8c00g00k0csg', 'o84wgo08wcs048ss8sokgkgw'}
 CMS = {'127.0.0.1:5005/tolgraven/strapi', 'registry.bux.tolgraven.se/tolgraven/strapi'}
-AGE = dt.timedelta(days=7)
+AGE = dt.timedelta(hours=24)
 KEEP = 3
 
 
@@ -61,7 +61,7 @@ def main():
         images = inspect('image', sorted(set(ids)))
         containers = inspect('container', docker('ps', '-aq', '--no-trunc').split())
         tags = candidates(images, containers, dt.datetime.now(dt.timezone.utc))
-        print(json.dumps({'apply': args.apply, 'image_references': tags, 'retention_days': AGE.days, 'keep_per_repository': KEEP}), flush=True)
+        print(json.dumps({'apply': args.apply, 'image_references': tags, 'retention_hours': int(AGE.total_seconds() / 3600), 'keep_per_repository': KEEP}), flush=True)
         if not args.apply:
             return
         for tag in tags:
@@ -76,8 +76,8 @@ def main():
                 print('Retained image after concurrent reference or deletion failure:', tag, flush=True)
         # Docker protects in-use cache records. Named/active images and all
         # containers, networks and data volumes remain outside these prune calls.
-        print(docker('buildx', 'prune', '--force', '--filter', 'until=24h', '--max-used-space', '8GB'), flush=True)
-        print(docker('image', 'prune', '--force', '--filter', 'until=168h'), flush=True)
+        print(docker('buildx', 'prune', '--force', '--filter', 'until=6h', '--max-used-space', '8GB'), flush=True)
+        print(docker('image', 'prune', '--force', '--filter', 'until=24h'), flush=True)
 
 
 if __name__ == '__main__':

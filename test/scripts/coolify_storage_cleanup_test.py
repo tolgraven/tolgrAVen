@@ -19,7 +19,8 @@ class CleanupTest(unittest.TestCase):
     def test_preserves_three_rollbacks_recent_images_and_all_container_references(self):
         images = [image(i, i) for i in range(1, 11)]
         tags = cleanup.candidates(images, [{'Image': '9'}], NOW)
-        self.assertEqual(tags, [images[7]['RepoTags'][0], images[9]['RepoTags'][0]])
+        self.assertEqual(tags, [images[i - 1]['RepoTags'][0] for i in [4, 5, 6, 7, 8, 10]])
+        self.assertEqual(cleanup.candidates([image(i, i / 24) for i in range(1, 11)], [], NOW), [])
 
     def test_preserves_unrelated_and_mutable_tags(self):
         self.assertFalse(cleanup.managed('postgres:15'))

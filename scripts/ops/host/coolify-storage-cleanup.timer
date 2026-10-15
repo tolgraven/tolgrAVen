@@ -1,9 +1,9 @@
 [Unit]
-Description=Daily cleanup of old unused Coolify deployment artifacts
+Description=Periodic cleanup of old unused Coolify deployment artifacts
 
 [Timer]
-OnCalendar=*-*-* 04:15:00 UTC
-RandomizedDelaySec=30min
+OnCalendar=*-*-* 00,06,12,18:15:00 UTC
+RandomizedDelaySec=10min
 Persistent=true
 Unit=coolify-storage-cleanup.service
 
