@@ -88,7 +88,7 @@
          :props {:style {"--comment-reveal-delay" (str (* 48 index) "ms")}}
          :children [[:div {:style {:height "4rem"}} (str "Reply " index)]]}])]]]))
 
-(defn- <thread-handoff> [*ready? *expanded?]
+(defn- <thread-handoff> [*ready? *expanded? & [delay-ms]]
   [:section.blog-comments
    [:div.blog-comments-inner
     [comment-views/<reply-thread>
@@ -98,6 +98,7 @@
          [comment-views/<reply-row>
           {:expanded? @*expanded?
            :appear {:class "reply-height", :settle-offscreen? true, :restore? false}
+           :props {:style {"--comment-reveal-delay" (str (or delay-ms 0) "ms")}}
            :children [[:div {:style {:height "4rem"}} "Arriving reply"]]}])]
       (when (or (not @*ready?) (not @*expanded?))
         ^{:key :collapsed}
@@ -135,6 +136,40 @@
                   (let [samples (await! (sample! element 420))]
                     (is (every? #(>= (:outer %) (- initial 0.5)) samples)))
                   (is (identical? row (.querySelector element ".blog-comment-reply-row")))))
+              (finally (close!) (reset! restore/*context context)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest arriving-replies-retain-a-placeholder-during-a-shortened-reverse
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture!))
+                context @restore/*context
+                *ready? (r/atom false)
+                *expanded? (r/atom true)]
+            (try
+              (restore/begin! {})
+              (await! (support/render! root [<thread-handoff> *ready? *expanded? 48]))
+              (let [outer (.querySelector element ".blog-comment-reply-outer")
+                    placeholder (.closest (.querySelector outer ".blog-comment-collapsed-placeholder")
+                                          ".blog-comment-reply")
+                    initial (.-height (.getBoundingClientRect outer))]
+                ;; Reverse at the first running entrance frame, as a nested
+                ;; cached thread can do. Native CSS shortens the reversed exit.
+                (loop [attempt 0]
+                  (when (and (< attempt 30) (empty? (array-seq (.getAnimations placeholder))))
+                    (await! (js/Promise. js/requestAnimationFrame))
+                    (recur (inc attempt))))
+                (is (some #(= "running" (.-playState %)) (array-seq (.getAnimations placeholder)))
+                    "The placeholder has an actual unfinished native entrance")
+                (reset! *ready? true)
+                (r/flush)
+                (let [samples (await! (sample! element 420))]
+                  (is (every? #(>= (:outer %) (- initial 0.5)) samples)
+                      "A shortened reverse cannot remove the initial footprint before the arriving reply grows")
+                  (is (some #(< initial (:outer %) (- (:outer (last samples)) 1)) samples)
+                      "The native reply still grows through intermediate heights"))
+                (is (nil? (.querySelector outer ".blog-comment-collapsed-placeholder"))))
               (finally (close!) (reset! restore/*context context)))))
         (.catch #(is false (str %)))
         (.finally done))))

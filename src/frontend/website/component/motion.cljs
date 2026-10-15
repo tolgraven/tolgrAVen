@@ -73,6 +73,12 @@
     (reduce max 0 (map-indexed (fn [i duration]
                                 (+ duration (nth delays (mod i (count delays))))) durations))))
 
+(def exit-options-schema
+  [:map
+   [:?class [:or :string :keyword [:sequential [:or :string :keyword]]]]
+   [:?timeout-ms [:and number? [:>= 0]]]
+   [:?retain-layout? :boolean]])
+
 (defn finish-animation!
   "Wait for root animations/transitions, bounded even for paused/infinite CSS.
    Cleanup cancels completion, not the browser's styles, so re-entry can reverse."
@@ -97,12 +103,16 @@
                                                       (when (js/isFinite end) end)))) animations))
                          timeout (or (:timeout-ms options) (max 50 (+ duration' 100)))]
                      (reset! *timer (js/setTimeout done! (min 10000 timeout)))
-                     (if (seq animations)
+                     (cond
+                       (zero? duration') (done!)
+                       ;; A reversed entrance can finish before an arriving
+                       ;; sibling paints. Layout placeholders keep the existing
+                       ;; bounded CSS exit window, even if its clock shortens.
+                       (:retain-layout? options) nil
+                       (seq animations)
                        (-> (js/Promise.allSettled (into-array (map #(.-finished %) animations)))
                            (.then (fn [_] (done!))))
-                       ;; An already-hidden root may have no native transition.
-                       ;; Keep its declared exit window for the arriving layout.
-                       (when (zero? duration') (done!)))))))]
+                       (.-getAnimations element) (done!))))))]
     #(do (reset! *active? false)
          (js/cancelAnimationFrame frame)
          (when @*timer (js/clearTimeout @*timer)))))

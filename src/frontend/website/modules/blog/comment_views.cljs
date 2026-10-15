@@ -81,7 +81,7 @@
        (case vote :up "+" :down "-")])))
 
 (defc <collapsed-reply-view>
-  {:features [[:appear "zoom-y"] [:exit {:class "zoom-y faster"}]]}
+  {:features [[:appear "zoom-y"] [:exit {:class "zoom-y faster", :retain-layout? true}]]}
   [{:keys [path comments reply-count loading?] :as spec}]
   [:div.blog-comment-reply.flex
    {:style {:cursor "zoom-in"
