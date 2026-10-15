@@ -152,7 +152,9 @@
     };
   }
   function imageRequired(image, win = window) {
-    if (image.loading !== 'lazy' || image.complete || image.currentSrc) return true;
+    // A selected/cached currentSrc does not release Chrome's native lazy-load gate.
+    // Each visible tile waits again after scrolling brings the image into view.
+    if (image.loading !== 'lazy' || image.complete) return true;
     const box = image.getBoundingClientRect();
     return box.width > 0 && box.height > 0 && box.bottom > 0 && box.right > 0 &&
       box.top < win.innerHeight && box.left < win.innerWidth;

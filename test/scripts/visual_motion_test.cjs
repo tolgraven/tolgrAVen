@@ -9,7 +9,7 @@ function fixture() {
   return window.visualFixture;
 }
 
-test('readiness waits eager, visible and acquired images while respecting offscreen lazy loading', () => {
+test('readiness waits eager and visible images while respecting the native offscreen lazy gate', () => {
   const {imageRequired} = fixture();
   const viewport = {innerWidth: 400, innerHeight: 800};
   const image = {loading: 'lazy', complete: false, currentSrc: '',
@@ -17,8 +17,8 @@ test('readiness waits eager, visible and acquired images while respecting offscr
   assert.equal(imageRequired(image, viewport), false);
   image.loading = 'eager';
   assert.equal(imageRequired(image, viewport), true);
-  image.loading = 'lazy'; image.currentSrc = '/acquired.webp';
-  assert.equal(imageRequired(image, viewport), true);
+  image.loading = 'lazy'; image.currentSrc = '/selected-cached.webp'; image.naturalWidth = 32;
+  assert.equal(imageRequired(image, viewport), false, 'Chrome can select a cached candidate without releasing an offscreen lazy gate');
   image.currentSrc = ''; image.complete = true;
   assert.equal(imageRequired(image, viewport), true, 'Loaded or failed lazy images still receive decode/error checks');
   image.complete = false;

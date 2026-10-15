@@ -90,8 +90,9 @@ the daily profile, `--autoConnect` or a throwaway browser after a crash.
 
 Capture waits for native mounting, loaded consumer fonts, decoded required images and
 finite motion, then pauses infinite animation clocks at zero before checking
-stable geometry/computed appearance. Eager, already acquired and visible lazy
-images must decode; offscreen lazy images retain native loading policy. Each
+stable geometry/computed appearance. Eager, completed and visible lazy
+images must decode; offscreen pending lazy images retain native loading policy.
+A selected `currentSrc` or cached dimensions alone do not release Chrome’s lazy gate. Each
 readiness call, including every scroll tile, reevaluates their visibility and
 acquisition. This prevents an offscreen footer from blocking a scroll that would
 otherwise acquire its lazy images. A fading caret otherwise never has stable
