@@ -67,7 +67,9 @@
         try {
           const effect = animation.effect;
           const target = effect.target?.element || effect.target;
-          const pseudo = effect.pseudoElement || effect.target?.type || null;
+          // Only CSSPseudoElement wrappers use type as a pseudo selector;
+          // ordinary controls expose unrelated button/input type attributes.
+          const pseudo = effect.pseudoElement || (effect.target?.element && effect.target.type) || null;
           if (pseudo) pseudoElements.add(pseudo);
           if (triggered.length >= 4096) throw new Error('CSS motion observation exceeds 4096 instances');
           triggered.push(canonical({phase, target: elementPath(target), pseudo, kind,
@@ -96,7 +98,7 @@
             (animation instanceof CSSAnimation || animation instanceof CSSTransition) &&
             (animation.animationName || animation.transitionProperty) === name &&
             elementPath(nativeTarget) === target &&
-            (effect.pseudoElement || effect.target?.type || null) === (event.pseudoElement || null);
+            (effect.pseudoElement || (effect.target?.element && effect.target.type) || null) === (event.pseudoElement || null);
         });
         if (!parked && !triggered.some(entry => entry.target === target && entry.name === name &&
           entry.pseudo === (event.pseudoElement || null)))

@@ -69,6 +69,48 @@ test('native CSS definitions are captured before settlement, with pseudo targets
   observer.stop(); assert.equal(disconnected, true); assert.equal(listeners.size, 0); assert.equal(frames.size, 0);
 });
 
+test('native form-control types are not pseudo targets, including parked start matching', () => {
+  const {createMotionObserver} = fixture();
+  const listeners = new Map();
+  class CSSAnimation {}
+  class CSSTransition {}
+  const cases = [
+    {element: {nodeType: 1, localName: 'button', type: 'button'}, pseudo: null},
+    {element: {nodeType: 1, localName: 'input', type: 'text'}, pseudo: null},
+    {element: {nodeType: 1, localName: 'span'}, wrapper: '::before', pseudo: '::before'},
+    {element: {nodeType: 1, localName: 'figure'}, wrapper: '::before', explicit: '::after', pseudo: '::after'}
+  ];
+  const active = cases.map(value => Object.assign(new CSSTransition(), {
+    transitionProperty: 'opacity', playState: 'paused', playbackRate: 1,
+    effect: {target: value.wrapper ? {element: value.element, type: value.wrapper} : value.element,
+      pseudoElement: value.explicit || null, composite: 'replace', iterationComposite: 'replace',
+      getTiming: () => ({duration: 150, iterations: 1}),
+      getKeyframes: () => [{offset: 0, opacity: '0'}, {offset: 1, opacity: '1'}]}
+  }));
+  const win = {document: {getAnimations: () => active, querySelectorAll: () => [],
+    addEventListener: (name, fn) => listeners.set(name, fn),
+    removeEventListener: name => listeners.delete(name)},
+    CSSAnimation, CSSTransition,
+    MutationObserver: class {observe() {} disconnect() {}},
+    requestAnimationFrame: () => 1, cancelAnimationFrame() {}};
+  const observer = createMotionObserver(win);
+  const starts = () => cases.forEach(value => listeners.get('transitionrun')({
+    type: 'transitionrun', target: value.element, propertyName: 'opacity', pseudoElement: value.pseudo || ''
+  }));
+  try {
+    starts();
+    assert.deepEqual(JSON.parse(JSON.stringify(observer.snapshot().gaps)), [],
+      'An available parked definition matches the native start target');
+    active.forEach(animation => { animation.playState = 'running'; });
+    starts();
+    const snapshot = JSON.parse(JSON.stringify(observer.snapshot()));
+    assert.deepEqual(snapshot.gaps, [], 'Captured native starts match their real element or pseudo wrapper');
+    assert.deepEqual(snapshot.triggered.map(value => [value.target, value.pseudo]).sort(),
+      cases.map(value => [value.element.localName + ':nth-child(1)', value.pseudo]).sort());
+  } finally { observer.stop(); }
+  assert.equal(listeners.size, 0);
+});
+
 test('unobservable native starts are explicit gaps rather than motion passes', () => {
   const {createMotionObserver} = fixture();
   const callbacks = {};
