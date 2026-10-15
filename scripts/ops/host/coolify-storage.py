@@ -180,10 +180,24 @@ echo json_encode(App\Models\ApplicationDeploymentQueue::where('status','in_progr
     save(state)
     # On failure originals remain intact. Do not restart Docker against a partial copy.
     copy_data(final=True)
+    state['phase'] = 'synced'
+    save(state)
+    finish_migration(state)
+
+
+def finish_migration(state):
+    verify_volume()
+    if state['phase'] != 'synced':
+        raise RuntimeError('A successful authoritative checksum sync is required')
+    if subprocess.run(['systemctl', 'is-active', '--quiet', 'docker.service']).returncode == 0:
+        raise RuntimeError('Docker must remain stopped until the verified mount switch')
+    # --checksum already compared unchanged contents; rsync also verifies every
+    # transferred file. With both trees quiescent, verify metadata/coverage here
+    # instead of rereading the entire immutable graph a second time.
     for source in SOURCES:
-        differences = run('rsync', '-aHAXxnc', '--numeric-ids', '--delete', '--itemize-changes', source + '/', str(destination(source)) + '/', capture=True)
+        differences = run('rsync', '-aHAXxn', '--numeric-ids', '--delete', '--itemize-changes', source + '/', str(destination(source)) + '/', capture=True)
         if differences.strip():
-            raise RuntimeError('Offline checksum verification failed; originals retained')
+            raise RuntimeError('Offline metadata verification failed; originals retained')
     fstab = Path('/etc/fstab')
     text = fstab.read_text()
     for source in SOURCES:
@@ -243,14 +257,14 @@ def retire_originals():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['plan', 'prepare', 'precopy', 'migrate', 'resume-cutover', 'retire-originals'])
+    parser.add_argument('action', choices=['plan', 'prepare', 'precopy', 'migrate', 'resume-cutover', 'resume-after-sync', 'retire-originals'])
     args = parser.parse_args()
     if args.action == 'plan':
         print(json.dumps({'device': DEVICE, 'mount': str(VOLUME), 'moves': {s: str(destination(s)) for s in SOURCES}, 'state': json.loads(STATE.read_text()) if STATE.exists() else None}, indent=2))
         return
     with open('/run/lock/tolgraven-storage.lock', 'w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        {'prepare': prepare, 'precopy': copy_data, 'migrate': migrate, 'resume-cutover': lambda: migrate(resume=True), 'retire-originals': retire_originals}[args.action]()
+        {'prepare': prepare, 'precopy': copy_data, 'migrate': migrate, 'resume-cutover': lambda: migrate(resume=True), 'resume-after-sync': lambda: finish_migration(json.loads(STATE.read_text())), 'retire-originals': retire_originals}[args.action]()
 
 
 if __name__ == '__main__':

@@ -25,7 +25,9 @@ It defaults to no action without an explicit command; `plan` only reports.
    deployments to finish (resuming admission on failure); queued jobs remain persisted
    and resume after maintenance. It records running containers and the scoped
    runtime policy, gracefully stops them, stops Docker, syncs again and verifies
-   file checksums before switching the bind mounts. It then restarts the same
+   file contents by checksum plus a read-only metadata/coverage pass before
+   switching the bind mounts. Rsync verifies transferred files itself; a second
+   full content read is unnecessary while both trees remain quiescent. It then restarts the same
    containers and runtime policy, then resumes admission/workers. Preexisting
    maintenance/paused workers require manual inspection. This step requires a
    short maintenance window.
@@ -42,7 +44,9 @@ originals remain at `/var/lib/docker.before-ssd` and `/data/coolify.before-ssd`
 until verification. Do not rerun a partially completed cutover blindly. On error,
 inspect its phase, current mounts and containers first. If the supervised process
 ended during `quiescing`, `coolify-storage.py resume-cutover` continues that owned
-maintenance phase without unpausing queued jobs. It refuses later copy/mount phases.
+maintenance phase without unpausing queued jobs. It refuses later copy/mount phases. After an explicitly confirmed successful
+authoritative checksum sync, `resume-after-sync` accepts only the recorded
+`synced` phase with Docker stopped. Never mark an incomplete copy synced.
 Before retiring originals,
 rollback requires Docker stopped, new bind mounts unmounted, original directories
 restored, original fstab restored from `/etc/fstab.before-tolgraven-storage`, and
