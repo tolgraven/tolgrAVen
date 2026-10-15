@@ -57,5 +57,17 @@ class StorageGuardsTest(unittest.TestCase):
             operation.assert_not_called()
 
 
+    def test_resume_retains_service_already_stopped_by_migration(self):
+        with tempfile.TemporaryDirectory() as folder:
+            state = Path(folder) / 'state.json'
+            state.write_text(json.dumps({'phase': 'quiescing', 'services': ['tolgraven-runtime-policy.service']}))
+            def status(args, **kwargs):
+                return subprocess.CompletedProcess(args, 3 if args[0] == 'systemctl' else 0, stdout='[]')
+            with patch.object(storage, 'STATE', state), patch.object(storage, 'verify_volume'), patch.object(storage, 'quiesce_admission'), patch.object(storage.subprocess, 'run', side_effect=status), patch.object(storage, 'run', return_value='') as operation, patch.object(storage, 'copy_data'), patch.object(storage, 'finish_migration'):
+                storage.migrate(resume=True)
+                self.assertEqual(json.loads(state.read_text())['services'], ['tolgraven-runtime-policy.service'])
+                operation.assert_any_call('systemctl', 'stop', 'tolgraven-runtime-policy.service')
+
+
 if __name__ == '__main__':
     unittest.main()

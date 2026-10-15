@@ -166,8 +166,9 @@ echo json_encode(App\Models\ApplicationDeploymentQueue::where('status','in_progr
         state['phase'] = 'prepared'
         save(state)
         raise
-    state['services'] = [unit for unit in ['tolgraven-runtime-policy.service', 'coolify-site-runtime-policy.service']
-                         if subprocess.run(['systemctl', 'is-active', '--quiet', unit]).returncode == 0]
+    active_services = {unit for unit in ['tolgraven-runtime-policy.service', 'coolify-site-runtime-policy.service']
+                       if subprocess.run(['systemctl', 'is-active', '--quiet', unit]).returncode == 0}
+    state['services'] = sorted(set(state.get('services', [])) | active_services)
     save(state)
     for unit in state['services']:
         run('systemctl', 'stop', unit)
