@@ -174,6 +174,11 @@
                 transport (transport-fixture! module spec)
                 stop-capture! (capture/connect!)
                 stop-record! (capture/start!)]
+            ;; The full suite's result document can be much taller than a
+            ;; viewport. This case explicitly covers visible SSR, not a later
+            ;; offscreen entrance waiting on the controlled observer fixture.
+            (set! (.-cssText (.-style element))
+                  "position:fixed;top:1rem;left:1rem;width:20rem;z-index:99999")
             (.appendChild (.-body js/document) element)
             (try
               (r/dispatch [:state [:viewport-fixture] nil])
@@ -204,6 +209,11 @@
                 (is (identical? article (.querySelector element "article")))
                 (is (identical? strong (.querySelector element "strong")))
                 (is (= "Server section" (.-textContent article)))
+                (let [bounds (.getBoundingClientRect article)]
+                  (is (and (pos? (.-bottom bounds)) (pos? (.-right bounds))
+                           (< (.-top bounds) (.-innerHeight js/window))
+                           (< (.-left bounds) (.-innerWidth js/window)))
+                      "The native SSR section is actually inside the viewport"))
                 (is (.contains (.-classList article) "appeared")
                     "Late hydration retains the visible SSR appearance"))
               (finally

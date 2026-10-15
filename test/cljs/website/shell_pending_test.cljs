@@ -4,6 +4,8 @@
             [website.components.shell :as shell]
             [website.events]
             [website.module-transport :as transport]
+            [website.navigation.routes :as routes]
+            [reitit.core :as reitit]
             [website.modules.search.module :as search-module]
             [website.modules.user.module :as user-module]
             [website.modules.user.subs]
@@ -16,11 +18,17 @@
   (async done
     (let [restore! (r/make-restore-fn)
           interactive? @context/*interactive?
+          href context/*href*
           acquisition (transport/install! {:search search-module/spec, :user user-module/spec})
           element (.createElement js/document "div")
           *root (atom nil)]
       (.appendChild (.-body js/document) element)
       (reset! context/*interactive? true)
+      ;; Native href subscriptions need the real router, but this isolated test
+      ;; never starts the application's document/history listener owner.
+      (set! context/*href*
+        (fn [name params query]
+          (some-> (reitit/match-by-name routes/router name params) (reitit/match->path query))))
       (-> (go-promise
             (let [root (await! (support/create-root! element))]
               (reset! *root root)
@@ -32,6 +40,7 @@
                             [:loader :code-ready module]
                             [:loader :errors module]]]
                 (r/dispatch-sync [:component-data/remove path]))
+              (r/dispatch-sync [:set [:common/route] (reitit/match-by-path routes/router "/")])
               (r/dispatch-sync [:state [:active-user] nil])
               (r/dispatch-sync [:state [:menu] false])
               (await! (support/render! root [shell/<header> {:menu {:work [], :personal []}}]))
@@ -40,6 +49,9 @@
                     image (.querySelector search "img")
                     account (.querySelector element ".user-btn[aria-label='User account']")]
                 (is (some? account))
+                (is (.querySelector element "header a[href='/']") "Native links use the actual home route")
+                (is (nil? (.querySelector element "[role=alert]")))
+                (is (nil? (.getAttribute search "aria-expanded")) "Exercise the pending Search owner")
                 (doseq [open? [true false true]]
                   (r/dispatch-sync [:state [:menu] open?])
                   (await! (support/settle!))
@@ -56,6 +68,7 @@
                       ((:restore! acquisition))
                       (restore!)
                       (reset! context/*interactive? interactive?)
+                      (set! context/*href* href)
                       (done)))))))
 
 (deftest bottom-footer-handover-hides-sticky-content-and-restores-the-same-nodes
