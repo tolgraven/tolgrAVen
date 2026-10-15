@@ -170,6 +170,14 @@ Auth/network completion and message delivery require separate live checks; these
 layout/motion cases do not establish them. Settings/Contact sheets load only in
 this fixture's own document, without altering the shared head or older cases.
 
+CV skills carousel cases reuse the full native CV page and its actual
+`.cv-skills` owner. Wide/narrow captures cover the Digital next slide and Language
+previous-wrap slide. Actions use the rendered next/previous/index controls, verify
+round trips and wraparound, and require the active heading, content and current
+marker to agree while retaining the same carousel/page nodes. These are control,
+layout and observed CSS-motion checks; they do not establish touch-drag or genuine
+keyboard traversal coverage. The Home sideways image gallery is a different owner.
+
 Native hover cases use the configured Chrome MCP's real `hover` action, including
 in geometry-only mode. These cases run serially in the owned top-level tab while
 ordinary geometry cases reuse the driver with one iframe response at a time. Before navigation,
