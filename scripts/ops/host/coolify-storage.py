@@ -97,14 +97,25 @@ def resume_admission():
             time.sleep(2)
 
 
-def quiesce_admission():
+def check_admission():
     # Refuse preexisting maintenance/paused workers rather than overwrite them.
     run('docker', 'exec', 'coolify', 'test', '!', '-e', '/var/www/html/storage/framework/down')
     status = run('docker', 'exec', 'coolify', 'php', 'artisan', 'horizon:status', capture=True)
     if 'Horizon is running' not in status:
         raise RuntimeError('Coolify workers must be running before migration')
+
+
+def quiesce_admission():
     run('docker', 'exec', 'coolify', 'php', 'artisan', 'down', '--retry=60')
     run('docker', 'exec', 'coolify', 'php', 'artisan', 'horizon:pause')
+    deadline = time.monotonic() + 30
+    while True:
+        status = subprocess.run(['docker', 'exec', 'coolify', 'php', 'artisan', 'horizon:status'], text=True, capture_output=True)
+        if status.returncode == 1 and 'Horizon is paused' in status.stdout:
+            return
+        if time.monotonic() >= deadline:
+            raise RuntimeError('Coolify workers did not pause')
+        time.sleep(1)
 
 
 def migrate():
@@ -119,6 +130,7 @@ $app=require '/var/www/html/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if(App\Models\ApplicationDeploymentQueue::whereIn('status',['queued','in_progress'])->exists())exit(42);
 """
+    check_admission()
     state['phase'] = 'quiescing'
     save(state)
     try:

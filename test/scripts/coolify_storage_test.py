@@ -28,7 +28,7 @@ class StorageGuardsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             state = Path(folder) / 'state.json'
             state.write_text(json.dumps({'phase': 'prepared'}))
-            with patch.object(storage, 'STATE', state), patch.object(storage, 'verify_volume'), patch.object(storage, 'quiesce_admission'), patch.object(storage, 'resume_admission'), patch.object(storage.subprocess, 'run', side_effect=subprocess.CalledProcessError(42, 'deployment probe')), patch.object(storage, 'run') as operation:
+            with patch.object(storage, 'STATE', state), patch.object(storage, 'verify_volume'), patch.object(storage, 'check_admission'), patch.object(storage, 'quiesce_admission'), patch.object(storage, 'resume_admission'), patch.object(storage.subprocess, 'run', side_effect=subprocess.CalledProcessError(42, 'deployment probe')), patch.object(storage, 'run') as operation:
                 with self.assertRaises(subprocess.CalledProcessError):
                     storage.migrate()
                 operation.assert_not_called()
