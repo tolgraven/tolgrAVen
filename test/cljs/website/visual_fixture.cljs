@@ -9,6 +9,7 @@
             [website.modules.blog.events]
             [website.modules.blog.subs]
             [website.modules.blog-preview.views :as preview]
+            [website.modules.search.views :as search]
             [website.components.shell :as shell]
             [website.modules.home.sections :as home]
             [website.loader :as loader]
@@ -52,6 +53,27 @@
    :karma 3
    :roles []})
 
+(def post-row
+  {:id 42
+   :user "visual-writer"
+   :title "Native post header"
+   :tags "clojure layout"
+   :text "Fixed public post content with its actual author avatar."
+   :ts 1609459200000})
+
+(def replies
+  {"visual-comment"
+   {"first-reply" (assoc comment-row :id "first-reply" :parent-comment "visual-comment"
+                                   :path [42 "visual-comment"] :reply-count 1
+                                   :title "A native reply" :text "First reply with one child.")
+    "second-reply" (assoc comment-row :id "second-reply" :parent-comment "visual-comment"
+                                    :path [42 "visual-comment"] :ts 1609459202000
+                                    :title "Another native reply" :text "A sibling in the same thread.")}
+   "first-reply"
+   {"grandchild" (assoc comment-row :id "grandchild" :parent-comment "first-reply"
+                                  :path [42 "visual-comment" "first-reply"]
+                                  :title "A nested reply" :text "Rendered through the native reply row.")}})
+
 (def hit
   {:document {:id "post-42"
               :kind "blog-post"
@@ -68,17 +90,18 @@
              {:text "highlighted", :marked? true}
              {:text " hit, including literal <script> text.", :marked? false}]})
 
-(defn <search-fixture> []
-  [:main#main.main-content
-   [:section.search-instant
-    [:div.search-instant-results
-     [preview/<post> hit]
-     [preview/<comment> (-> hit
-                           (assoc :preview :blog-preview/comment)
-                           (assoc-in [:document :id] "comment-113")
-                           (assoc-in [:document :kind] "blog-comment")
-                           (assoc-in [:document :href] "/blog/post/42/comment/113"))]
-     [preview/<post> (assoc-in hit [:document :id] "post-43")]]]])
+(def search-response
+  {:query "highlighted"
+   :found 3
+   :page 1
+   :suggestions ["highlighted content"]
+   :hits [hit
+          (-> hit
+              (assoc :preview :blog-preview/comment)
+              (assoc-in [:document :id] "comment-113")
+              (assoc-in [:document :kind] "blog-comment")
+              (assoc-in [:document :href] "/blog/post/42/comment/113"))
+          (assoc-in hit [:document :id] "post-43")]})
 
 (m/defpage <fixture-page>
   "Use the native page-root container: direct grid children stretch to main's minimum height."
@@ -88,6 +111,13 @@
 (defn <main-fixture> [content]
   [:main#main.main-content.perspective-top
    [<fixture-page> content]])
+
+(defn <search-fixture> []
+  ;; The site's expandable Search panel is a main sibling, not a padded page
+  ;; section. Its native input, suggestions, status and scroll clipping matter.
+  [:<>
+   [search/<ui>]
+   [<main-fixture> [:section [:p "Fixed page content behind Search."]]]])
 
 (defn <shell-fixture> [component]
   (let [content' #(editor/section % false)]
@@ -115,35 +145,22 @@
        "10%" "70%" 0 nil
        {:column 0, :category "work", :parents [], :parent-keys []}]]]]])
 
-(defn <comment-fixture> [thread?]
-  [:main#main.main-content
-   [:div.blog.fullwide
-    [:section.blog-comments
-     [:div.blog-comments-inner
-      [comments/<comment-post> {:path [42 "visual-comment"], :comment comment-row, :appear false}]
-      (when thread?
-        [comments/<comment-post>
-         {:path [42 "second-comment"]
-          :comment (assoc comment-row :id "second-comment" :title "A second comment"
-                                 :text "Fixed prose next to the original corner actions.")
-          :appear false}])]]]])
-
 (defn <post-fixture> []
-  [:main#main.main-content
-   [:div.blog.fullwide
-    [blog/<post-content>
-     {:post {:id 42
-             :user "visual-writer"
-             :title "Native post header"
-             :tags "clojure layout"
-             :text "Fixed public post content with its actual author avatar."
-             :ts 1609459200000}
-      :features [[:appear false]]}]]])
+  [<main-fixture>
+   [blog/<blog-container>
+    {:tag-cloud? false
+     :section [blog/<post-content> {:post post-row, :features [[:appear false]]}]}]])
+
+(defn <standalone-fixture> []
+  [<main-fixture>
+   [blog/<blog-container>
+    {:tag-cloud? false
+     :section [comments/<standalone-comment> "visual-comment"]}]])
 
 (defn ^:export init! []
   (let [params (js/URLSearchParams. (.-search js/location))
         component (.get params "component")]
-    (if-not (#{"cv-regular" "cv-container" "comments" "thread" "post" "search-mixed"
+    (if-not (#{"cv-regular" "cv-container" "comments" "thread" "post" "standalone-comments" "search-mixed"
                "shell" "header" "footer" "post-footer" "services" "cv"} component)
       (editor/init! false)
       (-> (js/fetch "/fixtures/editor-seed.json")
@@ -156,6 +173,10 @@
                 (r/dispatch-sync [:set [:common/route]
                                   (assoc (reitit/match-by-path routes/router "/blog/post/42")
                                          :parameters {:path {:permalink "42"}, :query {}})]))
+              (when (= "standalone-comments" component)
+                (r/dispatch-sync [:set [:common/route]
+                                  (assoc (reitit/match-by-path routes/router "/blog/comment/visual-comment")
+                                         :parameters {:path {:comment-id "visual-comment"}, :query {}})]))
               ;; Only provider boundaries are fixed. Native comment markup,
               ;; actions, clip measurement and expansion events are unchanged.
               (r/reg-sub :user/user
@@ -163,18 +184,44 @@
                            (cond-> writer (= "post" component)
                              (assoc :avatar "/img/Leg-tasteful-small.jpg"))))
               (r/reg-sub :user/active-user (fn [_ _] nil))
-              (r/reg-sub :comments/visible-thread (fn [_ _] []))
-              (r/reg-sub :comments/root-page (fn [_ _] {:records {}, :loading? false, :more? false}))
-              (r/reg-sub :comments/focus-state (fn [_ _] {}))
+              (r/reg-sub :comments/visible-thread
+                         (fn [_ [_ _ parent-id]]
+                           (if (= "thread" component) (get replies parent-id {}) {})))
+              (r/reg-sub :comments/root-page
+                         (fn [_ _]
+                           {:records (if (#{"comments" "thread"} component)
+                                       {"visual-comment" (cond-> comment-row
+                                                           (= "thread" component) (assoc :reply-count 2))}
+                                       {})
+                            :loading? false
+                            :more? false}))
+              (r/reg-sub :comments/focus-ready? (fn [_ _] true))
+              (r/reg-sub :comments/focus-state
+                         (fn [_ _]
+                           (if (= "standalone-comments" component)
+                             {:ready? true
+                              :comment-id "visual-comment"
+                              :row comment-row
+                              :root comment-row
+                              :parent post-row}
+                             {})))
+              (when (= "search-mixed" component)
+                (r/reg-sub :search/open? (fn [_ _] true))
+                (r/reg-sub :search/query (fn [_ _] (:query search-response)))
+                (r/reg-sub :search/response (fn [_ _] search-response))
+                (r/reg-sub :search/pending? (fn [_ _] false))
+                (r/reg-sub :search/error (fn [_ _] nil))
+                (r/reg-sub :search/selected (fn [_ _] -1))
+                (r/reg-sub :search/get (fn [_ _] 0)))
               (restore/begin! {:back? true})
               (-> (loader/load! {:module :markdown})
                   (.then (fn [_]
                            (r/render (r/create-root (.getElementById js/document "app"))
                              (case component
                                "search-mixed" [<search-fixture>]
-                               "post" [<post-fixture>]
+                               ("post" "comments" "thread") [<post-fixture>]
+                               "standalone-comments" [<standalone-fixture>]
                                ("shell" "header" "footer" "post-footer") [<shell-fixture> component]
                                "services" [<main-fixture> [home/<services> (editor/section :services false)]]
                                "cv" [<main-fixture> [cv/<cv>]]
-                               ("comments" "thread") [<comment-fixture> (= component "thread")]
                                [<box-fixture> (= component "cv-container")])))))))))))

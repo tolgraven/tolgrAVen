@@ -257,6 +257,22 @@
       ],
       "path": "/fixtures/visual.html?component=search-mixed",
       "action": "const results = document.querySelector('.search-instant-results'); results.scrollTo({top: results.scrollHeight, behavior: 'instant'})"
+    },
+    {
+      "id": "comments-standalone-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=standalone-comments"
+    },
+    {
+      "id": "comments-standalone-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=standalone-comments"
     }
   ]
 }

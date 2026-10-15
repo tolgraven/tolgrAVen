@@ -22,10 +22,12 @@ Compile through the existing bounded worker, preserving watched output:
 tolgraven-cpu run --memory 6g --java-heap 3g -- sh -c 'npm run build && lein with-profile +project/test run -m shadow.cljs.devtools.cli --config-merge '\''{:ns-regexp "^website\\.visual-fixture$"}'\'' compile app-test'
 ```
 
+The explicit `--config-merge` namespace expression above is required: the default
+`app-test` expression discovers test namespaces and excludes `website.visual-fixture`.
 The full module graph needs the demonstrated 3 GiB heap. From the printed
 **isolated output directory**, run `bb test:browser --port 4102`. The fixture at
 `/fixtures/visual.html` reuses the CMS seed and production components, fixes only
-comment provider data, and retains native handlers, Markdown, measurement and
+provider data, and retains native handlers, Markdown, measurement and
 module loading. `test/visual/suite.json` declares exact states and viewports.
 The fixture anchors its calendar to 2026-10-15 so ongoing CV entries keep stable
 endpoints across calendar years. Wall time still advances with `performance.now`;
@@ -38,6 +40,15 @@ Services and CV fixtures use a native `defpage` container so the main grid canno
 stretch individual sections. Isolated CV boxes retain the production timeline
 column width/height; absolute-positioned entries cannot establish those dimensions.
 The original editor comparison fixture remains unchanged.
+Post/comment cases render the native blog container and post, including the
+post-owned comment section. Standalone comment cases use the native standalone
+view separately. Thread cases supply two replies and a grandchild through the
+managed comment subscription boundary; the production reply components own
+their nesting and layout. Search cases render the native expandable Search UI
+outside main, with fixed results/suggestions instead of a synthetic padded section.
+The fixture head uses Highlight's declared monospace/Markdown sheets and the
+styled input's declared sheet, matching the native owners rather than a nonexistent
+`highlight.css` file.
 
 Keep the installed Chrome running with its configured DevTools connection:
 
