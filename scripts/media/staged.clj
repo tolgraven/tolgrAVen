@@ -16,9 +16,9 @@
 (defn install! []
   (let [current (str/trim (:out @(process/process ["git" "config" "--get" "core.hooksPath"] {:out :string})))]
     (when-not (#{"" ".githooks"} current)
-      (throw (ex-info (str "Existing core.hooksPath (" current "): add .githooks/pre-commit to your hook chain.") {})))
+      (throw (ex-info (str "Existing core.hooksPath (" current "): chain .githooks/pre-commit and .githooks/prepare-commit-msg.") {})))
     (git ["config" "--local" "core.hooksPath" ".githooks"])
-    (println "Installed image conversion pre-commit hook.")))
+    (println "Installed image conversion and Codex session attribution hooks.")))
 
 (defn -main [& _]
   (let [paths (str/split (:out (git ["diff" "--cached" "--name-only" "--diff-filter=ACMR" "-z"])) #"\u0000")

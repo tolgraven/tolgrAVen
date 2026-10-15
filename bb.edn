@@ -5,10 +5,13 @@
              [media.staged :as staged]
              [media.videos :as videos]
              [dev.tasks :as dev]
+             [dev.pr :as pr]
              [build.docker :as docker]
              [test.ssr :as ssr]
              [test.server :as server])
-  hooks {:doc "Install the tracked staged-image hook"
+  pr {:doc "Wrap gh pr with owning/contributing Codex session attribution"
+      :task (apply pr/-main *command-line-args*)}
+  hooks {:doc "Install the tracked image and Codex session hooks"
          :task (staged/install!)}
   images {:doc "Convert bundled images, or explicit paths [--force] [--] [files...]"
           :task (apply images/-main *command-line-args*)}
