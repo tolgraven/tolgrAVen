@@ -120,3 +120,10 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   `prepare-commit-msg` session trailer hook. Preserve the original owner and
   recorded contributors on every body rewrite; attribution comes only from
   explicit IDs, the current session, and commit trailers. See `doc/tooling.md`.
+
+- Host SSD migration is explicit through `ops/host/coolify-storage.py`: verify the
+  provisioned filesystem, drain deployments, preserve originals until live
+  verification, and require mounts before Docker starts. Never format implicitly.
+  Scheduled `coolify-storage-cleanup.py` owns only aged managed deployment images
+  and unused Docker cache; preserve rollback/container references and all volumes.
+  See `doc/coolify-storage.md`.
