@@ -131,15 +131,16 @@ const returnReady = (document, selectors) => {
 };
 const searchMotion = async label => {
   const document = doc(), win = frame.contentWindow;
-  const button = document.querySelector('button.search-ui-btn');
-  check(!!button && !document.querySelector('.search-ui-open'), `${label} Search starts closed`);
+  // First intent can replace the lazy fallback; act on the mounted control.
+  const button = () => document.querySelector('button.search-ui-btn');
+  check(!!button() && !document.querySelector('.search-ui-open'), `${label} Search starts closed`);
   let panel = document.querySelector('.search-ui');
   if (!panel) {
     // A restored document may acquire Search on first intent. Establish its
     // normal closed surface before comparing subsequent user transitions.
-    button.click();
+    button().click();
     await wait(() => document.querySelector('.search-ui-open'));
-    button.click();
+    button().click();
     await wait(() => !document.querySelector('.search-ui-open'));
     panel = document.querySelector('.search-ui');
     await settleLayout(panel);
@@ -156,7 +157,7 @@ const searchMotion = async label => {
     // transition need not remain listed until the next readiness poll.
     panel.addEventListener('transitionrun', capture);
     try {
-      button.click();
+      button().click();
       await wait(() => capture() && !!document.querySelector('.search-ui-open') === open);
     } finally { panel.removeEventListener('transitionrun', capture); }
     const effect = transition.effect, timing = effect.getTiming(), keyframes = effect.getKeyframes();

@@ -346,7 +346,7 @@ test('reply motion evidence rejects height teleports and opacity-only layout jum
   assert.ok(staticBody.every(row => row.continuous && !row.fading && !row.sliding));
 });
 
-function returnFixture({gaps = [], policy = true, readinessFailure = false, returnedDuration = 1800, disabledSearch = false, quickSearch = false, lazySearch = false} = {}) {
+function returnFixture({gaps = [], policy = true, readinessFailure = false, returnedDuration = 1800, disabledSearch = false, quickSearch = false, lazySearch = false, replaceSearchButton = false} = {}) {
   const calls = [], frames = new Map(), listeners = new Map(), timers = new Map();
   const results = {dataset: {}, append() {}}, observers = [];
   const url = 'http://127.0.0.1:4114/cv?motion-return=proof#skills';
@@ -361,7 +361,8 @@ function returnFixture({gaps = [], policy = true, readinessFailure = false, retu
       getBoundingClientRect: () => ({height: panel.open ? 80 : 0}), getAnimations: () => panel.animation ? [panel.animation] : [],
       addEventListener: (name, callback) => panel.listeners.set(name, callback),
       removeEventListener: (name, callback) => { assert.equal(panel.listeners.get(name), callback); panel.listeners.delete(name); }};
-    const button = {click() {
+    let currentButton;
+    const clickSearch = () => {
       calls.push((navigation === 'navigate' ? 'before' : 'after') + ':search-click');
       panel.present = true; panel.open = !panel.open;
       const duration = quickSearch ? 1 : panel.open ? (navigation === 'navigate' ? 1800 : returnedDuration) : 400;
@@ -376,11 +377,17 @@ function returnFixture({gaps = [], policy = true, readinessFailure = false, retu
         panel.listeners.get('transitionrun')?.({target: panel, propertyName: 'max-height'});
         panel.animation = null;
       }
+    };
+    const button = {click() {
+      if (currentButton !== button) return;
+      clickSearch();
+      if (replaceSearchButton && navigation !== 'navigate') currentButton = {click: clickSearch};
     }};
+    currentButton = button;
     const document = {URL: url, readyState: 'complete', app, present: true, fonts: {ready: Promise.resolve()}, getAnimations: () => [],
       querySelector: selector => selector === '#app' ? app : selector === '#app .cv-intro' && document.present ? {} :
         selector === '.search-ui' ? (panel.present ? panel : null) : selector === '.search-ui-open' ? (panel.open ? panel : null) :
-        selector === 'button.search-ui-btn' ? button : null,
+        selector === 'button.search-ui-btn' ? currentButton : null,
       documentElement: {hasAttribute(name) {calls.push('policy:' + name); return policy;}}};
     const win = {document, CSSAnimation, CSSTransition,
       performance: {getEntriesByType: () => [{type: navigation}]},
@@ -397,7 +404,7 @@ function returnFixture({gaps = [], policy = true, readinessFailure = false, retu
     origin: 'http://127.0.0.1:4114', hostname: '127.0.0.1', search: ''},
     document: {querySelector: selector => selector === '#app' ? frame : selector === '#results' ? results : {},
       createElement: () => ({})},
-    performance: {now: () => readinessFailure || disabledSearch ? now += 10000 : 1},
+    performance: {now: () => readinessFailure || disabledSearch || replaceSearchButton ? now += 10000 : 1},
     requestAnimationFrame(callback) {frames.set(++next, callback); return next;},
     cancelAnimationFrame(id) {frames.delete(id);},
     setTimeout(callback, ms) {
@@ -510,4 +517,13 @@ test('after-Back Search captures actual finite CSS definitions and rejects chang
   await assert.rejects(disabled.context.inspectSearch('Disabled'), /did not settle/);
   assert.equal(disabled.frames.size, 0);
   assert.equal(disabled.previous.querySelector('.search-ui').listeners.size, 0);
+});
+
+test('lazy Search reacquires its real control after replacing the disconnected fallback', async () => {
+  const lazy = returnFixture({lazySearch: true, replaceSearchButton: true});
+  await lazy.context.observeBack({label: 'CV', selectors: ['#app .cv-intro']});
+  const evidence = JSON.parse(lazy.results.dataset.externalBackInteractions)[lazy.url];
+  assert.deepEqual(evidence.before.motion, evidence.after.motion);
+  assert.equal(lazy.calls.filter(value => value === 'after:search-click').length, 4);
+  assert.equal(lazy.returned.querySelector('.search-ui').listeners.size, 0);
 });
