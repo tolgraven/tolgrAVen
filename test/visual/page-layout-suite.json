@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "cases": [
+    {
+      "id": "page-layout-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=page-layout"
+    },
+    {
+      "id": "page-layout-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=page-layout"
+    },
+    {
+      "id": "page-layout-vertical-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=page-layout-vertical"
+    },
+    {
+      "id": "page-layout-vertical-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=page-layout-vertical"
+    }
+  ]
+}
