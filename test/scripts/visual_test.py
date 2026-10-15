@@ -34,8 +34,10 @@ class HoverClient:
 
     def call(self, name, **arguments):
         self.calls.append((name, arguments))
+        if name == 'list_pages':
+            return {'content': [{'type': 'text', 'text': '11: http://other-project.test/ [selected]'}]}
         if name == 'new_page':
-            return {'content': [{'type': 'text', 'text': '73: about:blank [selected]'}]}
+            return {'content': [{'type': 'text', 'text': '11: http://other-project.test/ [selected]\n73: ' + arguments['url']}]}
         if name == 'navigate_page': self.url = arguments['url']
         if name == 'emulate': self.viewport = [int(value) for value in arguments['viewport'].split('x')]
         if name == 'take_snapshot':
@@ -71,6 +73,35 @@ class HoverClient:
 
 
 class VisualTest(unittest.TestCase):
+    def test_owned_background_page_uses_observed_unique_url_and_new_id_never_selection(self):
+        client = HoverClient()
+        self.assertEqual(73, visual.owned_page(client))
+        self.assertEqual('list_pages', client.calls[0][0])
+        self.assertEqual('new_page', client.calls[1][0])
+        self.assertTrue(client.calls[1][1]['background'])
+        self.assertRegex(client.calls[1][1]['url'], r'^about:blank#tolgraven-visual-[0-9a-f]{32}$')
+        another = HoverClient()
+        self.assertEqual(73, visual.owned_page(another))
+        self.assertNotEqual(client.calls[1][1]['url'], another.calls[1][1]['url'],
+                            'Each capture has its own unpredictable task marker')
+        for mode in ('missing', 'ambiguous', 'reused'):
+            with self.subTest(mode=mode):
+                class Client(HoverClient):
+                    def call(self, name, **arguments):
+                        result = super().call(name, **arguments)
+                        if name == 'new_page':
+                            url = arguments['url']
+                            listing = {'missing': '11: http://other-project.test/ [selected]',
+                                       'ambiguous': '73: ' + url + '\n74: ' + url,
+                                       'reused': '11: ' + url}[mode]
+                            return {'content': [{'type': 'text', 'text': listing}]}
+                        return result
+                rejected = Client()
+                with self.assertRaisesRegex(RuntimeError, 'Cannot identify owned task tab'):
+                    visual.owned_page(rejected)
+                self.assertEqual(['list_pages', 'new_page'], [name for name, _ in rejected.calls],
+                                 'No navigation, emulation or closing may touch an unproven page')
+
     def test_observed_hover_uid_requires_snapshot_role_name_and_native_selector_identity(self):
         client = HoverClient()
         uid = visual.observed_target(client, '.native-edit', 'button', 'Edit comment')
@@ -333,8 +364,10 @@ class VisualTest(unittest.TestCase):
         class Client:
             def call(self, name, **arguments):
                 calls.append((name, arguments))
+                if name == "list_pages":
+                    return {"content": [{"type": "text", "text": "11: http://other-project.test/ [selected]"}]}
                 if name == "new_page":
-                    return {"content": [{"type": "text", "text": "73: about:blank [selected]"}]}
+                    return {"content": [{"type": "text", "text": "11: http://other-project.test/ [selected]\n73: " + arguments["url"]}]}
                 if name == "close_page":
                     return {"content": [{"type": "text", "text": "The last open page cannot be closed."}]}
                 if name == "take_snapshot":

@@ -16,6 +16,7 @@ import subprocess
 import sys
 import threading
 import time
+import uuid
 import zlib
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -249,6 +250,21 @@ class Relay(MCP):
         pass
 
 
+
+def owned_page(client):
+    """Identify the fresh task tab from its unique URL, independent of selection."""
+    def pages(result):
+        return [(int(match.group(1)), match.group(2))
+                for block in result.get("content", []) if block.get("type") == "text"
+                for match in re.finditer(r"(?:^|\n)(\d+):\s+(\S+)", block["text"])]
+    existing = {ident for ident, _ in pages(client.call("list_pages"))}
+    url = "about:blank#tolgraven-visual-" + uuid.uuid4().hex
+    created = pages(client.call("new_page", url=url, background=True))
+    matches = {ident for ident, actual_url in created if actual_url == url and ident not in existing}
+    if len(matches) != 1:
+        raise RuntimeError("Cannot identify owned task tab by unique URL and new ID; no existing tab will be modified")
+    return matches.pop()
+
 def observed_target(client, selector, role, name):
     """Resolve only UIDs supplied by the latest native accessibility snapshot."""
     snapshot = client.call("take_snapshot", verbose=True)
@@ -347,14 +363,7 @@ def capture(args):
     with (args.output / "chrome-mcp.log").open("w") as log:
         client = MCP(shlex.split(args.mcp_command), log) if args.mcp_command else Relay()
         try:
-            result = client.call("new_page", url="about:blank", background=True)
-            for item in result.get("content", []):
-                if item.get("type") == "text":
-                    match = re.search(r"(?:^|\n)(\d+):.*\[selected\]", item["text"])
-                    if match:
-                        page = int(match.group(1))
-            if page is None:
-                raise RuntimeError("Cannot identify owned task tab; no existing tab will be modified")
+            page = owned_page(client)
             client.page = page
             script_cases = [case for case in cases if not case.get("native_hover") and not case.get("standalone")]
             if args.geometry_only and script_cases:
