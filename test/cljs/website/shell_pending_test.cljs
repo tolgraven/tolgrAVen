@@ -46,3 +46,51 @@
                       (restore!)
                       (reset! context/*interactive? interactive?)
                       (done)))))))
+
+(deftest bottom-footer-handover-hides-sticky-content-and-restores-the-same-nodes
+  (async done
+    (let [restore! (r/make-restore-fn)
+          element (.createElement js/document "div")
+          *root (atom nil)
+          style (.-style (.-documentElement js/document))
+          property "--footer-height-current"
+          value (.getPropertyValue style property)
+          priority (.getPropertyPriority style property)]
+      (r/dispatch-sync [:state [:hidden :footer] false])
+      (r/dispatch-sync [:scroll/at-bottom false])
+      (-> (go-promise
+            (let [root (await! (support/create-root! element))]
+              (reset! *root root)
+              (await! (support/render! root
+                        [shell/<footer> [{:id "handover", :title "Native footer content"}]]))
+              (let [footer (.querySelector element "#footer-sticky")
+                    content (.querySelector footer ".footer-content")
+                    title (.querySelector content "h2")]
+                (is (not (.contains (.-classList footer) "hide")))
+                (is (not (.hasAttribute footer "inert")))
+                (r/dispatch-sync [:scroll/at-bottom true])
+                (await! (support/wait-for! #(and (.contains (.-classList footer) "bottomed")
+                                                 (= "0rem" (.getPropertyValue style property)))))
+                (is (false? @(r/subscribe [:state [:hidden :footer]]))
+                    "Bottom handover hides content independently of scroll-direction hiding")
+                (is (.contains (.-classList footer) "hide")
+                    "The native hide selector fades the sticky footer's overflowing children")
+                (is (= "true" (.getAttribute footer "aria-hidden")))
+                (is (.hasAttribute footer "inert"))
+                (r/dispatch-sync [:scroll/at-bottom false])
+                (await! (support/wait-for! #(and (not (.contains (.-classList footer) "bottomed"))
+                                                 (not= "0rem" (.getPropertyValue style property)))))
+                (is (not (.contains (.-classList footer) "hide")))
+                (is (nil? (.getAttribute footer "aria-hidden")))
+                (is (not (.hasAttribute footer "inert")))
+                (is (identical? footer (.querySelector element "#footer-sticky")))
+                (is (identical? content (.querySelector footer ".footer-content")))
+                (is (identical? title (.querySelector footer "h2"))))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @*root (support/unmount! @*root))
+                      (restore!)
+                      (if (seq value)
+                        (.setProperty style property value priority)
+                        (.removeProperty style property))
+                      (done)))))))

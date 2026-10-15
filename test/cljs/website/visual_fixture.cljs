@@ -204,17 +204,39 @@
    [search/<ui>]
    [<main-fixture> [:section [:p "Fixed page content behind Search."]]]])
 
+(defn ^:export shell-state! [state]
+  ;; Visual actions exercise the real events and CSS effects. The fixture does
+  ;; not install the full boot listener host or assign shell classes/styles.
+  (r/dispatch-sync [:scroll/past-top true])
+  (r/dispatch-sync [:scroll/at-bottom false])
+  (case state
+    "minimized" (r/dispatch-sync [:hide-header-footer true true])
+    "restored" (r/dispatch-sync [:hide-header-footer false false])
+    "bottom" (do (r/dispatch-sync [:hide-header-footer false false])
+                 (r/dispatch-sync [:scroll/at-bottom true]))
+    (throw (js/Error. (str "Unknown shell fixture state: " state)))))
+
 (defn <shell-fixture> [component]
-  (let [content' #(editor/section % false)]
+  (let [content' #(editor/section % false)
+        scroll? (= "shell-scroll" component)]
     [:<>
-     (when (#{"header" "shell"} component)
+     (when (#{"header" "shell" "shell-scroll"} component)
        [shell/<header> (content' :header)])
-     [<main-fixture> [:section [:h1 "Shared shell"] [:p "Fixed page content."]]]
+     [<main-fixture>
+      [:section
+       [:h1 "Shared shell"]
+       [:p "Fixed page content."]
+       (when scroll?
+         ;; Native paragraph layout keeps the full footer beyond its real
+         ;; observation margin until the case navigates to the page bottom.
+         (for [index (range 40)]
+           ^{:key index}
+           [:p "Fixed page context for minimized, restored and bottom-of-page shell states."]))]]
      ;; Production footers are siblings of main. The full footer already owns
      ;; post-footer, including its font size and natural flex-row height.
-     (when (#{"footer" "post-footer" "shell"} component)
+     (when (#{"footer" "post-footer" "shell" "shell-scroll"} component)
        [shell/<footer-full> (content' :footer)])
-     (when (= "shell" component)
+     (when (#{"shell" "shell-scroll"} component)
        [shell/<footer> (content' :footer)])]))
 
 (defn <box-fixture> [container?]
@@ -258,7 +280,7 @@
         component (.get params "component")]
     (if-not (#{"cv-regular" "cv-container" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
                "thread" "post" "standalone-comments" "search-mixed"
-               "shell" "header" "footer" "post-footer" "services" "cv"
+               "shell" "shell-scroll" "header" "footer" "post-footer" "services" "cv"
                "home-intro" "home-story" "home-image-media" "github"} component)
       (editor/init! false)
       (-> (js/fetch "/fixtures/editor-seed.json")
@@ -343,7 +365,7 @@
                                ("post" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge" "thread")
                                [<post-fixture> component]
                                "standalone-comments" [<standalone-fixture>]
-                               ("shell" "header" "footer" "post-footer") [<shell-fixture> component]
+                               ("shell" "shell-scroll" "header" "footer" "post-footer") [<shell-fixture> component]
                                "services" [<main-fixture> [home/<services> (editor/section :services false)]]
                                "cv" [<main-fixture> [cv/<cv>]]
                                "github" [<main-fixture> [github/<commits>]]

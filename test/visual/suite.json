@@ -514,6 +514,60 @@
       ],
       "path": "/fixtures/visual.html?component=header",
       "action": "const toggle = document.getElementById('nav-menu-open'); if (toggle.checked) throw new Error('Header did not start closed'); document.querySelector('label.burger[for=nav-menu-open]').click(); await window.visualFixture.ready(); const header = document.querySelector('header'); if (!toggle.checked || !header.querySelector(':scope > .line') || header.getAttribute('data-restored-motion') === 'true' || header.querySelector('nav').getBoundingClientRect().height <= 0 || header.querySelector('.nav-links a').getBoundingClientRect().height <= 0) throw new Error('Native menu intent did not open the header navigation')"
+    },
+    {
+      "id": "shell-minimized-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=shell-scroll",
+      "action": "const header = document.querySelector('header'); const sticky = document.getElementById('footer-sticky'); const full = document.getElementById('footer-end'); const logo = header.querySelector('.header-logo'); const content = sticky.querySelector('.footer-content'); const initialHeight = header.getBoundingClientRect().height; if (initialHeight <= 0 || !content.children.length) throw new Error('Native shell did not start visible'); window.scrollTo({top:innerHeight * 0.75,behavior:'instant'}); website.visual_fixture.shell_state_BANG_('minimized'); await window.visualFixture.ready(); if (!header.classList.contains('hide') || !sticky.classList.contains('hide') || sticky.classList.contains('bottomed') || !sticky.inert || sticky.getAttribute('aria-hidden') !== 'true' || header.getBoundingClientRect().height >= initialHeight || getComputedStyle(logo).opacity !== '0' || getComputedStyle(content).opacity !== '0') throw new Error('Minimized shell retained visible content or its expanded geometry'); if (header !== document.querySelector('header') || sticky !== document.getElementById('footer-sticky') || content !== sticky.querySelector('.footer-content')) throw new Error('Shell state replaced native DOM');"
+    },
+    {
+      "id": "shell-minimized-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=shell-scroll",
+      "action": "const header = document.querySelector('header'); const sticky = document.getElementById('footer-sticky'); const full = document.getElementById('footer-end'); const logo = header.querySelector('.header-logo'); const content = sticky.querySelector('.footer-content'); const initialHeight = header.getBoundingClientRect().height; if (initialHeight <= 0 || !content.children.length) throw new Error('Native shell did not start visible'); window.scrollTo({top:innerHeight * 0.75,behavior:'instant'}); website.visual_fixture.shell_state_BANG_('minimized'); await window.visualFixture.ready(); if (!header.classList.contains('hide') || !sticky.classList.contains('hide') || sticky.classList.contains('bottomed') || !sticky.inert || sticky.getAttribute('aria-hidden') !== 'true' || header.getBoundingClientRect().height >= initialHeight || getComputedStyle(logo).opacity !== '0' || getComputedStyle(content).opacity !== '0') throw new Error('Minimized shell retained visible content or its expanded geometry'); if (header !== document.querySelector('header') || sticky !== document.getElementById('footer-sticky') || content !== sticky.querySelector('.footer-content')) throw new Error('Shell state replaced native DOM');"
+    },
+    {
+      "id": "shell-restored-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=shell-scroll",
+      "action": "const header = document.querySelector('header'); const sticky = document.getElementById('footer-sticky'); const full = document.getElementById('footer-end'); const logo = header.querySelector('.header-logo'); const content = sticky.querySelector('.footer-content'); const initialHeight = header.getBoundingClientRect().height; if (initialHeight <= 0 || !content.children.length) throw new Error('Native shell did not start visible'); window.scrollTo({top:innerHeight * 0.75,behavior:'instant'}); website.visual_fixture.shell_state_BANG_('minimized'); await window.visualFixture.ready(); if (!header.classList.contains('hide') || !sticky.classList.contains('hide') || sticky.classList.contains('bottomed') || !sticky.inert || sticky.getAttribute('aria-hidden') !== 'true' || header.getBoundingClientRect().height >= initialHeight || getComputedStyle(logo).opacity !== '0' || getComputedStyle(content).opacity !== '0') throw new Error('Minimized shell retained visible content or its expanded geometry'); website.visual_fixture.shell_state_BANG_('restored'); await window.visualFixture.ready(); if (header.classList.contains('hide') || sticky.classList.contains('hide') || sticky.classList.contains('bottomed') || sticky.inert || sticky.hasAttribute('aria-hidden') || Math.abs(header.getBoundingClientRect().height - initialHeight) > 0.01 || getComputedStyle(logo).opacity !== '1' || getComputedStyle(content).opacity !== '1' || !full.inert) throw new Error('Restoring the shell did not restore native size, content and accessibility'); if (header !== document.querySelector('header') || sticky !== document.getElementById('footer-sticky') || content !== sticky.querySelector('.footer-content')) throw new Error('Shell state replaced native DOM');"
+    },
+    {
+      "id": "shell-restored-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=shell-scroll",
+      "action": "const header = document.querySelector('header'); const sticky = document.getElementById('footer-sticky'); const full = document.getElementById('footer-end'); const logo = header.querySelector('.header-logo'); const content = sticky.querySelector('.footer-content'); const initialHeight = header.getBoundingClientRect().height; if (initialHeight <= 0 || !content.children.length) throw new Error('Native shell did not start visible'); window.scrollTo({top:innerHeight * 0.75,behavior:'instant'}); website.visual_fixture.shell_state_BANG_('minimized'); await window.visualFixture.ready(); if (!header.classList.contains('hide') || !sticky.classList.contains('hide') || sticky.classList.contains('bottomed') || !sticky.inert || sticky.getAttribute('aria-hidden') !== 'true' || header.getBoundingClientRect().height >= initialHeight || getComputedStyle(logo).opacity !== '0' || getComputedStyle(content).opacity !== '0') throw new Error('Minimized shell retained visible content or its expanded geometry'); website.visual_fixture.shell_state_BANG_('restored'); await window.visualFixture.ready(); if (header.classList.contains('hide') || sticky.classList.contains('hide') || sticky.classList.contains('bottomed') || sticky.inert || sticky.hasAttribute('aria-hidden') || Math.abs(header.getBoundingClientRect().height - initialHeight) > 0.01 || getComputedStyle(logo).opacity !== '1' || getComputedStyle(content).opacity !== '1' || !full.inert) throw new Error('Restoring the shell did not restore native size, content and accessibility'); if (header !== document.querySelector('header') || sticky !== document.getElementById('footer-sticky') || content !== sticky.querySelector('.footer-content')) throw new Error('Shell state replaced native DOM');"
+    },
+    {
+      "id": "shell-bottom-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=shell-scroll",
+      "action": "const header = document.querySelector('header'); const sticky = document.getElementById('footer-sticky'); const full = document.getElementById('footer-end'); const logo = header.querySelector('.header-logo'); const content = sticky.querySelector('.footer-content'); const initialHeight = header.getBoundingClientRect().height; if (initialHeight <= 0 || !content.children.length) throw new Error('Native shell did not start visible'); window.scrollTo({top:document.scrollingElement.scrollHeight,behavior:'instant'}); website.visual_fixture.shell_state_BANG_('bottom'); await window.visualFixture.ready(); const bounds = full.getBoundingClientRect(); if (header.classList.contains('hide') || !sticky.classList.contains('bottomed') || !sticky.classList.contains('hide') || !sticky.inert || sticky.getAttribute('aria-hidden') !== 'true' || getComputedStyle(content).opacity !== '0' || parseFloat(getComputedStyle(sticky).maxHeight) !== 0 || full.inert || full.hasAttribute('aria-hidden') || bounds.top >= innerHeight || bounds.bottom <= 0) throw new Error('Native full-footer handover left sticky content visible or full footer inactive'); if (header !== document.querySelector('header') || sticky !== document.getElementById('footer-sticky') || content !== sticky.querySelector('.footer-content')) throw new Error('Shell state replaced native DOM');"
+    },
+    {
+      "id": "shell-bottom-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=shell-scroll",
+      "action": "const header = document.querySelector('header'); const sticky = document.getElementById('footer-sticky'); const full = document.getElementById('footer-end'); const logo = header.querySelector('.header-logo'); const content = sticky.querySelector('.footer-content'); const initialHeight = header.getBoundingClientRect().height; if (initialHeight <= 0 || !content.children.length) throw new Error('Native shell did not start visible'); window.scrollTo({top:document.scrollingElement.scrollHeight,behavior:'instant'}); website.visual_fixture.shell_state_BANG_('bottom'); await window.visualFixture.ready(); const bounds = full.getBoundingClientRect(); if (header.classList.contains('hide') || !sticky.classList.contains('bottomed') || !sticky.classList.contains('hide') || !sticky.inert || sticky.getAttribute('aria-hidden') !== 'true' || getComputedStyle(content).opacity !== '0' || parseFloat(getComputedStyle(sticky).maxHeight) !== 0 || full.inert || full.hasAttribute('aria-hidden') || bounds.top >= innerHeight || bounds.bottom <= 0) throw new Error('Native full-footer handover left sticky content visible or full footer inactive'); if (header !== document.querySelector('header') || sticky !== document.getElementById('footer-sticky') || content !== sticky.querySelector('.footer-content')) throw new Error('Shell state replaced native DOM');"
     }
   ]
 }
