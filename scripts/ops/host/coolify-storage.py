@@ -202,7 +202,7 @@ def finish_migration(state):
     fstab = Path('/etc/fstab')
     text = fstab.read_text()
     for source in SOURCES:
-        line = f'{destination(source)} {source} none bind,x-systemd.requires-mounts-for={VOLUME} 0 0'
+        line = f'{destination(source)} {source} none bind,nofail,x-systemd.requires-mounts-for={VOLUME} 0 0'
         if line not in text:
             text += line + '\n'
     fstab.write_text(text)
