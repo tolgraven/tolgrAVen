@@ -575,8 +575,7 @@
         1440,
         1000
       ],
-      "path": "/fixtures/visual.html?component=page-layout",
-      "action": "window.scrollTo({top: document.scrollingElement.scrollHeight, behavior: 'instant'}); await window.visualFixture.ready(); window.scrollTo({top: 0, behavior: 'instant'}); await window.visualFixture.ready()"
+      "path": "/fixtures/visual.html?component=page-layout"
     },
     {
       "id": "page-layout-narrow",
