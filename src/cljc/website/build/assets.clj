@@ -2,6 +2,7 @@
   "Prepare the existing Optimus URL/stylesheet contract once during packaging."
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
+            [clojure.data.json :as json]
             [optimus.strategies :as strategies]
             [optimus.optimizations.concatenate-bundles :refer [concatenate-bundles]]
             [optimus.optimizations.add-cache-busted-expires-headers :refer [add-cache-busted-expires-headers]]
@@ -80,24 +81,38 @@
 
 (defn prepare!
   "Prepare the current classpath's released assets into an explicit resource root."
-  [root]
-  (let [get-assets (requiring-resolve 'website.middleware/get-assets)
-        browser-modules ((requiring-resolve 'website.layout/browser-modules))
-        _ (when-not (re-matches #"main\.[a-fA-F0-9]{32}\.js"
-                                (get-in browser-modules [:main :output-name] ""))
-            (throw (ex-info "Prepare assets after the production Shadow :app release" {})))
-        build {:browser-modules browser-modules
-               :site @(requiring-resolve 'website.site/config)
-               :styles @(requiring-resolve 'website.loader.style-catalog/stylesheet-bundles)}
-        loaded (vec (strategies/guard-against-duplicate-assets (get-assets)))
-        assets (vec (optimize loaded {}))
-        ;; Main is served directly, but its exact released bytes remain part of
-        ;; startup's prepared-source validation rather than escaping that check.
-        sources (conj (mapv #(str "public" (:path %)) loaded)
-                      (str "public/js/compiled/out/" (get-in browser-modules [:main :output-name])))
-        file (write-prepared! root build sources assets)]
-    (println "Prepared" (count assets) "assets in" (str file))
-    file))
+  ([root] (prepare! root "target/ssr/site.js"))
+  ([root renderer]
+    (let [get-assets (requiring-resolve 'website.middleware/get-assets)
+          browser-modules ((requiring-resolve 'website.layout/browser-modules))
+          _ (when-not (re-matches #"main\.[a-fA-F0-9]{32}\.js"
+                                  (get-in browser-modules [:main :output-name] ""))
+              (throw (ex-info "Prepare assets after the production Shadow :app release" {})))
+          build {:browser-modules browser-modules
+                 :site @(requiring-resolve 'website.site/config)
+                 :styles @(requiring-resolve 'website.loader.style-catalog/stylesheet-bundles)}
+          ;; The release manifest and selected style catalog own the pruning input.
+          ;; Both Docker/uberjar and isolated local production use this boundary.
+          styles (vec (sort (distinct (concat ["/css/website/main.min.css"
+                                              "/css/website/icons.min.css"]
+                                             (mapcat val (:styles build))))))
+          scripts (vec (concat (map #(str "/js/compiled/out/" (:output-name %))
+                                   (remove :dead (vals browser-modules)))
+                               ["/js/document/head.js" "/js/document/entrance.js"]))
+          process (.start (.inheritIO
+                            (ProcessBuilder. ["node" "scripts/build/prune-styles.mjs" root
+                                              (json/write-str {:styles styles, :scripts scripts, :renderer renderer})])))
+          _pruned (when-not (zero? (.waitFor process))
+                    (throw (ex-info "Production CSS pruning failed; no asset manifest published" {})))
+          loaded (vec (strategies/guard-against-duplicate-assets (get-assets)))
+          assets (vec (optimize loaded {}))
+          ;; Main is served directly, but its exact released bytes remain part of
+          ;; startup's prepared-source validation rather than escaping that check.
+          sources (conj (mapv #(str "public" (:path %)) loaded)
+                        (str "public/js/compiled/out/" (get-in browser-modules [:main :output-name])))
+          file (write-prepared! root build sources assets)]
+      (println "Prepared" (count assets) "assets in" (str file))
+      file)))
 
 (defn -main [& args]
   (when-not (every? #{"--build-styles"} args)

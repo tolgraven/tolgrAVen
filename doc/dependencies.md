@@ -35,6 +35,9 @@ ClojureScript changes.
   `lein-shell`; the personal `deploy-private` alias still uses it.
 - CSS tools are local development dependencies. `npm run init` installs from the
   lockfile; it does not install global tools.
+  Production pruning pins PurgeCSS with patched selector-parser and maintained
+  glob overrides; verify its raw/file APIs and both npm audit scopes before
+  changing those pins. CSS variable reachability uses PostCSS's value parser.
 
 ## Optional and retained libraries
 

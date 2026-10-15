@@ -10,6 +10,39 @@ fingerprinted shell link without loading those rules. Shared validation-error
 markup stays in the common component error stylesheet. `npm run dev` watches both shared and module sources.
 Set `CSS_OUTPUT_DIR` to build into a separate directory for comparisons.
 
+## Production pruning
+
+Production asset preparation runs `scripts/build/prune-styles.mjs` after Shadow
+release and before Optimus reads/fingerprints CSS. Docker, uberjar prep and
+`bb prod:build` share that boundary. The release manifest supplies all shipped
+browser chunks (including lazy SDKs), the released Node renderer and document
+scripts supply SSR/pre-hydration states, and server document sources supply JVM markup. The selected stylesheet
+catalog supplies the shell, icons and enabled module sheets. Development
+compilation/watch output remains complete.
+
+PurgeCSS removes selectors absent from those inputs. Quoted class/ID prefixes
+and suffixes retain runtime concatenations such as `"leaflet-" + kind`, `"fa-" +
+glyph` and presence suffixes; attribute states and pseudo-only branches remain
+available. For an opaque runtime class that cannot be inferred from its producer,
+keep the narrow rule with Sass-preserved `/*! purgecss ignore */` inside it, or
+`/*! purgecss start ignore */` / `/*! purgecss end ignore */` around that rule.
+The Codox HTML subtree uses this narrow ownership boundary because its trusted
+markup is generated separately from the frontend release. Do not safelist an
+entire feature to conceal an unexplained missing selector.
+
+Custom properties and keyframes use one reachability graph across all selected
+sheets and theme overrides. Retained declarations, inline JavaScript references,
+variable prefixes, fallbacks and CSS query references keep their dependencies;
+unused chains/cycles are removed. Unused font faces are removed after checking
+retained CSS aliases and runtime font names. The build writes byte counts and
+removed selectors/definition counts to `optimus/css-pruning.json`. Missing
+release inputs or pruning errors prevent publishing the prepared asset manifest.
+Production jars omit development inspector CSS and unprefixed CSS intermediates.
+The complete selected SCSS/CLJS source remains in the on-site editor workspace,
+including SCSS rules removed from runtime CSS; generated-output exclusions must
+never filter those sources. Raw SCSS also remains a jar resource. SCSS previews
+and preserved experiments are not deleted.
+
 ## CMS variable overrides
 
 The CMS **Site features and pages** form has a multiline **CSS variable overrides**

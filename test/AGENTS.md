@@ -23,6 +23,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   prove isolated release-before-watches, scoped HTTP readiness, bounded failure
   and real REPL acknowledgement while compilation is blocked.
 
+- `node --test test/scripts/css_pruning_test.mjs` covers production selector
+  liveness, runtime families/states, cross-sheet variable/animation dependencies,
+  font aliases and failure-before-write. Verify the actual released asset graph
+  and affected routes with pruned CSS too; fixtures alone cannot prove all UI states.
 - Cold layout/handler JVM suites require compiled `:document` resources. Build
   them in the isolated test checkout, or reuse its standalone release output; see
   `doc/testing.md`. The full JVM suite also requires the compiled `:ssr` worker
