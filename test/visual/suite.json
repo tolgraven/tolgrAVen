@@ -442,6 +442,60 @@
       ],
       "path": "/fixtures/visual.html?component=home-image-media",
       "action": "const gallery = document.querySelector('#gallery .sideways'); gallery.scrollIntoView({block:'start', behavior:'instant'}); await window.visualFixture.ready(); gallery.scrollTo({left:gallery.scrollWidth, behavior:'instant'})"
+    },
+    {
+      "id": "github-feed-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=github",
+      "action": "const deadline = performance.now() + 5000; while (document.querySelectorAll('.github-commit').length !== 4 || !document.querySelector('[data-date=\"2026-10-12\"]') || !document.querySelector('.github-deployment code')) { if (performance.now() > deadline) throw new Error('Native GitHub provider data did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); }"
+    },
+    {
+      "id": "github-feed-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=github",
+      "action": "const deadline = performance.now() + 5000; while (document.querySelectorAll('.github-commit').length !== 4 || !document.querySelector('[data-date=\"2026-10-12\"]') || !document.querySelector('.github-deployment code')) { if (performance.now() > deadline) throw new Error('Native GitHub provider data did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); }"
+    },
+    {
+      "id": "github-calendar-popup-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=github",
+      "action": "const deadline = performance.now() + 5000; while (document.querySelectorAll('.github-commit').length !== 4 || !document.querySelector('[data-date=\"2026-10-12\"]') || !document.querySelector('.github-deployment code')) { if (performance.now() > deadline) throw new Error('Native GitHub provider data did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } const day = document.querySelector('[data-date=\"2026-10-12\"]'); day.scrollIntoView({block:'center', inline:'center', behavior:'instant'}); await window.visualFixture.ready(); day.focus({preventScroll:true}); const popupDeadline = performance.now() + 5000; while (!document.querySelector('[role=\"tooltip\"] ul')) { if (performance.now() > popupDeadline) throw new Error('Native GitHub day breakdown did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); }"
+    },
+    {
+      "id": "github-calendar-popup-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=github",
+      "action": "const deadline = performance.now() + 5000; while (document.querySelectorAll('.github-commit').length !== 4 || !document.querySelector('[data-date=\"2026-10-12\"]') || !document.querySelector('.github-deployment code')) { if (performance.now() > deadline) throw new Error('Native GitHub provider data did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } const day = document.querySelector('[data-date=\"2026-10-12\"]'); day.scrollIntoView({block:'center', inline:'center', behavior:'instant'}); await window.visualFixture.ready(); day.focus({preventScroll:true}); const popupDeadline = performance.now() + 5000; while (!document.querySelector('[role=\"tooltip\"] ul')) { if (performance.now() > popupDeadline) throw new Error('Native GitHub day breakdown did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); }"
+    },
+    {
+      "id": "github-sha-filtered-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=github",
+      "action": "const deadline = performance.now() + 5000; while (document.querySelectorAll('.github-commit').length !== 4 || !document.querySelector('[data-date=\"2026-10-12\"]') || !document.querySelector('.github-deployment code')) { if (performance.now() > deadline) throw new Error('Native GitHub provider data did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } const input = document.getElementById('github-commits-filter'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'bbbbbbb'); input.dispatchEvent(new Event('input', {bubbles:true})); const searchDeadline = performance.now() + 5000; while (document.querySelectorAll('.github-commit').length !== 1 || !document.getElementById('github-commit-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb') || input.value !== 'bbbbbbb') { if (performance.now() > searchDeadline) throw new Error('Native GitHub SHA search did not resolve'); await new Promise(resolve => requestAnimationFrame(resolve)); }"
+    },
+    {
+      "id": "github-sha-filtered-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=github",
+      "action": "const deadline = performance.now() + 5000; while (document.querySelectorAll('.github-commit').length !== 4 || !document.querySelector('[data-date=\"2026-10-12\"]') || !document.querySelector('.github-deployment code')) { if (performance.now() > deadline) throw new Error('Native GitHub provider data did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } const input = document.getElementById('github-commits-filter'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'bbbbbbb'); input.dispatchEvent(new Event('input', {bubbles:true})); const searchDeadline = performance.now() + 5000; while (document.querySelectorAll('.github-commit').length !== 1 || !document.getElementById('github-commit-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb') || input.value !== 'bbbbbbb') { if (performance.now() > searchDeadline) throw new Error('Native GitHub SHA search did not resolve'); await new Promise(resolve => requestAnimationFrame(resolve)); }"
     }
   ]
 }

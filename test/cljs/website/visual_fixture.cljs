@@ -3,6 +3,11 @@
   (:require [website.react :as r]
             [website.editor-visual :as editor]
             [website.component.restore :as restore]
+            [website.component.data :as data]
+            [website.modules.github.views :as github]
+            [website.modules.github.model :as github-model]
+            [website.modules.github.events]
+            [website.modules.github.subs]
             [website.modules.cv.views :as cv]
             [website.modules.blog.views :as blog]
             [website.modules.blog.comment-views :as comments]
@@ -18,6 +23,71 @@
             [reitit.frontend.easy :as rfe]
             [reitit.core :as reitit])
   (:require-macros [website.macros :as m]))
+
+(def github-commits
+  (mapv (fn [index message]
+          (let [sha (apply str (repeat 40 (nth ["a" "b" "c" "d"] index)))]
+            {:sha sha
+             :html_url (str "https://github.com/visual-user/visual-repo/commit/" sha)
+             :author {:login "visual-user"
+                      :avatar_url "/img/tolgrav-square.png"}
+             :commit {:message message
+                      :author {:name "Visual contributor"
+                               :date (str "2026-10-" (- 14 index) "T12:30:00Z")}}}))
+        (range 4)
+        ["fix(github): keep commit tags, timestamps and links aligned"
+         "scss: theme: preserve the original spacing and native colors"
+         "Keep URLs intact: https://example.invalid/a/long/path?with=parameters"
+         "feat(api): show a multiline commit message\n\nKeep the provider body below the subject."]))
+
+(def github-days
+  (mapv (fn [index]
+          (let [date (subs (.toISOString (js/Date. (+ (.UTC js/Date 2025 9 10) (* index 86400000)))) 0 10)
+                amount (if (= date "2026-10-12") 13 (mod index 5))]
+            {:date date
+             :count amount
+             :level (min 4 amount)}))
+        (range 371)))
+
+(defn github-transport! []
+  ;; Only provider I/O is fixed. Managed dependency installation, HTTP result
+  ;; cleanup, initialization, query generations, normalization and subscriptions
+  ;; all remain native. Each visual case has its own disposable document realm.
+  (data/register-source! :url
+    {:load! (fn [{:keys [url]}]
+              (js/Promise.resolve
+                (case url
+                  "/api/github/settings" {:settings {:user "visual-user", :repo "visual-repo"}}
+                  "/api/deployment" {:commit (:sha (first github-commits))
+                                     :deployed-at "2026-10-15T12:00:00Z"
+                                     :commit-url (:html_url (first github-commits))}
+                  "/api/github/activity?user=visual-user" {:days github-days}
+                  "/api/github/activity/day?user=visual-user&date=2026-10-12"
+                  {:date "2026-10-12"
+                   :types {:commits 7
+                           :issues 2
+                           :pull-requests 1
+                           :reviews 2
+                           :repositories 1
+                           :restricted 0}}
+                  (throw (js/Error. (str "Unexpected GitHub fixture resource: " url))))))})
+  (r/reg-fx :http-xhrio
+    (fn [{:keys [method uri url-params on-success]}]
+      (when-not (= :get method)
+        (throw (js/Error. "GitHub visual fixtures only provide reads")))
+      (let [response (if (= uri "/api/github/commits")
+                       (let [rows (filterv #(github-model/matches? % (:q url-params)) github-commits)]
+                         {:commits rows
+                          :total (count rows)
+                          :complete true
+                          :next-cursor nil})
+                       (or (some #(when (= uri (str "/api/github/commits/" (subs (:sha %) 0 7))) %)
+                                 github-commits)
+                           (throw (js/Error. (str "Unexpected GitHub fixture request: " uri)))))]
+        (when-not (= {:user "visual-user", :repo "visual-repo"}
+                     (select-keys url-params [:user :repo]))
+          (throw (js/Error. "GitHub fixture requested a different repository")))
+        (r/dispatch (conj on-success response))))))
 
 (def entry
   {:id "visual-entry"
@@ -189,7 +259,7 @@
     (if-not (#{"cv-regular" "cv-container" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
                "thread" "post" "standalone-comments" "search-mixed"
                "shell" "header" "footer" "post-footer" "services" "cv"
-               "home-intro" "home-story" "home-image-media"} component)
+               "home-intro" "home-story" "home-image-media" "github"} component)
       (editor/init! false)
       (-> (js/fetch "/fixtures/editor-seed.json")
           (.then #(.json %))
@@ -260,8 +330,12 @@
                 (r/reg-sub :search/error (fn [_ _] nil))
                 (r/reg-sub :search/selected (fn [_ _] -1))
                 (r/reg-sub :search/get (fn [_ _] 0)))
+              (when (= "github" component) (github-transport!))
               (restore/begin! {:back? true})
               (-> (loader/load! {:module :markdown})
+                  (.then (fn [_]
+                           (when (= "github" component)
+                             (loader/load! {:module :github}))))
                   (.then (fn [_]
                            (r/render (r/create-root (.getElementById js/document "app"))
                              (case component
@@ -272,5 +346,6 @@
                                ("shell" "header" "footer" "post-footer") [<shell-fixture> component]
                                "services" [<main-fixture> [home/<services> (editor/section :services false)]]
                                "cv" [<main-fixture> [cv/<cv>]]
+                               "github" [<main-fixture> [github/<commits>]]
                                ("home-intro" "home-story" "home-image-media") [<home-fixture> component]
                                [<box-fixture> (= component "cv-container")])))))))))))
