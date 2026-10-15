@@ -48,7 +48,7 @@
 (def page
   [:map
    [:identity [:re #"^[a-z][a-z0-9-]{0,79}$"]]
-   [:?path [:re #"^/(?:[a-z0-9-]+/?)*$"]]
+   [:?path [:re #"^/[a-z0-9-]+(?:/[a-z0-9-]+)*/?$"]]
    [:?wide :boolean]
    [:?outline :boolean]
    [:?columns columns]
@@ -145,14 +145,14 @@
                       (optional-fields? page
                         {:identity identifier?
                          :path #(and (string? %) (<= (count %) 200)
-                                     (boolean (re-matches #"/(?:[a-z0-9-]+/?)*" %)))
+                                     (boolean (re-matches #"/[a-z0-9-]+(?:/[a-z0-9-]+)*/?" %)))
                          :wide boolean?
                          :outline boolean?
                          :columns #(and (map? %) (every? (set (map keyword breakpoints)) (keys %))
                                         (every? (fn [n] (bounded-integer? n 1 12)) (vals %)))
                          :sections #(and (vector? %) (<= (count %) 100) (every? valid-section? %))}))) pages)))
 
-(def reserved-path #"/(?:$|about(?:/|$).*|services(?:/|$).*|hire(?:/|$).*|blog(?:/|$).*|cv(?:/|$).*|docs(?:/|$).*|test(?:/|$).*|neovim(?:/|$).*|api(?:/|$).*|log(?:/|$).*|client-oauth(?:/|$).*)")
+(def reserved-path #"/(?:$|section(?:/|$).*|github(?:/|$).*|not-found(?:/|$).*|about(?:/|$).*|services(?:/|$).*|hire(?:/|$).*|blog(?:/|$).*|cv(?:/|$).*|docs(?:/|$).*|test(?:/|$).*|neovim(?:/|$).*|api(?:/|$).*|log(?:/|$).*|client-oauth(?:/|$).*)")
 
 (defn validate! [pages]
   (when-not (and (valid-pages? pages)

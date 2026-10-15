@@ -111,15 +111,25 @@
                                  :text "Fixed prose next to the original corner actions.")
           :appear false}])]]]])
 
-(defn <layout-fixture> []
+(defn <layout-fixture> [vertical?]
   [:main#main.main-content
-   [home/<layout> (update (page-layout/find-page page-layout/defaults "experiments") :sections
-                         (fn [sections] (filterv #(#{"story" "page-index"} (:component %)) sections)))]])
+   [home/<layout>
+    (let [page (page-layout/find-page page-layout/defaults "experiments")
+          page' (update page :sections (fn [sections] (filterv #(#{"story" "page-index"} (:component %)) sections)))
+          [story index] (:sections page')]
+      (if vertical?
+        (-> page'
+            (dissoc :columns)
+            (assoc :sections [index
+                              (update-in story [:content :text] #(str % "\n\n" % "\n\n" %))
+                              (assoc story :identity "second-story", :label "Second article")]))
+        page'))]])
+
 
 (defn ^:export init! []
   (let [params (js/URLSearchParams. (.-search js/location))
         component (.get params "component")]
-    (if-not (#{"page-layout" "cv-regular" "cv-container" "comments" "thread" "search-mixed" "shell"} component)
+    (if-not (#{"page-layout" "page-layout-vertical" "cv-regular" "cv-container" "comments" "thread" "search-mixed" "shell"} component)
       (editor/init! false)
       (-> (js/fetch "/fixtures/editor-seed.json")
           (.then #(.json %))
@@ -128,8 +138,10 @@
               (rfe/start! routes/router (fn [_ _]) {:use-fragment false})
               (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) false])
               (r/dispatch-sync [:set [:common/route]
-                                (assoc (reitit/match-by-path routes/router "/blog/post/42")
-                                       :parameters {:path {:permalink "42"}, :query {}})])
+                                (cond-> (assoc (reitit/match-by-path routes/router "/blog/post/42")
+                                       :parameters {:path {:permalink "42"}, :query {}})
+                                  (#{"page-layout" "page-layout-vertical"} component)
+                                  (assoc :path (.-pathname js/location), :query-params {:component component}))])
               ;; Only provider boundaries are fixed. Native comment markup,
               ;; actions, clip measurement and expansion events are unchanged.
               (r/reg-sub :user/user (fn [_ _] writer))
@@ -140,7 +152,7 @@
                   (.then (fn [_]
                            (r/render (r/create-root (.getElementById js/document "app"))
                              (case component
-                               "page-layout" [<layout-fixture>]
+                               ("page-layout" "page-layout-vertical") [<layout-fixture> (= component "page-layout-vertical")]
                                "search-mixed" [<search-fixture>]
                                "shell" [<shell-fixture>]
                                ("comments" "thread") [<comment-fixture> (= component "thread")]

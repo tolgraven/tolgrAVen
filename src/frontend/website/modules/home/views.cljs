@@ -2,6 +2,7 @@
   (:require
     [website.component.registry]
     [clojure.string :as string]
+    [reitit.core :as reitit]
     [website.react :as r]
     [website.breakpoints]
     [website.modules.main.layout :as layout]
@@ -138,6 +139,8 @@
 
 (m/defc <dynamic-section> [section page]
   (let [id (keyword (:component section))
+        route @(r/subscribe [:common/route])
+        path (or (when route (reitit/match->path route (:query-params route))) (:path page) "/")
         definition (get sections id {:module id})
         inline (:content section)
         definition' (cond-> definition
@@ -148,7 +151,7 @@
        [:h2 "On this page"]
        [:ul (for [item (:sections page) :when (not= "page-index" (:component item))]
               ^{:key (:identity item)}
-              [:li [:a {:href (str "#layout-" (:identity page) "-" (:identity item))}
+              [:li [:a {:href (str path "#layout-" (:identity page) "-" (:identity item))}
                     (or (:label item) (string/replace (:identity item) "-" " "))]])]]
       [<get-component> id definition'])))
 
@@ -167,12 +170,12 @@
      (for [{:keys [identity region span wide outline] :as section} sections]
        ^{:key identity}
        [(if (= region "aside") :aside :div)
-        {:id (str "layout-" (:identity page) "-" identity)
-         :data-section identity
+        {:data-section identity
          :class ["dynamic-page__section"
                  (when wide "dynamic-page__section--wide")
                  (when (= false outline) "dynamic-page__section--no-outline")]
          :style (when grid? {"--section-span" (if wide 12 (or span 1))})}
+        [:span.dynamic-page__anchor {:id (str "layout-" (:identity page) "-" identity), :aria-hidden true}]
         [<dynamic-section> section page]])]))
 
 (m/defc <dynamic-page> "Render a published CMS page using the existing section boundaries."

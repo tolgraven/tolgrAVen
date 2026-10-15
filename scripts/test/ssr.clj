@@ -101,7 +101,8 @@
                                      [home (assoc blog :path "/blog/post/42") cv]))]
     (check! (and (contains-all? (:html experiment-html)
                               ["data-layout=\"experiments\"" "experiment-story" "A page assembled from components"
-                               "Editing it does not change the home page story." "<aside" "Page contents"])
+                               "Editing it does not change the home page story." "<aside" "Page contents"
+                               "href=\"/experiments/layout#layout-experiments-experiment-story\""])
                  (not (str/includes? (:html experiment-html) "id=\"about\""))
                  (= (:html landing) (:html home-after-experiment)))
             "Dynamic page routing, independent article content, aside index or request isolation failed")

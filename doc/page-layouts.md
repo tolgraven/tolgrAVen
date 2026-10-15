@@ -68,7 +68,7 @@ the existing debounced resize listener; importing components installs no listene
 An optional path such as `/studio` creates a native Reitit route named
 `:layout-studio` for a page whose identity is `studio`. It uses the same generic
 Home module page and SSR renderer. Paths cannot claim `/`, `/about`, `/services`,
-`/hire`, `/blog`, `/cv`, `/docs`, `/test`, `/neovim`, `/api`, `/log`, or OAuth routes
+`/hire`, `/section`, `/github`, `/not-found`, `/blog`, `/cv`, `/docs`, `/test`, `/neovim`, `/api`, `/log`, or OAuth routes
 and their child paths. Dedicated module pages retain their existing declarations.
 Page/section identities, paths, component choices, counts and grid values are
 validated before publication. Unknown components fail; unavailable modules are

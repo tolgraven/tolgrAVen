@@ -181,7 +181,7 @@
                    "page-story__text-heading"
                    "section-with-media-bg-wrapper covering stick-up fullwidth")}
     (if (and (:identity content) (not (:bg heading)))
-      [:header
+      [:hgroup
        [fields/<text> :h1 heading [:title]]
        [fields/<text> :p heading [:caption]]]
       [ui-layout/<fading-bg-heading> heading])]

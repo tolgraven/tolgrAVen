@@ -18,6 +18,8 @@
               :sections [{:identity "article", :component "story", :span 2}]}]
     (is (layout/valid-pages? [page]))
     (doseq [invalid [(assoc page :identity "../escape")
+                     (assoc page :path "/invalid//segment")
+                     (assoc page :path (str "/" (apply str (repeat 190 "a")) "!"))
                      (assoc page :columns {:mobile 0})
                      (assoc page :sections [{:identity "module", :component "github", :index 1}])
                      (assoc page :columns {:desktop 2})
@@ -26,7 +28,7 @@
                      (assoc page :sections (repeat 101 (first (:sections page))))]]
       (is (thrown? Exception (layout/validate! [invalid]))))
     (is (thrown? Exception (layout/validate! [page page])))
-    (doseq [path ["/" "/blog" "/blog/custom" "/api/content" "/test/layout" "/cv"]]
+    (doseq [path ["/" "/blog" "/blog/custom" "/api/content" "/test/layout" "/cv" "/section/story" "/github/commits/example/repo" "/not-found"]]
       (is (thrown? Exception (layout/validate! [(assoc page :path path)]))))))
 
 (deftest component-choices-follow-native-module-exports

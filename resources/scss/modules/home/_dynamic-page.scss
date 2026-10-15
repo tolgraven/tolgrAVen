@@ -9,7 +9,8 @@
     > .dynamic-page__section { grid-column: span min(var(--section-span, 1), var(--live-columns, var(--page-columns))); }
   }
   &__section { min-width: 0; }
-  &__index { padding: var(--space); }
+  &__anchor { display: block; block-size: 0; scroll-margin-block-start: var(--header-height-current); }
+  &__index { display: block; padding: var(--space); }
   &__index ul { display: grid; gap: var(--space); padding-inline-start: var(--space-lg); }
   &--wide { padding-inline: 0; }
   &__section--wide > section { padding-inline: 0; max-width: none; }
