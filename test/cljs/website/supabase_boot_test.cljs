@@ -65,25 +65,45 @@
     (let [restore! (r/make-restore-fn)
           init! client/init!
           failures @status/*failures
-          *retry (atom [])]
+          *retry (atom [])
+          *initialized (atom 0)
+          *consumer (atom nil)]
       (status/recover! :supabase-init)
       (r/reg-fx :dispatch-later #(swap! *retry into (filter (fn [item] (= :supabase/fetch-settings (first (:dispatch item)))) %)))
-      (set! client/init! (fn [& _] (throw (js/Error. "private SDK detail"))))
+      (set! client/init! (fn [& _]
+                          (swap! *initialized inc)
+                          (throw (js/Error. "private SDK detail"))))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
-            (r/dispatch-sync [:supabase/init 0 {:url "https://example.invalid" :anon-key "public"}])
-            (await! (support/settle!))
-            (is (= 1 (count @*retry)))
-            (is (not (contains? @status/*failures :supabase-init)))
-            (r/dispatch-sync [:supabase/init 1 {:url "https://example.invalid" :anon-key "public"}])
-            (await! (support/settle!))
-            (await! (support/wait-for! #(contains? @status/*failures :supabase-init)
-                                      "SDK retry failure did not reach its result event"))
-            (is (= 1 (count @*retry)) "No third automatic attempt")
-            (is (= :failed (await! (support/state-at! [:state :supabase-init]))))
-            (is (= "Supabase could not initialize" (get-in @status/*failures [:supabase-init :title])))
-            (is (not (.includes (pr-str @status/*failures) "private SDK detail"))))
+            (let [{:keys [values] :as consumer}
+                  (await! (support/mount-subscriptions!
+                            {:init [:get :state :supabase-init]}))]
+              (reset! *consumer consumer)
+              (r/dispatch-sync [:supabase/init 0 {:url "https://example.invalid" :anon-key "public"}])
+              (await! (support/wait-for! #(and (= 1 @*initialized)
+                                               (seq @*retry)
+                                               (= :loading (:init (values))))
+                                        "First SDK failure did not reach its loading/retry result"))
+              (is (= 1 (count @*retry)))
+              (is (= {:ms 3000, :dispatch [:supabase/fetch-settings 1]} (first @*retry)))
+              (is (= :loading (:init (values))))
+              (is (not (contains? @status/*failures :supabase-init)))
+              (r/dispatch-sync [:supabase/init 1 {:url "https://example.invalid" :anon-key "public"}])
+              ;; Service status and a newly mounted one-shot read do not
+              ;; acknowledge the consumer's queued SDK failure result together.
+              (await! (support/wait-for! #(and (= 2 @*initialized)
+                                               (= :failed (:init (values)))
+                                               (contains? @status/*failures :supabase-init))
+                                        "SDK retry failure did not reach its committed failure/status result"))
+              (is (= 2 @*initialized) "Both SDK attempts really failed")
+              (is (= 1 (count @*retry)) "No third automatic attempt")
+              (is (= :failed (:init (values))))
+              (is (= "Supabase could not initialize" (get-in @status/*failures [:supabase-init :title])))
+              (is (not (.includes (pr-str @status/*failures) "private SDK detail")))))
           (.catch #(is false (str %)))
-          (.finally (fn [] (set! client/init! init!)
+          (.finally (fn []
+                      (when-let [consumer @*consumer] ((:unmount! consumer)))
+                      (set! client/init! init!)
                       (reset! status/*failures failures)
-                      (restore!) (done)))))))
+                      (restore!)
+                      (done)))))))
