@@ -3,9 +3,10 @@
 `bb.edn` is the local task catalog. Keep `doc/tooling.md` and caller paths current
 when moving tools; tasks accept argument vectors, never interpolate a local shell.
 
-- `test/visual.py` attaches to installed Chrome through the configured autoConnect
-  adapter and closes only its own reused task tab. Capture creates candidates;
-  strict pixel/geometry comparison never updates approved baselines. Preserve
+- `test/visual.py` attaches through the configured shared Development-profile
+  launcher (`codex-chrome-devtools`) and closes only its own reused task tab.
+  Capture creates candidates; strict pixel/geometry comparison never updates
+  approved baselines. Preserve
   environment checks and missing-case failures. See `doc/visual-regressions.md`.
 
 - `build/styles.mjs` compiles shell, development inspector and module CSS entries
