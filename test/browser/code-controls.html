@@ -1,0 +1,25 @@
+<!doctype html>
+<html data-theme="dark" lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code control labels</title>
+<link rel="stylesheet" href="/css/website/main.min.css">
+<link rel="stylesheet" href="/css/website/modules/markdown.min.css">
+<link rel="stylesheet" href="/css/website/modules/monospace.min.css">
+<link rel="stylesheet" href="/css/website/modules/icons-highlight.min.css">
+<style>.code-controls-demo{width:min(88vw,60rem);margin:2rem auto;padding:1.25rem;box-sizing:border-box;min-height:0}.code-controls-demo>p{margin-block:2rem}</style>
+<body><div id="code-controls"></div>
+<script src="/js/test.js"></script>
+<script>
+if (new URLSearchParams(location.search).has('tests')) {
+  const run = shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1;
+  shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1 = env =>
+    shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$2(env,
+      /^website\.(code-block|blog-comments)-test$/);
+  shadow.test.browser.init();
+  shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1 = run;
+} else {
+  website.code_block_test.show_controls_BANG_();
+}
+</script>
+</body></html>

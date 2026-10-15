@@ -142,9 +142,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   export map; merge that map into the literal module specification. Default JVM
   and Codox readers retain the empty adapter without importing comment views.
   Posts and comments share
-  `blog/presentation.cljc`; the blog page retains shell ownership. Comment action
-  links retain native hrefs and use owned hover/focus labels rather than title
-  attributes. Text collapse controls require measured truncation.
+  `blog/presentation.cljc`; the blog page retains shell ownership. Comment actions
+  and code copy/wrap controls use `components/ui/action` for native links/buttons
+  with shared transient hover/focus labels outside clipping boundaries; closed
+  labels own no listeners. Text collapse controls require measured truncation.
   Shared composition, upload events/models and styles live under `markdown_editor/`;
   post publishing, private drafts and library controls stay under `blog_editor/`.
   Posts and comments use the Markdown editor's shared composer with explicit
