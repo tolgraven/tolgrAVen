@@ -155,3 +155,7 @@ server format handlers retain their native JVM Java-time support.
 - `markdown/components.cljc` owns portable quoted component attributes and data
   prefixes. Browser composition and media source lookup share this grammar;
   ready server manifests determine rendition metadata, never authored asset objects.
+
+- `website.macros` parses bindings and emits schema data without loading Malli.
+  Keep schema interpretation in runtime validation/coercion adapters so catalog
+  extraction cannot initialize the schema engine during compiler macro loading.

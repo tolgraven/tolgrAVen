@@ -1,5 +1,7 @@
 # Test boundaries and application workflows
 
+Native pixel and per-element layout comparisons: [visual regression gate](visual-regressions.md).
+
 A passing unit suite is not evidence that the deployed application, Strapi,
 Supabase, or hydration works. Keep these layers distinct when reporting results.
 

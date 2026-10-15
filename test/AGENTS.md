@@ -1,4 +1,9 @@
 # Verification workflows
+- Technical UI changes require the native pixel and geometry comparison gate in
+  `doc/visual-regressions.md` alongside interaction/motion checks. Capture matching
+  narrow/wide states and inspect differences; never refresh approved goldens to
+  conceal a regression. Missing/unapproved baselines are verification gaps, not
+  passing results. Extend `test/visual/suite.json` for new rendered states.
 - CMS visual comparisons use `editor-visual.html` and the original commit's
   components, identical seed data/assets and viewport dimensions. Capture actual
   viewports and separate scrolled sections; full-page capture can repaint filtered
@@ -250,3 +255,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   output mounts from another checkout (including cache-disabled/legacy builds).
   Native CPU/lifecycle tests remain macOS-only; portable policy tests must still
   run on other platforms. Never use real task worktrees as deletion fixtures.
+
+- `website.macros-loading-test` uses a fresh bounded JVM to verify macro loading
+  and annotated argument parsing without initializing Malli; warmed test suites
+  cannot establish that compiler boundary.

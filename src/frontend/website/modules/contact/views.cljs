@@ -36,7 +36,8 @@
                  "Must enter at least email and message"])
 
 (defc <contact-form-popup>
-  {:features [[:appear {:viewport? false}] :exit]}
+  ;; This panel is new user intent, never already-visible restored page content.
+  {:features [[:appear {:viewport? false, :restore? false}] :exit]}
   []
   (let [[submit-hovered? set-submit-hovered!] (r/use-state false)
         *opener (r/use-ref nil)
