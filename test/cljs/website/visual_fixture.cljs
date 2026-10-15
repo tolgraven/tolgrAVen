@@ -124,7 +124,9 @@
                                  (throw (js/Error. (str "Missing generated Codox fixture: " page))))
                                (.text response)))
                       ;; Match the backend's trusted generated-body contract.
-                      (.then #(string/replace % #"^[\s\S]*<body[^\>]*>([\s\S]*)<\/body>[\s\S]*$" "$1")))
+                      (.then #(string/replace %
+                                (js/RegExp. "^[\\s\\S]*<body[^>]*>([\\s\\S]*)</body>[\\s\\S]*$")
+                                "$1")))
                   (js/Promise.reject (js/Error. (str "Unexpected public fixture resource: " url))))))}))
 
 (def entry
