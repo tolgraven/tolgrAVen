@@ -49,6 +49,12 @@
       margin: 0.75em 0 0.2em 0;
     }
   }
+  // Standalone threads already fill the unpadded blog container.
+  > .blog-comments {
+    margin-inline: 0;
+    border-top: 0;
+  }
+
   .blog-archive {
     padding: var(--space-lg);
     
@@ -393,6 +399,7 @@
     }
     .blog-comment-text {
       position: relative;
+      transition: max-height 1.2s ease;
       // Keep the avatar float outside this clip without making it scrollable.
       display: flow-root;
       // margin-top: calc(0.25 * var(--space));
