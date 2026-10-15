@@ -4,7 +4,6 @@
             [website.react :as r]
             [website.loader :as loader]
             [website.module-transport :as transport]
-            [website.component.hydration :as hydration]
             [website.component.restore :as restore]
             [website.render-context :as context]
             [website.validation.runtime :as validation]
@@ -108,7 +107,6 @@
                     (when @*root (r/unmount @*root))
                     (.remove element)
                     ((:restore! transport))
-                    (hydration/release-all!)
                     (r/clear-subscription-cache!)
                     (reset! r/*app-db before-db)
                     (reset! restore/*context before-restore)

@@ -158,7 +158,8 @@
               (try
                 (await! (support/render! root [code/<code-block> "(inc 1)"]))
                 (is (empty? @*calls))
-                (is (identical? (r/batching-flush) r/start-transition))
+                (is (identical? (r/batching-flush) before-flush)
+                    "Pending formatting preserves the original batching adapter")
                 (finally (support/unmount! root)))
               (is @*cancelled?)
               (is (identical? (r/batching-flush) before-flush))))
@@ -167,7 +168,7 @@
                       (set! loader/acquire-code! old-acquire)
                       (reset! restore/*context before) (done)))))))
 
-(deftest navigation-releases-pending-initial-hydration-before-module-acquisition
+(deftest navigation-preserves-batching-while-initial-formatting-is-pending
   (async done
     (let [old-after-page resources/after-page!
           before @restore/*context
@@ -179,7 +180,8 @@
                   root (await! (support/create-root! element))]
               (try
                 (await! (support/render! root [code/<code-block> "(inc 1)"]))
-                (is (identical? (r/batching-flush) r/start-transition))
+                (is (identical? (r/batching-flush) before-flush)
+                    "Pending formatting preserves the original batching adapter")
                 (restore/navigate! "/different-page")
                 (is (identical? (r/batching-flush) before-flush))
                 (finally (support/unmount! root)))
