@@ -149,8 +149,11 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   failure/stale completion, disabled intent, reduced motion and local returns.
 - Live drivers share the test-origin reset adapter: close the outgoing frame,
   then clear saved documents through the worker's serialized protocol before
-  clearing browser storage. Network SSR runs one original site/hero entrance across hydration; paired
-  restoration stays settled without replay; ordinary SPA motion remains enabled.
+  deleting only IndexedDB `tolgraven-component-cache` and clearing small browser
+  stores. A blocked/failed/timed-out deletion fails the cold check; reset is
+  restricted to the dedicated loopback test driver. Network SSR runs one original
+  site/hero entrance across hydration; paired restoration stays settled without
+  replay; ordinary SPA motion remains enabled.
 - Live motion checks assert hero decode before network reveal, one document
   animation clock across hydration for cold/cached SSR, settled paired returns,
   and simultaneous 250ms linear fades and an opaque sticky
