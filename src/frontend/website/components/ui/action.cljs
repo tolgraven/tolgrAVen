@@ -15,22 +15,52 @@
    [:?aria-pressed :boolean]
    [:?aria-expanded :boolean]])
 
+(defn- label-position [anchor element]
+  (let [bounds (.getBoundingClientRect anchor)
+        unit (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))
+        above? (> (+ (.-bottom bounds) (* 3 unit)) (.-innerHeight js/window))
+        maximum-right (max 0.5 (- (/ (.-innerWidth js/window) unit)
+                                  (/ (.-width (.getBoundingClientRect element)) unit) 0.5))]
+    {:right (min (max 0.5 (/ (- (.-innerWidth js/window) (.-right bounds)) unit)) maximum-right)
+     :top (/ (if above? (.-top bounds) (.-bottom bounds)) unit)
+     :above? above?}))
+
+(defn- moving-anchor? [anchor]
+  (some (fn [element]
+          (when (.-getAnimations element)
+            (some (fn [animation]
+                    (and (= "running" (.-playState animation))
+                         (some-> (.-effect animation) .getComputedTiming .-endTime js/isFinite)))
+                  (array-seq (.getAnimations element)))))
+        (take-while some? (iterate #(.-parentElement %) anchor))))
+
 (defc ^:private <label>
   "Mounted only while its action is hovered or focused; owns dismissal listeners."
-  [{:keys [id label right top above?]} close!]
+  [{:keys [id label anchor]} close!]
   (let [*element (r/use-ref nil)
-        [measured-right set-measured-right!] (r/use-state nil)]
-    ;; Label width changes with copy feedback. Measure the committed portal before
-    ;; paint; React owns the resulting position. Resize/scroll dismiss the owner.
+        [position set-position!] (r/use-state {:right 0.5, :top 0, :above? false})]
+    ;; A focus/hover rule can move the action after its event. Follow only that
+    ;; finite native motion; stop sampling once settled and cancel on dismissal.
+    ;; React owns the measured position and the existing portal markup.
     (r/use-layout-effect
       (fn []
         (when-let [element (.-current *element)]
-          (let [bounds (.getBoundingClientRect element)
-                unit (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))
-                maximum-right (max 0.5 (- (/ (.-innerWidth js/window) unit)
-                                          (/ (.-width bounds) unit) 0.5))]
-            (set-measured-right! (min (max 0.5 right) maximum-right)))))
-      [right label])
+          (let [*frame (atom nil)
+                deadline (+ (js/performance.now) 10000)
+                update! #(when (.-isConnected anchor) (set-position! (label-position anchor element)))
+                observer (when (exists? js/ResizeObserver) (js/ResizeObserver. update!))]
+            (letfn [(follow! [_]
+                      (update!)
+                      (when (and (.-isConnected anchor) (< (js/performance.now) deadline)
+                                 (moving-anchor? anchor))
+                        (reset! *frame (js/requestAnimationFrame follow!))))]
+              (update!)
+              ;; The first frame also catches transitions starting after layout.
+              (reset! *frame (js/requestAnimationFrame follow!)))
+            (when observer (.observe observer element) (.observe observer anchor))
+            #(do (when @*frame (js/cancelAnimationFrame @*frame))
+                 (when observer (.disconnect observer))))))
+      [anchor label])
     (r/use-effect
       #(listener/listen! :action-label
          [{:target "window", :event "scroll", :capture? true, :handler close!}
@@ -41,8 +71,8 @@
       {:id id
        :ref *element
        :role "tooltip"
-       :class (when above? "action-label--above")
-       :style {:right (str (or measured-right 0.5) "rem"), :top (str top "rem")}}
+       :class (when (:above? position) "action-label--above")
+       :style {:right (str (:right position) "rem"), :top (str (:top position) "rem")}}
       label]]))
 
 (defc <action>
@@ -54,14 +84,7 @@
         *focus? (r/atom false)
         *dismissed? (r/atom false)
         *anchor (r/atom nil)
-        capture-anchor! (fn [event]
-                          ;; Measure at the native interaction boundary, not during render.
-                          (let [rect (.getBoundingClientRect (.-currentTarget event))
-                                unit (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))
-                                above? (> (+ (.-bottom rect) (* 3 unit)) (.-innerHeight js/window))]
-                            (reset! *anchor {:right (max 0.5 (/ (- (.-innerWidth js/window) (.-right rect)) unit))
-                                             :top (/ (if above? (.-top rect) (.-bottom rect)) unit)
-                                             :above? above?})))]
+        capture-anchor! #(reset! *anchor (.-currentTarget %))]
   (let [id (r/use-id)
         open? (and (or @*hover? @*focus?) (not @*dismissed?) @*anchor)]
     [:<>
@@ -77,4 +100,4 @@
               :on-key-down #(when (= "Escape" (.-key %)) (reset! *dismissed? true))})
       content]
      (when open?
-       [<label> (assoc @*anchor :id id :label label) #(reset! *dismissed? true)])]))
+       [<label> {:anchor @*anchor, :id id, :label label} #(reset! *dismissed? true)])]))

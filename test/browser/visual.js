@@ -113,7 +113,9 @@
         }
       }
       const current = JSON.stringify(geometry());
-      stable = current === previous && !finite.length ? stable + 1 : 0;
+      const pendingFont = document.querySelector('[data-font-phase="initial"], [data-font-phase="fallback"], [data-font-phase="prepared"], [data-font-phase="crossfade"]');
+      if (document.querySelector('[data-font-phase="failed"]')) throw new Error('Native fixture font upgrade failed');
+      stable = current === previous && !finite.length && !pendingFont ? stable + 1 : 0;
       if (stable >= 4) break;
       previous = current;
       await pause(100);

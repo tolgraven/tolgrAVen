@@ -32,6 +32,10 @@ module loading. `test/visual/suite.json` declares exact states and viewports.
 The fixture anchors its calendar to 2026-10-15 so ongoing CV entries keep stable
 endpoints across calendar years. Wall time still advances with `performance.now`;
 native timers, deadlines and finite motion retain their normal lifecycle.
+Settled layout cases warm the declared native Fira Code face before mounting and
+wait for committed font phases. This prevents cache timing from choosing between
+equivalent native/ready font aliases. The separate font suite exercises cold
+fallback and crossfade behavior.
 Shell fixtures keep the header and full footer outside `main`, as in the native
 page. The combined shell includes the sticky footer; the full footer owns its
 post-footer content exactly once. The post-footer case exercises that owning

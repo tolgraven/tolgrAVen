@@ -153,11 +153,14 @@
          position size 0 nil
          {:column 0, :category "work", :parents [], :parent-keys []}]]]]]))
 
-(defn <post-fixture> []
+(defn <post-fixture> [component]
   [<main-fixture>
    [blog/<blog-container>
     {:tag-cloud? false
-     :section [blog/<post-content> {:post post-row, :features [[:appear false]]}]}]])
+     :section [blog/<post-content>
+               {:post (cond-> post-row (= "comments-edge" component)
+                        (assoc :text (apply str (repeat 14 "Context before the comment.\n\n"))))
+                :features [[:appear false]]}]}]])
 
 (defn <standalone-fixture> []
   [<main-fixture>
@@ -168,16 +171,26 @@
 (defn ^:export init! []
   (let [params (js/URLSearchParams. (.-search js/location))
         component (.get params "component")]
-    (if-not (#{"cv-regular" "cv-container" "comments" "comments-auth" "thread" "post" "standalone-comments" "search-mixed"
+    (if-not (#{"cv-regular" "cv-container" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
+               "thread" "post" "standalone-comments" "search-mixed"
                "shell" "header" "footer" "post-footer" "services" "cv"} component)
       (editor/init! false)
       (-> (js/fetch "/fixtures/editor-seed.json")
           (.then #(.json %))
+          ;; Settled layout cases use one deterministic native font state. The
+          ;; dedicated font suite still exercises cold fallback and crossfades.
+          (.then (fn [seed]
+                   (-> (.load (.-fonts js/document) "1em 'Fira Code'" "MWiw0123456789")
+                       (.then (fn [faces]
+                                (when (zero? (.-length faces))
+                                  (throw (js/Error. "Fixture monospace font did not load")))
+                                seed)))))
           (.then
             (fn [seed]
               (rfe/start! routes/router (fn [_ _]) {:use-fragment false})
               (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) false])
-              (when (#{"comments" "comments-auth" "thread" "post" "search-mixed"} component)
+              (when (#{"comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
+                       "thread" "post" "search-mixed"} component)
                 (r/dispatch-sync [:set [:common/route]
                                   (assoc (reitit/match-by-path routes/router "/blog/post/42")
                                          :parameters {:path {:permalink "42"}, :query {}})]))
@@ -191,16 +204,25 @@
                          (fn [_ _]
                            (cond-> writer (= "post" component)
                              (assoc :avatar "/img/Leg-tasteful-small.jpg"))))
-              (r/reg-sub :user/active-user (fn [_ _] (when (= "comments-auth" component) writer)))
+              (r/reg-sub :user/active-user
+                         (fn [_ _]
+                           (case component
+                             ("comments-auth" "comments-edge") writer
+                             "comments-reader" (assoc writer :id "visual-reader" :name "Visual reader")
+                             nil)))
               (r/reg-sub :blog/vote (fn [_ _] nil))
               (r/reg-sub :comments/visible-thread
                          (fn [_ [_ _ parent-id]]
                            (if (= "thread" component) (get replies parent-id {}) {})))
               (r/reg-sub :comments/root-page
                          (fn [_ _]
-                           {:records (if (#{"comments" "comments-auth" "thread"} component)
-                                       {"visual-comment" (cond-> comment-row
-                                                           (= "thread" component) (assoc :reply-count 2))}
+                           {:records (if (#{"comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge" "thread"} component)
+                                       (cond-> {"visual-comment" (cond-> comment-row
+                                                                   (= "thread" component) (assoc :reply-count 2))}
+                                         (= "comments-roots" component)
+                                         (assoc "second-root" (assoc comment-row :id "second-root" :ts 1609459202000
+                                                                                :title "Another root comment"
+                                                                                :text "A separate root retains the original gap.")))
                                        {})
                             :loading? false
                             :more? false}))
@@ -228,7 +250,8 @@
                            (r/render (r/create-root (.getElementById js/document "app"))
                              (case component
                                "search-mixed" [<search-fixture>]
-                               ("post" "comments" "comments-auth" "thread") [<post-fixture>]
+                               ("post" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge" "thread")
+                               [<post-fixture> component]
                                "standalone-comments" [<standalone-fixture>]
                                ("shell" "header" "footer" "post-footer") [<shell-fixture> component]
                                "services" [<main-fixture> [home/<services> (editor/section :services false)]]

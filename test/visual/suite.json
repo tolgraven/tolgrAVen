@@ -299,6 +299,34 @@
         800
       ],
       "path": "/fixtures/visual.html?component=standalone-comments"
+    },
+    {
+      "id": "comments-two-roots-wide",
+      "viewport": [1440, 1000],
+      "path": "/fixtures/visual.html?component=comments-roots"
+    },
+    {
+      "id": "comments-two-roots-narrow",
+      "viewport": [400, 800],
+      "path": "/fixtures/visual.html?component=comments-roots"
+    },
+    {
+      "id": "comments-reader-controls-wide",
+      "viewport": [1440, 1000],
+      "path": "/fixtures/visual.html?component=comments-reader",
+      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Reply\"]').focus({preventScroll:true})"
+    },
+    {
+      "id": "comments-reader-controls-narrow",
+      "viewport": [400, 800],
+      "path": "/fixtures/visual.html?component=comments-reader",
+      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Reply\"]').focus({preventScroll:true})"
+    },
+    {
+      "id": "comments-label-above-short",
+      "viewport": [400, 400],
+      "path": "/fixtures/visual.html?component=comments-edge",
+      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})"
     }
   ]
 }
