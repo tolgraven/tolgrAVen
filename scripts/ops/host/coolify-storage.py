@@ -154,6 +154,9 @@ if(App\Models\ApplicationDeploymentQueue::where('status','in_progress')->exists(
         raise
     state['services'] = [unit for unit in ['tolgraven-runtime-policy.service', 'coolify-site-runtime-policy.service']
                          if subprocess.run(['systemctl', 'is-active', '--quiet', unit]).returncode == 0]
+    save(state)
+    for unit in state['services']:
+        run('systemctl', 'stop', unit)
     state.update(phase='stopping', running=run('docker', 'ps', '-q', capture=True).split())
     save(state)
     if state['running']:
