@@ -1,4 +1,5 @@
 (ns website.modules.content-editor.schema
+  (:require [website.content.editor-contract :as contract])
   (:require-macros [website.build.site :refer [when-enabled]]))
 
 (def draft
@@ -16,7 +17,7 @@
     [:map
      [:column [:int {:min 0, :max 100}]]
      [:?column-id [:maybe :int]]
-     [:category [:enum "education" "work" "life"]]
+     [:category contract/timeline-category]
      [:parents [:vector {:max 6} [:int {:min 0, :max 999}]]]
      [:parent-keys [:vector {:max 6} [:string {:max 500}]]]
      [:expected-count [:int {:min 0, :max 999}]]

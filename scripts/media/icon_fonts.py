@@ -113,7 +113,7 @@ def svg_outputs(mapping, definitions=None):
                          f"{before} {{\n"
                          f"  content: \"\"; display: inline-block; width: {layout['width']:g}em; "
                          f"height: {layout['height']:g}em; margin: {margins};\n"
-                         f"  vertical-align: {layout['baseline']:g}em; background-color: currentColor;\n"
+                         f"  vertical-align: {layout['baseline']:g}em; background: var(--icon-fill, currentColor);\n"
                          f"  mask: url(\"{uri}\") center / 100% 100% no-repeat;\n"
                          f"}}\n")
         outputs[ROOT / "resources/scss/generated/icons" / f"_{module}.scss"] = "\n".join(rules).encode()

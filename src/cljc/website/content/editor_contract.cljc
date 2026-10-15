@@ -11,6 +11,7 @@
    [:expected [:maybe [:string {:max 20000}]]]
    [:value [:string {:max 20000}]]])
 (def settings [:map [:admin-url [:maybe :string]] [:writable? :boolean]])
+(def timeline-category [:string {:min 1, :max 80}])
 
 (def cv-entry
   (when-enabled :cv nil
@@ -31,7 +32,7 @@
     [:map {:closed true}
      [:column [:int {:min 0, :max 100}]]
      [:?column-id [:maybe :int]]
-     [:category [:enum "education" "work" "life"]]
+     [:category timeline-category]
      [:parents [:vector {:max 6} [:int {:min 0, :max 999}]]]
      [:parent-keys [:vector {:max 6} [:string {:max 500}]]]
      [:expected-count [:int {:min 0, :max 999}]]

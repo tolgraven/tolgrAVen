@@ -33,9 +33,9 @@
                                  [column (when (= :image_assets column) {})])) columns)]
     (mapv #(merge defaults %) rows)))
 
-(deftest comment-expansion-opens-two-levels-and-preserves-explicit-folds
+(deftest comment-expansion-shows-direct-replies-and-preserves-explicit-folds
   (is (comments/expanded? {} [42 "root"]))
-  (is (comments/expanded? {} [42 "root" "child"]))
+  (is (false? (comments/expanded? {} [42 "root" "child"])))
   (is (false? (comments/expanded? {} [42 "root" "child" "grandchild"])))
   (is (false? (comments/expanded? {[42 "root" "child"] false} [42 "root" "child"])))
   (is (comments/expanded? {[42 "root" "child" "grandchild"] true}

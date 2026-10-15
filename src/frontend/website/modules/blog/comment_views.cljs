@@ -327,9 +327,17 @@
   (let [{:keys [records loading? more?]} @(r/subscribe [:comments/root-page id])
         route @(r/subscribe [:common/route])
         focused-id (get-in route [:parameters :path :comment-id])
-        comments (->> (vals records) (sort-by (juxt :ts :id)) reverse)]
+        focused-root (:root @(r/subscribe [:comments/focus-state id]))
+        expanded? @(r/subscribe [:blog/state [:comments-expanded id]])
+        comments (comments/displayed-roots (vals records) expanded? (:id focused-root))
+        amount (str (util/pluralize (count records) "comment") (when more? "+"))]
     [:section.blog-comments
-     [:h2.blog-comments-title.bottomborder (str (util/pluralize (count comments) "comment") (when more? "+"))]
+     (if (or more? (> (count records) comments/collapsed-root-count))
+       [:button.blog-btn.blog-collapse-btn.nomargin.bottomborder
+        {:aria-expanded (boolean expanded?)
+         :on-click #(r/dispatch [:blog/expand-comments id (not expanded?)])}
+        (if expanded? "Collapse" (str (if more? "Show " "Show all ") amount))]
+       [:h2.blog-comments-title.bottomborder amount])
      (when focused-id [<comment-focus> id])
      (when (seq comments)
        [:div.blog-comments-inner
@@ -338,7 +346,7 @@
                  [<comment-post> {:path path :comment comment
                                   :focused-id focused-id
                                   :stagger-ms (min 48 (* 12 index))}]))])
-     (when more?
+     (when (and expanded? more?)
        [:button.blog-btn.blog-load-more
         {:disabled loading? :on-click #(r/dispatch [:blog/load-more-comments id])}
         (if loading? "Loading comments…" "Load more comments")])

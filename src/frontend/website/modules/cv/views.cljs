@@ -7,14 +7,32 @@
     [website.component.registry]
     [clojure.string :as string]
     [website.react :as r]
+    [website.loader :as loader]
 
     [website.components.image :as img]
+    [website.components.icon-catalog :as icon-catalog]
     [website.components.portal :as portal]
     [website.components.ui.controls :as ui-controls]
     [website.components.ui.layout :as ui-layout]
     [website.util :as util])
   (:require-macros
+    [website.build.site :refer [when-enabled]]
     [website.macros :as m]))
+
+(defn icon-name [classes]
+  (some (fn [token]
+          (when (and (string/starts-with? token "fa-")
+                     (not (#{"fa-solid" "fa-regular" "fa-brands"} token)))
+            (subs token 3)))
+        (string/split (or classes "") #"\s+")))
+
+(m/defc <timeline-icon> [classes :- [:maybe :string]]
+  (let [name (icon-name classes)]
+    [:<>
+     (when-enabled :icon-catalog nil
+       (when (and (seq name) (not (icon-catalog/names name)))
+         [loader/<trigger> {:module :icon-catalog :lead-pages 0.25}]))
+     [:i {:class classes}]]))
 
 (defn bounds [element]
   (let [rect (.getBoundingClientRect element)]
@@ -69,7 +87,7 @@
   (let [editor @(r/subscribe [:get :state :content-editor])]
     [:button.cv-add-entry
      {:disabled (or (fields/busy? editor) (some? (:cv-entry editor)) (>= count 1000)
-                    (> (:column context) 100) (not (#{"education" "work" "life"} (:category context))))
+                    (> (:column context) 100))
       :title (when (>= count 1000) "This timeline has reached its entry limit.")
       :on-click (fn [event]
                   (.stopPropagation event)
@@ -146,10 +164,13 @@
     ;; owns this measured FLIP transition; React still owns every style and node.
     (r/use-layout-effect
       (fn []
-        (let [element (.-current surface)]
-          (set-transform! (transform-for origin))
-          (set-phase! :origin)
-          (.focus element #js {:preventScroll true}))) [])
+        (set-transform! (transform-for origin))
+        (set-phase! :origin)) [])
+    (r/use-layout-effect
+      (fn []
+        ;; The measured surface is hidden; focus only after its visible commit.
+        (when (= :origin phase)
+          (.focus (.-current surface) #js {:preventScroll true}))) [phase])
     (r/use-effect
       (fn []
         (when (= :origin phase)
@@ -188,7 +209,8 @@
         :on-transition-end (fn [event]
                              (when (and (= :closing phase) (= (.-target event) (.-currentTarget event))
                                         (= "transform" (.-propertyName event))) (close!)))}
-       [:button.cv-zoom-back {:on-click begin-close!} "← Zoom back out"]
+       (when (= "container" (:kind entry))
+         [:button.cv-zoom-back {:on-click begin-close!} "← Zoom back out"])
        (if (= "container" (:kind entry))
          [<container-timeline> entry asset context]
          [<box-content> entry true asset])]]]))
@@ -231,7 +253,7 @@
   (let [topic (fn [id icon]
                 [:div.cv-skill
                  {:class (str "cv-" (name id))}
-                 [:h2 [:i {:class icon}] (str " " (string/capitalize (name id)))]
+                 [:h2 [<timeline-icon> icon] (str " " (string/capitalize (name id)))]
                  (for [[i line] (map-indexed vector (id skills))] ^{:key i}
                    [:p.cv-skill-line "- " [fields/<text> :span skills [id i]]])])
         software (topic :software "fas fa-code")
@@ -365,7 +387,7 @@
                          :background (str "linear-gradient(0deg, var(--bg-"
                                           (get (:background-color-indexes cv) (inc i)) ")"
                                           ", var(--bg-" (get (:background-color-indexes cv) i) "))")}}
-                [:h1 [:i {:class icon}] (name category)
+                [:h1 [<timeline-icon> icon] (name category)
                  (when (fields/editing? cv)
                    [<add-entry> {:column i
                                  :column-id (:id column)

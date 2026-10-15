@@ -235,6 +235,8 @@ compile into the shell; feature masks get an automatically catalogued
 without duplicating their masks. Small SVGs are inline CSS data URLs, so selected
 icons incur neither a separate image request nor a font download/swap. Existing
 Reagent `:i.fab.fa-github`/`:i.fas.fa-copy` markup and `currentColor` remain usable.
+Consumers with gradient glyphs may set `--icon-fill` to the original gradient;
+declared SVG masks use that fill while font fallbacks retain their text clipping.
 Regenerate after changing declarations; commit generated SVGs and SCSS together.
 The generator removes stale files only in its owned generated paths. Normal CSS
 (and Docker) builds use these committed outputs, without Python/fontTools.

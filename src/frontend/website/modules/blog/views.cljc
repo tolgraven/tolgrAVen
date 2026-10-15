@@ -39,8 +39,11 @@
        ^{:key (str "blog-post-" id "-category-" tag)}
        [<tag-link> {:tag tag}])]))
 
-(defc <post-header> {:features [[:appear "zoom slower"]]
-                     :spec-schema schema/post-header-spec} [{:keys [children] :as spec}]
+(defc ^:private <post-avatar> {:features [[:appear "zoom slower"]]}
+  [user]
+  [:div (m/<> :user/avatar user "blog-user-avatar")])
+
+(defc <post-header> {:spec-schema schema/post-header-spec} [{:keys [children] :as spec}]
   (into [:div.flex.blog-post-header] children))
 
 (defc <post-content> "Render a loaded post with metadata and comments."
@@ -50,9 +53,8 @@
      [:section.blog-post
       {:data-link-trust (name (presentation/link-trust user))}
 
-     [<post-header> {:appear {:class "zoom slower" :remember-key [:blog/post-header id]}
-                    :children [
-       (m/<> :user/avatar user "blog-user-avatar")
+     [<post-header> {:children [
+       [<post-avatar> {:appear {:class "zoom slower" :remember-key [:blog/post-header id]}} user]
       [:div.blog-post-header-main
        [:a {:href @(r/subscribe [:blog/permalink-for-path (or permalink id)])}
          [:h1.blog-post-title title ]]

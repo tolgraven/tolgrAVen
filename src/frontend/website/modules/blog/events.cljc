@@ -135,6 +135,12 @@
    :dispatch [:blog/cache-state-changed]}))
 
 (when-enabled :blog :comments
+  (r/reg-event-fx :blog/expand-comments
+  {:args (get schema/event-args :blog/expand-comments)}
+  (fn [{:keys [db]} [_ post-id expanded?]]
+    (persist-comment-state db :comments-expanded post-id expanded?))))
+
+(when-enabled :blog :comments
   (r/reg-event-fx :blog/expand-comment-thread
   {:args (get schema/event-args :blog/expand-comment-thread)}
   (fn [{:keys [db]} [_ comment-path expanded?]]

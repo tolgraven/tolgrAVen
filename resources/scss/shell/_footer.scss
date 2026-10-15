@@ -128,12 +128,6 @@ img.img-icon {
     display: flex;
     flex-direction: column;
 
-    > a {
-      min-height: 2rem;
-      display: flex;
-      align-items: center;
-    }
-
     .footer-link-with-text {
       display: flex;
       justify-content: space-between;
@@ -205,13 +199,14 @@ img.img-icon {
     }
   }
 }
-.fa-soundcloud { text-shadow: 2px 2px 1px #ff9533; }
-.fa-twitter {    text-shadow: 2px 2px 1px #1DA1F2; }
-.fa-facebook {   text-shadow: 2px 2px 2px #3b5998; }
-.fa-instagram {  text-shadow: 2px 2px 3px #8134af; }
-.fa-linkedin {   text-shadow: 2px 2px 1px #0077b5; }
-.fa-github {     text-shadow: 1px 1px 3px var(--fg-2); }
-.fa-google {     text-shadow: 1px 1px 3px var(--fg-2); }
+// Preserve the original brand shadows for both font glyphs and SVG masks.
+.fa-soundcloud { filter: drop-shadow(0.125rem 0.125rem 0.03125rem #ff9533); }
+.fa-twitter {    filter: drop-shadow(0.125rem 0.125rem 0.03125rem #1DA1F2); }
+.fa-facebook {   filter: drop-shadow(0.125rem 0.125rem 0.0625rem #3b5998); }
+.fa-instagram {  filter: drop-shadow(0.125rem 0.125rem 0.09375rem #8134af); }
+.fa-linkedin {   filter: drop-shadow(0.125rem 0.125rem 0.03125rem #0077b5); }
+.fa-github {     filter: drop-shadow(0.0625rem 0.0625rem 0.09375rem var(--fg-2)); }
+.fa-google {     filter: drop-shadow(0.0625rem 0.0625rem 0.09375rem var(--fg-2)); }
 
 .md-icon {
   width:  var(--space-lg);

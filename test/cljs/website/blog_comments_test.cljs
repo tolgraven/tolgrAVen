@@ -24,6 +24,80 @@
 
 (defn- tick! [ms] (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
 
+(deftest root-comments-toggle-keeps-pagination-and-focused-old-threads
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                restore-db! (r/make-restore-fn)
+                before-context @restore/*context
+                subscribe (r/subscribe-function)
+                author {:id "writer", :name "Writer"}
+                rows (mapv #(hash-map :id (str %) :parent-post 42 :parent-comment nil
+                                     :reply-count 0 :user "writer" :title (str "Root " %)
+                                     :text "Comment body" :ts %) (range 6))
+                *focused (r/atom nil)
+                modules loader/modules]
+            (try
+              (r/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:set [:common/route] (reitit/match-by-path routes/router "/blog/post/42")])
+              (restore/begin! {:back? true})
+              (await! (loader/load! {:module :markdown}))
+              (r/with-framework-bindings
+                [loader/modules
+                 (assoc modules :user (reify lazy/ILoadable
+                                        (ready? [_] true)
+                                        IDeref
+                                        (-deref [_] (dissoc user-module/spec :content :depends))))
+                 rfe/href (fn [name params query]
+                            (some-> (reitit/match-by-name routes/router name params)
+                                    (reitit/match->path query)))
+                 r/subscribe
+                 (fn
+                   ([q]
+                    (case (first q)
+                      :comments/root-page (r/atom {:records (into {} (map (juxt :id identity)) rows)
+                                                  :loading? false
+                                                  :more? true})
+                      :comments/focus-state *focused
+                      :user/user (r/atom author)
+                      :user/active-user (r/atom nil)
+                      (subscribe q)))
+                   ([q opts] (subscribe q opts)))]
+                (await! (support/render! root [comment-views/<comments-section> {:post {:id 42}}]))
+                (is (= 4 (.-length (.querySelectorAll element ".blog-comment-title"))))
+                (is (nil? (.querySelector element ".blog-load-more")))
+                (.click (.querySelector element ".blog-collapse-btn"))
+                (await! (support/settle!))
+                (is (= 6 (.-length (.querySelectorAll element ".blog-comment-title"))))
+                (.click (.querySelector element ".blog-load-more"))
+                (await! (support/settle!))
+                (let [limit (await! (support/state-at! [:state :blog :comment-limit 42]))]
+                  (is (> limit comments/page-size))
+                  (.click (.querySelector element ".blog-collapse-btn"))
+                  (await! (support/settle!))
+                  (is (= 4 (.-length (.querySelectorAll element ".blog-comment-title"))))
+                  (reset! *focused {:ready? true
+                                    :comment-id "0"
+                                    :row (first rows)
+                                    :root (first rows)
+                                    :parent nil})
+                  (await! (support/settle!))
+                  (is (= 5 (.-length (.querySelectorAll element ".blog-comment-title")))
+                      "A deep-link root outside the collapsed subset remains mounted")
+                  (.click (.querySelector element ".blog-collapse-btn"))
+                  (await! (support/settle!))
+                  (is (= limit (await! (support/state-at! [:state :blog :comment-limit 42])))
+                      "Folding never throws away the acquired page limit")
+                  (is (contains? (await! (support/state-at! [:state :blog :restore-edits]))
+                                 [:comments-expanded 42]))))
+              (finally
+                (support/unmount! root)
+                (restore-db!)
+                (reset! restore/*context before-context)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
 (deftest standalone-root-edit-renders-the-parent-path-editor
   (async done
     (-> (go-promise
@@ -142,6 +216,7 @@
             (try
               (restore/begin! {:hydrate? false, :back? false})
               (r/dispatch-sync [:set [:common/route] (reitit/match-by-path routes/router "/blog/post/42")])
+              (r/dispatch-sync [:blog/expand-comment-thread [42 "root"] true])
               (await! (loader/load! {:module :markdown}))
               (doseq [[parent rows] [["root" [replies]] ["reply" [grandchild]] ["grandchild" []]]]
                 (r/dispatch-sync [:store/scoped (scoped/query-key (comments/thread-query 42 parent))
@@ -193,7 +268,7 @@
                   (is (nil? (.querySelector js/document ".action-label")))
                   (.blur link)
                   (.dispatchEvent link (js/PointerEvent. "pointerover" #js {:bubbles true}))
-                  (await! (support/settle!))
+                  (await! (support/wait-for! #(.querySelector js/document ".action-label")))
                   (is (.querySelector js/document ".action-label") "Hover opens the same custom label")
                   (.dispatchEvent link (js/PointerEvent. "pointerout" #js {:bubbles true}))
                   (reset! *active-user author)

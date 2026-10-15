@@ -6,6 +6,10 @@
   center and back. Container boxes render a separate mini timeline with child
   logo/color glyphs; regular boxes render their own details. Empty details expose
   a first editable line only in edit mode, using the existing scalar write path.
+  Categories and their icon classes come from content, with the shared bounded
+  category contract; do not restrict the timeline to resume-specific categories.
+  Declared CV glyphs load with the module; other CMS choices acquire the existing
+  compatibility catalog. Regular details close through outside click or Escape.
 
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/ssr.md`, and `doc/dev-console.md`.
@@ -157,6 +161,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Comment links share the original corner action group with Reply/Edit. Preserve
   the existing layout, typography, spacing and hover appearance when changing
   navigation or data plumbing.
+  Root comments retain the four-item Show all/Collapse fold, with direct replies
+  visible by default. Folding retains acquired pages and the focused permalink's
+  root; the managed query window remains independent of the displayed subset.
   `validation/schema.cljs` assembles browser/Node app-db sections from their owners;
   small single-use shell-state contracts stay inline there.
 - Image readiness callbacks use the shared picture lifecycle: notify only a decoded,

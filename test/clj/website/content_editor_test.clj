@@ -72,7 +72,10 @@
         observed (atom nil)
         bundle {:version 1, :content {:cv {:title "CV"}}}]
     (is (nil? (validation/explain contract/create-cv-entry request)))
+    (is (nil? (validation/explain contract/create-cv-entry (assoc request :category "Friday stage"))))
     (doseq [invalid [(assoc request :column -1)
+                     (assoc request :category "")
+                     (assoc request :category (apply str (repeat 81 "x")))
                      (assoc request :expected-count 1000)
                      (assoc-in request [:entry :to] 2019)
                      (assoc-in request [:entry :how] [(apply str (repeat 2001 "x"))])

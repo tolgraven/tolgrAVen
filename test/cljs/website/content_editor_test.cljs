@@ -19,6 +19,40 @@
     (is (= [:story :images 0 :src] (fields/path (get-in wrapped [:images 0]) [:src])))
     (is (fields/editing? (get-in wrapped [:images 0])))))
 
+(deftest cv-category-icons-accept-cms-categories-and-font-awesome-families
+  (is (= "graduation-cap" (cv/icon-name "fas fa-solid fa-graduation-cap"))))
+
+(deftest cv-category-icons-are-not-limited-to-resume-categories
+  (is (= "music" (cv/icon-name "fas fa-music"))))
+
+(deftest cv-regular-details-focus-when-visible-and-close-with-keyboard-or-outside-click
+  (async done
+    (let [element (.createElement js/document "div")
+          root (atom nil)]
+      (.appendChild (.-body js/document) element)
+      (-> (go-promise
+            (let [mounted (await! (support/create-root! element))]
+              (reset! root mounted)
+              (await! (support/render! mounted
+                        [cv/<box> {:from 2020, :to 2021, :what "Details", :how []}
+                         "0%" "10rem" 0]))
+              (let [source (.querySelector element ".cv-detail")]
+                (.focus source)
+                (.dispatchEvent source (js/KeyboardEvent. "keydown" #js {:key "Enter", :bubbles true}))
+                (let [surface (await! (support/wait-for! #(.querySelector js/document ".cv-detail-surface")))]
+                  (await! (support/wait-for! #(identical? surface (.-activeElement js/document))))
+                  (is (nil? (.querySelector surface ".cv-zoom-back")))
+                  (.dispatchEvent surface (js/KeyboardEvent. "keydown" #js {:key "Escape", :bubbles true})))
+                (await! (support/wait-for! #(nil? (.querySelector js/document ".cv-detail-surface"))))
+                (is (identical? source (.-activeElement js/document)))
+                (.click source)
+                (await! (support/wait-for! #(.querySelector js/document ".cv-detail-surface")))
+                (.click (.querySelector js/document ".cv-detail-layer"))
+                (await! (support/wait-for! #(nil? (.querySelector js/document ".cv-detail-surface"))))
+                (is (identical? source (.-activeElement js/document))))))
+          (.catch #(is false (str %)))
+          (.finally #(do (when @root (support/unmount! @root)) (.remove element) (done)))))))
+
 (deftest cv-logos-retain-relative-and-public-upload-urls
   (is (= "../../img/logo.png" (cv/logo-src "img/logo.png" nil)))
   (is (= "/img/logo.png" (cv/logo-src "/img/logo.png" nil)))

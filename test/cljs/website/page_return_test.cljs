@@ -11,6 +11,9 @@
 
             [website.test-support :as support]
             [website.components.shell :as shell]
+            [website.navigation.routes :as routes]
+            [reitit.frontend :as reitit]
+            [reitit.frontend.easy :as rfe]
             [website.modules.blog.views :as blog]
             [website.modules.blog.comment-views :as comment-views]
             [website.modules.blog.comments :as comments]
@@ -85,12 +88,22 @@
                            [["root" nil] ["child" "root"] ["grandchild" "child"]
                             ["deep" "grandchild"] ["leaf" "deep"]])
                 module (dissoc user/spec :content :depends)
+                href (fn [name params query]
+                       (some-> (reitit/match-by-name routes/router name params)
+                               (reitit/match->path query)))
                 form [comment-views/<comments-section> {:post {:id 42}}]]
             (set! (.-id element) "app")
             (.setAttribute element "data-page-build" "test-build")
             (.appendChild (.-body js/document) element)
             (try
               (r/dispatch-sync [:init/app-db])
+              ;; The state observer round-trips EDN; retain the native route's
+              ;; data fields without its executable coercion/controller objects.
+              (r/dispatch-sync [:set [:common/route]
+                                (assoc (select-keys (reitit/match-by-path routes/router "/blog/post/42")
+                                                   [:path :path-params :query-params])
+                                       :data {:name :blog-post})])
+              (r/dispatch-sync [:blog/expand-comment-thread [42 "root"] true])
               (r/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] true])
               (doseq [parent [nil "root" "child" "grandchild" "deep"]]
                 (let [query (if parent (comments/thread-query 42 parent) (comments/root-query 42 comments/page-size))]
@@ -100,11 +113,14 @@
               (let [db (await! (support/state-at! []))
                     saved (contract/state-for db)
                     html (render/html! db form {:modules {:user module}
+                                               :href href
                                                :restored? true
                                                :interactive? true
                                                :render-to-string server/render-to-string})]
                 ;; Isolated rendering must not disturb existing app state/readers.
-                (is (= db (await! (support/state-at! []))))
+                ;; html! is synchronous. Compare at that boundary, before a
+                ;; later render frame can deliver unrelated transport events.
+                (is (= db @r/*app-db))
                 (set! (.-innerHTML element) html)
                 (is (= 5 (.-length (.querySelectorAll element ".blog-comment-title"))))
                 (let [nodes (vec (array-seq (.querySelectorAll element ".blog-comment-title")))
@@ -120,7 +136,8 @@
                   (r/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] false])
                   (local/install!)
                   (r/with-framework-bindings [loader/modules {:user (reify lazy/ILoadable (ready? [_] true)
-                                                            IDeref (-deref [_] module))}]
+                                                            IDeref (-deref [_] module))}
+                                              rfe/href href]
                     (await! (js/Promise.
                               (fn [resolve _]
                                 (reset! *root

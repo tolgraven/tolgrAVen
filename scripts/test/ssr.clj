@@ -98,8 +98,10 @@
         shells (render! worker (mapv #(assoc % :shell? true :posts [] :query-params {})
                                      [home (assoc blog :path "/blog/post/42") cv]))]
     (check! (contains-all? (:html first) ["<strong>article</strong>" "Server comment 0"
-                                         "Server visible reply" "Server comment 4" "5 comments"])
+                                         "Server visible reply" "Show all 5 comments"])
             "Blog content or expanded comments missing")
+    (check! (not (str/includes? (:html first) "Server comment 4"))
+            "The initial comments fold must retain the original four-root limit")
     (check! (not (re-find #"<script>|javascript:" (:html first))) "Unsafe Markdown output")
     (check! (and (str/includes? (:html second) "Second request")
                  (not (str/includes? (:html second) "Server-rendered blog"))) "Blog request state leaked")

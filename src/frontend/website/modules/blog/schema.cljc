@@ -104,6 +104,7 @@
    :blog/comment-vote (when-enabled :blog :comments [:tuple [:?or c/id store/profile] store/profile c/path [:enum :up :down]])
    :blog/vote-saved (when-enabled :blog :comments [:tuple :string [:map [:vote [:enum -1 0 1]]]])
    :blog/cache-state-changed no-args
+   :blog/expand-comments (when-enabled :blog :comments [:tuple c/id :boolean])
    :blog/expand-comment-thread (when-enabled :blog :comments [:tuple c/path :boolean])
    :blog/adding-comment (when-enabled :blog :comments [:tuple c/path :?boolean])
    :blog/load-more-comments (when-enabled :blog :comments id-args)}))
