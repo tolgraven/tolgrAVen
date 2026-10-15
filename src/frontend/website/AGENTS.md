@@ -298,7 +298,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Home owns only its own styles; actual lazy consumers acquire Markdown and
   monospace sheets. Anonymous account controls keep a native shell link until
   intent; an open account query or authenticated avatar activates User. Closed
-  account UI is absent from initial SSR exports and style ownership.
+  account UI is absent from initial SSR exports and style ownership. Pending shell
+  controls use stable component identities; render-local fallback functions leave
+  discarded Reagent instances subscribed during concurrent navigation.
   Keep the full highlighter out of
   Markdown so link previews do not acquire every language. Node renders highlighted
   code inside completed React Suspense boundaries. Copy/wrapping and the page
