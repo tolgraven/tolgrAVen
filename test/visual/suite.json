@@ -1,0 +1,219 @@
+{
+  "schema": 1,
+  "cases": [
+    {
+      "id": "header-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=header"
+    },
+    {
+      "id": "header-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=header"
+    },
+    {
+      "id": "footer-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=footer"
+    },
+    {
+      "id": "footer-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=footer"
+    },
+    {
+      "id": "post-footer-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=post-footer"
+    },
+    {
+      "id": "post-footer-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=post-footer"
+    },
+    {
+      "id": "services-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=services"
+    },
+    {
+      "id": "services-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=services"
+    },
+    {
+      "id": "cv-regular-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=cv-regular"
+    },
+    {
+      "id": "cv-regular-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=cv-regular"
+    },
+    {
+      "id": "cv-regular-open-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=cv-regular",
+      "action": "document.querySelector('.cv-detail[role=button]').click()"
+    },
+    {
+      "id": "cv-regular-open-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=cv-regular",
+      "action": "document.querySelector('.cv-detail[role=button]').click()"
+    },
+    {
+      "id": "cv-container-open-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=cv-container",
+      "action": "document.querySelector('.cv-detail[role=button]').click()"
+    },
+    {
+      "id": "cv-container-open-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=cv-container",
+      "action": "document.querySelector('.cv-detail[role=button]').click()"
+    },
+    {
+      "id": "comments-folded-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=comments"
+    },
+    {
+      "id": "comments-folded-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=comments"
+    },
+    {
+      "id": "thread-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=thread"
+    },
+    {
+      "id": "thread-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=thread"
+    },
+    {
+      "id": "shell-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=shell"
+    },
+    {
+      "id": "shell-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=shell"
+    },
+    {
+      "id": "cv-categories-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=cv&settle=6500"
+    },
+    {
+      "id": "cv-categories-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=cv&settle=6500"
+    },
+    {
+      "id": "search-mixed-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=search-mixed"
+    },
+    {
+      "id": "search-mixed-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=search-mixed"
+    },
+    {
+      "id": "comments-expanded-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=comments",
+      "action": "document.querySelector('.blog-comment-text .fade-to-black').dispatchEvent(new MouseEvent('mouseover', {bubbles:true})); await new Promise(resolve => setTimeout(resolve, 100)); document.querySelector('[aria-label=\"Show full comment text\"]').click()"
+    },
+    {
+      "id": "comments-expanded-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=comments",
+      "action": "document.querySelector('.blog-comment-text .fade-to-black').dispatchEvent(new MouseEvent('mouseover', {bubbles:true})); await new Promise(resolve => setTimeout(resolve, 100)); document.querySelector('[aria-label=\"Show full comment text\"]').click()"
+    }
+  ]
+}
