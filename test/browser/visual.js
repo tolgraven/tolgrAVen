@@ -53,6 +53,7 @@
         box: [box.x, box.y, box.width, box.height],
         relative: [box.x - parent.x, box.y - parent.y],
         scroll: [element.scrollWidth, element.scrollHeight, element.clientWidth, element.clientHeight],
+        scrollPosition: [element.scrollLeft, element.scrollTop],
         padding: [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft],
         margin: [style.marginTop, style.marginRight, style.marginBottom, style.marginLeft],
         border: [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth],

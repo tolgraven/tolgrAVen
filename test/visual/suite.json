@@ -270,25 +270,37 @@
     },
     {
       "id": "comments-thread-deep-wide",
-      "viewport": [1440, 1000],
+      "viewport": [
+        1440,
+        1000
+      ],
       "path": "/fixtures/visual.html?component=thread",
       "action": "document.querySelector('.blog-comment-collapsed-placeholder').click()"
     },
     {
       "id": "comments-thread-deep-narrow",
-      "viewport": [400, 800],
+      "viewport": [
+        400,
+        800
+      ],
       "path": "/fixtures/visual.html?component=thread",
       "action": "document.querySelector('.blog-comment-collapsed-placeholder').click()"
     },
     {
       "id": "comments-owner-controls-wide",
-      "viewport": [1440, 1000],
+      "viewport": [
+        1440,
+        1000
+      ],
       "path": "/fixtures/visual.html?component=comments-auth",
       "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})"
     },
     {
       "id": "comments-owner-controls-narrow",
-      "viewport": [400, 800],
+      "viewport": [
+        400,
+        800
+      ],
       "path": "/fixtures/visual.html?component=comments-auth",
       "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})"
     },
@@ -302,29 +314,44 @@
     },
     {
       "id": "comments-two-roots-wide",
-      "viewport": [1440, 1000],
+      "viewport": [
+        1440,
+        1000
+      ],
       "path": "/fixtures/visual.html?component=comments-roots"
     },
     {
       "id": "comments-two-roots-narrow",
-      "viewport": [400, 800],
+      "viewport": [
+        400,
+        800
+      ],
       "path": "/fixtures/visual.html?component=comments-roots"
     },
     {
       "id": "comments-reader-controls-wide",
-      "viewport": [1440, 1000],
+      "viewport": [
+        1440,
+        1000
+      ],
       "path": "/fixtures/visual.html?component=comments-reader",
       "action": "document.querySelector('.blog-comment-actions [aria-label=\"Reply\"]').focus({preventScroll:true})"
     },
     {
       "id": "comments-reader-controls-narrow",
-      "viewport": [400, 800],
+      "viewport": [
+        400,
+        800
+      ],
       "path": "/fixtures/visual.html?component=comments-reader",
       "action": "document.querySelector('.blog-comment-actions [aria-label=\"Reply\"]').focus({preventScroll:true})"
     },
     {
       "id": "comments-label-above-short",
-      "viewport": [400, 400],
+      "viewport": [
+        400,
+        400
+      ],
       "path": "/fixtures/visual.html?component=comments-edge",
       "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})"
     },
@@ -368,7 +395,8 @@
         1440,
         1000
       ],
-      "path": "/fixtures/visual.html?component=home-image-media"
+      "path": "/fixtures/visual.html?component=home-image-media",
+      "action": "document.querySelector('#gallery .sideways').scrollTo({left:0, behavior:'instant'})"
     },
     {
       "id": "home-image-media-narrow",
@@ -376,7 +404,8 @@
         400,
         800
       ],
-      "path": "/fixtures/visual.html?component=home-image-media"
+      "path": "/fixtures/visual.html?component=home-image-media",
+      "action": "document.querySelector('#gallery .sideways').scrollTo({left:0, behavior:'instant'})"
     },
     {
       "id": "home-story-expanded-wide",
@@ -401,6 +430,15 @@
       "viewport": [
         400,
         800
+      ],
+      "path": "/fixtures/visual.html?component=home-image-media",
+      "action": "const gallery = document.querySelector('#gallery .sideways'); gallery.scrollIntoView({block:'start', behavior:'instant'}); await window.visualFixture.ready(); gallery.scrollTo({left:gallery.scrollWidth, behavior:'instant'})"
+    },
+    {
+      "id": "home-gallery-end-wide",
+      "viewport": [
+        1440,
+        1000
       ],
       "path": "/fixtures/visual.html?component=home-image-media",
       "action": "const gallery = document.querySelector('#gallery .sideways'); gallery.scrollIntoView({block:'start', behavior:'instant'}); await window.visualFixture.ready(); gallery.scrollTo({left:gallery.scrollWidth, behavior:'instant'})"

@@ -3,6 +3,7 @@
 `bb test:visual` compares native component rendering. It fails on **one changed
 RGBA pixel**, element box, relative position, padding, margin, border, font, gap,
 overflow, missing element/icon, or browser/font/viewport environment difference.
+Native horizontal and vertical scroll offsets are recorded alongside scroll dimensions.
 Both `::before` and `::after` generated content record computed dimensions,
 offsets, spacing, borders, backgrounds, masks and typography for every element.
 These computed pseudo-element metrics supplement the native parent boxes;
@@ -46,6 +47,10 @@ column width/height; absolute-positioned entries cannot establish those dimensio
 Their dates determine position/size within the seed's shared timeline range;
 the case scrolls the native timeline to that historical entry before capture.
 The original editor comparison fixture remains unchanged.
+Home cases retain native intro/story/media owners and the public seed. Story
+image expansion clicks the actual inset image. Gallery start/end cases set their
+explicit horizontal position after image decoding, because native mandatory
+scroll snapping can select a different slide while image widths are settling.
 Post/comment cases render the native blog container and post, including the
 post-owned comment section. Standalone comment cases use the native standalone
 view separately. Thread cases supply two replies and a grandchild through the
