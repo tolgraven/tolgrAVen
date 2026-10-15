@@ -3,6 +3,7 @@
   (:require [website.react :as r]
             [cljs.test :as test :refer-macros [run-tests]]
             [website.neovim-test]
+            [website.neovim-visual-fixture :as visual]
             [website.modules.neovim.views :as views]
             [website.modules.neovim.runtime :as runtime]
             [website.modules.neovim.files :as files]
@@ -372,7 +373,7 @@
    [:pre {:id "saved-buffer", :style {:white-space :pre-wrap, :overflow-wrap :anywhere}} @*saved]
    [:pre {:id "written-buffer", :style {:white-space :pre-wrap, :overflow-wrap :anywhere}} (pr-str @*written)]])
 
-(defn ^:export init! []
+(defn init-checks! []
   ;; Fixture-only counters verify exact component ownership without a fake runtime.
   (let [original js/Worker]
     (set! js/window.Worker
@@ -409,3 +410,8 @@
               #js {:subtree true, :childList true, :attributes true})))
   (run-tests 'website.neovim-test)
   (r/render (r/create-root (.getElementById js/document "app")) [<fixture>]))
+
+(defn ^:export init! []
+  (if (.has (js/URLSearchParams. (.-search js/location)) "visual")
+    (visual/init!)
+    (init-checks!)))

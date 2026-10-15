@@ -296,3 +296,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   provider failures, selected-PR commit attribution, and the real commit hook in
   disposable Git repositories. It runs with `bb test:scripts`; no browser or
   Java build is involved.
+- Readonly Neovim visual states are standalone top-level cases even in geometry
+  mode. Keep the native grid/worker and scoped COOP/COEP policy; the unsupported
+  document omits isolation. Await the fixture's owned disposal hook after capture
+  and on failure, asserting worker termination before starting the next session.

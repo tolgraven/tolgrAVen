@@ -38,7 +38,7 @@
   (shell (into ["python3" "scripts/test/integration_server.py"] args)))
 
 (defn test! []
-  (shell ["bb" "--classpath" "scripts:src/cljc:test/scripts" "-m" "tools-test"])
+  (shell ["bb" "--classpath" "scripts:src/cljc:src/frontend:test/scripts" "-m" "tools-test"])
   (shell ["bb" "--classpath" "scripts:test/scripts" "-m" "pr-test"])
   (shell ["node" "--test" "test/scripts/document_image_test.cjs" "test/scripts/editor_styles_test.mjs"
           "test/scripts/style_overrides_test.mjs" "test/scripts/visual_clock_test.cjs"

@@ -129,6 +129,46 @@ class VisualTest(unittest.TestCase):
             self.assertEqual(('navigate_page', {'pageId': 73, 'type': 'url', 'url': 'about:blank'}), client.calls[-3])
             self.assertTrue((args.output / 'ordinary.json').exists())
 
+    def test_isolated_cases_stay_top_level_and_dispose_before_next_navigation(self):
+        from unittest.mock import patch
+        for fail in (False, True):
+            with self.subTest(fail=fail), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                suite = root / 'suite.json'
+                cases = [{'id': name, 'viewport': [400, 800], 'standalone': True,
+                          'path': '/fixtures/neovim-visual.html?visual=' + name}
+                         for name in ('patch', 'diff')]
+                suite.write_text(json.dumps({'cases': cases}))
+                args = argparse.Namespace(suite=suite, origin='http://127.0.0.1:4098',
+                                          output=root / 'capture', case=[], geometry_only=True, mcp_command=None)
+                class NativeClient(HoverClient):
+                    def evaluate(self, function, **arguments):
+                        if fail and 'visualFixture.snapshot()' in function:
+                            self.calls.append(('evaluate_script', {'function': function}))
+                            raise RuntimeError('Native startup failed')
+                        return super().evaluate(function, **arguments)
+                client = NativeClient()
+                with patch.object(visual, 'Relay', return_value=client):
+                    if fail:
+                        with self.assertRaisesRegex(RuntimeError, 'Native startup failed'):
+                            visual.capture(args)
+                    else:
+                        visual.capture(args)
+                scripts = [(i, args['function']) for i, (name, args) in enumerate(client.calls)
+                           if name == 'evaluate_script']
+                self.assertFalse(any('visualDriver.capture' in script for _, script in scripts))
+                disposals = [i for i, script in scripts if 'visualFixture?.dispose?.()' in script]
+                self.assertEqual(1 if fail else 2, len(disposals))
+                navigations = [i for i, (name, args) in enumerate(client.calls)
+                               if name == 'navigate_page' and 'neovim-visual' in args['url']]
+                self.assertLess(navigations[0], disposals[0])
+                if not fail:
+                    self.assertLess(disposals[0], navigations[1])
+                    self.assertNotIn('native_hover', json.loads((args.output / 'patch.json').read_text()))
+                self.assertEqual(1, sum(name == 'new_page' for name, _ in client.calls))
+                self.assertEqual(1, sum(name == 'close_page' for name, _ in client.calls))
+                self.assertEqual(not fail, (args.output / 'capture.json').exists())
+
     def test_geometry_pointer_parks_observed_heading_outside_all_fixture_viewports(self):
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as directory:

@@ -182,6 +182,23 @@
   (is (= "test/browser/docs/private.html" (str (server/route-file "/fixtures/docs/private.html"))))
   (is (= "resources/public/js/tests/js/test.js" (str (server/route-file "/js/test.js")))))
 
+(deftest native-neovim-fixtures-scope-isolation-and-bundle-routing
+  (doseq [uri ["/fixtures/neovim.html" "/fixtures/neovim-visual.html"
+               "/vendor/neovim/nvim-profile-worker.js" "/vendor/neovim/nvim.wasm"]]
+    (let [response (server/handler {:uri uri})]
+      (is (= 200 (:status response)))
+      (is (= "same-origin" (get-in response [:headers "Cross-Origin-Opener-Policy"])))
+      (is (= "require-corp" (get-in response [:headers "Cross-Origin-Embedder-Policy"])))))
+  (doseq [uri ["/fixtures/neovim-unsupported.html" "/fixtures/visual.html"]]
+    (let [response (server/handler {:uri uri})]
+      (is (= 200 (:status response)))
+      (is (nil? (get-in response [:headers "Cross-Origin-Opener-Policy"])))
+      (is (nil? (get-in response [:headers "Cross-Origin-Embedder-Policy"])))))
+  (is (= "application/wasm" (get-in (server/handler {:uri "/vendor/neovim/nvim.wasm"}) [:headers "content-type"])))
+  (is (= "resources/public/js/neovim-check/main.js" (str (server/route-file "/js/neovim-check/main.js"))))
+  (is (= "resources/public/js/neovim-check/cljs-runtime/website.neovim_fixture.js"
+         (str (server/route-file "/js/neovim-check/cljs-runtime/website.neovim_fixture.js")))))
+
 (deftest child-timeout-is-enforced
   (let [start (System/nanoTime)]
     (is (thrown-with-msg? Exception #"timed out" (p/shell {:timeout 50 :out :string} ["sleep" "10"])))

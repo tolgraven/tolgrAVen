@@ -120,3 +120,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   `prepare-commit-msg` session trailer hook. Preserve the original owner and
   recorded contributors on every body rewrite; attribution comes only from
   explicit IDs, the current session, and commit trailers. See `doc/tooling.md`.
+- Static Neovim fixtures reuse the module's portable isolation policy for their
+  document/worker paths; the explicit unsupported alias has no document isolation.
+  Keep the direct `:neovim-check` bundle route separate from `:app-test` resources.
+  Standalone visual cases await an optional owned disposal hook on success/failure
+  before the next navigation; active WASM cases must never use the iframe batch.

@@ -5,7 +5,8 @@
             [clojure.string :as str]
             [cheshire.core :as json]
             [org.httpkit.client :as client]
-            [org.httpkit.server :as http]))
+            [org.httpkit.server :as http]
+            [website.modules.neovim.policy :as neovim-policy]))
 
 (def mime
   {"html" "text/html; charset=utf-8"
@@ -16,7 +17,8 @@
    "webp" "image/webp"
    "avif" "image/avif"
    "svg" "image/svg+xml"
-   "woff2" "font/woff2"})
+   "woff2" "font/woff2"
+   "wasm" "application/wasm"})
 
 (defn route-file
   ([uri] (route-file uri nil))
@@ -34,6 +36,8 @@
           (= path "fixtures/editor-seed.json") (fs/path "resources/content-seed.json")
           (#{"fixtures/docs/index.html" "fixtures/docs/docs.html"} path)
           (fs/path "resources/docs/codox" (fs/file-name path))
+          (= path "fixtures/neovim-unsupported.html") (fs/path "test/browser/neovim-visual.html")
+          (str/starts-with? path "js/neovim-check/") (fs/path "resources/public" path)
           (str/starts-with? path "fixtures/") (fs/path "test/browser" (subs path 9))
           (some #{path} (map #(str avatar "." %) ["png" "webp" "avif"]))
           (fs/path "resources/public/img" (str "tolgrav." (fs/extension path)))
@@ -45,8 +49,11 @@
     (if-let [file (try (route-file uri glass-output) (catch Exception _ nil))]
       (if (fs/regular-file? file)
         {:status 200
-         :headers {"content-type" (get mime (fs/extension file) "application/octet-stream")
-                   "cache-control" "no-store"}
+         :headers (merge {"content-type" (get mime (fs/extension file) "application/octet-stream")
+                          "cache-control" "no-store"}
+                         (if (#{"/fixtures/neovim.html" "/fixtures/neovim-visual.html"} uri)
+                           neovim-policy/isolation-headers
+                           (neovim-policy/headers-for uri)))
          :body (if (and glass-output (= uri "/tests/"))
                  (str/replace (slurp (fs/file file)) "<head>"
                               "<head><link rel=\"stylesheet\" href=\"/css/website/main.css\">")

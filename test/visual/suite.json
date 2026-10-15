@@ -941,6 +941,60 @@
       ],
       "path": "/fixtures/visual.html?component=comments-auth&composer=plain",
       "action": "const main = document.querySelector('#main');\nconst card = document.getElementById('blog-comment-visual-comment');\nif (!card) throw new Error('Native authenticated comment card is missing');\nconst parent = card.parentElement;\nconst source = 'A native **composer** reply with Unicode \u03bb.';\nconst rendered = 'A native composer reply with Unicode \u03bb.';\nconst waitFor = async (predicate, label) => { const deadline = performance.now() + 10000; while (!predicate()) { if (performance.now() > deadline) throw new Error(label); await new Promise(resolve => requestAnimationFrame(resolve)); } };\nconst state = () => website.visual_fixture.composer_state();\nconst retained = () => {\n  const current = state();\n  if (document.querySelector('#main') !== main || document.getElementById('blog-comment-visual-comment') !== card || card.parentElement !== parent || current.requests !== 0 || current.uploads !== 0 || current['post-text'] !== 'Retained post draft') throw new Error('Composer changed its comment parent, post draft or provider boundary');\n  return current;\n};\nconst form = () => parent.querySelector('.blog-adding-comment');\nconst previewReady = () => form()?.querySelector('.blog-comment-text strong')?.textContent === 'composer' && form().querySelector('.blog-comment-text')?.textContent.trim() === rendered;\nconst open = async () => {\n  const reply = card.querySelector('button[aria-label=Reply]');\n  if (!reply) throw new Error('Native Reply control did not return');\n  reply.scrollIntoView({block:'center', behavior:'instant'});\n  await window.visualFixture.ready();\n  reply.click();\n  await waitFor(() => form()?.querySelector('[aria-label=\"Markdown editor mode\"]'), 'Native reply composer did not mount');\n  website.visual_fixture.composer_text_BANG_(source);\n  await waitFor(() => previewReady() && form().querySelector('.md-editor-content'), 'Native rich editor or live preview did not receive local form text');\n  form().scrollIntoView({block:'center', behavior:'instant'});\n  await window.visualFixture.ready();\n};\nconst assertMode = mode => {\n  const current = retained();\n  const container = form();\n  const selector = mode === 'rich' ? '.md-editor-content' : '.md-source-content';\n  const inactive = mode === 'rich' ? '.md-source-content' : '.md-editor-content';\n  const text = mode === 'rich' ? rendered : source;\n  const name = mode === 'rich' ? 'Visual editor' : 'Plain Markdown';\n  const editor = container?.querySelector(selector);\n  const pressed = container?.querySelector('[aria-label=\"Markdown editor mode\"] [aria-pressed=true]');\n  if (current.text !== source || current.editors !== 1 || !previewReady() || !editor || editor.textContent.trim() !== text || container.querySelector(inactive) || pressed?.textContent.trim() !== name) throw new Error('Native composer mode, canonical text and live preview disagree: ' + mode);\n  if (mode === 'rich' && (!container.querySelector('[aria-label=Bold]') || container.querySelector('.md-component-picker'))) throw new Error('Native comment capabilities were lost or post-only component tools leaked');\n};\nconst changeMode = async mode => {\n  const name = mode === 'rich' ? 'Visual editor' : 'Plain Markdown';\n  const button = [...form().querySelectorAll('[aria-label=\"Markdown editor mode\"] button')].find(element => element.textContent.trim() === name);\n  if (!button) throw new Error('Native editor mode control is missing: ' + name);\n  button.click();\n  await waitFor(() => form()?.querySelector(mode === 'rich' ? '.md-editor-content' : '.md-source-content'), 'Native editor mode did not change');\n  await window.visualFixture.ready();\n  assertMode(mode);\n};\nawait open();\nassertMode('rich');\nawait changeMode('plain');\nawait changeMode('rich');\nconst cancel = [...form().querySelectorAll('button')].find(element => element.textContent.trim() === 'Cancel');\nif (!cancel) throw new Error('Native Cancel control is missing');\ncancel.click();\nawait waitFor(() => !form() && state().editors === 0, 'Cancel did not remove composer markup and dispose its editor owner');\nawait window.visualFixture.ready();\nif (retained().text != null || parent.querySelector('.md-editor-content, .md-source-content') || !card.querySelector('button[aria-label=Reply]')) throw new Error('Cancel retained draft text/editor inputs or lost Reply');\nawait open();\nawait changeMode('plain');"
+    },
+    {
+      "id": "neovim-readonly-patch-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/neovim-visual.html?visual=patch",
+      "standalone": true
+    },
+    {
+      "id": "neovim-readonly-patch-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/neovim-visual.html?visual=patch",
+      "standalone": true
+    },
+    {
+      "id": "neovim-readonly-diff-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/neovim-visual.html?visual=diff",
+      "standalone": true
+    },
+    {
+      "id": "neovim-readonly-diff-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/neovim-visual.html?visual=diff",
+      "standalone": true
+    },
+    {
+      "id": "neovim-readonly-unsupported-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/neovim-unsupported.html?visual=unsupported",
+      "standalone": true
+    },
+    {
+      "id": "neovim-readonly-unsupported-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/neovim-unsupported.html?visual=unsupported",
+      "standalone": true
     }
   ]
 }

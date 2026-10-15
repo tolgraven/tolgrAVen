@@ -340,3 +340,24 @@ then restore an exact pass:
 node --test test/scripts/visual_clock_test.cjs test/scripts/visual_motion_test.cjs
 python3 -m unittest discover -s test/scripts -p visual_test.py
 ```
+
+Readonly Neovim states use `/fixtures/neovim-visual.html?visual=patch` or `diff`
+through the existing `:neovim-check` target. Compile that target in the same
+isolated snapshot as `npm run build`; the latter generates the local repository
+workspace consumed by the pinned WASM profile. The static fixture server reuses
+Neovim's isolation policy for these documents and `/vendor/neovim/` resources.
+`/fixtures/neovim-unsupported.html?visual=unsupported` serves the same fixture
+without document isolation, exercising the actual native capability fallback.
+
+The six narrow/wide cases set `standalone: true`, including geometry-only runs:
+SharedArrayBuffer/WASM startup must occur in the isolated top-level document.
+The runner reuses its one owned tab and awaits an optional fixture-owned
+`visualFixture.dispose()` in `finally` before moving to the next document.
+Neovim's hook unmounts the real editor and verifies its real worker terminated.
+Readiness checks the painted native grid, exact local buffer contents, immutable
+buffers, absolute line numbers, equal diff panes and native diff highlighting via
+real RPC. It attempts an edit only to assert Neovim rejects it. No worker/grid,
+provider read or write is simulated. The direct `.github-diff` parent and editor
+are retained; these component cases do not exercise GitHub's revision controller,
+menu metadata or remote acquisition. Missing approved raster/motion baselines
+remain verification gaps; captures never approve them automatically.

@@ -356,7 +356,7 @@ def capture(args):
             if page is None:
                 raise RuntimeError("Cannot identify owned task tab; no existing tab will be modified")
             client.page = page
-            script_cases = [case for case in cases if not case.get("native_hover")]
+            script_cases = [case for case in cases if not case.get("native_hover") and not case.get("standalone")]
             if args.geometry_only and script_cases:
                 # Keep the owned driver tab, but return one complete geometry at
                 # a time: a single generated Docs surface can be tens of MB.
@@ -385,28 +385,31 @@ def capture(args):
                         print(f"Captured geometry {case['id']}", flush=True)
                 if failures:
                     raise ValueError("; ".join(failures))
-            standalone = [case for case in cases if case.get("native_hover")] if args.geometry_only else cases
+            standalone = [case for case in cases if case.get("native_hover") or case.get("standalone")] if args.geometry_only else cases
             for case in standalone:
                 client.call("select_page", pageId=page)
                 width, height = case["viewport"]
                 client.call("emulate", viewport=f"{width}x{height}x1")
-                if case.get("native_hover"):
+                if case.get("native_hover") or case.get("standalone"):
                     park_pointer(client, args.origin)
-                client.call("navigate_page", url=args.origin + case["path"])
-                if case.get("action"):
-                    client.evaluate("async () => { await window.visualFixture.ready(); window.visualFixture.motion.phase('action'); " + case["action"] + "; return true; }")
-                if case.get("native_hover"):
-                    native_hover(client, case)
-                if args.geometry_only:
-                    state = client.evaluate("async () => { await window.visualFixture.ready(); return window.visualFixture.snapshot(); }")
-                    state["native_hover"] = hover_contract(case)
-                    motion_changes(state, state, case["id"])
-                    if state["viewport"] != case["viewport"] + [1] or state.get("errors"):
-                        raise RuntimeError(case["id"] + ": invalid viewport or native errors")
-                    (args.output / (case["id"] + ".json")).write_text(json.dumps(state, indent=2) + "\n")
-                else:
-                    capture_tiles(client, case, args.output)
-                client.evaluate("() => {window.visualFixture.motion.stop(); return true;}")
+                try:
+                    client.call("navigate_page", url=args.origin + case["path"])
+                    if case.get("action"):
+                        client.evaluate("async () => { await window.visualFixture.ready(); window.visualFixture.motion.phase('action'); " + case["action"] + "; return true; }")
+                    if case.get("native_hover"):
+                        native_hover(client, case)
+                    if args.geometry_only:
+                        state = client.evaluate("async () => { await window.visualFixture.ready(); return window.visualFixture.snapshot(); }")
+                        if case.get("native_hover"):
+                            state["native_hover"] = hover_contract(case)
+                        motion_changes(state, state, case["id"])
+                        if state["viewport"] != case["viewport"] + [1] or state.get("errors"):
+                            raise RuntimeError(case["id"] + ": invalid viewport or native errors")
+                        (args.output / (case["id"] + ".json")).write_text(json.dumps(state, indent=2) + "\n")
+                    else:
+                        capture_tiles(client, case, args.output)
+                finally:
+                    client.evaluate("async () => { try { await window.visualFixture?.dispose?.(); } finally { window.visualFixture?.motion?.stop(); } return true; }")
                 print(f"Captured {case['id']}", flush=True)
             if args.suite.read_bytes() != suite_bytes:
                 raise ValueError("Visual suite changed during capture; partial evidence has no completion metadata")
