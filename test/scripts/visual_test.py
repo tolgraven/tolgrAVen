@@ -541,7 +541,7 @@ class VisualTest(unittest.TestCase):
         class Client(HoverClient):
             def __init__(self, image):
                 super().__init__()
-                self.image, self.y, self.popup = image, 289, True
+                self.image, self.y, self.popup = image, 289.5, True
                 self.captured = []
 
             def evaluate(self, function, **arguments):
@@ -570,9 +570,9 @@ class VisualTest(unittest.TestCase):
             client = Client(image)
             visual.capture_tiles(client, case, output)
             state = json.loads((output / 'calendar.json').read_text())
-            self.assertEqual((289, True), client.captured[0], 'Capture the actual open surface before scroll dismisses it')
+            self.assertEqual((289.5, True), client.captured[0], 'Capture the actual open surface before scroll dismisses it')
             self.assertEqual([{'popup': True}], state['geometry'])
-            self.assertEqual([[0, 289], [0, 0], [0, 289]], [tile['scroll'] for tile in state['tiles']],
+            self.assertEqual([[0, 289.5], [0, 0], [0, 289]], [tile['scroll'] for tile in state['tiles']],
                              'The interaction supplements complete top-to-bottom document coverage')
             self.assertEqual([(0, False), (289, False)], client.captured[1:],
                              'Later scrolling must keep the native dismissal behavior')

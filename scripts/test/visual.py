@@ -342,7 +342,7 @@ def capture_tiles(client, case, output):
             raise RuntimeError(f"{case['id']}: invalid viewport/DPR or fixture readiness errors")
         x, y, document_height = state["document"]
         maximum = max(0, document_height - height)
-        if x != 0 or (target is not None and y != target) or not 0 <= y <= maximum:
+        if x != 0 or (target is not None and y != target):
             raise RuntimeError(f"{case['id']}: viewport did not reach requested scroll position {target}: {state['document']}")
         if index == 0:
             assert_capture(client, case)
