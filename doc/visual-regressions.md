@@ -30,6 +30,14 @@ module loading. `test/visual/suite.json` declares exact states and viewports.
 The fixture anchors its calendar to 2026-10-15 so ongoing CV entries keep stable
 endpoints across calendar years. Wall time still advances with `performance.now`;
 native timers, deadlines and finite motion retain their normal lifecycle.
+Shell fixtures keep the header and full footer outside `main`, as in the native
+page. The combined shell includes the sticky footer; the full footer owns its
+post-footer content exactly once. The post-footer case exercises that owning
+footer context rather than rendering its flex content directly in the main grid.
+Services and CV fixtures use a native `defpage` container so the main grid cannot
+stretch individual sections. Isolated CV boxes retain the production timeline
+column width/height; absolute-positioned entries cannot establish those dimensions.
+The original editor comparison fixture remains unchanged.
 
 Keep the installed Chrome running with its configured DevTools connection:
 

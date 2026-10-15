@@ -10,10 +10,12 @@
             [website.modules.blog.subs]
             [website.modules.blog-preview.views :as preview]
             [website.components.shell :as shell]
+            [website.modules.home.sections :as home]
             [website.loader :as loader]
             [website.navigation.routes :as routes]
             [reitit.frontend.easy :as rfe]
-            [reitit.core :as reitit]))
+            [reitit.core :as reitit])
+  (:require-macros [website.macros :as m]))
 
 (def entry
   {:id "visual-entry"
@@ -78,19 +80,35 @@
                            (assoc-in [:document :href] "/blog/post/42/comment/113"))]
      [preview/<post> (assoc-in hit [:document :id] "post-43")]]]])
 
-(defn <shell-fixture> []
+(m/defpage <fixture-page>
+  "Use the native page-root container: direct grid children stretch to main's minimum height."
+  [content]
+  content)
+
+(defn <main-fixture> [content]
+  [:main#main.main-content.perspective-top
+   [<fixture-page> content]])
+
+(defn <shell-fixture> [component]
   (let [content' #(editor/section % false)]
     [:<>
-     [shell/<header> (content' :header)]
-     [:main#main.main-content [:section [:h1 "Shared shell"] [:p "Fixed page content."]]]
-     [shell/<footer-full> (content' :footer)]
-     [shell/<post-footer> (content' :post-footer)]]))
+     (when (#{"header" "shell"} component)
+       [shell/<header> (content' :header)])
+     [<main-fixture> [:section [:h1 "Shared shell"] [:p "Fixed page content."]]]
+     ;; Production footers are siblings of main. The full footer already owns
+     ;; post-footer, including its font size and natural flex-row height.
+     (when (#{"footer" "post-footer" "shell"} component)
+       [shell/<footer-full> (content' :footer)])
+     (when (= "shell" component)
+       [shell/<footer> (content' :footer)])]))
 
 (defn <box-fixture> [container?]
-  [:main#main.main-content
-   [:section.cv
-    [:div.cv-boxes {:style {:height "28rem"}}
-     [:div.cv-items
+  [<main-fixture>
+   [:section.cv.nopadding.noborder
+    [:div.cv-boxes
+     ;; Match the native timeline column in cv/<cv>. Absolutely positioned boxes
+     ;; cannot establish their parent's width by themselves.
+     [:div.cv-items.cv-work {:style {:width "200em", :height "9em"}}
       [cv/<box> (cond-> entry container?
                   (assoc :kind "container" :what "Festival day"
                          :children [(assoc entry :id "performance" :what "Main stage")]))
@@ -125,7 +143,8 @@
 (defn ^:export init! []
   (let [params (js/URLSearchParams. (.-search js/location))
         component (.get params "component")]
-    (if-not (#{"cv-regular" "cv-container" "comments" "thread" "post" "search-mixed" "shell"} component)
+    (if-not (#{"cv-regular" "cv-container" "comments" "thread" "post" "search-mixed"
+               "shell" "header" "footer" "post-footer" "services" "cv"} component)
       (editor/init! false)
       (-> (js/fetch "/fixtures/editor-seed.json")
           (.then #(.json %))
@@ -133,9 +152,10 @@
             (fn [seed]
               (rfe/start! routes/router (fn [_ _]) {:use-fragment false})
               (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) false])
-              (r/dispatch-sync [:set [:common/route]
-                                (assoc (reitit/match-by-path routes/router "/blog/post/42")
-                                       :parameters {:path {:permalink "42"}, :query {}})])
+              (when (#{"comments" "thread" "post" "search-mixed"} component)
+                (r/dispatch-sync [:set [:common/route]
+                                  (assoc (reitit/match-by-path routes/router "/blog/post/42")
+                                         :parameters {:path {:permalink "42"}, :query {}})]))
               ;; Only provider boundaries are fixed. Native comment markup,
               ;; actions, clip measurement and expansion events are unchanged.
               (r/reg-sub :user/user
@@ -152,7 +172,9 @@
                            (r/render (r/create-root (.getElementById js/document "app"))
                              (case component
                                "search-mixed" [<search-fixture>]
-                               "shell" [<shell-fixture>]
                                "post" [<post-fixture>]
+                               ("shell" "header" "footer" "post-footer") [<shell-fixture> component]
+                               "services" [<main-fixture> [home/<services> (editor/section :services false)]]
+                               "cv" [<main-fixture> [cv/<cv>]]
                                ("comments" "thread") [<comment-fixture> (= component "thread")]
                                [<box-fixture> (= component "cv-container")])))))))))))
