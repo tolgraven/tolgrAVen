@@ -250,3 +250,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   output mounts from another checkout (including cache-disabled/legacy builds).
   Native CPU/lifecycle tests remain macOS-only; portable policy tests must still
   run on other platforms. Never use real task worktrees as deletion fixtures.
+
+- `website.macros-loading-test` uses a fresh bounded JVM to verify macro loading
+  and annotated argument parsing without initializing Malli; warmed test suites
+  cannot establish that compiler boundary.

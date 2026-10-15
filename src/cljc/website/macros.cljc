@@ -2,8 +2,6 @@
   #?(:clj (:refer-clojure :exclude [for tap>]))
   (:require [clojure.string :as string]
             #?(:clj [website.build.site :as site])
-            #?@(:clj [[malli.core :as m]
-                      [malli.error :as me]])
             #?@(:cljs [[website.component.registry]
                        [website.react :as r]
                        [shadow.lazy]
