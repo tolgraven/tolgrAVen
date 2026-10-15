@@ -135,10 +135,18 @@ if(App\Models\ApplicationDeploymentQueue::where('status','in_progress')->exists(
     save(state)
     try:
         quiesce_admission()
-        # Queued jobs remain persisted while admission/workers are paused.
-        # Existing jobs may still be running. Abort and resume instead of
-        # interrupting them; the operator retries once they have completed.
-        subprocess.run(['docker', 'exec', '-i', 'coolify', 'php'], input=probe, text=True, check=True)
+        # Let existing jobs finish while paused workers retain queued work.
+        # No running deployment is interrupted to obtain the maintenance window.
+        deadline = time.monotonic() + 1800
+        while True:
+            result = subprocess.run(['docker', 'exec', '-i', 'coolify', 'php'], input=probe, text=True)
+            if result.returncode == 0:
+                break
+            if result.returncode != 42:
+                raise RuntimeError('Could not verify active deployment state')
+            if time.monotonic() >= deadline:
+                raise RuntimeError('Deployments did not drain before the maintenance deadline')
+            time.sleep(5)
     except Exception:
         resume_admission()
         state['phase'] = 'prepared'

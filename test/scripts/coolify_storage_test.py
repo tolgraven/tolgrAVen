@@ -28,8 +28,8 @@ class StorageGuardsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             state = Path(folder) / 'state.json'
             state.write_text(json.dumps({'phase': 'prepared'}))
-            with patch.object(storage, 'STATE', state), patch.object(storage, 'verify_volume'), patch.object(storage, 'check_admission'), patch.object(storage, 'quiesce_admission'), patch.object(storage, 'resume_admission'), patch.object(storage.subprocess, 'run', side_effect=subprocess.CalledProcessError(42, 'deployment probe')), patch.object(storage, 'run') as operation:
-                with self.assertRaises(subprocess.CalledProcessError):
+            with patch.object(storage, 'STATE', state), patch.object(storage, 'verify_volume'), patch.object(storage, 'check_admission'), patch.object(storage, 'quiesce_admission'), patch.object(storage, 'resume_admission'), patch.object(storage.time, 'monotonic', side_effect=[0, 1801]), patch.object(storage.subprocess, 'run', return_value=subprocess.CompletedProcess('deployment probe', 42)), patch.object(storage, 'run') as operation:
+                with self.assertRaisesRegex(RuntimeError, 'did not drain'):
                     storage.migrate()
                 operation.assert_not_called()
                 self.assertEqual(json.loads(state.read_text())['phase'], 'prepared')
