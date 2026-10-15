@@ -1,6 +1,7 @@
 (ns website.page-return-test
   "Mounted restoration tests use real events/subscriptions and the same renderer
-   as local documents. Shadow code splitting is the only adapted boundary."
+   as local documents. Code splitting and cached hydration's service readiness
+   stay at their external test boundaries."
   (:require-macros [website.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
@@ -24,6 +25,7 @@
             [website.render-context :as context]
             [website.browser-resources :as browser-resources]
             [website.supabase.scoped :as scoped]
+            [website.supabase.runtime :as supabase]
             [website.ssr.return-contract :as contract]
             [website.ssr.render :as render]
             [website.ssr.local :as local]
@@ -107,6 +109,8 @@
           (let [restore-db! (r/make-restore-fn)
                 original-context @restore/*context
                 original-interactive @context/*interactive?
+                ensure! supabase/ensure!
+                *acquisitions (atom 0)
                 element (.createElement js/document "div")
                 script (.createElement js/document "script")
                 *root (atom nil) *errors (atom [])
@@ -124,6 +128,11 @@
             (.setAttribute element "data-page-build" "test-build")
             (.appendChild (.-body js/document) element)
             (try
+              ;; Cached hydration owns real readers and retained server nodes,
+              ;; not SDK boot. Keep late children inside this boundary until
+              ;; unmount so no settings request/retry outlives the fixture.
+              (set! supabase/ensure!
+                    (fn [] (swap! *acquisitions inc) (js/Promise.resolve nil)))
               (r/dispatch-sync [:init/app-db])
               ;; The state observer round-trips EDN; retain the native route's
               ;; data fields without its executable coercion/controller objects.
@@ -175,12 +184,18 @@
                   (is (= 5 (.-length (.querySelectorAll element ".blog-comment-title"))))
                   (is (every? true? (map identical? nodes (array-seq (.querySelectorAll element ".blog-comment-title")))))
                   (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared),.component-spinner"))))))
+              (is (pos? @*acquisitions) "The paired content still acquires its real managed readers")
+              (is (nil? (await! (support/state-at! [:state :supabase-init])))
+                  "Cached comment hydration does not start service initialization")
               (finally
-                (when @*root (support/unmount! @*root))
-                (.remove element) (.remove script)
-                (reset! restore/*context original-context)
-                (reset! context/*interactive? original-interactive)
-                (restore-db!)))))
+                (try
+                  (when @*root (support/unmount! @*root))
+                  (finally
+                    (set! supabase/ensure! ensure!)
+                    (.remove element) (.remove script)
+                    (reset! restore/*context original-context)
+                    (reset! context/*interactive? original-interactive)
+                    (restore-db!)))))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
 
