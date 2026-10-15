@@ -102,6 +102,11 @@ sessions' tabs and restore any borrowed tab when finished.
   `doc/resource-controls.md` for legacy cache cleanup and the 2 GiB repository budget.
 
 ## Current architecture
+- Strapi site settings own published page layouts. `website.page-layout` owns the
+  bounded portable contract/defaults; module default views and Home's native
+  sections export the component picker. Home's generic renderer retains managed
+  data/module boundaries; native routes are generated from published layout paths.
+  See `doc/page-layouts.md` for publishing, identity and responsive grid behavior.
 - Administrator inline CMS editing uses `:content/view` bindings, which retain
   native values and attach field paths/mode as metadata. The lazy `content-editor`
   owns account-bound drafts and effects; server writes verify current administrator

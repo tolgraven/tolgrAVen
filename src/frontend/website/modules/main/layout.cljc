@@ -1,20 +1,21 @@
 (ns website.modules.main.layout
   (:require [website.content.contract :as content]
+            [website.page-layout :as page-layout]
             #?(:module/home [website.modules.home.pages :as home])
             [website.site :as site]
             [reitit.core :as reitit]))
 
-(def landing-paths
-  (into #{} (comp (filter #(= :landing (:kind (second %)))) (map first))
+(def landing-pages
+  (into {} (filter #(= :landing (:kind (second %))))
         (reitit/routes (reitit/router (site/routes #?(:module/home home/spec :clj [] :default []))))))
 
-;; The ordinary client layout and SSR use the same ordering. :init entries are
-;; browser lifecycle instructions, not extra server-rendered DOM.
+(def landing-paths (set (keys landing-pages)))
+
+;; The ordinary client layout and SSR use the same published section ordering.
 (def landing-layout
-  [:intro [:interlude 0] :services [:init :services] [:interlude 1]
-   :moneyshot [:init :instagram] [:init :strava] :story [:interlude 2]
-   [:init :soundcloud] :strava [:init :gallery] :soundcloud :instagram
-   :gallery :github :codex-profile :gpt :chat])
+  (mapv (fn [{:keys [component index]}]
+          (if (some? index) [(keyword component) index] (keyword component)))
+        (:sections (page-layout/find-page (page-layout/selected-pages site/config) "home"))))
 
 (def landing-spec
   {:id :landing :layout landing-layout
@@ -22,4 +23,9 @@
    :deferred-modules #{:strava :soundcloud :instagram :github :codex-profile :gpt :chat}})
 
 (defn page-spec [uri]
-  (when (landing-paths uri) landing-spec))
+  (when-let [page (get landing-pages uri)]
+    (assoc landing-spec :layout-id (:layout page))))
+
+(defn same-layout? [from to]
+  (let [page (page-spec from)]
+    (and page (= (:layout-id page) (:layout-id (page-spec to))))))

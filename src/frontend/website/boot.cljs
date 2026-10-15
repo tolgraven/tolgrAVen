@@ -2,6 +2,7 @@
   "Ordered document setup, committed UI setup and deferred background hosts."
   (:require-macros [website.build.site :refer [when-enabled]])
   (:require [breaking-point.core :as bp]
+            [website.breakpoints]
             [website.react :as r]
             [website.macros :refer-macros [defc]]
             [website.listener :as listener]
@@ -71,12 +72,10 @@
     {:fx [[:listener/register (document-bindings)]
           [:boot/load true]]}))
 
-(def breakpoints [:mobile 560 :tablet 992 :small-monitor 1200 :large-monitor])
 (r/reg-fx :boot/breakpoints
   (fn [_]
     ;; The library's set-breakpoints installs an anonymous resize listener with
     ;; no teardown. Reuse its subscriptions/events with our owned listener.
-    (bp/register-subs breakpoints)
     (r/dispatch [::bp/set-screen-dimensions])
     (listener/register! {:id :boot/resize
                          :owner :site

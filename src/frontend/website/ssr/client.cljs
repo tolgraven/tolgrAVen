@@ -22,7 +22,7 @@
 (defn leave! [path]
   (let [path (first (string/split path #"\?"))]
     (when (and @*snapshot (not= path (:path @*snapshot)))
-      (if (and (= :landing (some-> (:kind @*snapshot) keyword)) (landing/page-spec path))
+      (if (and (= :landing (some-> (:kind @*snapshot) keyword)) (landing/same-layout? (:path @*snapshot) path))
         (swap! *snapshot assoc :path path)
         (reset! *snapshot nil)))))
 
