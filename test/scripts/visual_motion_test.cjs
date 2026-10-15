@@ -259,6 +259,40 @@ test('dormant hover, conditional motion and keyframes remain comparable before a
   observer.stop();
 });
 
+test('native custom-property registrations retain interpolation and inheritance contracts', () => {
+  const {createMotionObserver} = fixture();
+  class CSSPropertyRule {}
+  const registration = Object.assign(new CSSPropertyRule(), {
+    name: '--logo-image-width', syntax: '<percentage>', inherits: true, initialValue: '100%'
+  });
+  const media = {type: 4, conditionText: '(width > 40rem)', cssRules: [registration]};
+  const win = {document: {styleSheets: [{href: '/home.css', cssRules: [media]}],
+    getAnimations: () => [], querySelectorAll: () => [], addEventListener() {}, removeEventListener() {}},
+    CSSAnimation: class {}, CSSTransition: class {}, CSSPropertyRule,
+    MutationObserver: class {observe() {} disconnect() {}}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}};
+  const observer = createMotionObserver(win);
+  try {
+    const before = JSON.parse(JSON.stringify(observer.snapshot()));
+    assert.equal(before.sourceRules.length, 1);
+    assert.deepEqual(before.sourceRules[0], {scope: [
+      {sheet: '/home.css', media: '', disabled: false},
+      {type: 4, kind: 'Object', selector: null, condition: '(width > 40rem)', name: null}],
+      property: '--logo-image-width', syntax: '<percentage>', inherits: true, initialValue: '100%'});
+    for (const [key, changed] of [['name', '--different-width'], ['syntax', '*'],
+      ['inherits', false], ['initialValue', '85%']]) {
+      const original = registration[key]; registration[key] = changed;
+      const after = JSON.parse(JSON.stringify(observer.snapshot()));
+      assert.deepEqual(after.declarations, before.declarations);
+      assert.deepEqual(after.triggered, before.triggered);
+      assert.notDeepEqual(after.sourceRules, before.sourceRules, key + ' changes the native registration contract');
+      registration[key] = original;
+    }
+    media.cssRules = [];
+    assert.notDeepEqual(JSON.parse(JSON.stringify(observer.snapshot().sourceRules)), before.sourceRules,
+      'Removing registration cannot pass behind identical final layout and keyframes');
+  } finally { observer.stop(); }
+});
+
 test('parked CSS clocks record actual pointer/focus activations and release every wake listener', () => {
   const {createMotionObserver} = fixture();
   const element = {nodeType: 1, localName: 'figure', parentElement: null};

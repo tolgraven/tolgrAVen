@@ -222,8 +222,11 @@ Snapshots also record the computed animation/transition declaration list for
 every light-DOM element and standard pseudo, plus stylesheet-declared and
 observed runtime pseudos. A shared style table keeps repeated contracts compact.
 The native stylesheet rules also retain dormant hover/state motion declarations,
-conditional scopes, declaration priority and every keyframe definition. These
-remain comparable even when no captured interaction activates them. This does
+conditional scopes, declaration priority, every keyframe definition and native
+`@property` registrations (name, syntax, inheritance and initial value). Registrations
+control custom-property interpolation and inheritance even when keyframes and
+settled pixels stay equal. These remain comparable even when no captured interaction
+activates them. This does
 not include arbitrary non-motion endpoint declarations in dormant selectors: for
 example, an unvisited `:hover` color/transform rule needs a real interaction state
 to compare its resulting appearance and native transition keyframes. Actual triggers prove

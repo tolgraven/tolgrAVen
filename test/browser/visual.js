@@ -159,7 +159,12 @@
           for (const rule of rules) {
             for (const match of (rule.selectorText || '').matchAll(/::[a-z-]+(?:\([^()]*\))?/gi))
               pseudoElements.add(match[0]);
-            if (rule.type === 7) {
+            if (win.CSSPropertyRule && rule instanceof win.CSSPropertyRule) {
+              // Registrations control interpolation/inheritance even when
+              // keyframe endpoints and the final painted layout stay equal.
+              sourceRules.push({scope, property: rule.name, syntax: rule.syntax,
+                inherits: rule.inherits, initialValue: rule.initialValue});
+            } else if (rule.type === 7) {
               // Include dormant keyframes too: their next hover or viewport
               // activation must not escape a technical-change comparison.
               sourceRules.push({scope, keyframes: rule.name, frames: [...rule.cssRules].map(frame =>

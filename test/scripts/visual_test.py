@@ -401,7 +401,9 @@ class VisualTest(unittest.TestCase):
         import copy
         contract = {"version": visual.MOTION, "properties": ["animation-duration"],
                     "styles": [["2s"]], "declarations": [["article", "::before", 0]],
-                    "sourceRules": [{"keyframes": "dormant", "frames": [{"offset": "100%", "properties": {"opacity": ["1", ""]}}]}],
+                    "sourceRules": [{"keyframes": "dormant", "frames": [{"offset": "100%", "properties": {"opacity": ["1", ""]}}]},
+                                    {"property": "--logo-image-width", "syntax": "<percentage>",
+                                     "inherits": True, "initialValue": "100%"}],
                     "triggered": [{"kind": "transition", "name": "height", "phase": "action",
                                    "timing": {"duration": 300, "easing": "ease-in"},
                                    "keyframes": [{"offset": 0, "height": "0px"},
@@ -415,7 +417,12 @@ class VisualTest(unittest.TestCase):
                      lambda c: c["triggered"][0].__setitem__("name", "opacity"),
                      lambda c: c["triggered"][0]["keyframes"][1].__setitem__("height", "101px"),
                      lambda c: c["triggered"].clear(),
-                     lambda c: c["sourceRules"][0]["frames"][0]["properties"]["opacity"].__setitem__(0, "0.5")]
+                     lambda c: c["sourceRules"][0]["frames"][0]["properties"]["opacity"].__setitem__(0, "0.5"),
+                     lambda c: c["sourceRules"][1].__setitem__("property", "--different-width"),
+                     lambda c: c["sourceRules"][1].__setitem__("syntax", "*"),
+                     lambda c: c["sourceRules"][1].__setitem__("inherits", False),
+                     lambda c: c["sourceRules"][1].__setitem__("initialValue", "85%"),
+                     lambda c: c["sourceRules"].pop()]
         for mutate in mutations:
             actual = copy.deepcopy(expected)
             mutate(actual["motion"])
