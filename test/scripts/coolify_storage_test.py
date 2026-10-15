@@ -44,5 +44,18 @@ class StorageGuardsTest(unittest.TestCase):
                 operation.assert_not_called()
 
 
+    def test_finalization_refuses_incomplete_sync(self):
+        with patch.object(storage, 'verify_volume'), patch.object(storage, 'run') as operation:
+            with self.assertRaisesRegex(RuntimeError, 'successful authoritative checksum sync'):
+                storage.finish_migration({'phase': 'copying'})
+            operation.assert_not_called()
+
+    def test_finalization_refuses_running_docker(self):
+        with patch.object(storage, 'verify_volume'), patch.object(storage.subprocess, 'run', return_value=subprocess.CompletedProcess('docker state', 0)), patch.object(storage, 'run') as operation:
+            with self.assertRaisesRegex(RuntimeError, 'Docker must remain stopped'):
+                storage.finish_migration({'phase': 'synced'})
+            operation.assert_not_called()
+
+
 if __name__ == '__main__':
     unittest.main()
