@@ -291,7 +291,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Unactivated module placeholders and departing skeletons have no shimmer animation.
   Appearance classes merge onto native roots; `appear-wrapper` is only a CSS
   class. Network SSR retains the original site/hero entrance in CSS across
-  hydration; the document-owned mount container gates it on hero decoding.
+  hydration; explicit exits release that filled entrance clock so native exit
+  transitions retain their owner. The document-owned mount container gates the
+  original entrance on hero decoding.
   Streamed skeletons remain until that gate opens. Local/history returns stay settled.
   Loading roots share the lean visibility observer: hidden/offscreen owners keep
   measured relative geometry while React unmounts their body. A skeleton context

@@ -348,6 +348,9 @@ def capture(args):
         finally:
             if page is not None:
                 try:
+                    # Chrome may retain its last page instead of closing it.
+                    # Release the owned frame/resources even in that case.
+                    client.call("navigate_page", pageId=page, type="url", url="about:blank")
                     client.call("close_page", pageId=page)
                 except Exception as error:
                     print(f"Owned task tab {page} needs closing: {error}", file=sys.stderr)

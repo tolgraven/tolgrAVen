@@ -23,9 +23,16 @@
         (letfn [(frame! [samples]
                   (let [elapsed (- (js/performance.now) start)
                         placeholder (.querySelector element ".blog-comment-collapsed-placeholder")
+                        placeholder-root (some-> placeholder (.closest ".blog-comment-reply"))
                         samples' (conj samples {:time elapsed
                                                 :heights (heights element)
                                                 :placeholder? (some? placeholder)
+                                                :placeholder-exiting? (boolean (some-> placeholder-root .-classList (.contains "exiting")))
+                                                :native-exit? (boolean
+                                                                (when placeholder-root
+                                                                  (some #(and (= "running" (.-playState %))
+                                                                              (contains? #{"opacity" "transform"} (.-transitionProperty %)))
+                                                                        (array-seq (.getAnimations placeholder-root)))))
                                                 :outer (some-> (.querySelector element ".blog-comment-reply-outer")
                                                                .getBoundingClientRect .-height)})]
                     (if (> elapsed duration)
@@ -165,14 +172,12 @@
                   (reset! *ready? true)
                   (r/flush)
                   (is (.contains outer placeholder) "Presence retains the actual placeholder on exit")
-                  (is (.contains (.-classList placeholder) "exiting"))
+                  (is (= "true" (.getAttribute placeholder "aria-hidden")))
                   (is (nil? (.getAttribute placeholder "data-document-appear"))
                       "An exiting root cannot retain the fill-both SSR entrance")
-                  (is (some #(and (= "running" (.-playState %))
-                                  (contains? #{"opacity" "transform"} (.-transitionProperty %)))
-                            (array-seq (.getAnimations placeholder)))
-                      "Native exit transitions run instead of already-finished document clocks")
                   (let [samples (await! (sample! element 420))]
+                    (is (some #(and (:placeholder-exiting? %) (:native-exit? %)) samples)
+                        "Native exit transitions follow the committed release of the document clock")
                     (is (every? #(>= (:outer %) (- initial 0.5)) samples)
                         "Finished SSR clocks cannot remove the placeholder before the reply grows")
                     (is (some #(and (:placeholder? %) (< (nth (:heights %) 0 0) 1)) samples)

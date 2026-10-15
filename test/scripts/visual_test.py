@@ -15,6 +15,40 @@ SPEC.loader.exec_module(visual)
 
 
 class VisualTest(unittest.TestCase):
+    def test_failed_capture_releases_its_owned_page_before_chrome_refuses_last_close(self):
+        from unittest.mock import patch
+        calls = []
+
+        class Client:
+            def call(self, name, **arguments):
+                calls.append((name, arguments))
+                if name == "new_page":
+                    return {"content": [{"type": "text", "text": "73: about:blank [selected]"}]}
+                if name == "close_page":
+                    return {"content": [{"type": "text", "text": "The last open page cannot be closed."}]}
+                return {}
+
+            def evaluate(self, _):
+                raise RuntimeError("Native fixture failed")
+
+            def close(self):
+                calls.append(("disconnect", {}))
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suite = root / "suite.json"
+            suite.write_text(json.dumps({"cases": [{"id": "comment", "viewport": [400, 800]}]}))
+            args = argparse.Namespace(suite=suite, origin="http://127.0.0.1:4098",
+                                      output=root / "capture", case=[], geometry_only=True, mcp_command=None)
+            with patch.object(visual, "Relay", return_value=Client()):
+                with self.assertRaisesRegex(RuntimeError, "Native fixture failed"):
+                    visual.capture(args)
+            self.assertEqual([
+                ("navigate_page", {"pageId": 73, "type": "url", "url": "about:blank"}),
+                ("close_page", {"pageId": 73}),
+                ("disconnect", {})], calls[-3:])
+            self.assertFalse((args.output / "capture.json").exists(), "A failed capture must remain unapproved and incomplete")
+
     def test_motion_contract_changes_fail_without_geometry_changes(self):
         import copy
         contract = {"version": visual.MOTION, "properties": ["animation-duration"],

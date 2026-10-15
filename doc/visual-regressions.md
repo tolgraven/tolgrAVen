@@ -164,7 +164,10 @@ and new documents from their first accessible parent frame, before any return
 interaction. It requires native retained-document or `back_forward` evidence,
 no newly triggered or running CSS animations/transitions (including pseudos),
 and observes for 3.5 seconds, covering the native two-second title delay. It
-stores bounded observation evidence in `#results.dataset.externalBack`. It does
+stores bounded Home observation evidence in `#results.dataset.externalBack`
+and per-URL Home, Blog, CV and Docs evidence in `dataset.externalBackCases`.
+Each route matches the full departing URL; its observer attaches before content
+readiness, and return-policy flags are asserted after motion collection. It does
 not rewrite application HTML, seed return state or forge navigation timing.
 The existing ordinary Search and navigation interactions follow restoration;
 return suppression must not disable subsequent user-triggered motion.
