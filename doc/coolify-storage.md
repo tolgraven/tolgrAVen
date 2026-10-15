@@ -33,10 +33,17 @@ It defaults to no action without an explicit command; `plan` only reports.
    container volumes, Docker root directory, and queue operation. Then explicitly
    run `coolify-storage.py retire-originals` to reclaim the old root-disk copies.
 
+Draining uses Horizon reserved-job state plus live deployment helper containers;
+Coolify can mark a queued reservation `in_progress` before a worker starts it.
+Those reservations remain persisted and are not cancelled or rewritten.
+
 Private recovery metadata is `/var/lib/tolgraven/storage-migration.json`;
 originals remain at `/var/lib/docker.before-ssd` and `/data/coolify.before-ssd`
 until verification. Do not rerun a partially completed cutover blindly. On error,
-inspect its phase, current mounts and containers first. Before retiring originals,
+inspect its phase, current mounts and containers first. If the supervised process
+ended during `quiescing`, `coolify-storage.py resume-cutover` continues that owned
+maintenance phase without unpausing queued jobs. It refuses later copy/mount phases.
+Before retiring originals,
 rollback requires Docker stopped, new bind mounts unmounted, original directories
 restored, original fstab restored from `/etc/fstab.before-tolgraven-storage`, and
 the managed Docker drop-in removed. Then reload systemd/start Docker and the

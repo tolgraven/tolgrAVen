@@ -118,19 +118,27 @@ def quiesce_admission():
         time.sleep(1)
 
 
-def migrate():
+def migrate(resume=False):
     verify_volume()
     state = json.loads(STATE.read_text())
-    if state['phase'] != 'prepared':
-        raise RuntimeError('Migration already started; inspect recovery state before proceeding')
+    expected = 'quiescing' if resume else 'prepared'
+    if state['phase'] != expected:
+        raise RuntimeError('Migration already started or not in the expected recovery phase; inspect recovery state before proceeding')
     # Block webhook admission and new jobs before checking the drained queue.
     probe = r"""<?php
 require '/var/www/html/vendor/autoload.php';
 $app=require '/var/www/html/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-if(App\Models\ApplicationDeploymentQueue::where('status','in_progress')->exists())exit(42);
+$jobs=app(Laravel\Horizon\Contracts\JobRepository::class);
+for($after=null;;$after=($after??-1)+50){
+ $page=$jobs->getPending($after);
+ if($page->contains(fn($job)=>$job->status==='reserved'))exit(42);
+ if($page->count()<50)break;
+}
+echo json_encode(App\Models\ApplicationDeploymentQueue::where('status','in_progress')->pluck('deployment_uuid'));
 """
-    check_admission()
+    if not resume:
+        check_admission()
     state['phase'] = 'quiescing'
     save(state)
     try:
@@ -139,10 +147,16 @@ if(App\Models\ApplicationDeploymentQueue::where('status','in_progress')->exists(
         # No running deployment is interrupted to obtain the maintenance window.
         deadline = time.monotonic() + 1800
         while True:
-            result = subprocess.run(['docker', 'exec', '-i', 'coolify', 'php'], input=probe, text=True)
+            result = subprocess.run(['docker', 'exec', '-i', 'coolify', 'php'], input=probe, text=True, capture_output=True)
             if result.returncode == 0:
-                break
-            if result.returncode != 42:
+                # Coolify reserves the next DB row before Horizon executes it.
+                # Preserve those rows; helper containers cover long-running jobs
+                # whose Horizon history may have expired during a lengthy build.
+                deployments = set(json.loads(result.stdout))
+                helpers = set(run('docker', 'ps', '--format', '{{.Names}}', capture=True).split())
+                if not deployments.intersection(helpers):
+                    break
+            if result.returncode not in (0, 42):
                 raise RuntimeError('Could not verify active deployment state')
             if time.monotonic() >= deadline:
                 raise RuntimeError('Deployments did not drain before the maintenance deadline')
@@ -229,14 +243,14 @@ def retire_originals():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['plan', 'prepare', 'precopy', 'migrate', 'retire-originals'])
+    parser.add_argument('action', choices=['plan', 'prepare', 'precopy', 'migrate', 'resume-cutover', 'retire-originals'])
     args = parser.parse_args()
     if args.action == 'plan':
         print(json.dumps({'device': DEVICE, 'mount': str(VOLUME), 'moves': {s: str(destination(s)) for s in SOURCES}, 'state': json.loads(STATE.read_text()) if STATE.exists() else None}, indent=2))
         return
     with open('/run/lock/tolgraven-storage.lock', 'w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        {'prepare': prepare, 'precopy': copy_data, 'migrate': migrate, 'retire-originals': retire_originals}[args.action]()
+        {'prepare': prepare, 'precopy': copy_data, 'migrate': migrate, 'resume-cutover': lambda: migrate(resume=True), 'retire-originals': retire_originals}[args.action]()
 
 
 if __name__ == '__main__':
