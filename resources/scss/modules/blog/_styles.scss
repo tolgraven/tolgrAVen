@@ -220,11 +220,16 @@
     
     .blog-comment { // line up top-level comments with line above
       z-index: 2;
+      max-height: 25rem;
       // Truncation belongs to the text so its fade shares the code/text width.
 
       &:not(.blog-comment-full) .blog-comment-text {
-        max-height: 24rem;
+        max-height: var(--comment-text-limit, 24rem);
         overflow: clip;
+      }
+      &.blog-comment-full {
+        max-height: 150em;
+        overflow: auto;
       }
       &.blog-comment-full .blog-comment-text {
         max-height: 150em;

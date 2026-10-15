@@ -4,6 +4,7 @@
             [website.editor-visual :as editor]
             [website.component.restore :as restore]
             [website.modules.cv.views :as cv]
+            [website.modules.blog.views :as blog]
             [website.modules.blog.comment-views :as comments]
             [website.modules.blog.events]
             [website.modules.blog.subs]
@@ -58,7 +59,7 @@
               :ts 1609459200000
               :user "visual-writer"
               :author "Visual writer"
-              :tags "clojure,layout"}
+              :tags "clojure layout"}
    :preview :blog-preview/post
    :title [{:text "A ", :marked? false} {:text "marked", :marked? true} {:text " search result", :marked? false}]
    :excerpt [{:text "Native text around the ", :marked? false}
@@ -109,10 +110,22 @@
                                  :text "Fixed prose next to the original corner actions.")
           :appear false}])]]]])
 
+(defn <post-fixture> []
+  [:main#main.main-content
+   [:div.blog.fullwide
+    [blog/<post-content>
+     {:post {:id 42
+             :user "visual-writer"
+             :title "Native post header"
+             :tags "clojure layout"
+             :text "Fixed public post content with its actual author avatar."
+             :ts 1609459200000}
+      :features [[:appear false]]}]]])
+
 (defn ^:export init! []
   (let [params (js/URLSearchParams. (.-search js/location))
         component (.get params "component")]
-    (if-not (#{"cv-regular" "cv-container" "comments" "thread" "search-mixed" "shell"} component)
+    (if-not (#{"cv-regular" "cv-container" "comments" "thread" "post" "search-mixed" "shell"} component)
       (editor/init! false)
       (-> (js/fetch "/fixtures/editor-seed.json")
           (.then #(.json %))
@@ -125,9 +138,14 @@
                                        :parameters {:path {:permalink "42"}, :query {}})])
               ;; Only provider boundaries are fixed. Native comment markup,
               ;; actions, clip measurement and expansion events are unchanged.
-              (r/reg-sub :user/user (fn [_ _] writer))
+              (r/reg-sub :user/user
+                         (fn [_ _]
+                           (cond-> writer (= "post" component)
+                             (assoc :avatar "/img/Leg-tasteful-small.jpg"))))
               (r/reg-sub :user/active-user (fn [_ _] nil))
               (r/reg-sub :comments/visible-thread (fn [_ _] []))
+              (r/reg-sub :comments/root-page (fn [_ _] {:records {}, :loading? false, :more? false}))
+              (r/reg-sub :comments/focus-state (fn [_ _] {}))
               (restore/begin! {:back? true})
               (-> (loader/load! {:module :markdown})
                   (.then (fn [_]
@@ -135,5 +153,6 @@
                              (case component
                                "search-mixed" [<search-fixture>]
                                "shell" [<shell-fixture>]
+                               "post" [<post-fixture>]
                                ("comments" "thread") [<comment-fixture> (= component "thread")]
                                [<box-fixture> (= component "cv-container")])))))))))))

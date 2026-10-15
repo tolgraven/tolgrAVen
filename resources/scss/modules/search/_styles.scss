@@ -54,6 +54,12 @@
 
   .blog {
     background: var(--bg-2);
+
+    // Lightweight mixed results each retain their native blog context. Keep
+    // the original bottom padding on the last post rather than every wrapper.
+    &:has(~ .blog) > .search-instant-result.blog-post {
+      padding-bottom: 0;
+    }
   }
 
   .search-instant-result {
@@ -67,6 +73,7 @@
     }
     
     &.blog-post {
+      margin-bottom: 0;
       background: var(--gradient-bg-main);
       border-left: var(--line-width-vert) solid var(--line-color);
       

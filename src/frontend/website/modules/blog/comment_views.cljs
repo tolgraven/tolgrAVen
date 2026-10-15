@@ -108,16 +108,32 @@
 (defc <comment-fade> {:features [:props [:appear "opacity"]]} [spec]
   [:div.fade-to-black.bottom {:style {:z-index "0"}}])
 
-(defn- measure-comment-text! [element *full? *truncated? *fade-style]
+(defn- layout-top [element]
+  (loop [node element, top 0]
+    (if node (recur (.-offsetParent node) (+ top (.-offsetTop node))) top)))
+
+(defn- comment-text-limit [element]
+  (let [card (.closest element ".blog-comment")
+        style (js/getComputedStyle card)
+        ;; The original 25rem fold includes title, metadata and card padding.
+        ;; offsetTop is layout geometry, unaffected by entrance transforms.
+        top (- (layout-top element) (layout-top card))
+        bottom (+ (js/parseFloat (.-paddingBottom style))
+                  (js/parseFloat (.-borderBottomWidth style)))]
+    (max 0 (- (util/rem-to-px 25) top bottom))))
+
+(defn- measure-comment-text! [element *full? *truncated? *fade-style *text-limit]
   (when element
-    (let [truncated? (> (util/px-to-rem (.-scrollHeight element)) 24)
+    (let [limit (comment-text-limit element)
+          truncated? (> (.-scrollHeight element) limit)
           bounds (.getBoundingClientRect element)
-          bottom (.-bottom bounds)
+          bottom (+ (.-top bounds) (min limit (.-height bounds)))
           code-bounds (when truncated?
                         (some (fn [code]
                                 (let [box (.getBoundingClientRect code)]
                                   (when (< (.-top box) bottom (.-bottom box)) box)))
                               (array-seq (.querySelectorAll element ".code-block"))))]
+      (reset! *text-limit (str (util/px-to-rem limit) "rem"))
       (reset! *truncated? truncated?)
       ;; Expansion is an explicit reader choice. Measuring the full body must
       ;; not fold it again, but a short focused comment has nothing to collapse.
@@ -143,10 +159,11 @@
         *truncated? (r/atom false)
         *interacted? (r/atom false)
         *fade-style (r/atom nil)
+        *text-limit (r/atom nil)
         *text-element (atom nil)
         capture-height! (fn [element]
                           (reset! *text-element element)
-                          (measure-comment-text! element *full? *truncated? *fade-style))]
+                          (measure-comment-text! element *full? *truncated? *fade-style *text-limit))]
   (let [[show-expand? show-expand! hide-expand!] (timer/use-delayed-hide 2000)
         *element (r/use-ref nil)
         route @(r/subscribe [:common/route])
@@ -163,10 +180,13 @@
         (when-let [element (when showing? @*text-element)]
           (when (exists? js/ResizeObserver)
             (let [observer (js/ResizeObserver.
-                             #(measure-comment-text! element *full? *truncated? *fade-style))]
+                             #(measure-comment-text! element *full? *truncated? *fade-style *text-limit))]
               ;; The unclipped Markdown root changes size even when its text
               ;; viewport is capped, including late formatting/font upgrades.
               (.observe observer (or (.querySelector element ".md-rendered") element))
+              ;; Titles, author metadata and responsive fonts consume the same
+              ;; card budget even when the clipped Markdown height is unchanged.
+              (.observe observer (.-parentElement element))
               (fn [] (.disconnect observer))))))
       [showing? text])
     (r/use-layout-effect
@@ -229,7 +249,8 @@
                 {:ref capture-height!
                  :style {:filter (when (neg? score)
                                    (str "brightness(calc(1 + "
-                                        (max -0.7 (* 0.1 score)) "))"))}}
+                                        (max -0.7 (* 0.1 score)) "))"))
+                         "--comment-text-limit" @*text-limit}}
                 [presentation/<comment-markdown> text
                  {:trust (presentation/link-trust user)
                   :image-assets (:image-assets spec)

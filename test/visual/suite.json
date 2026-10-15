@@ -223,6 +223,40 @@
       ],
       "path": "/fixtures/visual.html?component=comments",
       "action": "document.querySelector('.blog-comment-text .fade-to-black').dispatchEvent(new MouseEvent('mouseover', {bubbles:true})); await new Promise(resolve => setTimeout(resolve, 100)); document.querySelector('[aria-label=\"Show full comment text\"]').click()"
+    },
+    {
+      "id": "post-header-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=post"
+    },
+    {
+      "id": "post-header-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=post"
+    },
+    {
+      "id": "search-mixed-bottom-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=search-mixed",
+      "action": "const results = document.querySelector('.search-instant-results'); results.scrollTo({top: results.scrollHeight, behavior: 'instant'})"
+    },
+    {
+      "id": "search-mixed-bottom-short",
+      "viewport": [
+        400,
+        400
+      ],
+      "path": "/fixtures/visual.html?component=search-mixed",
+      "action": "const results = document.querySelector('.search-instant-results'); results.scrollTo({top: results.scrollHeight, behavior: 'instant'})"
     }
   ]
 }

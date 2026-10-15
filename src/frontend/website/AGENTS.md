@@ -150,6 +150,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   and scroll positioning.
   Blog comment UI lives in `modules/blog/comment_views.cljs`, required only by
   the `:feature/blog-comments` reader feature.
+  The folded card's original 25rem budget includes metadata and padding; its owned
+  ref/resize measurement supplies the remaining text budget without entrance transforms.
   `comment_exports.cljc` pairs its conditional import with the original Var
   export map; merge that map into the literal module specification. Default JVM
   and Codox readers retain the empty adapter without importing comment views.
