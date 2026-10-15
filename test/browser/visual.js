@@ -106,6 +106,7 @@
     snapshot: () => ({
       viewport: [innerWidth, innerHeight, devicePixelRatio],
       environment: {userAgent: navigator.userAgent, platform: navigator.platform,
+        calendarEpoch: window.visualClockEpoch,
         language: navigator.language, viewport: [innerWidth, innerHeight, devicePixelRatio],
         fonts: [...document.fonts].map(font => [font.family, font.style, font.weight, font.status]).sort()},
       geometry: geometry(), errors

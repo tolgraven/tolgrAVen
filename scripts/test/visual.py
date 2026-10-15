@@ -141,6 +141,8 @@ def geometry_changes(before, after, path=""):
 class MCP:
     """Attach to the installed browser using the configured autoConnect server."""
     def __init__(self, command, stderr):
+        if "--autoConnect" not in command or any(arg in ("--no-autoConnect", "--autoConnect=false") for arg in command):
+            raise ValueError("The configured Chrome adapter must retain --autoConnect; browser launching is not supported")
         self.process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=stderr, text=True)
         self.messages, self.ident, self.page = queue.Queue(), 0, None
@@ -152,11 +154,15 @@ class MCP:
                     pass
             self.messages.put(None)
         threading.Thread(target=read, daemon=True).start()
-        self.rpc("initialize", {"protocolVersion": "2024-11-05", "capabilities": {},
-                                "clientInfo": {"name": "website-visual-check", "version": "1"}})
-        self.send({"jsonrpc": "2.0", "method": "notifications/initialized"})
-        self.schemas = {tool["name"]: tool["inputSchema"].get("properties", {})
-                        for tool in self.rpc("tools/list", {})["tools"]}
+        try:
+            self.rpc("initialize", {"protocolVersion": "2024-11-05", "capabilities": {},
+                                    "clientInfo": {"name": "website-visual-check", "version": "1"}})
+            self.send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+            self.schemas = {tool["name"]: tool["inputSchema"].get("properties", {})
+                            for tool in self.rpc("tools/list", {})["tools"]}
+        except BaseException:
+            self.close()
+            raise
 
     def send(self, message):
         self.process.stdin.write(json.dumps(message) + "\n")

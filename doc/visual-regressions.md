@@ -23,6 +23,9 @@ The full module graph needs the demonstrated 3 GiB heap. From the printed
 `/fixtures/visual.html` reuses the CMS seed and production components, fixes only
 comment provider data, and retains native handlers, Markdown, measurement and
 module loading. `test/visual/suite.json` declares exact states and viewports.
+The fixture anchors its calendar to 2026-10-15 so ongoing CV entries keep stable
+endpoints across calendar years. Wall time still advances with `performance.now`;
+native timers, deadlines and finite motion retain their normal lifecycle.
 
 Keep the installed Chrome running with its configured DevTools connection:
 
