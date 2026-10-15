@@ -11,6 +11,7 @@
             [website.modules.blog-preview.views :as preview]
             [website.modules.search.views :as search]
             [website.components.shell :as shell]
+            [website.components.media :as media]
             [website.modules.home.sections :as home]
             [website.loader :as loader]
             [website.navigation.routes :as routes]
@@ -112,6 +113,20 @@
   [:main#main.main-content.perspective-top
    [<fixture-page> content]])
 
+(defn <home-fixture> [component]
+  (let [content' #(editor/section % false)]
+    [<main-fixture>
+     (case component
+       "home-intro" [home/<intro> (content' :intro)]
+       "home-story" [home/<story> (content' :story)]
+       "home-image-media"
+       [:<>
+        [media/<moneyshot> (content' :moneyshot)]
+        ;; The seed's third interlude is the native still-image branch. Video
+        ;; playback needs its own explicit frame/readiness contract.
+        [media/<interlude> (content' :interlude) 2]
+        [media/<gallery> (content' :gallery)]])]))
+
 (defn <search-fixture> []
   ;; The site's expandable Search panel is a main sibling, not a padded page
   ;; section. Its native input, suggestions, status and scroll clipping matter.
@@ -173,7 +188,8 @@
         component (.get params "component")]
     (if-not (#{"cv-regular" "cv-container" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
                "thread" "post" "standalone-comments" "search-mixed"
-               "shell" "header" "footer" "post-footer" "services" "cv"} component)
+               "shell" "header" "footer" "post-footer" "services" "cv"
+               "home-intro" "home-story" "home-image-media"} component)
       (editor/init! false)
       (-> (js/fetch "/fixtures/editor-seed.json")
           (.then #(.json %))
@@ -256,4 +272,5 @@
                                ("shell" "header" "footer" "post-footer") [<shell-fixture> component]
                                "services" [<main-fixture> [home/<services> (editor/section :services false)]]
                                "cv" [<main-fixture> [cv/<cv>]]
+                               ("home-intro" "home-story" "home-image-media") [<home-fixture> component]
                                [<box-fixture> (= component "cv-container")])))))))))))

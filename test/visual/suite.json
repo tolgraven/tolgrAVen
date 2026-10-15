@@ -327,6 +327,83 @@
       "viewport": [400, 400],
       "path": "/fixtures/visual.html?component=comments-edge",
       "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})"
+    },
+    {
+      "id": "home-intro-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=home-intro"
+    },
+    {
+      "id": "home-intro-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=home-intro"
+    },
+    {
+      "id": "home-story-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=home-story",
+      "action": "document.getElementById('about').scrollIntoView({block:'start', behavior:'instant'})"
+    },
+    {
+      "id": "home-story-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=home-story",
+      "action": "document.getElementById('about').scrollIntoView({block:'start', behavior:'instant'})"
+    },
+    {
+      "id": "home-image-media-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=home-image-media"
+    },
+    {
+      "id": "home-image-media-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=home-image-media"
+    },
+    {
+      "id": "home-story-expanded-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=home-story",
+      "action": "const figure = document.getElementById('story-image-headshot'); figure.scrollIntoView({block:'center', behavior:'instant'}); await window.visualFixture.ready(); figure.querySelector('img[data-image-final]').click()"
+    },
+    {
+      "id": "home-story-expanded-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=home-story",
+      "action": "const figure = document.getElementById('story-image-headshot'); figure.scrollIntoView({block:'center', behavior:'instant'}); await window.visualFixture.ready(); figure.querySelector('img[data-image-final]').click()"
+    },
+    {
+      "id": "home-gallery-end-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=home-image-media",
+      "action": "const gallery = document.querySelector('#gallery .sideways'); gallery.scrollIntoView({block:'start', behavior:'instant'}); await window.visualFixture.ready(); gallery.scrollTo({left:gallery.scrollWidth, behavior:'instant'})"
     }
   ]
 }
