@@ -5,6 +5,7 @@
             [website.components.timer :as timer]
             [website.components.ui.action :as action]
             [website.modules.blog.comments :as comments]
+            [website.modules.blog.avatar :as avatar]
             [website.modules.blog.schema :as schema]
             [website.modules.blog.presentation :as presentation]
             [website.modules.markdown-editor.model :as editor-model]
@@ -80,7 +81,7 @@
        (case vote :up "+" :down "-")])))
 
 (defc <collapsed-reply-view>
-  {:features [[:appear "zoom-y"]]}
+  {:features [[:appear "zoom-y"] [:exit {:class "zoom-y faster"}]]}
   [{:keys [path comments reply-count loading?] :as spec}]
   [:div.blog-comment-reply.flex
    {:style {:cursor "zoom-in"
@@ -91,6 +92,11 @@
    [:section.blog-comment.blog-comment-collapsed-placeholder
     {:aria-busy (boolean loading?)}
     (if loading? "Loading replies…" (util/pluralize (or reply-count (count comments)) " hidden reply"))]])
+
+(defc <reply-thread>
+  {:features [:presence]}
+  [children]
+  (into [:div.blog-comment-reply-outer] children))
 
 (defc <comment-frame> {:features [:props [:appear nil]]} [{:keys [children] :as spec}]
   (into [:div.flex.blog-comment-around] children))
@@ -237,7 +243,7 @@
                                         :opacity 0.8})}
 
              [:div
-              (m/<> :user/avatar user)
+              [avatar/<avatar> user]
 
               [:div.blog-comment-main
                [:h3.blog-comment-title title]
@@ -297,8 +303,8 @@
              [<add-comment> {:parent-path path}])
 
            (when replies? ;replies
-             [:div.blog-comment-reply-outer
-              [:div.blog-comment-reply
+             [<reply-thread>
+              [^{:key :replies} [:div.blog-comment-reply
                {:style {"--comment-reveal-duration" (str (comments/reveal-duration-ms (count @*comments)) "ms")}}
                (doall (for [[index post] (map-indexed vector (sort-by :ts (vals @*comments)))]
                         ^{:key (get-id-str (conj path (:id post)))}
@@ -316,10 +322,10 @@
                                                       :visible? *expanded?
                                                       :appear false}]]}] ))]
               (when (or (not @*expanded?) (nil? @*comments))
-                [<collapsed-reply-view> {:path path :comments @*comments :reply-count (:reply-count post)
+                ^{:key :collapsed} [<collapsed-reply-view> {:path path :comments @*comments :reply-count (:reply-count post)
                                          :expand! (fn [] (reset! *interacted? true)
                                                     (r/dispatch [:blog/expand-comment-thread path true]))
-                                         :loading? (and @*expanded? (nil? @*comments))}])])]))))
+                                         :loading? (and @*expanded? (nil? @*comments))}])]])]))))
 
 (defc <comment-focus>
   "Resolve a route intent once; ordinary comment state owns the resulting folds."

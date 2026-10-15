@@ -3,6 +3,7 @@
   (:require [website.macros :as m :refer-macros [defc]]
             [website.react :as r]
             [website.modules.blog.metadata :as metadata]
+            [website.modules.blog.avatar :as avatar]
             [website.modules.search.model :as model]
             [website.modules.search.presentation :as presentation])
   (:require-macros [website.build.site :refer [when-enabled]]))
@@ -25,7 +26,7 @@
        [:div.blog-comment-border]
        [:section.blog-comment
         [:div
-         (when-enabled :user nil (m/<> :user/avatar user))
+         (when-enabled :user nil [avatar/<avatar> user])
          [:div.blog-comment-main
           [:a {:href (:href document)} [:h4.blog-comment-title [presentation/<fragments> title]]]
           [metadata/<posted-by> document]

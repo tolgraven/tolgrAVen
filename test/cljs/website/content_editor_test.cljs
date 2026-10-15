@@ -97,30 +97,31 @@
 
 (deftest editing-is-account-bound-and-drafts-preserve-the-loaded-value
   (async done
-    (-> (go-promise
-          (r/dispatch-sync [:init/app-db])
-          (r/dispatch-sync [:editor-visual/install {:intro {:title "Original"}} true])
-          (is (= :edit (await! (support/subscription-value! [:content/mode]))))
-          (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "First"])
-          (r/dispatch-sync [:content-editor/change [:intro :title] "New server value" "Second"])
-          (let [draft (await! (support/state-at! [:state :content-editor :fields (pr-str [:intro :title])]))]
-            (is (= "Original" (:expected draft)))
-            (is (= "Second" (:value draft))))
-          (r/dispatch-sync [:content-editor/change [:intro :text] "Published\nSecond line" "Private draft\nSecond line"])
-          (r/dispatch-sync [:state [:active-user] nil])
-          (is (= :view (await! (support/subscription-value! [:content/mode]))))
-          (is (= "<p>Published</p>"
-                 (r/render-to-string [fields/<text> :p
-                                      (fields/annotate {:text "Published\nSecond line"} [:intro] :view)
-                                      [:text] nil 0])))
-          (is (= "<p>Second line</p>"
-                 (r/render-to-string [fields/<text> :p
-                                      (fields/annotate {:text "Published\r\nSecond line\r\n"} [:intro] :view)
-                                      [:text] nil 1])))
-          (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Unauthorized"])
-          (is (= "Second" (:value (await! (support/state-at! [:state :content-editor :fields (pr-str [:intro :title])]))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+    (let [restore! (r/make-restore-fn)]
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            (r/dispatch-sync [:editor-visual/install {:intro {:title "Original"}} true])
+            (is (= :edit (await! (support/subscription-value! [:content/mode]))))
+            (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "First"])
+            (r/dispatch-sync [:content-editor/change [:intro :title] "New server value" "Second"])
+            (let [draft (await! (support/state-at! [:state :content-editor :fields (pr-str [:intro :title])]))]
+              (is (= "Original" (:expected draft)))
+              (is (= "Second" (:value draft))))
+            (r/dispatch-sync [:content-editor/change [:intro :text] "Published\nSecond line" "Private draft\nSecond line"])
+            (r/dispatch-sync [:state [:active-user] nil])
+            (is (= :view (await! (support/subscription-value! [:content/mode]))))
+            (is (= "<p>Published</p>"
+                   (r/render-to-string [fields/<text> :p
+                                        (fields/annotate {:text "Published\nSecond line"} [:intro] :view)
+                                        [:text] nil 0])))
+            (is (= "<p>Second line</p>"
+                   (r/render-to-string [fields/<text> :p
+                                        (fields/annotate {:text "Published\r\nSecond line\r\n"} [:intro] :view)
+                                        [:text] nil 1])))
+            (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Unauthorized"])
+            (is (= "Second" (:value (await! (support/state-at! [:state :content-editor :fields (pr-str [:intro :title])]))))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
 
 (deftest save-queue-waits-for-each-authoritative-response
   (async done
@@ -151,20 +152,21 @@
 
 (deftest conflict-retains-the-draft-and-installs-the-current-value
   (async done
-    (-> (go-promise
-          (r/dispatch-sync [:editor-visual/install {:intro {:title "Original"}} true])
-          (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Draft"])
-          (let [key (pr-str [:intro :title])]
-            (r/dispatch-sync [:content-editor/failed "visual-admin" key
-                              {:response {:error "Changed in Strapi"
-                                          :content-bundle {:version 1, :content {:intro {:title "Latest"}}}}}])
-            (await! (support/settle!))
-            (is (= "Draft" (:value (await! (support/state-at! [:state :content-editor :fields key])))))
-            (is (= "Latest" (:title (await! (support/subscription-value! [:content [:intro]])))))
-            (r/dispatch-sync [:content-editor/discard-field key])
-            (is (nil? (await! (support/state-at! [:state :content-editor :fields key]))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+    (let [restore! (r/make-restore-fn)]
+      (-> (go-promise
+            (r/dispatch-sync [:editor-visual/install {:intro {:title "Original"}} true])
+            (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Draft"])
+            (let [key (pr-str [:intro :title])]
+              (r/dispatch-sync [:content-editor/failed "visual-admin" key
+                                {:response {:error "Changed in Strapi"
+                                            :content-bundle {:version 1, :content {:intro {:title "Latest"}}}}}])
+              (await! (support/settle!))
+              (is (= "Draft" (:value (await! (support/state-at! [:state :content-editor :fields key])))))
+              (is (= "Latest" (:title (await! (support/subscription-value! [:content [:intro]])))))
+              (r/dispatch-sync [:content-editor/discard-field key])
+              (is (nil? (await! (support/state-at! [:state :content-editor :fields key]))))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
 
 (deftest empty-image-upload-is-a-valid-draft
   (async done

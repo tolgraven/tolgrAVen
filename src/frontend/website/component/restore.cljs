@@ -56,28 +56,39 @@
 (defn begin! [{:keys [hydrate? back?]}]
   (reset! *context {:hydrate? (boolean hydrate?) :back? (boolean back?)
                     :initial-document? (boolean (and hydrate? (not back?))) :page (page-key)}))
-(defn skip-enter? []
-  (and (= (:page @*context) (page-key)) (or (:hydrate? @*context) (:back? @*context))))
+(defn skip-enter?
+  "Snapshot the mount's entrance policy, like initial-hydration?. Completing
+   hydration must not invalidate that mounted owner or its pending SSR children."
+  []
+  (r/without-tracking
+    #(and (= (:page @*context) (page-key)) (or (:hydrate? @*context) (:back? @*context)))))
 (defn- pathname [path] (first (string/split path #"\?")))
-(defn document-enter? []
+(defn- document-enter-policy? [context]
   ;; Query navigation retains the already-visible document and its native clock.
-  (and (:page @*context)
-       (= (pathname (:page @*context)) (pathname (page-key)))
-       (:initial-document? @*context)))
-(defn local-document? [] (boolean (:local? @*context)))
+  (boolean (and (:page @context)
+                (= (pathname (:page @context)) (pathname (page-key)))
+                (:initial-document? @context))))
+(defn document-enter? [] @(r/track document-enter-policy? *context))
+(defn- context-flag? [context key] (boolean (get @context key)))
+(defn local-document? [] @(r/track context-flag? *context :local?))
+(defn back-document? [] @(r/track context-flag? *context :back?))
 (defn document-return?
   "Native document history policy, installed before CSS and retained by BFCache."
   []
   (boolean (and (exists? js/document)
                 (.hasAttribute (.-documentElement js/document) "data-document-return"))))
+(defn- direct-image-policy? [context]
+  (and (= (:page @context) (page-key))
+       (boolean (if (contains? @context :direct-images?)
+                  (:direct-images? @context)
+                  (or (:back? @context) (:local? @context))))))
 (defn direct-images?
-  "History/departure images retain only their device-appropriate final candidate.
-   This media policy does not change the page's SSR entrance/hydration contract."
+  "Keep image policy reactive without invalidating its consumers when only the
+   independent hydration-complete flag changes."
   []
-  (and (= (:page @*context) (page-key))
-       (boolean (if (contains? @*context :direct-images?)
-                  (:direct-images? @*context)
-                  (or (:back? @*context) (:local? @*context))))))
+  ;; Local document rendering temporarily owns a different context atom while
+  ;; the live document is still mounted. It must have a distinct derived cache.
+  @(r/track direct-image-policy? *context))
 (defn direct-images! []
   ;; The document root is outside React. Native Back can suppress lazy preview
   ;; discovery immediately while normal component rendering removes its layer.

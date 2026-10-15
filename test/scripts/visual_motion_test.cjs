@@ -91,7 +91,8 @@ test('dormant hover, conditional motion and keyframes remain comparable before a
   const keyframe = {keyText: '100%', style: style({opacity: ['1', '']})};
   const hover = {selectorText: 'article:hover::before', style: style({
     'animation-name': ['dormant', ''], 'animation-duration': ['2s', 'important']})};
-  const media = {type: 4, conditionText: '(width > 40rem)', cssRules: [hover]};
+  const media = {type: 4, conditionText: '(width > 40rem)', cssRules: [
+    {type: 1, selectorText: '.native-owner', style: style({}), cssRules: [hover]}]};
   const sheet = {href: '/native.css', media: {mediaText: ''}, cssRules: [
     media, {type: 7, name: 'dormant', cssRules: [keyframe]}]};
   const win = {document: {styleSheets: [sheet], getAnimations: () => [], querySelectorAll: () => [],
@@ -105,6 +106,7 @@ test('dormant hover, conditional motion and keyframes remain comparable before a
   assert.equal(before.sourceRules[0].selector, 'article:hover::before');
   assert.deepEqual(before.sourceRules[0].properties['animation-duration'], ['2s', 'important']);
   assert.equal(before.sourceRules[0].scope[1].condition, '(width > 40rem)');
+  assert.equal(before.sourceRules[0].scope[2].selector, '.native-owner');
   assert.equal(before.sourceRules[1].frames[0].properties.opacity[0], '1');
   keyframe.style = style({opacity: ['0.5', '']});
   const after = JSON.parse(JSON.stringify(observer.snapshot()));

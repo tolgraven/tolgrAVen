@@ -35,6 +35,34 @@
   (r/use-effect (fn [] (committed!) nil) [])
   form)
 
+(deftest local-snapshot-policy-is-independent-of-the-mounted-document
+  (let [mounted (r/atom {:page (restore/page-key)
+                         :initial-document? true
+                         :hydrate? true})
+        snapshot (r/atom {:page (restore/page-key)
+                          :initial-document? false
+                          :local? true
+                          :back? true})
+        read-policy #(vector (restore/document-enter?) (restore/local-document?)
+                             (restore/back-document?) (restore/direct-images?))]
+    (r/with-framework-bindings [restore/*context mounted]
+      (let [owner (r/track! read-policy)]
+        (try
+          (is (= [true false false false] @owner))
+          ;; Local capture renders while the original document still owns live
+          ;; policy reactions. Those cached values must not enter its snapshot.
+          (r/with-framework-bindings [restore/*context snapshot]
+            (is (= [false true true true] (read-policy))))
+          (is (= [true false false false] @owner))
+          (swap! mounted assoc :hydrate? false)
+          (r/flush!)
+          (is (= [true false false false] @owner))
+          (swap! mounted assoc :direct-images? true)
+          (r/flush!)
+          (is (= [true false false true] @owner)
+              "Actual image-policy changes remain reactive")
+          (finally (r/dispose! owner)))))))
+
 (deftest capture-observes-native-source-and-releases-it-on-unmount
   (async done
     (let [restore! (r/make-restore-fn)

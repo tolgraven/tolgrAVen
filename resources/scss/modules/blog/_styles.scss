@@ -241,6 +241,17 @@
       }
       
     }
+    .blog-comment-reply-outer {
+      display: grid;
+
+      // Keep the existing placeholder footprint during the first reply frames.
+      // Both owners share a cell; its exit cannot add a second layout row.
+      > .blog-comment-reply {
+        grid-area: 1 / 1;
+        align-self: start;
+        min-width: 0;
+      }
+    }
     .blog-comment-reply {
       border: 0;
       margin-left: calc(1.0 * var(--space));

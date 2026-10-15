@@ -142,7 +142,8 @@
                 if (Object.keys(properties).length) sourceRules.push({scope, selector: rule.selectorText, properties});
               }
               if (rule.cssRules) inspectRules(rule.cssRules,
-                [...scope, {type: rule.type, condition: rule.conditionText || null, name: rule.name || null}]);
+                [...scope, {type: rule.type, kind: rule.constructor.name,
+                  selector: rule.selectorText || null, condition: rule.conditionText || null, name: rule.name || null}]);
             }
             if (rule.styleSheet) inspectSheet(rule.styleSheet, [...scope, {import: rule.href,
               media: rule.media?.mediaText || '', supports: rule.supportsText || null,

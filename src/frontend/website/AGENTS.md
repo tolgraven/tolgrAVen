@@ -181,12 +181,20 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Root comments retain the four-item Show all/Collapse fold, with direct replies
   visible by default. Folding retains acquired pages and the focused permalink's
   root; the managed query window remains independent of the displayed subset.
+  Reply rows and their exiting placeholder share one grid cell so loading cannot
+  drop the collapsed footprint. Blog avatars keep their native image footprint
+  while the optional account module loads, including lightweight Search previews.
   `validation/schema.cljs` assembles browser/Node app-db sections from their owners;
   small single-use shell-state contracts stay inline there.
 - Image readiness callbacks use the shared picture lifecycle: notify only a decoded,
   visibly committed final candidate after its overlap completes. Source changes and
   unmount release native observation; hidden ancestors wait on scoped visibility/
   motion changes rather than frame polling. See `doc/progressive-images.md`.
+- Restoration mount decisions are snapshots. Document, local-return and image
+  policies use derived Reagent values so completing hydration does not invalidate
+  unchanged consumers and discard their pending SSR descendants. Key those values
+  by their context atom: local capture renders beside the mounted document. Keep
+  actual Back and image-policy changes reactive; do not alter Reagent batching to hide this.
 - Authoring drafts/uploads/anchors belong to re-frame. Pending image chips use
   native editor nodes/decorations, never authored markers. SDK extension slots
   may require stable reverse React adapters; keep their native document/selection

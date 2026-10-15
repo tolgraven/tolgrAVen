@@ -3,6 +3,7 @@
   #?(:cljs (:require #?(:clj [website.build.site :refer [when-enabled]])
     [website.react :as r]
     [website.modules.blog.model :as model]
+    [website.modules.blog.avatar :as avatar]
     [website.modules.blog.metadata :as metadata]
     [website.modules.blog.schema :as schema]
     [website.modules.blog.data :as data]
@@ -38,7 +39,7 @@
 
 (defc ^:private <post-avatar> {:features [[:appear "zoom slower"]]}
   [spec user]
-  [:div (m/<> :user/avatar user "blog-user-avatar")])
+  [:div [avatar/<avatar> user "blog-user-avatar"]])
 
 (defc <post-header> {:spec-schema schema/post-header-spec} [{:keys [children] :as spec}]
   (into [:div.flex.blog-post-header] children))

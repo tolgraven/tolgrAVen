@@ -110,7 +110,7 @@
 
 (defn- use-restored-shell []
   (let [returned? (restore/document-return?)
-        initial? (restore/skip-enter?)
+        initial? (or (restore/document-enter?) (restore/back-document?))
         [restored? set-restored!] (r/use-state #(restore/local-document?))]
     ;; Match network SSR attributes on the first render. The head policy holds
     ;; those clocks until this owned state commits, including a BFCache resume.

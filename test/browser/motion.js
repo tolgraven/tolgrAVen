@@ -290,7 +290,7 @@ document.querySelector('#run').onclick = async () => {
     queryLink.remove(); queryBack.remove();
     await resetTestOrigin(frame, wait);
     const cached = await sampleStartup(path);
-    check(!doc().querySelector('#ssr-shell'), 'Fresh SSR cache bypasses the skeleton');
+    check(!cached.some(value => value.shell), 'Fresh SSR cache bypasses the skeleton');
     checkEntrance(cached, 'Cached SSR');
     frame.src = '/blog/post/New-features-27';
     await wait(() => doc()?.querySelector('.blog-comment-collapsed-placeholder'));

@@ -22,7 +22,10 @@
       (let [start (js/performance.now)]
         (letfn [(frame! [samples]
                   (let [elapsed (- (js/performance.now) start)
-                        samples' (conj samples {:time elapsed, :heights (heights element)})]
+                        samples' (conj samples {:time elapsed
+                                                :heights (heights element)
+                                                :outer (some-> (.querySelector element ".blog-comment-reply-outer")
+                                                               .getBoundingClientRect .-height)})]
                     (if (> elapsed duration)
                       (resolve samples')
                       (js/requestAnimationFrame #(frame! samples')))))]
@@ -74,6 +77,57 @@
          :appear {:class "reply-height", :settle-offscreen? true, :restore? false}
          :props {:style {"--comment-reveal-delay" (str (* 48 index) "ms")}}
          :children [[:div {:style {:height "4rem"}} (str "Reply " index)]]}])]]]))
+
+(defn- <thread-handoff> [*ready? *expanded?]
+  [:section.blog-comments
+   [:div.blog-comments-inner
+    [comment-views/<reply-thread>
+     [^{:key :replies}
+      [:div.blog-comment-reply
+       (when @*ready?
+         [comment-views/<reply-row>
+          {:expanded? @*expanded?
+           :appear {:class "reply-height", :settle-offscreen? true, :restore? false}
+           :children [[:div {:style {:height "4rem"}} "Arriving reply"]]}])]
+      (when (or (not @*ready?) (not @*expanded?))
+        ^{:key :collapsed}
+        [comment-views/<collapsed-reply-view>
+         {:path [42 "root"], :reply-count 1, :loading? (not @*ready?)}])]]]])
+
+(deftest arriving-and-cached-replies-retain-the-collapsed-footprint
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture!))
+                context @restore/*context
+                *ready? (r/atom false)
+                *expanded? (r/atom true)]
+            (try
+              (restore/begin! {})
+              (await! (support/render! root [<thread-handoff> *ready? *expanded?]))
+              (await! (tick! 550))
+              (let [outer (.querySelector element ".blog-comment-reply-outer")
+                    initial (.-height (.getBoundingClientRect outer))]
+                (is (pos? initial))
+                (reset! *ready? true)
+                (r/flush)
+                (let [samples (await! (sample! element 420))]
+                  (is (every? #(>= (:outer %) (- initial 0.5)) samples)
+                      "Removing the loading placeholder cannot expose a zero-height first reply frame")
+                  (is (some #(< initial (:outer %) (- (:outer (last samples)) 1)) samples)
+                      "The container grows beyond the placeholder through intermediate heights"))
+                (is (nil? (.querySelector element ".blog-comment-collapsed-placeholder")))
+                (reset! *expanded? false)
+                (r/flush)
+                (await! (tick! 550))
+                (let [row (.querySelector element ".blog-comment-reply-row")]
+                  (reset! *expanded? true)
+                  (r/flush)
+                  (let [samples (await! (sample! element 420))]
+                    (is (every? #(>= (:outer %) (- initial 0.5)) samples)))
+                  (is (identical? row (.querySelector element ".blog-comment-reply-row")))))
+              (finally (close!) (reset! restore/*context context)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
 
 (deftest late-replies-grow-layout-in-their-entrance-order-and-reverse-on-reentry
   (async done
