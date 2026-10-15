@@ -190,8 +190,14 @@ and per-URL Home, Blog, CV and Docs evidence in `dataset.externalBackCases`.
 Each route matches the full departing URL; its observer attaches before content
 readiness, and return-policy flags are asserted after motion collection. It does
 not rewrite application HTML, seed return state or forge navigation timing.
-The existing ordinary Search and navigation interactions follow restoration;
-return suppression must not disable subsequent user-triggered motion.
+After saving that observation and checking policy, each route measures actual
+Search opening/closing `max-height` transitions and compares their full native
+effect timing/keyframes with the same controls before departure. A lazy panel
+first acquires its normal closed surface. Finite effects captured on native start
+remain valid even if absent at the next poll. Frame-height diagnostics accompany
+the proof without a minimum frame-count gate; clocks/progress are excluded from
+parity. Per-URL records live in `dataset.externalBackInteractions`. Ordinary
+navigation follows restoration too; return suppression must preserve later intent.
 
 This parent-frame check cannot claim observation before a new document is
 accessible, nor prove indefinitely delayed/provider-triggered behavior after its

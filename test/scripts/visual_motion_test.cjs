@@ -346,7 +346,7 @@ test('reply motion evidence rejects height teleports and opacity-only layout jum
   assert.ok(staticBody.every(row => row.continuous && !row.fading && !row.sliding));
 });
 
-function returnFixture({gaps = [], policy = true, readinessFailure = false} = {}) {
+function returnFixture({gaps = [], policy = true, readinessFailure = false, returnedDuration = 1800, disabledSearch = false, quickSearch = false, lazySearch = false} = {}) {
   const calls = [], frames = new Map(), listeners = new Map(), timers = new Map();
   const results = {dataset: {}, append() {}}, observers = [];
   const url = 'http://127.0.0.1:4114/cv?motion-return=proof#skills';
@@ -357,8 +357,30 @@ function returnFixture({gaps = [], policy = true, readinessFailure = false} = {}
     const app = {pending: false, spinner: false,
       hasAttribute: () => app.pending,
       querySelector: selector => selector === 'main' || app.spinner ? {} : null};
-    const document = {URL: url, readyState: 'complete', app, present: true, getAnimations: () => [],
-      querySelector: selector => selector === '#app' ? app : selector === '#app .cv-intro' && document.present ? {} : null,
+    const panel = {open: false, present: navigation === 'navigate' || !lazySearch, listeners: new Map(),
+      getBoundingClientRect: () => ({height: panel.open ? 80 : 0}), getAnimations: () => panel.animation ? [panel.animation] : [],
+      addEventListener: (name, callback) => panel.listeners.set(name, callback),
+      removeEventListener: (name, callback) => { assert.equal(panel.listeners.get(name), callback); panel.listeners.delete(name); }};
+    const button = {click() {
+      calls.push((navigation === 'navigate' ? 'before' : 'after') + ':search-click');
+      panel.present = true; panel.open = !panel.open;
+      const duration = quickSearch ? 1 : panel.open ? (navigation === 'navigate' ? 1800 : returnedDuration) : 400;
+      panel.animation = disabledSearch ? null : Object.assign(new CSSTransition(), {
+        transitionProperty: 'max-height', playbackRate: 1,
+        effect: {target: panel, getTiming: () => ({duration, delay: 0, iterations: 1, easing: 'ease'}),
+          getComputedTiming: () => ({endTime: duration}),
+          getKeyframes: () => panel.open ? [{maxHeight: '0px'}, {maxHeight: '80px'}] : [{maxHeight: '80px'}, {maxHeight: '0px'}]},
+        finished: Promise.resolve()
+      });
+      if (quickSearch) {
+        panel.listeners.get('transitionrun')?.({target: panel, propertyName: 'max-height'});
+        panel.animation = null;
+      }
+    }};
+    const document = {URL: url, readyState: 'complete', app, present: true, fonts: {ready: Promise.resolve()}, getAnimations: () => [],
+      querySelector: selector => selector === '#app' ? app : selector === '#app .cv-intro' && document.present ? {} :
+        selector === '.search-ui' ? (panel.present ? panel : null) : selector === '.search-ui-open' ? (panel.open ? panel : null) :
+        selector === 'button.search-ui-btn' ? button : null,
       documentElement: {hasAttribute(name) {calls.push('policy:' + name); return policy;}}};
     const win = {document, CSSAnimation, CSSTransition,
       performance: {getEntriesByType: () => [{type: navigation}]},
@@ -375,7 +397,7 @@ function returnFixture({gaps = [], policy = true, readinessFailure = false} = {}
     origin: 'http://127.0.0.1:4114', hostname: '127.0.0.1', search: ''},
     document: {querySelector: selector => selector === '#app' ? frame : selector === '#results' ? results : {},
       createElement: () => ({})},
-    performance: {now: () => readinessFailure ? now += 10000 : 1},
+    performance: {now: () => readinessFailure || disabledSearch ? now += 10000 : 1},
     requestAnimationFrame(callback) {frames.set(++next, callback); return next;},
     cancelAnimationFrame(id) {frames.delete(id);},
     setTimeout(callback, ms) {
@@ -400,7 +422,7 @@ function returnFixture({gaps = [], policy = true, readinessFailure = false} = {}
       observers.push(observer); return observer;
     }}}};
   vm.runInNewContext(readFileSync('test/browser/motion.js', 'utf8') +
-    '\nthis.observeBack = externalBack; this.matchesReturn = returnMatches; this.readyReturn = returnReady;', context);
+    '\nthis.observeBack = externalBack; this.matchesReturn = returnMatches; this.readyReturn = returnReady; this.inspectSearch = searchMotion;', context);
   return {context, returned, previous, frames, timers, listeners, observers, calls, results, url};
 }
 
@@ -435,6 +457,11 @@ test('native Back observes before readiness, saves route evidence, and cleans su
     const evidence = JSON.parse(results.dataset.externalBackCases)[url];
     assert.equal(evidence.documents[1].navigation, 'back_forward');
     assert.equal(evidence.observationWindowMs, 3500);
+    const firstReturnedClick = calls.indexOf('after:search-click');
+    if (firstReturnedClick !== -1) {
+      assert.ok(firstReturnedClick > calls.indexOf('observation-window'));
+      assert.ok(firstReturnedClick > calls.indexOf('policy:data-image-direct'));
+    }
     assert.equal(results.dataset.externalBack, undefined, 'Route checks preserve the separate home proof');
     assert.ok(fixture.observers.every(observer => observer.stopped));
     assert.equal(fixture.frames.size, 0); assert.equal(fixture.timers.size, 0); assert.equal(fixture.listeners.size, 0);
@@ -452,4 +479,35 @@ test('home native Back retains its original proof shape and a failed readiness w
   assert.equal(failed.calls.includes('observation-window'), false);
   assert.ok(failed.observers.every(observer => observer.stopped));
   assert.equal(failed.frames.size, 0); assert.equal(failed.timers.size, 0); assert.equal(failed.listeners.size, 0);
+});
+
+
+test('after-Back Search captures actual finite CSS definitions and rejects changed timing or disabled motion', async () => {
+  const good = returnFixture();
+  await good.context.observeBack({label: 'CV', selectors: ['#app .cv-intro']});
+  const evidence = JSON.parse(good.results.dataset.externalBackInteractions)[good.url];
+  assert.deepEqual(evidence.before.motion, evidence.after.motion);
+  assert.deepEqual(evidence.after.motion.map(value => value.timing.duration), [1800, 400]);
+  assert.ok(evidence.after.frames.length > 0, 'Native frame samples accompany timing evidence without a minimum frame-count gate');
+  assert.equal(/currentTime|startTime|progress/.test(JSON.stringify(evidence.after.motion)), false);
+  assert.equal(good.returned.querySelector('.search-ui').listeners.size, 0);
+  assert.equal(good.previous.querySelector('.search-ui').listeners.size, 0);
+  const quick = returnFixture({quickSearch: true});
+  await quick.context.observeBack({label: 'CV', selectors: ['#app .cv-intro']});
+  const quickEvidence = JSON.parse(quick.results.dataset.externalBackInteractions)[quick.url];
+  assert.deepEqual(quickEvidence.after.motion.map(value => value.timing.duration), [1, 1],
+    'A native finite effect captured on transitionrun remains valid after it disappears before the next poll');
+  const lazy = returnFixture({lazySearch: true});
+  await lazy.context.observeBack({label: 'CV', selectors: ['#app .cv-intro']});
+  assert.equal(lazy.calls.filter(value => value === 'after:search-click').length, 4,
+    'First intent acquires a restored lazy panel before measuring its ordinary open/close transitions');
+  const instant = returnFixture({returnedDuration: 0});
+  await assert.rejects(instant.context.observeBack({label: 'CV', selectors: ['#app .cv-intro']}), /finite native height transition/);
+  const changed = returnFixture({returnedDuration: 100});
+  await assert.rejects(changed.context.observeBack({label: 'CV', selectors: ['#app .cv-intro']}), /CSS timing after Back/);
+  assert.ok(changed.observers.every(observer => observer.stopped)); assert.equal(changed.frames.size, 0);
+  const disabled = returnFixture({disabledSearch: true});
+  await assert.rejects(disabled.context.inspectSearch('Disabled'), /did not settle/);
+  assert.equal(disabled.frames.size, 0);
+  assert.equal(disabled.previous.querySelector('.search-ui').listeners.size, 0);
 });

@@ -129,8 +129,60 @@ const returnReady = (document, selectors) => {
     selectors.every(selector => document.querySelector(selector)) &&
     !app.querySelector('main .component-spinner,main .loading-spinner');
 };
+const searchMotion = async label => {
+  const document = doc(), win = frame.contentWindow;
+  const button = document.querySelector('button.search-ui-btn');
+  check(!!button && !document.querySelector('.search-ui-open'), `${label} Search starts closed`);
+  let panel = document.querySelector('.search-ui');
+  if (!panel) {
+    // A restored document may acquire Search on first intent. Establish its
+    // normal closed surface before comparing subsequent user transitions.
+    button.click();
+    await wait(() => document.querySelector('.search-ui-open'));
+    button.click();
+    await wait(() => !document.querySelector('.search-ui-open'));
+    panel = document.querySelector('.search-ui');
+    await settleLayout(panel);
+  }
+  const motion = [], frames = [];
+  for (const open of [true, false]) {
+    let transition;
+    const capture = () => {
+      transition ||= panel.getAnimations().find(animation => animation instanceof win.CSSTransition &&
+        animation.transitionProperty === 'max-height' && animation.effect.target === panel);
+      return transition;
+    };
+    // Retain the actual effect on its native start event too; a quick valid
+    // transition need not remain listed until the next readiness poll.
+    panel.addEventListener('transitionrun', capture);
+    try {
+      button.click();
+      await wait(() => capture() && !!document.querySelector('.search-ui-open') === open);
+    } finally { panel.removeEventListener('transitionrun', capture); }
+    const effect = transition.effect, timing = effect.getTiming(), keyframes = effect.getKeyframes();
+    check(Number.isFinite(effect.getComputedTiming().endTime) && Number(timing.duration) > 0 &&
+      new Set(keyframes.map(value => value.maxHeight)).size > 1,
+      `${label} Search ${open ? 'opening' : 'closing'} runs a finite native height transition`);
+    motion.push({open, property: transition.transitionProperty, timing, keyframes,
+      composite: effect.composite, iterationComposite: effect.iterationComposite, playbackRate: transition.playbackRate});
+    let request, active = true, finished = false, failure;
+    const read = () => {
+      if (frames.length < 512) frames.push({open, height: panel.getBoundingClientRect().height});
+      if (active) request = requestAnimationFrame(read);
+    };
+    transition.finished.then(() => { finished = true; }, error => { failure = error; });
+    try {
+      read();
+      await wait(() => { if (failure) throw failure; return finished; });
+    } finally { active = false; cancelAnimationFrame(request); }
+    check(doc() === document && document.querySelector('.search-ui') === panel,
+      `${label} Search retains its native surface through the transition`);
+  }
+  return {motion, frames};
+};
 const externalBack = async ({label = 'Home', selectors = ['#app #intro']} = {}) => {
   const previous = doc(), expectedURL = new URL(previous.URL).href;
+  const beforeSearch = await searchMotion(label + ' before departure');
   const observers = new Map(), evidence = [], cleanups = [];
   const attach = document => {
     if (!document || document.URL === 'about:blank' || observers.has(document)) return;
@@ -194,6 +246,13 @@ const externalBack = async ({label = 'Home', selectors = ['#app #intro']} = {}) 
     // Policy is evidence to assert after observing the actual page, never a
     // prerequisite that conceals motion when the return policy itself breaks.
     check(returned.documentElement.hasAttribute('data-image-direct'), `${label} Back retains the native image return policy`);
+    observer.phase('post-return-interaction');
+    const afterSearch = await searchMotion(label + ' after Back');
+    const interactions = JSON.parse(results.dataset.externalBackInteractions || '{}');
+    interactions[expectedURL] = {before: beforeSearch, after: afterSearch};
+    results.dataset.externalBackInteractions = JSON.stringify(interactions);
+    check(JSON.stringify(beforeSearch.motion) === JSON.stringify(afterSearch.motion),
+      `${label} Search retains its native opening and closing CSS timing after Back`, interactions[expectedURL]);
   } finally {
     active = false; cancelAnimationFrame(request);
     for (const observer of observers.values()) observer.stop();
@@ -222,11 +281,7 @@ const externalBackRoutes = async () => {
     await wait(() => !doc().querySelector('.search-ui-open'));
     await settleLayout(doc().body);
     await externalBack(test);
-    doc().querySelector('button.search-ui-btn').click();
-    await wait(() => doc().querySelector('.search-ui-open'));
-    doc().querySelector('button.search-ui-btn').click();
-    await wait(() => !doc().querySelector('.search-ui-open'));
-    check(true, `${test.label} Search responds after native Back observation`);
+
   }
   await resetTestOrigin(frame, wait);
 };
@@ -234,6 +289,7 @@ document.querySelector('#run').onclick = async () => {
   results.replaceChildren();
   delete results.dataset.externalBack;
   results.dataset.externalBackCases = '{}';
+  results.dataset.externalBackInteractions = '{}';
   try {
     await resetTestOrigin(frame, wait);
     const path = `/?motion-entrance=${Date.now()}`;
