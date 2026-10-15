@@ -81,3 +81,71 @@ test('unobservable native starts are explicit gaps rather than motion passes', (
   assert.match(observer.snapshot().gaps[0], /no observable definition/);
   observer.stop();
 });
+
+test('parked CSS clocks record actual pointer/focus activations and release every wake listener', () => {
+  const {createMotionObserver} = fixture();
+  const element = {nodeType: 1, localName: 'figure', parentElement: null};
+  const listeners = new Map(), frames = new Map();
+  let disconnected = false, next = 0;
+  class CSSAnimation {}
+  class CSSTransition {}
+  const clock = (name, state, duration = 1000) => Object.assign(new CSSAnimation(), {
+    animationName: name, playState: state, playbackRate: 1,
+    effect: {target: element, pseudoElement: null, composite: 'replace', iterationComposite: 'replace',
+      getTiming: () => ({duration, delay: 0, iterations: 1}),
+      getKeyframes: () => [{offset: 0, opacity: '0'}, {offset: 1, opacity: '1'}]}
+  });
+  const hovered = clock('hover-backdrop', 'paused'), idle = clock('idle-clock', 'idle');
+  const active = [hovered, idle];
+  const doc = {getAnimations: () => active, querySelectorAll: () => [],
+    addEventListener: (name, fn) => listeners.set(name, fn),
+    removeEventListener: (name, fn) => { assert.equal(listeners.get(name), fn); listeners.delete(name); }};
+  const win = {document: doc, CSSAnimation, CSSTransition,
+    MutationObserver: class {observe() {} disconnect() {disconnected = true;}},
+    requestAnimationFrame: fn => { frames.set(++next, fn); return next; },
+    cancelAnimationFrame: id => frames.delete(id)};
+  const flushFrame = () => {
+    const pending = [...frames.values()]; frames.clear();
+    pending.forEach(callback => callback());
+  };
+  const observer = createMotionObserver(win);
+  const savedWake = listeners.get('pointerover');
+  // Native animationstart can be dispatched when an initially paused object
+  // is created; its available definition proves this is parked, not a gap.
+  listeners.get('animationstart')({type: 'animationstart', target: element, animationName: 'hover-backdrop'});
+  flushFrame();
+  assert.equal(observer.snapshot().triggered.length, 0, 'Paused and idle creation is not activation');
+  assert.equal(frames.size, 0, 'Parked clocks do not retain a frame loop');
+  observer.phase('action');
+  hovered.playState = 'running';
+  listeners.get('pointerover')({type: 'pointerover', target: element});
+  listeners.get('focusin')({type: 'focusin', target: element});
+  observer.sample();
+  assert.equal(observer.snapshot().triggered.length, 1, 'Repeated wakes while running are one activation');
+  hovered.playState = 'paused';
+  listeners.get('pointerout')({type: 'pointerout', target: element});
+  flushFrame();
+  assert.equal(frames.size, 0);
+  hovered.playState = 'running';
+  listeners.get('focusin')({type: 'focusin', target: element});
+  assert.equal(observer.snapshot().triggered.length, 2, 'Focus resumes the same native object');
+  hovered.playState = 'finished'; observer.sample(); observer.sample();
+  assert.equal(observer.snapshot().triggered.length, 2, 'Finishing is not another activation');
+  const instant = clock('instant-entrance', 'finished', 0);
+  active.push(instant);
+  listeners.get('animationstart')({type: 'animationstart', target: element, animationName: 'instant-entrance'});
+  idle.playState = 'running';
+  listeners.get('pointerdown')({type: 'pointerdown', target: element});
+  const snapshot = JSON.parse(JSON.stringify(observer.snapshot()));
+  assert.equal(snapshot.triggered.length, 4);
+  assert.equal(snapshot.triggered.filter(entry => entry.name === 'hover-backdrop').length, 2);
+  assert.ok(snapshot.triggered.every(entry => entry.phase === 'action'));
+  assert.equal(snapshot.triggered.find(entry => entry.name === 'instant-entrance').timing.duration, 0);
+  assert.deepEqual(snapshot.gaps, []);
+  assert.equal(/currentTime|startTime|playState/.test(JSON.stringify(snapshot.triggered)), false,
+    'Activation comparisons contain definitions without sampled progress or clocks');
+  observer.stop();
+  assert.equal(disconnected, true); assert.equal(listeners.size, 0); assert.equal(frames.size, 0);
+  savedWake({type: 'pointerover', target: element});
+  assert.equal(frames.size, 0, 'An already queued wake cannot resurrect a stopped observer');
+});

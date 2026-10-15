@@ -122,9 +122,11 @@ rejects documents requiring more than 128 tiles.
 New captures include `native-css-motion-v1` alongside geometry in both modes.
 An observer is installed before native fixture initialization and marks initial,
 action and raster-scroll phases before those actions run. It records every
-observed native `CSSAnimation` and `CSSTransition` once: target/pseudo, name or
-property, full `KeyframeEffect.getTiming()` and `getKeyframes()`, composition and
-playback rate. Delayed animation objects are recorded while pending; finite
+activation of native `CSSAnimation` and `CSSTransition` objects: target/pseudo,
+name or property, full `KeyframeEffect.getTiming()` and `getKeyframes()`, composition
+and playback rate. Paused/idle objects do not count until they run; native pointer
+and focus/keyboard events wake observation so resuming the same object is captured.
+Delayed running objects are recorded while pending; finite and zero-duration
 objects remain in the record after finishing. Start/current times, frame clocks
 and elapsed progress are deliberately excluded. Infinite clocks are measured
 before the existing raster alignment pauses them.

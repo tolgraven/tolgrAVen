@@ -45,7 +45,7 @@
   // Observation starts before fixture init, rather than after finite entrances
   // have vanished. Read native definitions; never compare wall-clock progress.
   function createMotionObserver(win, initialPhase = 'initial') {
-    const doc = win.document, seen = new WeakSet(), triggered = [], gaps = [];
+    const doc = win.document, states = new WeakMap(), triggered = [], gaps = [];
     const CSSAnimation = win.CSSAnimation, CSSTransition = win.CSSTransition;
     const requestFrame = win.requestAnimationFrame.bind(win), cancelFrame = win.cancelAnimationFrame.bind(win);
     let phase = initialPhase, stopped = false, request = null;
@@ -56,8 +56,14 @@
       for (const animation of doc.getAnimations()) {
         const kind = animation instanceof CSSAnimation ? 'animation' :
           animation instanceof CSSTransition ? 'transition' : null;
-        if (!kind || seen.has(animation)) continue;
-        seen.add(animation);
+        if (!kind) continue;
+        const previous = states.get(animation), state = animation.playState;
+        states.set(animation, state);
+        // Creation can leave native CSS clocks paused until hover/focus. Capture
+        // their first activation and every later resume, not their parked state.
+        // Finished clocks may have run between samples, including zero duration.
+        if (!['running', 'finished'].includes(state) || state === previous ||
+          (state === 'finished' && previous === 'running')) continue;
         try {
           const effect = animation.effect;
           const target = effect.target?.element || effect.target;
@@ -79,18 +85,29 @@
         request = requestFrame(tick);
     }
     function wake(event) {
+      if (stopped) return;
       sample();
       if (event && ['animationstart', 'transitionrun'].includes(event.type)) {
         const name = event.animationName || event.propertyName;
         const target = elementPath(event.target);
-        if (!triggered.some(entry => entry.target === target && entry.name === name &&
+        const parked = doc.getAnimations().some(animation => {
+          const effect = animation.effect, nativeTarget = effect?.target?.element || effect?.target;
+          return nativeTarget && ['paused', 'idle'].includes(animation.playState) &&
+            (animation instanceof CSSAnimation || animation instanceof CSSTransition) &&
+            (animation.animationName || animation.transitionProperty) === name &&
+            elementPath(nativeTarget) === target &&
+            (effect.pseudoElement || effect.target?.type || null) === (event.pseudoElement || null);
+        });
+        if (!parked && !triggered.some(entry => entry.target === target && entry.name === name &&
           entry.pseudo === (event.pseudoElement || null)))
           gaps.push('Native CSS start had no observable definition: ' + target + ' ' + name);
       }
       if (!stopped && request === null) request = requestFrame(tick);
     }
     const events = ['animationstart', 'animationcancel', 'animationend',
-      'transitionrun', 'transitioncancel', 'transitionend'];
+      'transitionrun', 'transitioncancel', 'transitionend',
+      'pointerover', 'pointerout', 'pointerdown', 'pointerup', 'pointercancel',
+      'focusin', 'focusout', 'keydown', 'keyup'];
     events.forEach(name => doc.addEventListener(name, wake, true));
     const mutations = new win.MutationObserver(wake);
     mutations.observe(doc, {subtree: true, childList: true, attributes: true});
