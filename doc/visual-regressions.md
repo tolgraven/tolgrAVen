@@ -131,6 +131,17 @@ contains one complete fixture, bounding serialization without dropping native
 geometry or motion data. Suite bytes/hash and Git head are pinned before browser
 work. If the suite bytes change before completion, the runner fails without
 `capture.json`; partial case artifacts remain available for diagnosis.
+Geometry-only captures park the real pointer on an observed native heading in a
+separate band below every fixture. The parent viewport is at least 1440×1100,
+or the largest requested frame plus 100 CSS pixels of height; iframe dimensions
+remain exactly the case's viewport. Only `visual-driver.html?geometry-parking=1`
+fixes its own heading to the bottom using relative-unit CSS. Before and after
+readiness/actions, the driver verifies the heading's visible bounds are below
+the complete iframe, the heading is `:hover`, the iframe is not, and child
+width/height/DPR match the case. A moved pointer or overlap fails capture; no
+application hover styles, DOM or event handlers are suppressed. Standalone hover
+cases retain their existing top-heading parking and explicit target interaction.
+
 Raster captures use the actual
 top-level viewport; both modes retain normal component lifecycles.
 Raster mode scrolls the document from its top through overlapping viewports to

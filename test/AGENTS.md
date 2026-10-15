@@ -100,6 +100,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Visual captures return one complete geometry fixture per MCP request. Pin suite
   bytes/hash and Git head before browser work; changed suite bytes invalidate
   completion metadata while preserving partial evidence and owned-page cleanup.
+  Geometry-only capture parks the native pointer outside all iframe bounds and
+  verifies separation plus exact child viewport/DPR before and after actions.
 - Hover visual states use observed accessibility snapshot UIDs through configured
   Chrome MCP, verify their native selector/`:hover` result, and park the pointer
   on task-owned driver markup before navigation. Keep real keyboard traversal

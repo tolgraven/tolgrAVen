@@ -527,3 +527,62 @@ test('lazy Search reacquires its real control after replacing the disconnected f
   assert.equal(lazy.calls.filter(value => value === 'after:search-click').length, 4);
   assert.equal(lazy.returned.querySelector('.search-ui').listeners.size, 0);
 });
+
+function geometryDriver(options = {}) {
+  const calls = [], frames = [], active = new Set();
+  const parking = {getBoundingClientRect: () => ({left: 0, right: 1440, top: options.overlap ? 968 : 1068, bottom: options.overlap ? 1000 : 1100}),
+    matches: selector => selector === ':hover' && !options.pointerMoved};
+  const window = {innerWidth: 1440, innerHeight: 1100, location: {search: options.standalone ? '' : '?geometry-parking=1'}};
+  const document = {body: {dataset: {}, appendChild(frame) {active.add(frame); queueMicrotask(() => frame.onload());}},
+    querySelector: selector => selector === 'body > h1' ? parking : null,
+    createElement(tag) {
+      assert.equal(tag, 'iframe');
+      const target = {devicePixelRatio: 1, visualFixture: {
+        ready: async () => {calls.push('ready'); if (options.readyError) throw Error('Native fixture failed');},
+        motion: {phase: phase => calls.push(phase), stop: () => calls.push('stop')},
+        snapshot: () => ({viewport: [frame.width, frame.height, 1]})},
+        eval: async () => {calls.push('action'); if (options.afterAction) options.afterAction(parking, target);}};
+      const frame = {style: {}, contentWindow: target,
+        getBoundingClientRect: () => ({left: 0, top: 0, right: Number(frame.width), bottom: Number(frame.height)}),
+        matches: selector => selector === ':hover' && Boolean(options.frameHovered), remove: () => active.delete(frame)};
+      Object.defineProperties(target, {innerWidth: {get: () => options.wrongWidth || Number(frame.width)}, innerHeight: {get: () => Number(frame.height)}});
+      frames.push(frame); return frame;
+    }};
+  vm.runInNewContext(readFileSync('test/browser/visual-driver.js', 'utf8'),
+    {window, document, URLSearchParams, setTimeout, clearTimeout});
+  return {driver: window.visualDriver, calls, frames, active, document};
+}
+
+test('geometry driver preserves exact child viewport and validates genuinely parked pointer outside its bounds', async () => {
+  const fixture = geometryDriver();
+  const results = await fixture.driver.capture([{id: 'wide', viewport: [1440, 1000], path: '/native', action: 'nativeAction()'},
+    {id: 'phone', viewport: [400, 800], path: '/native'}]);
+  assert.equal(results[0].error, undefined); assert.equal(results[1].error, undefined);
+  assert.deepEqual(JSON.parse(JSON.stringify(results.map(value => value.state.viewport))), [[1440, 1000, 1], [400, 800, 1]]);
+  assert.equal(fixture.document.body.dataset.geometryParking, 'true');
+  assert.equal(fixture.frames[0].style.top, '0'); assert.equal(fixture.frames[0].style.left, '0');
+  assert.equal(fixture.active.size, 0); assert.equal(fixture.calls.filter(value => value === 'stop').length, 2);
+  assert.ok(fixture.calls.includes('action'));
+  const standalone = geometryDriver({standalone: true});
+  assert.equal(standalone.document.body.dataset.geometryParking, undefined, 'Standalone hover heading retains its original position');
+});
+
+test('geometry driver rejects pointer contamination, overlapping parking and wrong viewport while cleaning its frame', async () => {
+  for (const [options, expected] of [[{pointerMoved: true}, /pointer/], [{frameHovered: true}, /pointer/],
+      [{overlap: true}, /parking/], [{wrongWidth: 1439}, /viewport/], [{readyError: true}, /Native fixture failed/]]) {
+    const fixture = geometryDriver(options);
+    const [result] = await fixture.driver.capture([{id: 'wide', viewport: [1440, 1000], path: '/native'}]);
+    assert.match(result.error || '', expected); assert.equal(fixture.active.size, 0);
+    assert.equal(fixture.calls.filter(value => value === 'stop').length, 1);
+  }
+});
+
+test('geometry driver rechecks pointer and viewport after native case actions', async () => {
+  for (const [afterAction, expected] of [[parking => {parking.matches = () => false;}, /pointer/],
+      [(_, target) => {target.devicePixelRatio = 2;}, /viewport/]]) {
+    const fixture = geometryDriver({afterAction});
+    const [result] = await fixture.driver.capture([{id: 'wide', viewport: [1440, 1000], path: '/native', action: 'nativeAction()'}]);
+    assert.match(result.error || '', expected); assert.equal(fixture.active.size, 0);
+    assert.ok(fixture.calls.includes('action'));
+  }
+});

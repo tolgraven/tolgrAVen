@@ -39,7 +39,7 @@ class HoverClient:
         if name == 'navigate_page': self.url = arguments['url']
         if name == 'emulate': self.viewport = [int(value) for value in arguments['viewport'].split('x')]
         if name == 'take_snapshot':
-            if self.url.endswith('visual-driver.html'):
+            if self.url.split('?', 1)[0].endswith('visual-driver.html'):
                 text = 'uid=observed-parking heading "Native pointer parking" level="1"'
             elif self.target_mode == 'missing': text = 'uid=observed-unrelated button "Another action"'
             else: text = 'uid=observed-decoy button "Edit comment"\n  uid=observed-edit button "Edit comment"'
@@ -128,6 +128,32 @@ class VisualTest(unittest.TestCase):
             self.assertNotIn('observed-edit', json.dumps(state), 'Ephemeral snapshot IDs cannot change a repeat comparison')
             self.assertEqual(('navigate_page', {'pageId': 73, 'type': 'url', 'url': 'about:blank'}), client.calls[-3])
             self.assertTrue((args.output / 'ordinary.json').exists())
+
+    def test_geometry_pointer_parks_observed_heading_outside_all_fixture_viewports(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cases = [{'id': 'wide', 'viewport': [1440, 1000]},
+                     {'id': 'tall', 'viewport': [400, 1200]}]
+            suite = root / 'suite.json'; suite.write_text(json.dumps({'cases': cases}))
+            args = argparse.Namespace(suite=suite, origin='http://127.0.0.1:4098', output=root / 'capture',
+                                      case=[], geometry_only=True, mcp_command=None)
+            client = HoverClient()
+            with patch.object(visual, 'Relay', return_value=client):
+                visual.capture(args)
+            self.assertIn(('emulate', {'viewport': '1440x1300x1'}), client.calls)
+            self.assertIn(('navigate_page', {'url': args.origin + '/fixtures/visual-driver.html?geometry-parking=1'}), client.calls)
+            moves = [(index, arguments) for index, (name, arguments) in enumerate(client.calls) if name == 'hover']
+            self.assertEqual(['observed-parking'], [arguments['uid'] for _, arguments in moves])
+            snapshots = [index for index, (name, _) in enumerate(client.calls) if name == 'take_snapshot']
+            verifications = [index for index, (name, arguments) in enumerate(client.calls)
+                             if name == 'evaluate_script' and arguments.get('args') == ['observed-parking']]
+            captures = [index for index, (name, arguments) in enumerate(client.calls)
+                        if name == 'evaluate_script' and 'visualDriver.capture' in arguments['function']]
+            self.assertLess(snapshots[0], verifications[0]); self.assertLess(verifications[0], moves[0][0])
+            self.assertLess(moves[0][0], captures[0])
+            for case in cases:
+                self.assertEqual(case['viewport'] + [1], json.loads((args.output / (case['id'] + '.json')).read_text())['viewport'])
 
     def test_large_geometry_cases_return_one_complete_fixture_per_request(self):
         from unittest.mock import patch
@@ -271,9 +297,13 @@ class VisualTest(unittest.TestCase):
                     return {"content": [{"type": "text", "text": "73: about:blank [selected]"}]}
                 if name == "close_page":
                     return {"content": [{"type": "text", "text": "The last open page cannot be closed."}]}
+                if name == "take_snapshot":
+                    return {"content": [{"type": "text", "text": 'uid=observed-parking heading "Native pointer parking"'}]}
                 return {}
 
-            def evaluate(self, _):
+            def evaluate(self, _, **arguments):
+                if arguments.get('args') == ['observed-parking']:
+                    return True
                 raise RuntimeError("Native fixture failed")
 
             def close(self):

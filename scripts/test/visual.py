@@ -360,8 +360,14 @@ def capture(args):
             if args.geometry_only and script_cases:
                 # Keep the owned driver tab, but return one complete geometry at
                 # a time: a single generated Docs surface can be tens of MB.
-                client.call("emulate", viewport="1440x1000x1")
-                client.call("navigate_page", url=args.origin + "/fixtures/visual-driver.html")
+                driver_width = max(1440, *(case["viewport"][0] for case in script_cases))
+                # The native parent gets a 100 CSS-pixel parking band below all
+                # exact-size child viewports; driver bounds checks prove separation.
+                driver_height = max(1000, *(case["viewport"][1] for case in script_cases)) + 100
+                client.call("emulate", viewport=f"{driver_width}x{driver_height}x1")
+                client.call("navigate_page", url=args.origin + "/fixtures/visual-driver.html?geometry-parking=1")
+                uid = observed_target(client, "body > h1", "heading", "Native pointer parking")
+                client.call("hover", uid=uid)
                 failures = []
                 for case in script_cases:
                     results = client.evaluate("async () => await window.visualDriver.capture(" + json.dumps([case]) + ")")
