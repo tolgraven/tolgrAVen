@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "cases": [
+    {
+      "id": "page-layout-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=page-layout",
+      "action": "window.scrollTo({top: 1, behavior: 'instant'}); await window.visualFixture.ready(); window.scrollTo({top: 0, behavior: 'instant'}); await window.visualFixture.ready()"
+    },
+    {
+      "id": "page-layout-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=page-layout",
+      "action": "window.scrollTo({top: 1, behavior: 'instant'}); await window.visualFixture.ready(); window.scrollTo({top: 0, behavior: 'instant'}); await window.visualFixture.ready()"
+    },
+    {
+      "id": "page-layout-vertical-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=page-layout-vertical",
+      "action": "window.scrollTo({top: 1, behavior: 'instant'}); await window.visualFixture.ready(); window.scrollTo({top: 0, behavior: 'instant'}); await window.visualFixture.ready()"
+    },
+    {
+      "id": "page-layout-vertical-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=page-layout-vertical",
+      "action": "window.scrollTo({top: 1, behavior: 'instant'}); await window.visualFixture.ready(); window.scrollTo({top: 0, behavior: 'instant'}); await window.visualFixture.ready()"
+    }
+  ]
+}
