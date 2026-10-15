@@ -66,6 +66,17 @@
   (when-let [cleanup! @*restore-cleanup] (cleanup!))
   (when-let [cleanup! @*anchor-cleanup] (cleanup!))
   (reset! *restored-position nil))
+
+(defn retain-page!
+  "Supersede pending page work while retaining the already mounted host."
+  []
+  (cancel-restoration!)
+  (control-browser-anchor!)
+  (when (or @*destination @*transition)
+    (swap! *generation inc)
+    (reset! *destination nil)
+    (when-let [transition @*transition] (.skipTransition transition))
+    (reset! *transition nil)))
 (r/reg-cofx :scroll/restoring?
   (fn [coeffects]
     (assoc coeffects :scroll/restoring?
@@ -296,7 +307,14 @@
               ;; Anchor positioning is controlled navigation too. Hold adaptive
               ;; header reactions until that layout is settled.
               (restore-position! (.-scrollY js/window) #(anchor-position target true))))))
+      (when (and (some? (:transition-id completion))
+                 (= (:transition-id completion) (:generation @*destination)))
+        (reset! *destination nil))
       (when resolve! (resolve!)))))
+
+(r/reg-fx :page/release
+  (fn [completion]
+    (when-let [resolve! (:resolve! completion)] (resolve!))))
 
 (defn- anchor-animations [element]
   ;; The native document can hold its entrance clock during hydration. Keep the
@@ -349,21 +367,23 @@
         nil)
       [commit])))
 
-(r/reg-event-fx :page/navigate
-  (fn [{:keys [db]} [_ match]]
-    (let [history? (or (get-in db [:state :browser-nav :got-nav])
-                       (and (nil? (get-in db [:state :scroll :component-focus]))
-                            (= 2 (get-in db [:state :browser-nav :nav-type]))))]
-    {:db (cond-> db (:path match)
-           (assoc-in [:state :scroll :component-focus] {:path (:path match), :scroll? (not history?)}))
-     :page/transition
-     [match (and @context/*interactive?
-                 (some? (:common/route db))
-                 (not (and (get-in match [:data :transition-key])
-                           (= (get-in match [:data :transition-key])
-                              (get-in db [:common/route :data :transition-key]))))
-                 (not= (:path match) (get-in db [:common/route :path])))
-      (boolean (get-in db [:state :browser-nav :got-nav]))]})))
+(r/reg-event-fx :page/navigate [(r/inject-cofx :navigation/request)]
+  (fn [{:as coeffects :keys [db]} [_ match request]]
+    (when (or (nil? (:navigation-id request))
+              (= (:navigation-id request) (:navigation/request coeffects)))
+      (let [history? (or (get-in db [:state :browser-nav :got-nav])
+                         (and (nil? (get-in db [:state :scroll :component-focus]))
+                              (= 2 (get-in db [:state :browser-nav :nav-type]))))]
+        {:db (cond-> db (:path match)
+               (assoc-in [:state :scroll :component-focus] {:path (:path match), :scroll? (not history?)}))
+         :page/transition
+         [match (and @context/*interactive?
+                     (some? (:common/route db))
+                     (not (and (get-in match [:data :transition-key])
+                               (= (get-in match [:data :transition-key])
+                                  (get-in db [:common/route :data :transition-key]))))
+                     (not= (:path match) (get-in db [:common/route :path])))
+          (boolean (get-in db [:state :browser-nav :got-nav]))]}))))
 
 (r/reg-fx :page/transition (fn [[match animate? back?]] (navigate! match animate? back?)))
 (r/reg-event-fx :page/ready

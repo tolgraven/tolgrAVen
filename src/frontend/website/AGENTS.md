@@ -66,6 +66,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   suppress browser anchoring during controlled landings and late data settlement,
   release it on user input/navigation/pagehide, and keep numeric history restoration
   separate from following a page/component anchor.
+  Component-only navigation retains its mounted host while superseding pending
+  page/code work. Check request and native transition ownership again when queued
+  commits are handled; discarded native commits must still release their promise.
 - Through `website.react`, hooks delegate to upstream `reagent.hooks`. Effects
   may return implicit nil; cleanup functions run on dependency changes/unmount.
   Hook dependencies use Clojure value equality without converting their contents;

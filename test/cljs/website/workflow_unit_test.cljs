@@ -1103,7 +1103,7 @@
         db {:common/route post}]
     (with-redefs [loader/code-spec (constantly {:view {:post view}})]
       (let [effects (event-effects :navigation/route-ready {:db db} [:navigation/route-ready comment])]
-        (is (= [:common/navigate (assoc-in comment [:data :view] view) nil] (:dispatch effects)))
+        (is (= (assoc-in comment [:data :view] view) (:navigation/retain-page effects)))
         (is (nil? (:navigation/page effects)))
         (is (= {:path (:path comment), :scroll? true} (get-in effects [:db :state :scroll :component-focus]))))
       (is (= other (:navigation/page
@@ -1112,6 +1112,59 @@
                        (event-effects :navigation/route-ready
                          {:db (assoc-in db [:state :browser-nav :got-nav] true)}
                          [:navigation/route-ready comment])))))))
+
+(deftest superseded-navigation-cannot-publish-queued-page-or-module-commits
+  (let [post {:path "/blog/post/24", :data {:view identity}}
+        other {:path "/cv", :data {:view identity}}
+        request {:navigation-id 7}
+        completion {:transition-id 9, :resolve! identity}
+        coeffects {:db {:common/route post}
+                   :navigation/request 8
+                   :page/destination nil}]
+    (is (nil? (event-effects :page/navigate coeffects [:page/navigate other request]))
+        "An already queued page request cannot restart an obsolete transition")
+    (is (= {:page/release (assoc request :replace-shell? true)}
+           (event-effects :common/navigate coeffects
+                          [:common/navigate other (assoc request :replace-shell? true)]))
+        "Late module code cannot replace the retained host")
+    (is (= {:page/release completion}
+           (event-effects :common/navigate coeffects [:common/navigate other completion]))
+        "A queued native update releases its promise without changing route or controllers")
+    (is (some? (:page/transition
+                 (event-effects :page/navigate (assoc coeffects :navigation/request 7)
+                                [:page/navigate other request])))
+        "The current request still commits normally")))
+
+(deftest retaining-a-mounted-host-invalidates-pending-native-and-code-work
+  (let [generation @page-transition/*generation
+        destination @page-transition/*destination
+        transition @page-transition/*transition
+        navigation @routes/*navigation
+        *skipped (atom 0)
+        *events (atom [])
+        match {:path "/blog/post/24/comment/113", :data {:view identity}}
+        retain! (r/get-handler :fx :navigation/retain-page)]
+    (try
+      (reset! page-transition/*generation 9)
+      (reset! page-transition/*destination {:generation 9, :match {:path "/cv"}})
+      (reset! page-transition/*transition #js {:skipTransition #(swap! *skipped inc)})
+      (r/with-framework-bindings [r/dispatch #(swap! *events conj %)]
+        (retain! match)
+        (is (= 10 @page-transition/*generation))
+        (is (= (inc navigation) @routes/*navigation))
+        (is (= 1 @*skipped))
+        (is (nil? @page-transition/*destination))
+        (is (nil? @page-transition/*transition))
+        (is (= [[:common/navigate match {:navigation-id (inc navigation)}]] @*events))
+        (retain! match)
+        (is (= 10 @page-transition/*generation)
+            "An idle same-post link does not create another page transition"))
+      (finally
+        (page-transition/cancel-restoration!)
+        (reset! page-transition/*generation generation)
+        (reset! page-transition/*destination destination)
+        (reset! page-transition/*transition transition)
+        (reset! routes/*navigation navigation)))))
 
 (deftest history-component-mounts-cannot-replace-saved-scroll-and-explicit-intent-can-refocus
   (let [route (reitit/match-by-path routes/router "/blog/post/24/comment/113")

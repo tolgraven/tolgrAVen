@@ -8,7 +8,7 @@
     [website.schema.page-coercion :as page-coercion]
     [reitit.coercion :as coercion]
     [website.service-status :as status]
-    [website.navigation.transition]
+    [website.navigation.transition :as page-transition]
     [website.navigation.component-routes :as component-routes]
     [website.navigation.schema :as navigation-schema]
     [website.macros :refer-macros [defc defpage]]
@@ -108,6 +108,9 @@
 ;; A late module response must never navigate back over a newer URL.
 (defonce *navigation (atom 0))
 
+(r/reg-cofx :navigation/request
+  (fn [coeffects] (assoc coeffects :navigation/request @*navigation)))
+
 (defn landing-dependencies [match]
   [{:source :strapi
     :keys (content/keys-for-route (or (get-in match [:data :page-route])
@@ -166,10 +169,11 @@
         navigate! (fn [component & [pending-code? replace-shell?]]
                     (when (= navigation @*navigation)
                       (if component
-                        (dispatch! (cond-> [(if replace-shell? :common/navigate :page/navigate)
-                                            (cond-> (assoc-in match [:data :view] component)
-                                              pending-code? (assoc-in [:data :controllers] nil))]
-                                     replace-shell? (conj {:replace-shell? true})))
+                        (dispatch! [(if replace-shell? :common/navigate :page/navigate)
+                                    (cond-> (assoc-in match [:data :view] component)
+                                      pending-code? (assoc-in [:data :controllers] nil))
+                                    (cond-> {:navigation-id navigation}
+                                      replace-shell? (assoc :replace-shell? true))])
                         (dispatch! [:state [:error-page] a404/<not-found-page>]))))]
     (cond
       (nil? match)
@@ -223,8 +227,14 @@
         ;; A component tail changes intent within this mounted host. Retain its
         ;; restoration/appearance context and skip page acquisition/transition.
         {:db (assoc-in db [:state :scroll :component-focus] {:path (:path match), :scroll? true})
-         :dispatch [:common/navigate (assoc-in match [:data :view] view) nil]}
+         :navigation/retain-page (assoc-in match [:data :view] view)}
         {:navigation/page match}))))
+
+(r/reg-fx :navigation/retain-page
+  (fn [match]
+    (let [navigation (swap! *navigation inc)]
+      (page-transition/retain-page!)
+      (r/dispatch [:common/navigate match {:navigation-id navigation}]))))
 
 (r/reg-fx :navigation/page
   (fn [match]

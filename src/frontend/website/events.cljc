@@ -41,19 +41,24 @@
 
 
 (r/reg-event-fx :common/navigate   [debug
+                                     (r/inject-cofx :navigation/request)
                                      (r/inject-cofx :page/destination)
                                      (r/inject-cofx :scroll-position)
                                      (r/inject-cofx :gen-id [:navigations])]
   (fn [{:as cofx :keys [db scroll-position id]} [_ match complete!]]
     (let [pending (:page/destination cofx)
           match (page-transition/latest-match match complete! pending)
+          obsolete? (or (and (some? (:transition-id complete!))
+                             (not= (:transition-id complete!) (:generation pending)))
+                        (and (some? (:navigation-id complete!))
+                             (not= (:navigation-id complete!) (:navigation/request cofx))))
           awaiting-commit? (and (:replace-shell? complete!)
                                 (not= (:path match) (get-in db [:common/route :path]))
                                 (= (:path match) (get-in pending [:match :path])))
           navigation-count (get-in id [:id :navigations])
           old-match (:common/route db)
           new-match (cond-> match
-                      (not awaiting-commit?)
+                      (not (or awaiting-commit? obsolete?))
                       (assoc :controllers
                              (when @render-context/*interactive?
                                (rfc/apply-controllers (:controllers old-match) match))))
@@ -61,6 +66,7 @@
                  (= (get-in new-match path)
                     (get-in old-match path)))]
       (cond
+        obsolete? {:page/release complete!}
         awaiting-commit?
         ;; Code can arrive before the native transition commits its shell.
         ;; Update that pending destination without publishing it early: the
