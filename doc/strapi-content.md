@@ -25,7 +25,8 @@ accounts disables editing and prevents old asynchronous completions from applyin
 write availability. `PUT /api/content/field` verifies the session with Auth and
 checks the current `auth_roles` record before using the separate server-private
 `STRAPI_WRITE_TOKEN`. The CMS counterpart accepts `CMS_WRITE_TOKEN`; a read token
-cannot write. Provisioning's prepare/wire flow creates and wires that token.
+cannot write. Provisioning's prepare/wire flow creates and wires that token,
+including its Compose environment reference when upgrading an existing CMS.
 An optional `STRAPI_ADMIN_URL` sets a different public admin origin. When write
 configuration is missing, public content continues normally and the account
 panel explains why inline editing is unavailable.
