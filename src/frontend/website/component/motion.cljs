@@ -90,17 +90,19 @@
                          animations (when (.-getAnimations element) (array-seq (.getAnimations element)))
                          ;; Computed animation timing includes iterations/delays;
                          ;; CSS duration alone can cut finite keyframes short.
-                         duration (reduce max duration
+                         duration' (reduce max duration
                                           (keep (fn [animation]
                                                   (when-let [effect (.-effect animation)]
                                                     (let [end (.-endTime (.getComputedTiming effect))]
                                                       (when (js/isFinite end) end)))) animations))
-                         timeout (or (:timeout-ms options) (max 50 (+ duration 100)))]
+                         timeout (or (:timeout-ms options) (max 50 (+ duration' 100)))]
                      (reset! *timer (js/setTimeout done! (min 10000 timeout)))
                      (if (seq animations)
                        (-> (js/Promise.allSettled (into-array (map #(.-finished %) animations)))
                            (.then (fn [_] (done!))))
-                       (when (or (.-getAnimations element) (zero? duration)) (done!)))))))]
+                       ;; An already-hidden root may have no native transition.
+                       ;; Keep its declared exit window for the arriving layout.
+                       (when (zero? duration') (done!)))))))]
     #(do (reset! *active? false)
          (js/cancelAnimationFrame frame)
          (when @*timer (js/clearTimeout @*timer)))))

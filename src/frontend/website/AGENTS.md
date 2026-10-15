@@ -285,6 +285,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   loading and entrances; later SPA navigation must restore ordinary motion.
   Offscreen new `:appear` roots enter through the existing viewport observer.
   Presence commit history is nonreactive; only exit completion schedules a render.
+  Roots that were already hidden retain their declared exit window even when no
+  native CSS clock starts, so incoming layout can cover their placeholder.
   Blog replies animate intrinsic height per row with their entrance stagger;
   do not reintroduce a large parent max-height. Layout entrances opt into
   `:settle-offscreen?` so hidden rows retain height without waiting on visibility.

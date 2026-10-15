@@ -7,7 +7,8 @@
             [website.loader.style-catalog :as style-catalog]
             [website.modules.blog.views :as blog]
             [website.modules.blog.comment-views :as comment-views]
-            [website.test-support :as support]))
+            [website.test-support :as support]
+            [website.macros :refer-macros [defc]]))
 
 (defn- tick! [ms]
   (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
@@ -134,6 +135,40 @@
                   (let [samples (await! (sample! element 420))]
                     (is (every? #(>= (:outer %) (- initial 0.5)) samples)))
                   (is (identical? row (.querySelector element ".blog-comment-reply-row")))))
+              (finally (close!) (reset! restore/*context context)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(defc <automatic-thread-handoff> [*ready? *expanded?]
+  ;; Nested expanded threads can receive cached data before their placeholder's
+  ;; first entrance frame; this is an ordinary mounted lifecycle, not a fake clock.
+  (r/use-layout-effect (fn [] (reset! *ready? true) nil) [])
+  [<thread-handoff> *ready? *expanded?])
+
+(deftest automatic-replies-retain-a-placeholder-that-never-started-entering
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture!))
+                context @restore/*context
+                *ready? (r/atom false)
+                *expanded? (r/atom true)]
+            (try
+              (restore/begin! {})
+              (let [captured (sample! element 500)]
+                (await! (support/render! root [<automatic-thread-handoff> *ready? *expanded?]))
+                (let [samples (await! captured)
+                      started (drop-while #(not (:placeholder? %)) samples)
+                      initial (:outer (first started))]
+                  (is (and initial (pos? initial)) "Observe the real initial placeholder footprint")
+                  (when initial
+                    (is (every? #(>= (:outer %) (- initial 0.5)) started)
+                        "An unstarted entrance cannot retire its layout before the first reply grows"))
+                  (is (some #(and (:placeholder? %) (:placeholder-exiting? %) (not (:native-exit? %))) samples)
+                      "The native placeholder exits without creating a transition from its already-hidden styles")
+                  (is (some #(< 1 (first (:heights %)) (- (first (:heights (last samples))) 1))
+                            (filter #(seq (:heights %)) samples))
+                      "The reply still grows through intermediate heights")
+                  (is (nil? (.querySelector element ".blog-comment-collapsed-placeholder")))))
               (finally (close!) (reset! restore/*context context)))))
         (.catch #(is false (str %)))
         (.finally done))))
