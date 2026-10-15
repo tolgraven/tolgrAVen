@@ -5,6 +5,8 @@
             [website.editor-visual :as editor]
             [website.component.restore :as restore]
             [website.component.data :as data]
+            [website.modules.contact.events]
+            [website.modules.user.events]
             [website.modules.docs.views :as docs]
             [website.modules.docs.events]
             [website.modules.docs.subs]
@@ -273,12 +275,36 @@
                  (r/dispatch-sync [:scroll/at-bottom true]))
     (throw (js/Error. (str "Unknown shell fixture state: " state)))))
 
+(defn ^:export panel-state! [state]
+  ;; Exercise native state/presence events without following query links or
+  ;; submitting credentials. In particular, the login Register button is Auth.
+  (case state
+    "closed" (do (r/dispatch-sync [:user/close-ui])
+                 (r/dispatch-sync [:state [:settings :panel-open] false])
+                 (r/dispatch-sync [:contact/close]))
+    "login" (r/dispatch-sync [:user/open-ui :login])
+    "register" (do (r/dispatch-sync [:user/open-ui :login])
+                   (r/dispatch-sync [:user/active-section :register]))
+    "settings" (r/dispatch-sync [:state [:settings :panel-open] true])
+    "contact" (r/dispatch-sync [:contact/open])
+    (throw (js/Error. (str "Unknown panel fixture state: " state)))))
+
 (defn <shell-fixture> [component]
   (let [content' #(editor/section % false)
-        scroll? (= "shell-scroll" component)]
+        scroll? (= "shell-scroll" component)
+        panels? (= "shell-panels" component)]
     [:<>
-     (when (#{"header" "shell" "shell-scroll"} component)
+     (when (#{"header" "shell" "shell-scroll" "shell-panels"} component)
        [shell/<header> (content' :header)])
+     ;; Match components/page: User and conditional Settings are main siblings;
+     ;; the Contact presence host follows both footer copies. No extra wrapper.
+     (when panels?
+       (let [open? @(r/subscribe [:user/ui-open?])]
+         (m/<> {:module :user
+                :defer? (not open?)
+                :load-on (if open? :immediate :event)})))
+     (when (and panels? @(r/subscribe [:state [:settings :panel-open]]))
+       (m/<> {:module :settings, :load-on :immediate}))
      [<main-fixture>
       [:section
        [:h1 "Shared shell"]
@@ -291,10 +317,17 @@
            [:p "Fixed page context for minimized, restored and bottom-of-page shell states."]))]]
      ;; Production footers are siblings of main. The full footer already owns
      ;; post-footer, including its font size and natural flex-row height.
-     (when (#{"footer" "post-footer" "shell" "shell-scroll"} component)
+     (when (#{"footer" "post-footer" "shell" "shell-scroll" "shell-panels"} component)
        [shell/<footer-full> (content' :footer)])
-     (when (#{"shell" "shell-scroll"} component)
-       [shell/<footer> (content' :footer)])]))
+     (when (#{"shell" "shell-scroll" "shell-panels"} component)
+       [shell/<footer> (content' :footer)])
+     (when panels?
+       (let [open? @(r/subscribe [:state [:contact-form :show?]])]
+         (m/<> {:module :contact
+                :view :popup
+                :defer? (not open?)
+                :load-on (if open? :immediate :event)
+                :<loading> (if open? [:span {:role "status"} "Opening contact form…"] [:<>])})))]))
 
 (defn <box-fixture> [container?]
   (let [items (mapcat :things (get-in @(r/subscribe [:content/view [:cv]]) [:cv :timeline]))
@@ -355,7 +388,7 @@
     (if-not (#{"page-layout" "page-layout-vertical"
                "cv-regular" "cv-container" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
                "thread" "post" "standalone-comments" "search-mixed"
-               "shell" "shell-scroll" "header" "footer" "post-footer" "services" "cv"
+               "shell" "shell-scroll" "shell-panels" "header" "footer" "post-footer" "services" "cv"
                "home-intro" "home-story" "home-image-media" "github"
                "docs-index" "docs-topic" "instagram"} component)
       (editor/init! false)
@@ -373,6 +406,15 @@
             (fn [seed]
               (rfe/start! routes/router (fn [_ _]) {:use-fragment false})
               (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) false])
+              (when (= "shell-panels" component)
+                ;; Public presentation flags only. The already-ready store path
+                ;; prevents login-panel intent from starting settings/SDK boot.
+                (r/dispatch-sync [:state [:supabase-init] :ready])
+                (r/dispatch-sync [:option [:supabase :providers]
+                                  {:google true, :github true, :facebook true}])
+                (panel-state! "closed")
+                (r/reg-fx :http-xhrio
+                  (fn [_] (throw (js/Error. "Panel visual fixtures do not perform HTTP or writes")))))
               (when (#{"comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
                        "thread" "post" "search-mixed"} component)
                 (r/dispatch-sync [:set [:common/route]
@@ -443,7 +485,7 @@
                 (public-read-transport!))
               (when (#{"docs-index" "docs-topic"} component)
                 (r/dispatch-sync [:docs/set-page (if (= component "docs-index") "index" "docs")]))
-              (restore/begin! (if (#{"docs-index" "docs-topic" "instagram"} component) {} {:back? true}))
+              (restore/begin! (if (#{"docs-index" "docs-topic" "instagram" "shell-panels"} component) {} {:back? true}))
               (-> (loader/load! {:module :markdown})
                   (.then (fn [_]
                            (case component
@@ -459,7 +501,7 @@
                                ("post" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge" "thread")
                                [<post-fixture> component]
                                "standalone-comments" [<standalone-fixture>]
-                               ("shell" "shell-scroll" "header" "footer" "post-footer") [<shell-fixture> component]
+                               ("shell" "shell-scroll" "shell-panels" "header" "footer" "post-footer") [<shell-fixture> component]
                                "services" [<main-fixture> [home/<services> (editor/section :services false)]]
                                "cv" [<main-fixture> [cv/<cv>]]
                                "github" [<main-fixture> [github/<commits>]]

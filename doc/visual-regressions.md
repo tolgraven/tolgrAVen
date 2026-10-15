@@ -141,6 +141,24 @@ coverage; a missing tile fails. Nested independently scrolling regions still
 need explicit suite states for their additional positions. The bounded runner
 rejects documents requiring more than 128 tiles.
 
+The `shell-panels` fixture retains the native header, page-root main, full and
+sticky footers. User and conditional Settings are main siblings; Contact's lazy
+presence host follows both footers, matching the page owner. Wide/narrow cases
+capture empty login, registration, Settings, Contact and the shared closed shell.
+Open captures first close and reopen their owner; closed captures cycle all four
+views and require outgoing User/Contact presence to remain inert until retirement,
+with no panel inputs left behind. Native Settings unmounts when closed.
+
+These cases seed only public provider-display flags and an already-ready store
+through registered events. Module acquisition, seeded common-content reads,
+CSS-variable reads, native subscriptions and presence stay ordinary. Unexpected
+HTTP fails the fixture. No credential, provider, contact-submit or settings-write
+control is activated. Registration is entered through its existing section event:
+the login “Register” button submits Auth. Query-link controller behavior, real
+Auth/network completion and message delivery require separate live checks; these
+layout/motion cases do not establish them. Settings/Contact sheets load only in
+this fixture's own document, without altering the shared head or older cases.
+
 Native hover cases use the configured Chrome MCP's real `hover` action, including
 in geometry-only mode. These cases run serially in the owned top-level tab while
 ordinary geometry cases reuse the driver with one iframe response at a time. Before navigation,

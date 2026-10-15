@@ -105,6 +105,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   on task-owned driver markup before navigation. Keep real keyboard traversal
   distinct from programmatic focus. Dormant motion rules omit ordinary endpoint
   declarations unless an actual captured state exercises them.
+- Shell-panel visual fixtures retain native page-sibling placement and module
+  presence. Use already-ready service state/public display options for UI-only
+  login/register checks; never submit Auth/contact or mutate Settings. Query-link
+  controllers and actual provider results need separate live verification.
 - Docs visual fixtures require the served snapshot's generated Codox index/topic
   resources. Acquire each new public module's native sheets only in its own case;
   shared-head additions change every case's dormant motion declaration inventory.
