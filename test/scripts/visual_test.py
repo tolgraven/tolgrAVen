@@ -537,6 +537,46 @@ class VisualTest(unittest.TestCase):
                     self.assertEqual(('scroll', 0), client.events[1])
                     self.assertEqual(client.scrolls, client.events.count('post-scroll-ready'))
 
+    def test_raster_retains_the_interaction_before_document_scrolling(self):
+        class Client(HoverClient):
+            def __init__(self, image):
+                super().__init__()
+                self.image, self.y, self.popup = image, 289, True
+                self.captured = []
+
+            def evaluate(self, function, **arguments):
+                if 'window.scrollTo' in function:
+                    self.y = int(re.search(r'top:(\d+)', function).group(1))
+                    self.popup = False  # Real tooltip scroll dismissal stays active.
+                if 'window.visualFixture.snapshot()' in function:
+                    state = self.state()
+                    state['document'] = [0, self.y, 1089]
+                    state['geometry'] = [{'popup': self.popup}]
+                    return state
+                return True
+
+            def call(self, name, **arguments):
+                if name != 'take_screenshot': raise AssertionError('Unexpected transport call')
+                self.captured.append((self.y, self.popup))
+                return {'content': [{'type': 'image', 'data': self.image}]}
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            png = root / 'native.png'
+            visual.write_png(png, 1, 1, bytes([42, 23, 63, 255]))
+            image = base64.b64encode(png.read_bytes()).decode()
+            case = {'id': 'calendar', 'viewport': [400, 800], 'action': 'openNativeTooltip()'}
+            output = root / 'capture'; output.mkdir()
+            client = Client(image)
+            visual.capture_tiles(client, case, output)
+            state = json.loads((output / 'calendar.json').read_text())
+            self.assertEqual((289, True), client.captured[0], 'Capture the actual open surface before scroll dismisses it')
+            self.assertEqual([{'popup': True}], state['geometry'])
+            self.assertEqual([[0, 289], [0, 0], [0, 289]], [tile['scroll'] for tile in state['tiles']],
+                             'The interaction supplements complete top-to-bottom document coverage')
+            self.assertEqual([(0, False), (289, False)], client.captured[1:],
+                             'Later scrolling must keep the native dismissal behavior')
+
     def test_below_fold_pixel_and_missing_tile_fail(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -21,7 +21,7 @@ import zlib
 
 ROOT = Path(__file__).resolve().parents[2]
 SIGNATURE = b"\x89PNG\r\n\x1a\n"
-RASTER = "overlapping-viewports-v1"
+RASTER = "interaction-and-overlapping-viewports-v2"
 MOTION = "native-css-motion-v2"
 
 
@@ -311,15 +311,30 @@ def hover_contract(case):
             "pointer_start": "observed driver heading; target initially not hovered"}
 
 
+def assert_capture(client, case):
+    """Check the intended transient surface after readiness, before its PNG."""
+    target = case.get("native_hover")
+    if target:
+        client.evaluate("() => { const element = document.querySelector(" + json.dumps(target["selector"]) +
+                        "); if (!element?.matches(':hover')) throw new Error('Native hover was lost before capture'); " +
+                        target["assert"] + "; return true; }")
+    if case.get("capture_assert"):
+        client.evaluate("() => { " + case["capture_assert"] + "; return true; }")
+
+
 def capture_tiles(client, case, output):
     """Paint the complete document through real, overlapping viewport captures."""
     # Native startup focus/scroll must complete before selecting tile zero.
     client.evaluate("async () => { await window.visualFixture.ready(); return true; }")
-    states, tiles, target = [], [], 0
+    # Scrolling can intentionally dismiss a popup or change shell state. Keep
+    # the actual interaction viewport before collecting the complete document.
+    interaction = bool(case.get("action") or case.get("native_hover"))
+    states, tiles, target = [], [], None if interaction else 0
     for index in range(128):
-        state = client.evaluate("async () => { window.visualFixture.motion.phase('tile-" + str(index) + "'); window.scrollTo({left:0,top:" + str(target) +
-                                ",behavior:'instant'}); await window.visualFixture.ready(); return window.visualFixture.snapshot(); }")
-        if case.get("native_hover"):
+        scroll = "" if target is None else "window.scrollTo({left:0,top:" + str(target) + ",behavior:'instant'}); "
+        state = client.evaluate("async () => { window.visualFixture.motion.phase('tile-" + str(index) + "'); " + scroll +
+                                "await window.visualFixture.ready(); return window.visualFixture.snapshot(); }")
+        if index == 0 and case.get("native_hover"):
             state["native_hover"] = hover_contract(case)
         width, height = case["viewport"]
         motion_changes(state, state, case["id"])
@@ -327,14 +342,19 @@ def capture_tiles(client, case, output):
             raise RuntimeError(f"{case['id']}: invalid viewport/DPR or fixture readiness errors")
         x, y, document_height = state["document"]
         maximum = max(0, document_height - height)
-        if x != 0 or y != target:
+        if x != 0 or (target is not None and y != target) or not 0 <= y <= maximum:
             raise RuntimeError(f"{case['id']}: viewport did not reach requested scroll position {target}: {state['document']}")
+        if index == 0:
+            assert_capture(client, case)
         stem = case["id"] + (f".tile-{index}" if index else "")
         image = client.call("take_screenshot", format="png")
         block = next(block for block in image.get("content", []) if block.get("type") == "image")
         (output / (stem + ".png")).write_bytes(base64.b64decode(block["data"]))
         states.append(state)
         tiles.append({"stem": stem, "scroll": [x, y], "document_height": document_height})
+        if target is None and y != 0:
+            target = 0
+            continue
         if y >= maximum:
             break
         target = min(maximum, y + max(1, int(height * .8)))
@@ -411,6 +431,7 @@ def capture(args):
                         native_hover(client, case)
                     if args.geometry_only:
                         state = client.evaluate("async () => { await window.visualFixture.ready(); return window.visualFixture.snapshot(); }")
+                        assert_capture(client, case)
                         if case.get("native_hover"):
                             state["native_hover"] = hover_contract(case)
                         motion_changes(state, state, case["id"])

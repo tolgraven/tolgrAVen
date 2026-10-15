@@ -593,7 +593,14 @@ function geometryDriver(options = {}) {
         ready: async () => {calls.push('ready'); if (options.readyError) throw Error('Native fixture failed');},
         motion: {phase: phase => calls.push(phase), stop: () => calls.push('stop')},
         snapshot: () => ({viewport: [frame.width, frame.height, 1]})},
-        eval: async () => {calls.push('action'); if (options.afterAction) options.afterAction(parking, target);}};
+        eval: async source => {
+          if (source.includes('assertNativeSurface')) {
+            calls.push('capture-assert');
+            if (options.assertError) throw Error('Native surface disappeared');
+          } else {
+            calls.push('action'); if (options.afterAction) options.afterAction(parking, target);
+          }
+        }};
       const frame = {style: {}, contentWindow: target,
         getBoundingClientRect: () => ({left: 0, top: 0, right: Number(frame.width), bottom: Number(frame.height)}),
         matches: selector => selector === ':hover' && Boolean(options.frameHovered), remove: () => active.delete(frame)};
@@ -636,5 +643,20 @@ test('geometry driver rechecks pointer and viewport after native case actions', 
     const [result] = await fixture.driver.capture([{id: 'wide', viewport: [1440, 1000], path: '/native', action: 'nativeAction()'}]);
     assert.match(result.error || '', expected); assert.equal(fixture.active.size, 0);
     assert.ok(fixture.calls.includes('action'));
+  }
+});
+
+test('geometry driver verifies the intended surface after readiness and rejects missing transient content', async () => {
+  for (const assertError of [false, true]) {
+    const fixture = geometryDriver({assertError});
+    const [result] = await fixture.driver.capture([{id: 'popup', viewport: [400, 800], path: '/native',
+      action: 'nativeAction()', capture_assert: 'assertNativeSurface()'}]);
+    assert.deepEqual(fixture.calls.slice(0, 5), ['ready', 'action', 'action', 'ready', 'capture-assert']);
+    if (assertError) {
+      assert.match(result.error, /Native surface disappeared/);
+      assert.equal(result.state, undefined);
+    } else assert.equal(result.error, undefined);
+    assert.equal(fixture.active.size, 0);
+    assert.equal(fixture.calls.filter(value => value === 'stop').length, 1);
   }
 });

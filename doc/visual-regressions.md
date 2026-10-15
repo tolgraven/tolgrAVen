@@ -145,9 +145,15 @@ cases retain their existing top-heading parking and explicit target interaction.
 Raster captures use the actual
 top-level viewport; both modes retain normal component lifecycles.
 Raster mode first awaits native fixture startup readiness, including its owned
-focus/scroll actions, before positioning the first tile. It then scrolls the
-document from its top through overlapping viewports to its bottom, retaining
-post-scroll readiness and exact viewport/scroll bounds for every tile. Each
+focus/scroll actions, before positioning ordinary layout tiles. For an explicit
+action or native hover, the first PNG/geometry pair captures the actual interaction
+viewport before any document scrolling can dismiss its popup or alter shell state.
+Native hover and optional case `capture_assert` checks run again after readiness,
+just before that pair is saved. Only that first pair carries hover evidence.
+The driver then scrolls the document from its top through overlapping viewports
+to its bottom, retaining post-scroll readiness and exact viewport/scroll bounds
+for every tile. The `interaction-and-overlapping-viewports-v2` raster contract
+rejects older captures that omitted this interaction viewport. Each
 viewport's PNG and geometry are saved separately. This covers
 expanded code and trailing text below the fold without a full-page screenshot
 that can change native painting. Reports compare every tile and its scroll

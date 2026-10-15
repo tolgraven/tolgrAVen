@@ -50,6 +50,7 @@
             await target.visualFixture.ready();
           }
           verifyParking(frame, item);
+          if (item.capture_assert) await target.eval('(() => {' + item.capture_assert + '})()');
           output.push({id: item.id, state: target.visualFixture.snapshot()});
         } catch (error) {
           output.push({id: item.id, error: String(error)});

@@ -4,7 +4,10 @@
   narrow/wide states and inspect differences; never refresh approved goldens to
   conceal a regression. Missing/unapproved baselines are verification gaps, not
   passing results. Geometry mode verifies boxes and computed appearance; pixel
-  parity requires matching raster captures. Genuine hover cases use the configured
+  parity requires matching raster captures. Raster interaction cases retain their
+  actual open/hovered viewport before complete-document scrolling; assert the
+  transient surface again immediately before its PNG. Never tag later scrolled
+  tiles with hover evidence from an earlier viewport. Genuine hover cases use the configured
   Chrome MCP, observed accessibility UIDs verified against native selectors, and
   an unhovered starting target; synthetic mouse events do not prove CSS hover.
   Keep native page/component parents
