@@ -262,6 +262,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - CMS cache locking covers only request/promise ownership. Keep upstream and
   media I/O outside the shared lock; identical missing-section requests share reads,
   independent sections proceed concurrently, and failure releases all waiters.
-- Only shared shell CMS content gates HTTP startup. The existing owned refresh
+- Only shared shell CMS content gates production HTTP startup. Development keeps
+  the REPL/HTTP running during CMS outages, with unavailable content and the same
+  owned refresh worker retrying; never substitute seed for a configured CMS.
+  The existing owned refresh
   worker warms module headings after readiness; a failed heading retains its
   last good value and cannot block healthy headings or unrelated routes.
