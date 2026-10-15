@@ -496,6 +496,24 @@
       ],
       "path": "/fixtures/visual.html?component=github",
       "action": "const deadline = performance.now() + 5000; while (document.querySelectorAll('.github-commit').length !== 4 || !document.querySelector('[data-date=\"2026-10-12\"]') || !document.querySelector('.github-deployment code')) { if (performance.now() > deadline) throw new Error('Native GitHub provider data did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } const input = document.getElementById('github-commits-filter'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'bbbbbbb'); input.dispatchEvent(new Event('input', {bubbles:true})); const searchDeadline = performance.now() + 5000; while (document.querySelectorAll('.github-commit').length !== 1 || !document.getElementById('github-commit-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb') || input.value !== 'bbbbbbb') { if (performance.now() > searchDeadline) throw new Error('Native GitHub SHA search did not resolve'); await new Promise(resolve => requestAnimationFrame(resolve)); }"
+    },
+    {
+      "id": "header-menu-open-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=header",
+      "action": "const toggle = document.getElementById('nav-menu-open'); if (toggle.checked) throw new Error('Header did not start closed'); document.querySelector('label.burger[for=nav-menu-open]').click(); await window.visualFixture.ready(); const header = document.querySelector('header'); if (!toggle.checked || !header.querySelector(':scope > .line') || header.getAttribute('data-restored-motion') === 'true' || header.querySelector('nav').getBoundingClientRect().height <= 0 || header.querySelector('.nav-links a').getBoundingClientRect().height <= 0) throw new Error('Native menu intent did not open the header navigation')"
+    },
+    {
+      "id": "header-menu-open-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=header",
+      "action": "const toggle = document.getElementById('nav-menu-open'); if (toggle.checked) throw new Error('Header did not start closed'); document.querySelector('label.burger[for=nav-menu-open]').click(); await window.visualFixture.ready(); const header = document.querySelector('header'); if (!toggle.checked || !header.querySelector(':scope > .line') || header.getAttribute('data-restored-motion') === 'true' || header.querySelector('nav').getBoundingClientRect().height <= 0 || header.querySelector('.nav-links a').getBoundingClientRect().height <= 0) throw new Error('Native menu intent did not open the header navigation')"
     }
   ]
 }

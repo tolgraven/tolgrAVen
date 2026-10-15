@@ -133,6 +133,7 @@
       document: [scrollX, scrollY, document.scrollingElement.scrollHeight],
       environment: {userAgent: navigator.userAgent, platform: navigator.platform,
         calendarEpoch: window.visualClockEpoch,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         language: navigator.language, viewport: [innerWidth, innerHeight, devicePixelRatio],
         fonts: [...document.fonts].map(font => [font.family, font.style, font.weight, font.status]).sort()},
       geometry: geometry(), errors
