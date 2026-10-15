@@ -51,8 +51,9 @@ def read_png(path):
         raise ValueError("PNG dimensions exceed the bounded viewport capture budget")
     channels = 3 if color == 2 else 4
     stride = width * channels
-    raw = zlib.decompressobj().decompress(compressed, height * (stride + 1) + 1)
-    if len(raw) != height * (stride + 1):
+    decoder = zlib.decompressobj()
+    raw = decoder.decompress(compressed, height * (stride + 1) + 1)
+    if not decoder.eof or decoder.unused_data or len(raw) != height * (stride + 1):
         raise ValueError("PNG data length does not match dimensions")
     pixels, previous = bytearray(), bytearray(stride)
     for row in range(height):
