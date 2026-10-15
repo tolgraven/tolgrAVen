@@ -159,8 +159,11 @@
       (.appendChild (.-body js/document) container)
       (let [preview (.querySelector container "[data-image-preview]")
             final (.querySelector container "[data-image-final]")]
-        ;; Keep the adapter's native decode boundary pending during attachment.
-        (doseq [[property value] [["complete" false] ["naturalWidth" 0]]]
+        ;; Model a distinct final candidate even at a 400px viewport, where
+        ;; native responsive selection may correctly share the preview asset.
+        (doseq [[property value] [["complete" false]
+                                 ["naturalWidth" 0]
+                                 ["currentSrc" (str (.-origin js/location) "/img/foggy-shit-small.avif")]]]
           (js/Object.defineProperty final property #js {:configurable true :value value}))
         (let [root (r/hydrate-root container form)]
           (js/setTimeout
@@ -298,12 +301,13 @@
           *first? (atom true)
           capture! (fn [element]
                      (when element
-                       (let [first? (compare-and-set! *first? true false)]
+                       (let [first? (compare-and-set! *first? true false)
+                             selected (:avif (sources/get-src-variants (.getAttribute element "src")))]
                          (doseq [[property value] [["complete" first?]
                                                   ["naturalWidth" (if first? 1189 0)]
-                                                  ["currentSrc" (if first?
-                                                                  (str (.-origin js/location) "/img/foggy-shit-small.avif")
-                                                                  "")]]]
+                                                  ;; Pending B/A still model distinct final candidates;
+                                                  ;; an empty selection permits native small-screen dedup.
+                                                  ["currentSrc" (str (.-origin js/location) selected)]]]
                            (js/Object.defineProperty element property #js {:configurable true :value value}))
                          (js/Object.defineProperty element "decode"
                            #js {:configurable true :value (fn [] (js/Promise.resolve nil))}))))]
