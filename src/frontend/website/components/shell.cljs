@@ -123,15 +123,17 @@
                  :icons ["solid/cog" "solid/pen-fancy" "solid/user"]}
   [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   (let [menu-open? @(r/subscribe [:state [:menu]])
-        initial-menu (r/use-ref menu-open?)
+        hidden? @(r/subscribe [:state [:hidden :header]])
+        motion-state [menu-open? hidden?]
+        initial-state (r/use-ref motion-state)
         [restored? set-restored!] (use-restored-shell)
-        initial-menu? (= menu-open? (.-current initial-menu))]
-    ;; A restored shell is already visible. The first menu intent resumes motion.
+        initial-state? (= motion-state (.-current initial-state))]
+    ;; A restored shell is settled until menu intent or scroll changes its state.
     (r/use-effect
      (fn []
-       (when-not initial-menu? (set-restored! false))
+       (when-not initial-state? (set-restored! false))
        nil)
-     [initial-menu?])
+     [initial-state?])
     [:<>
      [ui-controls/<input-toggle> "nav-menu-open" [:menu] :class "burger-check"]
      (when @(r/subscribe [:fullscreen/any?])
@@ -139,9 +141,8 @@
         {:class (when @(r/subscribe [:state [:scroll :past-top]])
                   "past-top")}])
      [:header
-      {:data-restored-motion (and restored? initial-menu?)
-       :class (when @(r/subscribe [:state [:hidden :header] ])
-                "hide")}
+      {:data-restored-motion (and restored? initial-state?)
+       :class (when hidden? "hide")}
       [:div.cover.cover-clip] ;covers around lines and that... XXX breaks when very wide tho.
       [<header-logo> @(r/subscribe [:header-text])]
       [<header-nav> menu]

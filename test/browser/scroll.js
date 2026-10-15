@@ -18,6 +18,9 @@ const record = (description, failed = false) => {
   item.textContent = description; results.append(item);
 };
 const check = (condition, description) => {
+  const viewport = frame.getBoundingClientRect();
+  if (viewport.top < 0 || viewport.left < 0 || viewport.bottom > innerHeight || viewport.right > innerWidth)
+    throw new Error('Keep the complete application frame visible; use an outer viewport at least 1200 CSS pixels high');
   if (!condition) throw Error(description);
   record(description);
 };

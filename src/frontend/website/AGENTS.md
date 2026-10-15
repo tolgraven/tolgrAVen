@@ -662,3 +662,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   supply independent CMS article data; their identity owns anchors. Grid CSS owns
   cold/SSR geometry and `website.breakpoints` exposes breaking-point's inherited
   `:layout/responsive` subscription; `boot` still owns resize listener cleanup.
+
+- Restored shell guards suppress initial clocks only. Menu or header scroll-state
+  changes release the header guard permanently for that mounted shell; ordinary
+  hide/show logo motion must work after external Back as well as initial loading.

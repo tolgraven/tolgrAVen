@@ -13,6 +13,9 @@ const wait = async predicate => {
   throw new Error('Application did not settle');
 };
 const check = (value, label, details) => {
+  const viewport = frame.getBoundingClientRect();
+  if (viewport.top < 0 || viewport.left < 0 || viewport.bottom > innerHeight || viewport.right > innerWidth)
+    throw new Error('Keep the complete application frame visible; use an outer viewport at least 1200 CSS pixels high');
   if (!value) throw new Error(label + (details ? ` ${JSON.stringify(details)}` : ""));
   const row = document.createElement('li'); row.className = 'passed'; row.textContent = label; results.append(row);
 };
@@ -181,9 +184,53 @@ const searchMotion = async label => {
   }
   return {motion, frames};
 };
-const externalBack = async ({label = 'Home', selectors = ['#app #intro']} = {}) => {
+// Exercise real shell scroll states, including their native CSS clocks. The
+// long-post case leaves room between the header threshold and footer handover.
+const shellScrollMotion = async label => {
+  const document = doc(), win = frame.contentWindow;
+  const header = document.querySelector('#app header'), footer = document.querySelector('#footer-sticky');
+  const logo = header.querySelector('.header-logo');
+  const read = () => ({height: header.getBoundingClientRect().height,
+    hidden: header.classList.contains('hide') && footer.classList.contains('hide'),
+    logoOpacity: Number(win.getComputedStyle(logo).opacity),
+    footerOpacity: Number(win.getComputedStyle(footer.querySelector('.footer-content')).opacity),
+    inert: footer.inert});
+  win.scrollTo({top: 0, behavior: 'instant'});
+  await wait(() => win.scrollY === 0 && !header.classList.contains('hide'));
+  await settleLayout(document.body);
+  // Prime the scroll listener's native page-height measurement before its
+  // existing direction/150-pixel threshold; no application state is substituted.
+  win.scrollTo({top: 1, behavior: 'instant'});
+  await sleep(250);
+  const observer = window.visualFixture.createMotionObserver(win, label);
+  try {
+    const height = read().height;
+    const hidden = await sample(() => win.scrollTo({
+      top: Math.min(700, (document.scrollingElement.scrollHeight - win.innerHeight) / 3), behavior: 'instant'
+    }), read, 1900, value => value.hidden);
+    check(hidden.at(-1).height === 0 && hidden.at(-1).logoOpacity === 0 &&
+      hidden.at(-1).footerOpacity === 0 && hidden.at(-1).inert,
+      `${label}: minimized header and footer leave no visible or interactive content`);
+    const shown = await sample(() => win.scrollTo({top: win.scrollY / 2, behavior: 'instant'}),
+      read, 1900, value => !value.hidden && value.height > 0);
+    check(shown.at(-1).logoOpacity === 1 && shown.at(-1).footerOpacity === 1 && !shown.at(-1).inert,
+      `${label}: scrolling up restores the shell content`);
+    check(hidden.some(value => value.height > 0 && value.height < height - 1) &&
+      shown.some(value => value.height > 0 && value.height < height - 1),
+      `${label}: native header height changes continuously in both directions`);
+    const measured = observer.snapshot();
+    const motion = measured.triggered.filter(value => value.kind === 'animation' &&
+      ['header-logo-anim', 'header-logo-anim-out'].includes(value.name));
+    check(!measured.gaps.length && new Set(motion.map(value => value.name)).size === 2,
+      `${label}: both native logo clocks run without observation gaps`, measured.gaps);
+    return {motion: motion.map(({name, timing, keyframes}) => ({name, timing, keyframes}))
+      .sort((a, b) => a.name.localeCompare(b.name)), hidden, shown};
+  } finally { observer.stop(); }
+};
+const externalBack = async ({label = 'Home', selectors = ['#app #intro'], shellScroll = false} = {}) => {
   const previous = doc(), expectedURL = new URL(previous.URL).href;
   const beforeSearch = await searchMotion(label + ' before departure');
+  const beforeShell = shellScroll ? await shellScrollMotion(label + ' before departure') : null;
   const observers = new Map(), evidence = [], cleanups = [];
   const attach = document => {
     if (!document || document.URL === 'about:blank' || observers.has(document)) return;
@@ -250,7 +297,10 @@ const externalBack = async ({label = 'Home', selectors = ['#app #intro']} = {}) 
     observer.phase('post-return-interaction');
     const afterSearch = await searchMotion(label + ' after Back');
     const interactions = JSON.parse(results.dataset.externalBackInteractions || '{}');
-    interactions[expectedURL] = {before: beforeSearch, after: afterSearch};
+    const afterShell = shellScroll ? await shellScrollMotion(label + ' after Back') : null;
+    interactions[expectedURL] = {before: beforeSearch, after: afterSearch, beforeShell, afterShell};
+    if (shellScroll) check(JSON.stringify(beforeShell.motion) === JSON.stringify(afterShell.motion),
+      `${label}: scrolling retains native logo keyframes and timing after Back`, {beforeShell, afterShell});
     results.dataset.externalBackInteractions = JSON.stringify(interactions);
     check(JSON.stringify(beforeSearch.motion) === JSON.stringify(afterSearch.motion),
       `${label} Search retains its native opening and closing CSS timing after Back`, interactions[expectedURL]);
@@ -261,6 +311,7 @@ const externalBack = async ({label = 'Home', selectors = ['#app #intro']} = {}) 
   }
 };
 const externalBackCases = [
+  {label: 'Blog shell', path: '/blog/post/17', selectors: ['#app .blog-post'], shellScroll: true},
   {label: 'Blog post', path: '/blog/post/New-features-27', selectors: ['#app .blog-post .blog-post-text']},
   {label: 'CV', path: '/cv', selectors: ['#app .cv-intro', '#app .cv-skills']},
   {label: 'Docs', path: '/docs', selectors: ['#app .codox h1']}

@@ -290,30 +290,35 @@
                         (restore!)
                         (done))))))))
 
-(deftest restored-shell-resumes-motion-on-menu-intent
+(deftest restored-shell-resumes-motion-on-menu-or-scroll-intent
   (async done
     (let [restore-db! (r/make-restore-fn)
           original-context @restore/*context]
       (-> (go-promise
-            (let [element (.createElement js/document "div")
-                  root (await! (support/create-root! element))
-                  form [:<> [shell/<header> {:menu {:work [] :personal []}}]
-                        [shell/<footer-full> []]]]
-              (try
-                (r/dispatch-sync [:init/app-db])
-                (r/dispatch-sync [:state [:menu] false])
-                (reset! restore/*context {:local? true})
-                (await! (support/render! root form))
-                (is (= "true" (.getAttribute (.querySelector element "header") "data-restored-motion")))
-                (is (= "true" (.getAttribute (.querySelector element ".footer-full") "data-restored-motion")))
-                (r/dispatch-sync [:state [:menu] true])
-                (await! (support/settle!))
-                (is (= "false" (.getAttribute (.querySelector element "header") "data-restored-motion")))
-                (r/dispatch-sync [:state [:menu] false])
-                (await! (support/settle!))
-                (is (= "false" (.getAttribute (.querySelector element "header") "data-restored-motion"))
-                    "Closing the menu retains ordinary motion")
-                (finally (support/unmount! root)))))
+            (doseq [path [[:menu] [:hidden :header]]]
+              (let [element (.createElement js/document "div")
+                    root (await! (support/create-root! element))
+                    form [:<> [shell/<header> {:menu {:work [] :personal []}}]
+                          [shell/<footer-full> []]]]
+                (try
+                  (r/dispatch-sync [:init/app-db])
+                  (r/dispatch-sync [:state [:menu] false])
+                  (r/dispatch-sync [:state [:hidden :header] false])
+                  (reset! restore/*context {:local? true})
+                  (await! (support/render! root form))
+                  (let [header (.querySelector element "header")]
+                    (is (= "true" (.getAttribute header "data-restored-motion")))
+                    (is (= "true" (.getAttribute (.querySelector element ".footer-full") "data-restored-motion")))
+                    (r/dispatch-sync [:state path true])
+                    (await! (support/settle!))
+                    (is (= "false" (.getAttribute header "data-restored-motion")))
+                    (r/dispatch-sync [:state path false])
+                    (await! (support/settle!))
+                    (is (= "false" (.getAttribute header "data-restored-motion"))
+                        "Returning to the original state retains ordinary motion")
+                    (is (identical? header (.querySelector element "header"))
+                        "Menu and scroll updates retain the native header"))
+                  (finally (support/unmount! root))))))
           (.catch (fn [error] (is false (str error))))
           (.finally (fn []
                       (reset! restore/*context original-context)
