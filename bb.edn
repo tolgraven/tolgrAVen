@@ -42,6 +42,8 @@
                 :task (apply ssr/-main *command-line-args*)}
   test:browser {:doc "Serve Shadow browser tests [--port 4002]"
                 :task (apply server/-main *command-line-args*)}
+  test:visual {:doc "Capture native Chrome fixtures or fail exact pixel/geometry comparisons [capture|compare args]"
+               :task (apply process/shell "python3" "scripts/test/visual.py" *command-line-args*)}
   test:integration {:doc "Serve live checks through the streaming Python proxy [args...]"
                     :task (apply dev/integration! *command-line-args*)}
   test:scripts {:doc "Run isolated Babashka/media/operations tests"

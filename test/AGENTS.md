@@ -1,4 +1,9 @@
 # Verification workflows
+- Technical UI changes require the native pixel and geometry comparison gate in
+  `doc/visual-regressions.md` alongside interaction/motion checks. Capture matching
+  narrow/wide states and inspect differences; never refresh approved goldens to
+  conceal a regression. Missing/unapproved baselines are verification gaps, not
+  passing results. Extend `test/visual/suite.json` for new rendered states.
 - CMS visual comparisons use `editor-visual.html` and the original commit's
   components, identical seed data/assets and viewport dimensions. Capture actual
   viewports and separate scrolled sections; full-page capture can repaint filtered
