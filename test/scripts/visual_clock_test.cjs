@@ -23,3 +23,12 @@ test('visual calendar stays fixed in a future host year while elapsed time advan
   assert.ok(new context.Date() instanceof context.Date);
   assert.equal(typeof context.Date(), 'string');
 });
+
+test('background readiness extracts actual computed CSS URLs', () => {
+  const window = {addEventListener() {}};
+  vm.runInNewContext(readFileSync('test/browser/visual.js', 'utf8'), {window});
+  const urls = window.visualFixture.backgroundURLs;
+  assert.deepEqual(Array.from(urls('url("http://localhost/image.png")')), ['http://localhost/image.png']);
+  assert.deepEqual(Array.from(urls("url('/img/one.webp'), url(\"/img/two.avif\")")), ['/img/one.webp', '/img/two.avif']);
+  assert.deepEqual(Array.from(urls('linear-gradient(35deg, red, blue)')), []);
+});

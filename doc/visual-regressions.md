@@ -3,6 +3,10 @@
 `bb test:visual` compares native component rendering. It fails on **one changed
 RGBA pixel**, element box, relative position, padding, margin, border, font, gap,
 overflow, missing element/icon, or browser/font/viewport environment difference.
+Both `::before` and `::after` generated content record computed dimensions,
+offsets, spacing, borders, backgrounds, masks and typography for every element.
+These computed pseudo-element metrics supplement the native parent boxes;
+raster comparison verifies their actual painted pixels.
 There is no blanket tolerance, ignored region, automatic baseline update or
 animation-disabling stylesheet.
 

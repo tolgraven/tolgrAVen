@@ -358,8 +358,13 @@ def compare(args):
         except (OSError, ValueError, KeyError) as error:
             result = {"id": ident, "passed": False, "error": str(error)}
         results.append(result)
-        print(f"{'PASS' if result['passed'] else 'FAIL'} {ident}: " +
-              (result.get("error") or f"{result['pixels'].get('changed_pixels', '?')} pixels; {len(result['geometry'])} geometry changes"))
+        if result.get("error"):
+            detail = result["error"]
+        elif result["pixels"].get("mode") == "geometry-only":
+            detail = f"geometry-only; {len(result['geometry'])} geometry/style changes"
+        else:
+            detail = f"{result['pixels'].get('changed_pixels', '?')} pixels; {len(result['geometry'])} geometry changes"
+        print(f"{'PASS' if result['passed'] else 'FAIL'} {ident}: {detail}")
     report = {"passed": all(result["passed"] for result in results), "cases": results}
     (args.output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     rows = []

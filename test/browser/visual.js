@@ -14,6 +14,29 @@
       })]);
     } finally { clearTimeout(timer); }
   };
+  function backgroundURLs(value) {
+    return [...value.matchAll(/url\(["']?(.*?)["']?\)/g)].map(match => match[1]);
+  }
+  function generated(element, selector) {
+    const style = getComputedStyle(element, selector);
+    if (style.content === 'none' || style.content === 'normal') return null;
+    return {
+      content: style.content, display: style.display, position: style.position,
+      width: style.width, height: style.height,
+      offsets: [style.top, style.right, style.bottom, style.left],
+      padding: [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft],
+      margin: [style.marginTop, style.marginRight, style.marginBottom, style.marginLeft],
+      border: [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth],
+      borderColor: style.borderColor, borderRadius: style.borderRadius,
+      color: style.color, backgroundColor: style.backgroundColor,
+      backgroundImage: style.backgroundImage,
+      mask: [style.maskImage, style.maskSize, style.maskPosition],
+      font: [style.fontFamily, style.fontSize, style.fontWeight, style.lineHeight, style.letterSpacing],
+      opacity: style.opacity, visibility: style.visibility, zIndex: style.zIndex,
+      transform: style.transform, filter: style.filter,
+      boxShadow: style.boxShadow, textShadow: style.textShadow
+    };
+  }
   function geometry() {
     const selected = [...document.body.querySelectorAll('*')].filter(element =>
       !['SCRIPT', 'STYLE', 'LINK'].includes(element.tagName));
@@ -21,7 +44,6 @@
       const box = element.getBoundingClientRect();
       const parent = element.parentElement.getBoundingClientRect();
       const style = getComputedStyle(element);
-      const pseudo = getComputedStyle(element, '::before');
       return {
         tag: element.tagName, id: element.id, class: element.className,
         selector: element.id ? '#' + element.id : element.tagName.toLowerCase() +
@@ -47,10 +69,7 @@
           alignItems: style.alignItems, justifyContent: style.justifyContent,
           flexDirection: style.flexDirection, textAlign: style.textAlign
         },
-        icon: element.matches('i,.icon') ? {
-          content: pseudo.content, width: pseudo.width, height: pseudo.height,
-          mask: pseudo.maskImage, display: pseudo.display
-        } : null
+        generated: {before: generated(element, '::before'), after: generated(element, '::after')}
       };
     });
   }
@@ -72,7 +91,7 @@
       await image.decode();
     })), 'Fixture images did not decode');
     const backgrounds = new Set([...document.body.querySelectorAll('*')].flatMap(element =>
-      [...getComputedStyle(element).backgroundImage.matchAll(/url\(["']?(.*?)["']?\)/g)].map(match => match[1])));
+      [null, '::before', '::after'].flatMap(selector => backgroundURLs(getComputedStyle(element, selector).backgroundImage))));
     await timeout(Promise.all([...backgrounds].map(src => new Promise((resolve, reject) => {
       const image = new Image();
       image.onload = () => image.decode().then(resolve, reject);
@@ -102,7 +121,7 @@
     if (errors.length) throw new Error(errors.join('\n'));
   }
   window.visualFixture = {
-    ready,
+    ready, backgroundURLs,
     snapshot: () => ({
       viewport: [innerWidth, innerHeight, devicePixelRatio],
       environment: {userAgent: navigator.userAgent, platform: navigator.platform,
