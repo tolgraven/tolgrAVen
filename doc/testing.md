@@ -160,8 +160,9 @@ search, and that SPA navigation retains the document. No test functions are
 loaded into the application's CLJS runtime. The proxy forwards the application's
 response bytes and flushes streaming chunks without replacing them.
 
-Live motion/history drivers keep their results below the application frame so
-appending checks cannot push its viewport out of view. Use an outer Chrome
+Live motion/history drivers keep their results in a bounded scroll area below
+the application frame so appending checks or scrolling a nested comment into
+view cannot move the outer document and clip the application. Use an outer Chrome
 viewport of `1440x1200` or `400x1200` for these drivers; the inner application
 retains the fixture's native fixed height. Every assertion rejects a clipped
 application frame instead of treating offscreen animation behavior as visible

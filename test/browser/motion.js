@@ -1,5 +1,5 @@
 const frame = document.querySelector('#app'), results = document.querySelector('#results');
-if (new URLSearchParams(location.search).has('phone')) frame.style.width = '24.375rem';
+if (new URLSearchParams(location.search).has('phone')) frame.style.width = 'min(24.375rem, 100%)';
 const doc = () => frame.contentDocument;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const wait = async predicate => {

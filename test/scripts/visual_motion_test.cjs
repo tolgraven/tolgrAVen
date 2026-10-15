@@ -449,8 +449,10 @@ function returnFixture({gaps = [], policy = true, readinessFailure = false, retu
   const previous = documentFor('navigate'), returned = documentFor('back_forward');
   returned.readyState = 'loading'; current = previous;
   const frame = {style: {}, get contentDocument() {return current;}, get contentWindow() {return current?.defaultView;},
+    getBoundingClientRect: () => ({left: 16, top: 150, right: 1424, bottom: 1000}),
     set src(value) {current = null; queueMicrotask(() => frame.onload());}};
-  const context = {URL, URLSearchParams, location: {href: 'http://127.0.0.1:4114/__tests/motion.html',
+  const context = {URL, URLSearchParams, innerWidth: 1440, innerHeight: 1200,
+    location: {href: 'http://127.0.0.1:4114/__tests/motion.html',
     origin: 'http://127.0.0.1:4114', hostname: '127.0.0.1', search: ''},
     document: {querySelector: selector => selector === '#app' ? frame : selector === '#results' ? results : {},
       createElement: () => ({})},

@@ -58,7 +58,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - `bb test:scripts` includes bounded Node document-image adapter fixtures. They
   verify phase/gate ownership and cleanup; real-browser checks verify painted motion.
 - Live motion/history checks require the complete app frame inside the outer
-  viewport; keep growing diagnostics below it. Reject clipped scenes before
+  viewport; keep growing diagnostics in their own bounded scroll area below it. Reject clipped scenes before
   making assertions about visible motion. See `doc/testing.md`.
 - Unit/component tests may replace transport boundaries. Live integration must use
   real routes, module loaders and service bindings; do not inject fixture app state.
