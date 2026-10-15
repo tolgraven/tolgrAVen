@@ -5,6 +5,7 @@
             [website.editor-visual :as editor]
             [website.component.restore :as restore]
             [website.component.data :as data]
+            [website.supabase.runtime :as supabase]
             [website.modules.contact.events]
             [website.modules.user.events]
             [website.modules.docs.views :as docs]
@@ -275,6 +276,23 @@
                  (r/dispatch-sync [:scroll/at-bottom true]))
     (throw (js/Error. (str "Unknown shell fixture state: " state)))))
 
+(defonce *composer-requests (atom []))
+
+(defn ^:export composer-text! [text]
+  (r/dispatch-sync [:form-field [:write-comment [42 "visual-comment"] :text] text]))
+
+(defn ^:export composer-state []
+  ;; Observe the native local form/editor owner for teardown checks. No second
+  ;; application state or replacement view is installed by these fixture reads.
+  (clj->js
+    {:text @(r/subscribe [:form-field [:write-comment [42 "visual-comment"] :text]])
+     :post-text @(r/subscribe [:form-field [:post-blog :text]])
+     :editors (count (filter #(= :comment (:kind %))
+                            (vals @(r/subscribe [:get :state :blog-editor :editors]))))
+     :uploads (count (filter #(= :comment (:kind %))
+                            (vals @(r/subscribe [:blog/state [:image-uploads]]))))
+     :requests (count @*composer-requests)}))
+
 (defn ^:export panel-state! [state]
   ;; Exercise native state/presence events without following query links or
   ;; submitting credentials. In particular, the login Register button is Auth.
@@ -384,7 +402,9 @@
 
 (defn ^:export init! []
   (let [params (js/URLSearchParams. (.-search js/location))
-        component (.get params "component")]
+        component (.get params "component")
+        composer? (and (= component "comments-auth")
+                       (contains? #{"rich" "plain"} (.get params "composer")))]
     (if-not (#{"page-layout" "page-layout-vertical"
                "cv-regular" "cv-container" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
                "thread" "post" "standalone-comments" "search-mixed"
@@ -406,6 +426,19 @@
             (fn [seed]
               (rfe/start! routes/router (fn [_ _]) {:use-fragment false})
               (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) false])
+              (when composer?
+                ;; Only these cases deny provider I/O. The real comment owner
+                ;; supplies :library? false and never needs a post draft or Auth.
+                (r/dispatch-sync [:state [:supabase-init] :ready])
+                (r/dispatch-sync [:form-field [:post-blog :text] "Retained post draft"])
+                (set! supabase/authenticated-request!
+                  (fn [method uri & _]
+                    (swap! *composer-requests conj {:method method, :uri uri})
+                    (js/Promise.reject (js/Error. "Composer visual fixtures do not perform provider I/O"))))
+                (r/reg-fx :http-xhrio
+                  (fn [request]
+                    (swap! *composer-requests conj (select-keys request [:method :uri]))
+                    (throw (js/Error. "Composer visual fixtures do not perform HTTP or writes")))))
               (when (= "shell-panels" component)
                 ;; Public presentation flags only. The already-ready store path
                 ;; prevents login-panel intent from starting settings/SDK boot.

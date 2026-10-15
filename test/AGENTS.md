@@ -111,6 +111,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   presence. Use already-ready service state/public display options for UI-only
   login/register checks; never submit Auth/contact or mutate Settings. Query-link
   controllers and actual provider results need separate live verification.
+- Comment-composer visual states retain the real comment parent and lazy owner.
+  Seed local form text through events; exercise native mode/Cancel controls and
+  assert preview, owner disposal and zero provider I/O. Never Submit or upload.
 - Docs visual fixtures require the served snapshot's generated Codox index/topic
   resources. Acquire each new public module's native sheets only in its own case;
   shared-head additions change every case's dormant motion declaration inventory.

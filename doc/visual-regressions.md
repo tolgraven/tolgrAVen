@@ -178,6 +178,18 @@ marker to agree while retaining the same carousel/page nodes. These are control,
 layout and observed CSS-motion checks; they do not establish touch-drag or genuine
 keyboard traversal coverage. The Home sideways image gallery is a different owner.
 
+Comment composer cases extend the existing authenticated comment fixture with
+`composer=rich` or `composer=plain`. They click the actual Reply action and retain
+its comment card, live preview, lazy composer, mode controls and upload owner.
+Registered local form events seed fixed Markdown; native Visual editor/Plain
+Markdown controls must preserve canonical text and rendered preview. Cancel must
+clear the local reply form and release editor/upload ownership before reopening.
+A separate post-draft sentinel must remain unchanged. Case-only transport guards
+reject and count unexpected provider/HTTP requests; comment capabilities keep the
+asset library disabled. No Submit, upload, library or provider-write control is
+activated. These layout/motion checks do not establish trusted keyboard input,
+real uploads, publication or Auth behavior.
+
 Native hover cases use the configured Chrome MCP's real `hover` action, including
 in geometry-only mode. These cases run serially in the owned top-level tab while
 ordinary geometry cases reuse the driver with one iframe response at a time. Before navigation,
