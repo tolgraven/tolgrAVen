@@ -9,6 +9,7 @@
             [website.browser-resources :as resources]
             [website.react :as r]
             [website.components.select :as select]
+            [website.components.ui.action :as action]
             [website.content.schema :as content-schema]
             [website.macros :refer-macros [defc]]
             [website.render-context :as context]
@@ -387,10 +388,9 @@
                  "0rem")
         fold-lines (get options :fold-lines 8)
         foldable? (and (:foldable? options) (> line-count fold-lines))
-        copy-button [:button.code-copy.blog-btn.noborder
-                     {:type "button"
-                      :title copy-label
-                      :aria-label (if (= copy-label "Copy") "Copy code" copy-label)
+        copy-button [action/<action>
+                     {:class "code-copy blog-btn noborder"
+                      :label (if (= copy-label "Copy") "Copy code" copy-label)
                       :on-click (fn [event]
                                   (.preventDefault event)
                                   (.stopPropagation event)
@@ -422,10 +422,9 @@
        [:div.code-block-controls
         (when (:editable? options) [<editing-controls> options focus-code!])
         (when (not= false (:copy? options)) copy-button)
-        [:button.code-wrap.blog-btn.noborder
-         {:type "button"
-          :title "Wrap lines"
-          :aria-label "Wrap lines"
+        [action/<action>
+         {:class "code-wrap blog-btn noborder"
+          :label "Wrap lines"
           :aria-pressed wrap?
           :on-click (fn [_] (set-wrap! (not wrap?)))}
          [:i.fas.fa-align-left {:aria-hidden true}]]

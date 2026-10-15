@@ -3,8 +3,7 @@
   (:require [clojure.string :as string]
             [website.react :as r]
             [website.components.timer :as timer]
-            [website.components.portal :as portal]
-            [website.listener :as listener]
+            [website.components.ui.action :as action]
             [website.modules.blog.comments :as comments]
             [website.modules.blog.schema :as schema]
             [website.modules.blog.presentation :as presentation]
@@ -18,60 +17,6 @@
             [website.util :as util]))
 
 (declare <add-comment>)
-
-(defc <comment-action-label>
-  "Keep the label outside the comment's existing clipping boundary."
-  [{:keys [id label left top]} close!]
-  (r/use-effect
-    #(listener/listen! :comment-action-label
-       [{:target "window" :event "scroll" :capture? true :handler close!}
-        {:target "window" :event "resize" :handler close!}])
-    [close!])
-  [portal/<portal> js/document.body
-   [:span.blog-comment-action-label
-    {:id id
-     :role "tooltip"
-     :style {:left (str left "rem") :top (str top "rem")}}
-    label]])
-
-(defc <comment-action>
-  "Native link or button with an owned hover/focus label, including Escape dismissal."
-  {:icons ["solid/link" "solid/comments" "solid/reply" "solid/edit"]
-   :spec-schema [:map
-                 [:label :string]
-                 [:icon :string]
-                 [:?class :string]
-                 [:?href :string]
-                 [:?on-click fn?]]}
-  [{:keys [label icon class href on-click]}]
-  :let [*hover? (r/atom false)
-        *focus? (r/atom false)
-        *dismissed? (r/atom false)
-        *anchor (r/atom nil)
-        capture-anchor! (fn [event]
-                          (let [rect (.getBoundingClientRect (.-currentTarget event))
-                                unit (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))]
-                            (reset! *anchor {:left (/ (.-right rect) unit)
-                                             :top (/ (.-bottom rect) unit)})))]
-  (let [id (r/use-id)
-        open? (and (or @*hover? @*focus?) (not @*dismissed?))]
-    [:<>
-     [(if href :a.button.blog-btn.blog-comment-action.noborder :button.blog-btn.blog-comment-action.noborder)
-     {:class class
-      :href href
-      :type (when-not href "button")
-      :aria-label label
-      :aria-describedby (when open? id)
-      :on-click on-click
-      :on-pointer-enter #(do (capture-anchor! %) (reset! *hover? true) (reset! *dismissed? false))
-      :on-pointer-leave #(reset! *hover? false)
-      :on-focus #(do (capture-anchor! %) (reset! *focus? true) (reset! *dismissed? false))
-      :on-blur #(reset! *focus? false)
-      :on-key-down #(when (= "Escape" (.-key %)) (reset! *dismissed? true))}
-     [:i {:class (str "fa fa-" icon), :aria-hidden true}]]
-     (when (and open? @*anchor)
-       [<comment-action-label> (assoc @*anchor :id id :label label)
-        #(reset! *dismissed? true)])]))
 
 (defc <preview-comment> "Render the current comment draft as Markdown."
   {:features [[:appear nil]]}
@@ -96,19 +41,21 @@
                  [:button.blog-btn.topborder
                   attrs "Add comment"])
       :reply   (when-not adding-comment?
-                 [<comment-action> (assoc attrs :class "blog-comment-reply-btn"
-                                               :label "Reply" :icon "reply")])
+                 [action/<action> (assoc attrs :class "blog-btn blog-comment-action noborder blog-comment-reply-btn"
+                                              :label "Reply")
+                  [:i.fa.fa-reply {:aria-hidden true}]])
       :cancel  (when adding-comment?
                  [:button.blog-btn.bottomborder
                   {:on-click #(r/dispatch [:blog/cancel-comment parent-path])}
                   "Cancel"]))))
 
 (defc <edit-comment>
+  {:icons ["solid/link" "solid/comments" "solid/reply" "solid/edit"]}
   [{:keys [path comment] :as spec}]
-  [<comment-action> {:class "blog-comment-edit-btn"
-                     :label "Edit comment"
-                     :icon "edit"
-                     :on-click #(r/dispatch [:blog/edit-comment path comment])}])
+  [action/<action> {:class "blog-btn blog-comment-action noborder blog-comment-edit-btn"
+                   :label "Edit comment"
+                   :on-click #(r/dispatch [:blog/edit-comment path comment])}
+   [:i.fa.fa-edit {:aria-hidden true}]])
 
 (defc <delete-comment> ; Unfinished delete UI; retain for later implementation.
   [{:keys [path] :as spec}]
@@ -296,15 +243,15 @@
              [:div.blog-comment-actions
                (when-not is-preview?
                  [:<>
-                  [<comment-action> {:class "blog-comment-permalink"
-                                     :label "Permalink"
-                                     :icon "link"
-                                     :href @(r/subscribe [:href :blog-post-comment
-                                                         {:permalink (str (first path)), :comment-id (str id)}])}]
-                  [<comment-action> {:class "blog-comment-thread-link"
-                                     :label "Open thread"
-                                     :icon "comments"
-                                     :href @(r/subscribe [:href :blog-comment {:comment-id (str id)}])}]])
+                  [action/<action> {:class "button blog-btn blog-comment-action noborder blog-comment-permalink"
+                                   :label "Permalink"
+                                   :href @(r/subscribe [:href :blog-post-comment
+                                                       {:permalink (str (first path)), :comment-id (str id)}])}
+                   [:i.fa.fa-link {:aria-hidden true}]]
+                  [action/<action> {:class "button blog-btn blog-comment-action noborder blog-comment-thread-link"
+                                   :label "Open thread"
+                                   :href @(r/subscribe [:href :blog-comment {:comment-id (str id)}])}
+                   [:i.fa.fa-comments {:aria-hidden true}]]])
                (when (and (not is-preview?) active-user (= (:id active-user) (:id user)))
                  [<edit-comment> {:path path :comment post}])
                (when (and (not is-preview?) active-user)
