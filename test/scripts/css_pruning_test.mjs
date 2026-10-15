@@ -71,3 +71,14 @@ test('font faces keep CSS aliases and runtime font requests, dropping unused fac
   assert.doesNotMatch(result.sheets[0].css, /unused\.woff2/);
   assert.equal(result.fonts, 1);
 });
+
+
+test('existing CSS-var helpers retain bare names and dynamically selected bare prefixes', async () => {
+  const result = await pruneStyles([sheet('vars.css', ':root { --reader-only: var(--reader-base); --reader-base: 2rem; --range-1: 1; --range-2: 2; --unreferenced: 3; }')],
+    ['(inject-cofx :css-var [:reader-only])', 'readCssVar("range-" + index)']);
+  assert.match(result.sheets[0].css, /--reader-only/);
+  assert.match(result.sheets[0].css, /--reader-base/);
+  assert.match(result.sheets[0].css, /--range-1/);
+  assert.match(result.sheets[0].css, /--range-2/);
+  assert.doesNotMatch(result.sheets[0].css, /--unreferenced/);
+});

@@ -32,7 +32,8 @@ entire feature to conceal an unexplained missing selector.
 
 Custom properties and keyframes use one reachability graph across all selected
 sheets and theme overrides. Retained declarations, inline JavaScript references,
-variable prefixes, fallbacks and CSS query references keep their dependencies;
+variable prefixes, bare names accepted by CSS-var helpers, fallbacks and CSS
+query references keep their dependencies;
 unused chains/cycles are removed. Unused font faces are removed after checking
 retained CSS aliases and runtime font names. The build writes byte counts and
 removed selectors/definition counts to `optimus/css-pruning.json`. Missing

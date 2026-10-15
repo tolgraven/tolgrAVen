@@ -77,7 +77,12 @@ function pruneDefinitions(roots, content, families) {
   }
   // Inline JS styles/readers can refer to a whole family, e.g. "var(--bg-".
   const prefixes = [...used].filter(name => name.endsWith('-'));
+  const shorthandPrefixes = [...sourceTokens].filter(name => name.endsWith('-'));
   for (const name of definitions.keys()) {
+    // util/<-css-var and :css-var coeffects also accept bare names. Their
+    // caller literals/keywords remain in released code without the "--".
+    if (name.startsWith('--') && (sourceTokens.has(name.slice(2)) ||
+        shorthandPrefixes.some(prefix => name.startsWith(`--${prefix}`)))) used.add(name);
     if (prefixes.some(prefix => name.startsWith(prefix))) used.add(name);
   }
   // One graph across all sheets, all theme overrides and fallbacks. A variable
