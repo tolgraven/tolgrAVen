@@ -385,7 +385,7 @@
         1000
       ],
       "path": "/fixtures/visual.html?component=home-story",
-      "action": "const figure = document.getElementById('story-image-headshot'); figure.scrollIntoView({block:'center', behavior:'instant'}); await window.visualFixture.ready(); figure.querySelector('img[data-image-final]').click()"
+      "action": "const figure = document.getElementById('story-image-headshot'); figure.scrollIntoView({block:'center', behavior:'instant'}); await window.visualFixture.ready(); figure.querySelector('img').click()"
     },
     {
       "id": "home-story-expanded-narrow",
@@ -394,7 +394,7 @@
         800
       ],
       "path": "/fixtures/visual.html?component=home-story",
-      "action": "const figure = document.getElementById('story-image-headshot'); figure.scrollIntoView({block:'center', behavior:'instant'}); await window.visualFixture.ready(); figure.querySelector('img[data-image-final]').click()"
+      "action": "const figure = document.getElementById('story-image-headshot'); figure.scrollIntoView({block:'center', behavior:'instant'}); await window.visualFixture.ready(); figure.querySelector('img').click()"
     },
     {
       "id": "home-gallery-end-narrow",
