@@ -54,6 +54,9 @@ implementation in `src/frontend/website/modules/<module>/`, also on the JVM sour
   without importing the interpreter into the production browser shell.
   `validation.cljc` is a stable boundary; its engine/registry are eager on JVM,
   development and Node SSR, and installed by the browser `:coercion` module.
+  The custom release registry must retain every constructor used by owned
+  contracts, including negated repository/path exclusions. Exercise actual
+  module schemas in release-registry browser tests before adding constructors.
 
 - Define meaningful new contracts alongside their owner and use them across both
   runtimes. CMS bundles and normalized app-db/provider content have different

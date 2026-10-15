@@ -16,6 +16,7 @@
            (mu/schemas)
            {:and (m/-and-schema)
             :or (m/-or-schema)
+            :not (m/-not-schema)
             :map (m/-map-schema)
             :map-of (m/-map-of-schema)
             :vector (m/-collection-schema {:type :vector

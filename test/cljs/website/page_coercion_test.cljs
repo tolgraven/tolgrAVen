@@ -6,6 +6,8 @@
             [reitit.coercion :as coercion]
             [reitit.frontend :as frontend]
             [website.navigation.routes :as routes]
+            [website.modules.github.configuration-schema :as github-configuration]
+            [website.modules.github.pages :as github-pages]
             [website.schema.http :as schemas]
             [website.schema.page-coercion :as page]
             [website.schema.declarations :as declarations]
@@ -18,6 +20,17 @@
   (is (nil? (registry/-schema m/default-registry :function)))
   (is (m/validate (dsl/->malli [:cat :keyword [:? :int] [:* :string]]) [:event 2 "a" "b"]))
   (is (not (m/validate (dsl/->malli [:cat :keyword [:? :int] [:* :string]]) [:event "a" 2]))))
+
+(deftest production-registry-retains-github-repository-exclusions
+  (let [settings (dsl/->malli github-configuration/result)
+        parameters (dsl/->malli github-pages/parameters)
+        sha (apply str (repeat 40 "a"))]
+    (doseq [repo ["tolgrAVen" "site.config" ".github" "..config"]]
+      (is (m/validate settings {:settings {:user "tolgraven", :repo repo}}))
+      (is (m/validate parameters {:user "tolgraven", :repo repo, :sha sha})))
+    (doseq [repo ["." ".."]]
+      (is (not (m/validate settings {:settings {:user "tolgraven", :repo repo}})))
+      (is (not (m/validate parameters {:user "tolgraven", :repo repo, :sha sha}))))))
 
 (deftest route-coercion-remains-active-with-internal-checks-disabled
   (let [enabled? @validation/*enabled?]
