@@ -4,7 +4,10 @@
   narrow/wide states and inspect differences; never refresh approved goldens to
   conceal a regression. Missing/unapproved baselines are verification gaps, not
   passing results. Geometry mode verifies boxes and computed appearance; pixel
-  parity requires matching raster captures. Keep native page/component parents
+  parity requires matching raster captures. Genuine hover cases use the configured
+  Chrome MCP, observed accessibility UIDs verified against native selectors, and
+  an unhovered starting target; synthetic mouse events do not prove CSS hover.
+  Keep native page/component parents
   in fixtures. Compare native CSS declarations and triggered keyframes/timing with
   `--require-motion`; settled geometry is not a motion pass. Observe real external
   Back before interaction, including delayed and pseudo motion, without fabricated
