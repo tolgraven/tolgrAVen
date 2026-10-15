@@ -71,7 +71,9 @@
   (into model-path [:minimized])
   ["maximize" "minimize" "window"]])
 
-(m/defc <close> [on-click]
+(m/defc <close>
+  {:icons ["solid/times"]}
+  [on-click]
  [:button.close-btn.noborder
   {:on-click on-click :aria-label "Close"}
   [:i.fa.fa-times]])

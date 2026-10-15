@@ -1,0 +1,24 @@
+<!doctype html>
+<html data-theme="dark" lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact motion regression</title>
+<link rel="stylesheet" href="/css/website/main.min.css">
+<link rel="stylesheet" href="/css/website/modules/contact.min.css">
+<link rel="stylesheet" href="/css/website/modules/styled-input.min.css">
+<style>.contact-motion-demo{width:min(88vw,60rem);margin:2rem auto;padding:1.25rem;box-sizing:border-box;min-height:0}</style>
+<body><div id="contact-demo"></div>
+<script src="/js/test.js"></script>
+<script>
+if (new URLSearchParams(location.search).has('demo')) {
+  website.contact_panel_test.show_panel_BANG_();
+} else {
+  const run = shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1;
+  shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1 = env =>
+    shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$2(env,
+      /^website\.(contact-panel|contact)-test$/);
+  shadow.test.browser.init();
+  shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1 = run;
+}
+</script>
+</body></html>

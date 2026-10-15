@@ -6,6 +6,7 @@
             [website.events]
             [website.subs]
             [website.component.restore :as restore]
+            [website.component.motion :as motion]
             [website.modules.contact.events]
             [website.modules.contact.views :as contact]
             [website.test-support :as support]))
@@ -129,3 +130,49 @@
               (finally (close!)))))
         (.catch #(is false (str %)))
         (.finally done))))
+
+(deftest explicit-contact-open-enters-after-a-restored-page
+  (async done
+    (-> (go-promise
+          (doseq [context [{:back? true} {:hydrate? true}]]
+            (let [{:keys [root element close!]} (await! (fixture!))
+                  *initial (atom nil)
+                  observer (js/MutationObserver.
+                             (fn [_ _]
+                               (when-let [panel (.querySelector element ".contact-form-popup")]
+                                 (when-not @*initial
+                                   (reset! *initial {:appeared? (.contains (.-classList panel) "appeared")})))))]
+              (try
+                ;; Hydration has ended, but a restored document retains its Back
+                ;; policy for existing page content. Opening this form is new intent.
+                (restore/begin! context)
+                (restore/hydrated!)
+                (await! (support/render! root [contact/<contact-form-host>]))
+                (.observe observer element #js {:subtree true, :childList true})
+                (r/dispatch-sync [:contact/open])
+                (let [panel (await! (support/wait-for! #(.querySelector element ".contact-form-popup")))]
+                  (when-not (motion/reduced-motion?)
+                    (is (false? (:appeared? @*initial))
+                        (str "A new form starts in its entrance state after " context)))
+                  (await! (support/wait-for! #(.contains (.-classList panel) "appeared")))
+                  (when-not (motion/reduced-motion?)
+                    (is (pos? (.-length (.getAnimations panel))) "The native entrance actually runs"))
+                  (r/dispatch-sync [:contact/close])
+                  (await! (support/wait-for! #(.contains (.-classList panel) "exiting")))
+                  (await! (support/wait-for! #(nil? (.querySelector element ".contact-form-popup")))))
+                (finally (.disconnect observer) (close!))))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(defn ^:export show-panel! []
+  (restore/begin! {:back? true})
+  (restore/hydrated!)
+  (r/dispatch-sync [:contact/close])
+  (-> (support/create-root! (.getElementById js/document "contact-demo"))
+      (.then #(support/render! %
+                [:<>
+                 [:main.contact-motion-demo
+                  [:h1 "Contact entrance"]
+                  [:p "Open the form after a restored-page return."]
+                  [:button {:on-click (fn [_] (r/dispatch [:contact/open]))} "Open contact"]]
+                 [contact/<contact-form-host>]]))))

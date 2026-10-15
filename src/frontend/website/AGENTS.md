@@ -591,8 +591,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   only on the first frame after commit. Keep initial hydration href-free so mail
   handler extensions cannot rewrite these attributes before React attaches.
 - The lazy contact host owns `:presence`; its keyed panel uses `:appear`/`:exit`
-  and exists only while open or exiting. Closing changes intent immediately;
-  native animation completion owns removal, without a business-event timer.
+  and exists only while open or exiting. Its entrance opts out of page restoration
+  with `:restore? false`: opening the form is new user intent, even after Back.
+  Closing changes intent immediately; native animation completion owns removal,
+  without a business-event timer.
   The panel captures its native opener after commit and returns focus before the
   close event, so exit never hides a focused descendant.
 
