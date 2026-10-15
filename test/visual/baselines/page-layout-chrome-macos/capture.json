@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "suite_sha256": "34b2f5121550a43f3722fedbec41d78c88a274cf11b89338e45c9518ca7c2c3e",
+  "suite_sha256": "6a3e801b8a7a8869ea32692662c6673b55a3c268d1dc947b22cac07827911b50",
   "cases": [
     "page-layout-wide",
     "page-layout-narrow",
     "page-layout-vertical-wide",
     "page-layout-vertical-narrow"
   ],
-  "git_head": "74eee32dd3be0d538e9d4d75b27addf06684abf4",
+  "git_head": "acacc5d8122b602e8e9de8988846cc7eca354cfa",
   "pixels": true,
   "raster": "overlapping-viewports-v1",
   "approval": {

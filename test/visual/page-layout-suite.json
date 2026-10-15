@@ -7,7 +7,8 @@
         1440,
         1000
       ],
-      "path": "/fixtures/visual.html?component=page-layout"
+      "path": "/fixtures/visual.html?component=page-layout",
+      "action": "window.scrollTo({top: 1, behavior: 'instant'}); await window.visualFixture.ready(); window.scrollTo({top: 0, behavior: 'instant'}); await window.visualFixture.ready()"
     },
     {
       "id": "page-layout-narrow",
@@ -15,7 +16,8 @@
         400,
         800
       ],
-      "path": "/fixtures/visual.html?component=page-layout"
+      "path": "/fixtures/visual.html?component=page-layout",
+      "action": "window.scrollTo({top: 1, behavior: 'instant'}); await window.visualFixture.ready(); window.scrollTo({top: 0, behavior: 'instant'}); await window.visualFixture.ready()"
     },
     {
       "id": "page-layout-vertical-wide",
@@ -23,7 +25,8 @@
         1440,
         1000
       ],
-      "path": "/fixtures/visual.html?component=page-layout-vertical"
+      "path": "/fixtures/visual.html?component=page-layout-vertical",
+      "action": "window.scrollTo({top: 1, behavior: 'instant'}); await window.visualFixture.ready(); window.scrollTo({top: 0, behavior: 'instant'}); await window.visualFixture.ready()"
     },
     {
       "id": "page-layout-vertical-narrow",
@@ -31,7 +34,8 @@
         400,
         800
       ],
-      "path": "/fixtures/visual.html?component=page-layout-vertical"
+      "path": "/fixtures/visual.html?component=page-layout-vertical",
+      "action": "window.scrollTo({top: 1, behavior: 'instant'}); await window.visualFixture.ready(); window.scrollTo({top: 0, behavior: 'instant'}); await window.visualFixture.ready()"
     }
   ]
 }
