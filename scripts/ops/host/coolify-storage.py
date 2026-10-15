@@ -131,7 +131,7 @@ $app=require '/var/www/html/bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 $jobs=app(Laravel\Horizon\Contracts\JobRepository::class);
 for($after=null;;$after=($after??-1)+50){
- $page=$jobs->getPending($after);
+ $page=collect($jobs->getPending($after));
  if($page->contains(fn($job)=>$job->status==='reserved'))exit(42);
  if($page->count()<50)break;
 }
