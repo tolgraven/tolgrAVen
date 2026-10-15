@@ -65,6 +65,11 @@
        (= (pathname (:page @*context)) (pathname (page-key)))
        (:initial-document? @*context)))
 (defn local-document? [] (boolean (:local? @*context)))
+(defn document-return?
+  "Native document history policy, installed before CSS and retained by BFCache."
+  []
+  (boolean (and (exists? js/document)
+                (.hasAttribute (.-documentElement js/document) "data-document-return"))))
 (defn direct-images?
   "History/departure images retain only their device-appropriate final candidate.
    This media policy does not change the page's SSR entrance/hydration contract."

@@ -108,12 +108,23 @@
     :title "User account"}
    [:i.user-btn.fa.fa-user]])
 
+(defn- use-restored-shell []
+  (let [returned? (restore/document-return?)
+        initial? (restore/skip-enter?)
+        [restored? set-restored!] (r/use-state #(restore/local-document?))]
+    ;; Match network SSR attributes on the first render. The head policy holds
+    ;; those clocks until this owned state commits, including a BFCache resume.
+    (r/use-layout-effect
+      (fn [] (when (and returned? initial?) (set-restored! true)) nil)
+      [returned? initial?])
+    [restored? set-restored!]))
+
 (defc <header> {:features [:error-boundary]
                  :icons ["solid/cog" "solid/pen-fancy" "solid/user"]}
   [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   (let [menu-open? @(r/subscribe [:state [:menu]])
         initial-menu (r/use-ref menu-open?)
-        [restored? set-restored!] (r/use-state #(restore/local-document?))
+        [restored? set-restored!] (use-restored-shell)
         initial-menu? (= menu-open? (.-current initial-menu))]
     ;; A restored shell is already visible. The first menu intent resumes motion.
     (r/use-effect
@@ -261,7 +272,7 @@
                         :root-margin "0px 0px 100px 0px"
                         :on-change #(r/dispatch [:scroll/at-bottom %])}]]}
   [content]
-  (let [[restored?] (r/use-state #(restore/local-document?))
+  (let [[restored?] (use-restored-shell)
         at-bottom? @(r/subscribe [:state [:scroll :at-bottom]])]
     [:footer#footer-end.footer-full
      {:class "full"

@@ -158,6 +158,7 @@
           settled? (and offscreen? (:settle-offscreen? appearance))
           defer? (and (not= false (:viewport? appearance))
                      (not (:force appearance)) offscreen? (not settled?)
+                     (not (and (:skip-enter? state) (restore/document-return?)))
                      (or (not (:skip-enter? state)) (:document-enter? state)))]
       ;; Layout entrances must retain their natural offscreen height. Waiting
       ;; for a zero-height row to intersect would also hide the rows below it.
@@ -186,6 +187,7 @@
         ;; Ready first-screen SSR remains visible. Offscreen :seen owners still
         ;; observe the viewport after hydration and enter when scrolled into view.
         skip? (or @(:settled-offscreen? state)
+                  (and (:skip-enter? state) (restore/document-return?))
                   (and (:skip-enter? state) (not (:observe-document? state)) (not automatic?)))
         signature [element (boolean seen) (boolean (:appear options)) thresholds once? margin reduced? skip? (:force appearance)]]
     (when (not= signature @(:signature state))
@@ -237,8 +239,9 @@
             (let [skip? (skip-enter? options)]
               {:options options
                :skip-enter? skip?
-               :document-enter? (document-entrance? options)
+               :document-enter? (and (not (restore/document-return?)) (document-entrance? options))
                :observe-document? (and skip? (restore/document-enter?) (:seen options)
+                                      (not (restore/document-return?))
                                       (not (:remembered? options)))
                :visible? (r/atom skip?)
                :viewport-enter? (atom nil)
@@ -263,7 +266,8 @@
                    visible? (if state @(:visible? state) (skip-enter? options))
                    reduced? (boolean (and state @(:reduced? state)))
                    settling? (boolean (and state @(:settling-offscreen? state)))
-                   document-enter? (if state (and (:document-enter? state) (:appear options)
+                   document-enter? (if state (and (not (restore/document-return?))
+                                                  (:document-enter? state) (:appear options)
                                                   (not @(:settled-offscreen? state))
                                                   (not (:seen options)) (not @(:viewport-enter? state)))
                                      (document-entrance? options))

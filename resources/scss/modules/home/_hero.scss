@@ -122,6 +122,22 @@
 @keyframes intro-letter-size { to { max-width: 2em; } }
 @keyframes intro-letter-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes intro-dot-hide { to { max-width: 0; } }
+
+// Literal letter spans identify the retained network SSR hero. SPA typing uses
+// its native component owners and must keep the original interaction motion.
+html[data-document-return] #intro:has(.intro-title-letter) {
+  #logo-top { animation: none; }
+  h1::after {
+    animation: none;
+    width: var(--line-percent);
+    transform: skew(-30deg);
+  }
+  .intro-title-letter { animation: none; max-width: 2em; opacity: 1; }
+  .intro-title-dot { animation: none; max-width: 0; }
+}
+html[data-document-return] .page-root:has(.intro-title-letter) .anim-gradient-bg {
+  animation: none;
+}
 @media (prefers-reduced-motion: reduce) {
   #logo-top { animation: none; }
   #intro h1::after {

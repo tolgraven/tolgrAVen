@@ -562,3 +562,29 @@ button:hover .blur-bg, button:active .blur-bg,
 @media (prefers-reduced-motion: reduce) {
   .appear-wrapper[data-document-appear] { animation: none; }
 }
+
+// History documents retain their native SSR tree, with its clocks settled.
+// New SPA owners use their ordinary appearance/interaction classes instead.
+html[data-document-return] {
+  .main-content.animate { animation: none; }
+  .appear-wrapper[data-document-appear] {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+// Initial restoration can acquire data/fonts or restore scroll before hydration.
+// First user intent releases this temporary guard; persistent document clocks
+// have their own settled rules, so releasing controls cannot replay an entrance.
+html[data-return-settling] {
+  :is(#app, #ssr-shell),
+  :is(#app, #ssr-shell) *,
+  :is(#app, #ssr-shell)::before,
+  :is(#app, #ssr-shell)::after,
+  :is(#app, #ssr-shell) *::before,
+  :is(#app, #ssr-shell) *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

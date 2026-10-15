@@ -143,9 +143,9 @@
     ;; A persisted-content hint can also accompany a normal reload. Only browser
     ;; history traversal bypasses entrance motion and restores the saved scroll.
     (let [hydrate? (= "true" (.getAttribute (.getElementById js/document "app") "data-hydrate"))]
-      ;; Fresh network SSR keeps its server entrance attributes even on a
-      ;; history traversal. A local pair installs its own restoration context
-      ;; below; a client-only return has no server attributes to match.
+      ;; Network SSR retains its exact server tree, including native title
+      ;; spans. The head return policy settles its clocks before first paint;
+      ;; local pairs install their own matching restoration context below.
       (restore/begin! {:back? (and (restore/back-navigation?) (not hydrate?))
                        :hydrate? hydrate?})
       (when (= "true" (.getAttribute (.-documentElement js/document) "data-image-direct"))

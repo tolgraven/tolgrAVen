@@ -86,6 +86,32 @@ function fixture({pending=true, width=390, dpr=2, same=false, reduced=false, nat
     readyFonts:async()=>{document.fonts.status='loaded';fonts.resolve();await flush();},
     phase:()=>root.__progressiveImages.get(hero)?.phase??null};
 }
+test('native Back settles before hydration and first intent releases only the temporary guard',()=>{
+  for (const intent of ['pointerdown','keydown','wheel','touchstart','click']) {
+    const f=fixture({direct:true}), root=f.document.documentElement;
+    assert.equal(root.getAttribute('data-document-return'),'true');
+    assert.equal(root.getAttribute('data-return-settling'),'true');
+    f.window.dispatchEvent(new Event(intent));
+    assert.equal(root.hasAttribute('data-return-settling'),false);
+    assert.equal(root.getAttribute('data-document-return'),'true','Existing document clocks remain settled');
+    for (const type of ['pointerdown','keydown','wheel','touchstart','click']) assert.equal(f.window.listeners.get(type),0);
+  }
+});
+test('departure and BFCache resume share one owned input guard without changing normal startup',()=>{
+  const f=fixture(), root=f.document.documentElement;
+  assert.equal(root.hasAttribute('data-document-return'),false);
+  assert.equal(root.hasAttribute('data-return-settling'),false);
+  f.window.dispatchEvent(new Event('pagehide'));
+  f.window.dispatchEvent(Object.assign(new Event('pageshow'),{persisted:true}));
+  assert.equal(root.getAttribute('data-return-settling'),'true');
+  for (const type of ['pointerdown','keydown','wheel','touchstart','click']) assert.equal(f.window.listeners.get(type),1);
+  f.window.dispatchEvent(new Event('wheel'));
+  f.window.dispatchEvent(new Event('pagehide'));
+  assert.equal(root.getAttribute('data-return-settling'),'true');
+  for (const type of ['pointerdown','keydown','wheel','touchstart','click']) assert.equal(f.window.listeners.get(type),1);
+  f.window.dispatchEvent(new Event('keydown'));
+  for (const type of ['pointerdown','keydown','wheel','touchstart','click']) assert.equal(f.window.listeners.get(type),0);
+});
 test('cold target reveals before smooth scrolling and waits for mounted text and fonts',async()=>{
   const f=fixture({target:true,targetMounted:false,fontsLoading:true});
   await f.load(f.preview);await f.frame();await f.frame();
