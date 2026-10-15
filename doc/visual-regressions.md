@@ -267,8 +267,13 @@ joint session history Back. It observes the retained document across BFCache
 and new documents from their first accessible parent frame, before any return
 interaction. It requires native retained-document or `back_forward` evidence,
 no newly triggered or running CSS animations/transitions (including pseudos),
-and observes for 3.5 seconds, covering the native two-second title delay. It
-stores bounded Home observation evidence in `#results.dataset.externalBack`
+and observes for 3.5 seconds, covering the native two-second title delay. CV
+uses 6.5 seconds to cover its existing 4.5-second scroll and 5.5-second focus
+callbacks. The same owned frame poll records native scroll coordinates and
+focused-element identity from the first accessible document; after native route
+readiness, neither may move before the observation ends and controls are used.
+Initial browser history restoration remains recorded without being mistaken for
+a ready-route movement. It stores bounded Home observation evidence in `#results.dataset.externalBack`
 and per-URL Home, Blog, CV and Docs evidence in `dataset.externalBackCases`.
 Each route matches the full departing URL; its observer attaches before content
 readiness, and return-policy flags are asserted after motion collection. It does

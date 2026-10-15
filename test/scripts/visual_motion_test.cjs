@@ -396,7 +396,7 @@ test('reply motion evidence rejects height teleports and opacity-only layout jum
   assert.ok(staticBody.every(row => row.continuous && !row.fading && !row.sliding));
 });
 
-function returnFixture({gaps = [], policy = true, readinessFailure = false, returnedDuration = 1800, disabledSearch = false, quickSearch = false, lazySearch = false, replaceSearchButton = false} = {}) {
+function returnFixture({gaps = [], policy = true, readinessFailure = false, returnedDuration = 1800, disabledSearch = false, quickSearch = false, lazySearch = false, replaceSearchButton = false, delayedScroll = false, delayedFocus = false} = {}) {
   const calls = [], frames = new Map(), listeners = new Map(), timers = new Map();
   const results = {dataset: {}, append() {}}, observers = [];
   const url = 'http://127.0.0.1:4114/cv?motion-return=proof#skills';
@@ -434,12 +434,12 @@ function returnFixture({gaps = [], policy = true, readinessFailure = false, retu
       if (replaceSearchButton && navigation !== 'navigate') currentButton = {click: clickSearch};
     }};
     currentButton = button;
-    const document = {URL: url, readyState: 'complete', app, present: true, fonts: {ready: Promise.resolve()}, getAnimations: () => [],
+    const document = {URL: url, readyState: 'complete', activeElement: {localName: 'body', id: ''}, app, present: true, fonts: {ready: Promise.resolve()}, getAnimations: () => [],
       querySelector: selector => selector === '#app' ? app : selector === '#app .cv-intro' && document.present ? {} :
         selector === '.search-ui' ? (panel.present ? panel : null) : selector === '.search-ui-open' ? (panel.open ? panel : null) :
         selector === 'button.search-ui-btn' ? currentButton : null,
       documentElement: {hasAttribute(name) {calls.push('policy:' + name); return policy;}}};
-    const win = {document, CSSAnimation, CSSTransition,
+    const win = {document, CSSAnimation, CSSTransition, scrollX: 0, scrollY: 0,
       performance: {getEntriesByType: () => [{type: navigation}]},
       addEventListener: (name, callback) => listeners.set(document, callback),
       removeEventListener: (name, callback) => {assert.equal(listeners.get(document), callback); listeners.delete(document);}};
@@ -456,13 +456,22 @@ function returnFixture({gaps = [], policy = true, readinessFailure = false, retu
     origin: 'http://127.0.0.1:4114', hostname: '127.0.0.1', search: ''},
     document: {querySelector: selector => selector === '#app' ? frame : selector === '#results' ? results : {},
       createElement: () => ({})},
-    performance: {now: () => readinessFailure || disabledSearch || replaceSearchButton ? now += 10000 : 1},
+    performance: {now: () => readinessFailure || disabledSearch || replaceSearchButton ? now += 10000 : now + 1},
     requestAnimationFrame(callback) {frames.set(++next, callback); return next;},
     cancelAnimationFrame(id) {frames.delete(id);},
     setTimeout(callback, ms) {
       const id = ++next; timers.set(id, callback);
-      if (ms === 3500 || ms === 20) queueMicrotask(() => {
-        if (ms === 3500) calls.push('observation-window');
+      if (ms === 3500 || ms === 6500 || ms === 20) queueMicrotask(() => {
+        if (ms !== 20) {
+          for (const time of [4500, 5500, ms].filter(time => time <= ms)) {
+            now = time;
+            if (time === 4500 && delayedScroll) returned.defaultView.scrollY = 37;
+            if (time === 5500 && delayedFocus) returned.activeElement = {localName: 'button', id: 'fullscreen-btn'};
+            const pending = [...frames]; frames.clear();
+            pending.forEach(([, frame]) => frame());
+          }
+          calls.push('observation-window');
+        }
         timers.delete(id); callback();
       });
       return id;
@@ -481,7 +490,7 @@ function returnFixture({gaps = [], policy = true, readinessFailure = false, retu
       observers.push(observer); return observer;
     }}}};
   vm.runInNewContext(readFileSync('test/browser/motion.js', 'utf8') +
-    '\nthis.observeBack = externalBack; this.matchesReturn = returnMatches; this.readyReturn = returnReady; this.inspectSearch = searchMotion;', context);
+    '\nthis.observeBack = externalBack; this.matchesReturn = returnMatches; this.readyReturn = returnReady; this.inspectSearch = searchMotion; this.returnCases = externalBackCases;', context);
   return {context, returned, previous, frames, timers, listeners, observers, calls, results, url};
 }
 
@@ -532,7 +541,7 @@ test('home native Back retains its original proof shape and a failed readiness w
   const home = returnFixture();
   await home.context.observeBack({selectors: ['#app .cv-intro']});
   assert.deepEqual(Object.keys(JSON.parse(home.results.dataset.externalBack)).sort(),
-    ['documents', 'motion', 'observation', 'observationWindowMs', 'running', 'sameDocument']);
+    ['documents', 'motion', 'observation', 'observationWindowMs', 'positions', 'running', 'sameDocument']);
   const failed = returnFixture({readinessFailure: true});
   await assert.rejects(failed.context.observeBack({label: 'CV', selectors: ['#app .cv-intro']}), /did not settle/);
   assert.equal(failed.calls.includes('observation-window'), false);
@@ -540,6 +549,35 @@ test('home native Back retains its original proof shape and a failed readiness w
   assert.equal(failed.frames.size, 0); assert.equal(failed.timers.size, 0); assert.equal(failed.listeners.size, 0);
 });
 
+
+test('CV Back observes known delayed scroll and focus deadlines before any controls', async () => {
+  for (const mutation of [{}, {delayedScroll: true}, {delayedFocus: true}]) {
+    const fixture = returnFixture(mutation);
+    const cvCase = fixture.context.returnCases.find(value => value.label === 'CV');
+    assert.equal(cvCase.observationWindowMs, 6500, 'The real CV route extends the observation window');
+    assert.ok(fixture.context.returnCases.filter(value => value.label !== 'CV').every(value => value.observationWindowMs === undefined));
+    const run = fixture.context.observeBack({...cvCase, selectors: ['#app .cv-intro']});
+    if (mutation.delayedScroll || mutation.delayedFocus)
+      await assert.rejects(run, /scroll and focus unchanged/);
+    else await run;
+    const evidence = JSON.parse(fixture.results.dataset.externalBackCases)[fixture.url];
+    assert.equal(evidence.observationWindowMs, 6500);
+    assert.ok(evidence.positions.samples.some(value => value.elapsed === 4500));
+    assert.ok(evidence.positions.samples.some(value => value.elapsed === 5500));
+    if (mutation.delayedScroll)
+      assert.ok(evidence.positions.samples.some(value => value.scroll[1] === 37));
+    if (mutation.delayedFocus)
+      assert.ok(evidence.positions.samples.some(value => value.activeElement?.id === 'fullscreen-btn'));
+    if (mutation.delayedScroll || mutation.delayedFocus)
+      assert.equal(fixture.calls.includes('after:search-click'), false, 'Autonomous movement fails before post-return controls');
+    assert.ok(fixture.observers.every(observer => observer.stopped));
+    assert.equal(fixture.frames.size, 0); assert.equal(fixture.timers.size, 0); assert.equal(fixture.listeners.size, 0);
+  }
+  const ordinary = returnFixture({delayedScroll: true, delayedFocus: true});
+  await ordinary.context.observeBack({label: 'Blog', selectors: ['#app .cv-intro']});
+  assert.equal(JSON.parse(ordinary.results.dataset.externalBackCases)[ordinary.url].observationWindowMs, 3500,
+    'Other routes retain the existing observation duration');
+});
 
 test('after-Back Search captures actual finite CSS definitions and rejects changed timing or disabled motion', async () => {
   const good = returnFixture();

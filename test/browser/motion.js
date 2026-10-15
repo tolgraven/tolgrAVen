@@ -227,11 +227,22 @@ const shellScrollMotion = async label => {
       .sort((a, b) => a.name.localeCompare(b.name)), hidden, shown};
   } finally { observer.stop(); }
 };
-const externalBack = async ({label = 'Home', selectors = ['#app #intro'], shellScroll = false} = {}) => {
+const externalBack = async ({label = 'Home', selectors = ['#app #intro'], shellScroll = false, observationWindowMs = 3500} = {}) => {
   const previous = doc(), expectedURL = new URL(previous.URL).href;
   const beforeSearch = await searchMotion(label + ' before departure');
   const beforeShell = shellScroll ? await shellScrollMotion(label + ' before departure') : null;
-  const observers = new Map(), evidence = [], cleanups = [];
+  const observers = new Map(), evidence = [], cleanups = [], positions = [];
+  const focusIds = new WeakMap(), started = performance.now();
+  let nextFocus = 0, ready = false, collecting = true, positionGap = null;
+  const readPosition = document => {
+    if (!collecting || !returnMatches(document, expectedURL)) return;
+    if (positions.length >= 16384) { positionGap = 'Return position observation exceeded its bounded frame budget'; return; }
+    const win = document.defaultView, focus = document.activeElement;
+    if (focus && !focusIds.has(focus)) focusIds.set(focus, ++nextFocus);
+    positions.push({elapsed: performance.now() - started, ready,
+      scroll: [win.scrollX, win.scrollY], focus: focus ? focusIds.get(focus) : null,
+      activeElement: focus ? {tag: focus.localName, id: focus.id || null} : null});
+  };
   const attach = document => {
     if (!document || document.URL === 'about:blank' || observers.has(document)) return;
     const observer = window.visualFixture.createMotionObserver(document.defaultView, document === previous ? 'pre-departure' : 'external-back');
@@ -250,7 +261,7 @@ const externalBack = async ({label = 'Home', selectors = ['#app #intro'], shellS
   const poll = () => {
     if (!active) return;
     const document = doc();
-    if (returnMatches(document, expectedURL)) attach(document);
+    if (returnMatches(document, expectedURL)) { attach(document); readPosition(document); }
     request = requestAnimationFrame(poll);
   };
   try {
@@ -269,8 +280,15 @@ const externalBack = async ({label = 'Home', selectors = ['#app #intro'], shellS
     observers.get(previous).phase('external-back');
     history.back();
     await wait(() => returnMatches(doc(), expectedURL) && returnReady(doc(), selectors));
-    await sleep(3500);
+    // Record initial browser restoration too; require a stable ready route
+    // through its known delayed callbacks before any post-return interaction.
+    ready = true; readPosition(doc());
+    await sleep(observationWindowMs);
     const returned = doc(), observer = observers.get(returned);
+    readPosition(returned); collecting = false;
+    const settledPositions = positions.filter(value => value.ready), baseline = settledPositions[0];
+    const moved = settledPositions.filter(value => value.focus !== baseline.focus ||
+      value.scroll.some((position, index) => position !== baseline.scroll[index]));
     check(!!observer, 'Returned document was observed before post-return interactions');
     const measured = observer.snapshot();
     const triggered = measured.triggered.filter(entry => entry.phase === 'external-back');
@@ -279,7 +297,8 @@ const externalBack = async ({label = 'Home', selectors = ['#app #intro'], shellS
       animation.playState === 'running').map(animation => ({name: animation.animationName || animation.transitionProperty,
         timing: animation.effect.getTiming(), keyframes: animation.effect.getKeyframes()}));
     const observation = {documents: evidence, sameDocument: returned === previous,
-      motion: {...measured, triggered}, running, observationWindowMs: 3500,
+      motion: {...measured, triggered}, running, observationWindowMs,
+      positions: {baseline: 'native route readiness', samples: positions, gap: positionGap},
       observation: 'parent-frame first accessible document; BFCache listener retained across departure'};
     if (label === 'Home') results.dataset.externalBack = JSON.stringify(observation);
     const cases = JSON.parse(results.dataset.externalBackCases || '{}');
@@ -291,6 +310,9 @@ const externalBack = async ({label = 'Home', selectors = ['#app #intro'], shellS
       `${label}: real native history return is evidenced by retained document or browser navigation timing`, evidence);
     check(!measured.gaps.length && !triggered.length && !running.length,
       `${label}: external Back starts no CSS animation or transition before any interaction`, {triggered, running, gaps: measured.gaps});
+    check(!positionGap && settledPositions.length > 0 && !moved.length,
+      `${label}: external Back leaves ready-route scroll and focus unchanged before interaction`,
+      {baseline, moved, gap: positionGap});
     // Policy is evidence to assert after observing the actual page, never a
     // prerequisite that conceals motion when the return policy itself breaks.
     check(returned.documentElement.hasAttribute('data-image-direct'), `${label} Back retains the native image return policy`);
@@ -313,7 +335,7 @@ const externalBack = async ({label = 'Home', selectors = ['#app #intro'], shellS
 const externalBackCases = [
   {label: 'Blog shell', path: '/blog/post/17', selectors: ['#app .blog-post'], shellScroll: true},
   {label: 'Blog post', path: '/blog/post/New-features-27', selectors: ['#app .blog-post .blog-post-text']},
-  {label: 'CV', path: '/cv', selectors: ['#app .cv-intro', '#app .cv-skills']},
+  {label: 'CV', path: '/cv', selectors: ['#app .cv-intro', '#app .cv-skills'], observationWindowMs: 6500},
   {label: 'Docs', path: '/docs', selectors: ['#app .codox h1']}
 ];
 const externalBackRoutes = async () => {
