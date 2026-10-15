@@ -64,6 +64,27 @@
         old-acquire loader/acquire-code! old-after-page resources/after-page!
         *highlight-requests (atom []) *release (atom []) *code-nodes (atom nil)
         *formatter-commits (atom 0)
+        *code-stages (atom [])
+        code-selectors [".code-block pre" ".code-block span" ".code-block code.language-cpp"
+                        "p > .code-snippet > code.code-highlight" "p > .code-snippet > code.code-highlight span[style]"]
+        record-stage! (fn [stage]
+                        (let [pre (.querySelector element ".code-block pre")
+                              text (or (some-> pre .-textContent) "")
+                              markup (or (some-> pre .-outerHTML) "")
+                              body (or (some-> (.querySelector element ".blog-post-text") .-textContent) "")]
+                          (swap! *code-stages conj
+                            {:stage stage
+                             :same-nodes (mapv (fn [node selector]
+                                                 (identical? node (.querySelector element selector)))
+                                               @*code-nodes code-selectors)
+                             :pending-text (subs text 0 (min 120 (count text)))
+                             :pre-html (subs markup 0 (min 1200 (count markup)))
+                             :body-text (subs body 0 (min 160 (count body)))
+                             :markdown-boundaries (.-length (.querySelectorAll element "template[data-module-boundary='markdown']"))
+                             :gates (count @*release)
+                             :formatter-commits @*formatter-commits
+                             :recovery-count (count @*errors)
+                             :recoveries (mapv #(subs % 0 (min 240 (count %))) (take-last 2 @*errors))})))
         original-error (.-error js/console)]
     (.appendChild (.-body js/document) element)
     (set! (.-error js/console)
@@ -115,8 +136,8 @@
                    (try (client/install!) (finally (.remove script)))
                    (set! (.-innerHTML element) html)
                    (when (= fixture "code-blog")
-                     (reset! *code-nodes (mapv #(.querySelector element %)
-                                              [".code-block pre" ".code-block span" ".code-block code.language-cpp" "p > .code-snippet > code.code-highlight" "p > .code-snippet > code.code-highlight span[style]"])))
+                     (reset! *code-nodes (mapv #(.querySelector element %) code-selectors))
+                     (record-stage! :server-markup))
                    (let [nodes (mapv #(.querySelector element %) selectors)
                          images (mapv (fn [wrapper]
                                         [wrapper (.getAttribute wrapper "data-image-key")
@@ -162,6 +183,10 @@
                                  (= blocks (count @*release))))
                          "Delayed Markdown did not retain its formatter gates")
                        (.then (fn [_]
+                                (record-stage! :controls-ready-before-wrap)
+                                (doseq [[node selector] (map vector @*code-nodes code-selectors)]
+                                  (is (identical? node (.querySelector element selector))
+                                      (str "Before wrap " selector " | " (pr-str @*code-stages))))
                                 (is (false? (restore/initial-hydration?)))
                                 (is (empty? @*highlight-requests)
                                     "Late parser hydration still defers formatter acquisition")
@@ -169,16 +194,20 @@
                                 (support/wait-for! #(.querySelector element ".code-block-wrapped")
                                                    "Hydrated code controls did not respond before formatting")))
                        (.then (fn [_]
-                                (doseq [[node selector] (map vector @*code-nodes [".code-block pre" ".code-block span" ".code-block code.language-cpp" "p > .code-snippet > code.code-highlight" "p > .code-snippet > code.code-highlight span[style]"])]
-                                  (is (identical? node (.querySelector element selector))))
+                                (record-stage! :after-wrap-before-formatter)
+                                (doseq [[node selector] (map vector @*code-nodes code-selectors)]
+                                  (is (identical? node (.querySelector element selector))
+                                      (str selector " | " (pr-str @*code-stages))))
                                 (is (empty? @*highlight-requests) "Wrapping does not advance the gate")
                                 (doseq [release! @*release] (release!))
                                 (support/wait-for!
                                   #(= (.-length (.querySelectorAll element ".code-block, .code-highlight"))
                                       @*formatter-commits))))
                        (.then (fn [_]
-                                (doseq [[node selector] (map vector @*code-nodes [".code-block pre" ".code-block span" ".code-block code.language-cpp" "p > .code-snippet > code.code-highlight" "p > .code-snippet > code.code-highlight span[style]"])]
-                                  (is (identical? node (.querySelector element selector))))
+                                (record-stage! :after-formatter)
+                                (doseq [[node selector] (map vector @*code-nodes code-selectors)]
+                                  (is (identical? node (.querySelector element selector))
+                                      (str selector " | " (pr-str @*code-stages))))
                                 (is (empty? @*errors) (pr-str @*errors))))))))
         (.catch #(is false (str %)))
         (.finally (fn []

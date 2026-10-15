@@ -443,7 +443,27 @@
                   "Missing CMS content supplies a valid empty heading")
               (is (.includes (.-textContent element) "Page body"))
               (r/dispatch-sync [:content path {:title "Loaded heading"}])
-              (await! (wait-for! #(= "Loaded heading" (.-textContent (.querySelector element "h1")))))
+              (await!
+                (-> (wait-for! #(= "Loaded heading" (.-textContent (.querySelector element "h1"))))
+                    (.catch
+                      (fn [error]
+                        (-> (mount-subscriptions!
+                              {:accepted (into [:get :content] path)
+                               :view [:content/view path]
+                               :validation [:validation/errors]})
+                            (.then
+                              (fn [{:keys [values unmount!]}]
+                                (try
+                                  (let [observed (values)
+                                        heading (or (some-> (.querySelector element "h1") .-outerHTML) "")
+                                        diagnostic {:accepted (select-keys (:accepted observed) [:title])
+                                                    :view (select-keys (:view observed) [:title])
+                                                    :heading (subs heading 0 (min 1200 (count heading)))
+                                                    :boundary? (boolean (.querySelector element "[role=alert]"))
+                                                    :validation-paths (vec (take 20 (mapcat #(map :path (:issues %))
+                                                                                          (:validation observed))))}]
+                                    (throw (js/Error. (str error " | heading diagnostic " (pr-str diagnostic)))))
+                                  (finally (unmount!))))))))))
               (is (= "Loaded heading" (.-textContent (.querySelector element "h1"))))
               (await! (support/render! root [ui-layout/<with-heading> path [:p "Page body"] {:title "Override"}]))
               (is (= "Override" (.-textContent (.querySelector element "h1"))))
