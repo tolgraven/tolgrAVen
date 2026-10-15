@@ -1,11 +1,13 @@
 [Unit]
 Description=Retire old unused tolgrAVen deployment images and build cache
-Requires=docker.service
 After=docker.service
-RequiresMountsFor=/mnt/bux-extra /var/lib/docker /data/coolify
+ConditionPathIsMountPoint=/mnt/bux-extra
+ConditionPathIsMountPoint=/var/lib/docker
+ConditionPathIsMountPoint=/data/coolify
 
 [Service]
 Type=oneshot
+ExecCondition=/usr/bin/systemctl is-active --quiet docker.service
 ExecStart=/usr/bin/python3 /usr/local/lib/tolgraven/coolify-storage-cleanup.py --apply
 Nice=10
 IOSchedulingClass=idle

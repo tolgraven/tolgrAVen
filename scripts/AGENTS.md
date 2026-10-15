@@ -126,4 +126,5 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   verification, and require mounts before Docker starts. Never format implicitly.
   Scheduled `coolify-storage-cleanup.py` owns only aged managed deployment images
   and unused Docker cache; preserve rollback/container references and all volumes.
+  Its timer must skip inactive Docker and missing mounts without activating either.
   See `doc/coolify-storage.md`.
