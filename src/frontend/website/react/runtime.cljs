@@ -53,6 +53,7 @@
 (def use-layout-effect         hooks/use-layout-effect)
 (def use-memo                  hooks/use-memo)
 (def use-callback              hooks/use-callback)
+(def use-deferred-value        hooks/use-deferred-value)
 (defn- set-ref! [reference element]
   (cond
     (fn? reference) (reference element)

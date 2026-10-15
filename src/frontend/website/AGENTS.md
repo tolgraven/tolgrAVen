@@ -306,13 +306,14 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   code inside completed React Suspense boundaries. Copy/wrapping and the page
   hydrate first; the formatter loads/hydrates after the common after-page gate.
   Keep the formatter in its own memoized `defc` so control updates do not replace
-  pending SSR nodes. Initial boundaries own transition batching in
-  `component/hydration.cljs` until inner commit/unmount; navigation releases it.
-  Loader marker removal is a transition during initial hydration; release its
-  batching owner after that update commits so nested SSR activation can mount.
-  Cached child completion can precede parent setup: acquire no owner after that
-  completion. Overlapping owners and StrictMode cleanup must restore batching
-  only when the last current owner releases; stale document callbacks are inert.
+  pending SSR nodes. `component/hydration.cljs` memoizes each native Suspense
+  element and defers only that boundary's updates through upstream
+  `use-deferred-value`. Include every element input in its Clojure dependencies.
+  Keep Reagent batching unchanged: pending offscreen code must not hold shell
+  visibility or other reactive controls. Loader marker removal remains a local
+  transition so nested SSR activation can mount without replacing native nodes.
+  Check overlapping pending boundaries, cached completion, changed props,
+  discarded renders, StrictMode and navigation/unmount independently.
   Capture their initial restoration decision without subscribing to completion.
   New SPA code uses the normal loader immediately. Paired local
   returns render completed boundaries too and skip the formatter during bootstrap.

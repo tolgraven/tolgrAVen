@@ -438,14 +438,13 @@ turn all React hook state into synchronously readable state, nor justify manual
 flush calls throughout application code.
 [Reagent batching notes](https://github.com/reagent-project/reagent/blob/v2.0.1/doc/React19.md).
 
-Our `component/hydration.cljs` temporarily changes `reagent.impl.batching/react-flush`
-to `startTransition` while deferred SSR boundaries finish hydration. That is a
-project-specific integration with an implementation namespace, with shared/global
-ownership implications. Its tests cover cached child completion before parent
-setup, overlapping owners, discarded renders, StrictMode and stale document
-callbacks. Installed Reagent's root API offers no public per-boundary flush
-option, so this remains a narrow compatibility adapter with an explicit release
-contract. Calling it “how Reagent 2 works” would obscure the actual decision.
+Our `component/hydration.cljs` memoizes each pending native Suspense element and
+passes it through upstream `use-deferred-value`. Ordinary synchronous Reagent
+updates retain that exact element while React attempts its changed props in the
+background. An unrelated offscreen module therefore cannot hold header/footer
+visibility or other shell controls. Reagent batching stays unchanged. Tests cover
+native SSR node identity, responsive surrounding controls, independently pending
+boundaries, cached completion, changed props, discarded renders and StrictMode.
 
 SSR here uses shared components and Node rendering. React Server Components,
 Server Actions and React 19 form actions are not prerequisites for this design.
@@ -465,7 +464,7 @@ See [our SSR guide](ssr.md) and the
 | Native refs/observers inside motion/video adapters | Justified at the boundary | DOM lifecycle requires native handles; use Clojure configuration around them |
 | Hiccup-key recovery in `component/compat.cljs` | Retain as a tested compatibility boundary | React keys are not props; Reagent's class accessor does not expose function metadata. Backing representation access stays in one version-specific adapter |
 | Managed `:component-data/status` acquisition | Keep | Source factory owns the shared queue; the derived reaction and view only read status, preserving parallel preloads |
-| Global batching override during selective hydration | Specialized, needs scrutiny | Preserves SSR content but couples us to Reagent internals and overlapping boundary ownership |
+| Deferred native Suspense elements during selective hydration | Scoped framework adapter | Retains pending SSR content while unrelated Reagent updates stay responsive; memoize complete element inputs |
 | Stable ReactMarkdown/highlighter adapters | Appropriate | Packages require native components; keep Clojure values until the specific boundary |
 | Ref/state machinery for every simple UI choice | Usually unnecessary | Prefer a local ratom or subscription when that fully expresses the behavior |
 

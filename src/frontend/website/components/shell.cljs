@@ -247,7 +247,7 @@
     [:footer#footer-sticky.footer-sticky
      {:aria-hidden (when inactive? true)
       :inert (when inactive? true)
-      :class (str (when hidden? "hide ")
+      :class (str (when inactive? "hide ")
                   (when at-bottom? "bottomed ")
                   (when @(r/subscribe [:fullscreen/any?])
                     "adjust-for-fullscreen"))}

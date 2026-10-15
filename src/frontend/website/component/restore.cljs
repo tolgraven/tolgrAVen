@@ -1,9 +1,6 @@
 (ns website.component.restore
   "First-page restoration context; no loading/motion bypass without ready data."
   (:require [website.react :as r]
-
-            [website.component.hydration :as hydration]
-
             [clojure.string :as string]))
 
 (defonce hydrating-context (r/create-context false))
@@ -96,7 +93,6 @@
         ;; the departure policy. The existing document entrance keeps its clock.
         (swap! *context assoc :direct-images? false))
       (when other-page?
-        (hydration/release-all!)
         (reset! *context {})))))
 (defn spa-back! []
   ;; SPA history keeps page Back motion, but is not an external document return.

@@ -42,9 +42,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Native ref tests cover forwarded React 19 cleanup, legacy nil callbacks,
   replacement/unmount and plain atom/object refs. Keyed state tests
   protect the isolated Reagent 2.0.1 Hiccup metadata compatibility boundary.
-- Deferred hydration tests cover cached child-before-parent commit, overlapping
-  ownership, discarded renders, StrictMode cleanup and stale document completion.
-  Preserve the original batching adapter after every test/unmount.
+- Deferred hydration tests cover cached completion, independently pending
+  boundaries, changed props, discarded renders, StrictMode and stale completion
+  after navigation/unmount. Require ordinary shell controls to commit before
+  unrelated lazy gates release, retaining native SSR nodes and Reagent batching.
   Scoped-state tests use native subscription handles and event writes; persistence
   checks cover pure nonpersistent reads, idempotent eager/subscription acquisition,
   late restoration versus edits, accepted/rejected transactions and explicit deletions.
@@ -129,7 +130,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   Linked snippets must retain navigation without nested controls. Test raw-pre
   provenance collisions and option forwarding through the normal Markdown wrapper;
   copying folded/numbered blocks must preserve the full original source.
-  Verify temporary transition batching is released on unmount and early navigation.
+  Verify deferred boundaries leave global batching unchanged through unmount and navigation.
   Formatter acquisition waits for
   hydration, load, page readiness and painted idle frames. Plain pages never
   acquire it; new SPA code uses the normal loader immediately.

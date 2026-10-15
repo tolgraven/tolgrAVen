@@ -34,6 +34,7 @@
 (def use-layout-effect runtime/use-layout-effect)
 (def use-memo runtime/use-memo)
 (def use-callback runtime/use-callback)
+(def use-deferred-value runtime/use-deferred-value)
 (def compose-refs runtime/compose-refs)
 (def component-argv runtime/component-argv)
 (def flush-sync runtime/flush-sync)

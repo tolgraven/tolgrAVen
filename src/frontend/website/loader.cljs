@@ -323,7 +323,6 @@
                                      (or inherited-hydration? (restore/initial-hydration?))))
         [committed? set-committed!] (r/use-state false)
         *trigger (r/use-ref nil)
-        release! (hydration/use-deferred! initial?)
         complete! (r/use-callback
                     (fn []
                       ;; A parser may have introduced another unhydrated SSR
@@ -337,12 +336,18 @@
         ready? (or context/*server?* (boolean @(r/subscribe [:loader/code-ready module])))
         failure (when-not context/*server?* @(r/subscribe [:loader/code-error module]))
         modes (activation/triggers options)
-        requested? (and (not hidden?) active?)]
-    (r/use-layout-effect
-      ;; Keep transition batching until the marker-removal update commits;
-      ;; nested owners can then install their own hydration/activation effects.
-      (fn [] (when committed? (release!)) nil)
-      [committed? release!])
+        requested? (and (not hidden?) active?)
+        content (hydration/use-boundary
+                  (and initial? (not committed?))
+                  #(r/as-element
+                     ^{:key :module-content}
+                     [r/suspense {:fallback (r/as-element (fallback-form options args true))}
+                      (if context/*server?*
+                        [<module-content> options args (fn []) true]
+                        (r/create-element (:view boundary)
+                          #js {:options options :args args :complete! complete!
+                               :hydrating? (and initial? (not committed?))}))])
+                  [context/*server?* options args boundary complete! initial? committed?])]
     (restore/use-readiness! (or (not requested?) ready? (some? failure)))
     (when (and context/*server?* ssr? context/*rendered-views*)
       (swap! context/*rendered-views* update module (fnil conj #{}) (or view :view)))
@@ -378,13 +383,7 @@
       ssr? [:<>
             (when-not committed? ^{:key :module-marker}
               [:template {:ref *trigger :data-module-boundary (name module)}])
-            ^{:key :module-content}
-            [r/suspense {:fallback (r/as-element (fallback-form options args true))}
-             (if context/*server?*
-               [<module-content> options args (fn []) true]
-               (r/create-element (:view boundary)
-                 #js {:options options :args args :complete! complete!
-                      :hydrating? (and initial? (not committed?))}))]]
+            content]
       (and requested? (or ready? failure)) [<module-content> options args complete! false]
       :else [:section.module-load-placeholder {:ref *trigger :data-loading-active requested?}
              (fallback-form options args requested?)])))
