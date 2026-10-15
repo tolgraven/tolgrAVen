@@ -15,8 +15,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/ssr.md`, and `doc/dev-console.md`.
 
 - Action labels measure their committed native anchor and portal. Follow finite
-  ancestor motion only while the label is open; release frame sampling, resize
-  observation and dismissal listeners on close. Settled labels have no frame loop.
+  ancestor motion and observe ancestor size changes only while the label is open;
+  release frame sampling, resize observation and dismissal listeners on close.
+  Settled labels have no frame loop.
 
 - The Markdown editor configure hook generates a pinned selective public SDK
   entry under ignored `target/generated-sdk`; Shadow's declared package directory

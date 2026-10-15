@@ -443,7 +443,7 @@
                 ;; Public presentation flags only. The already-ready store path
                 ;; prevents login-panel intent from starting settings/SDK boot.
                 (r/dispatch-sync [:state [:supabase-init] :ready])
-                (r/dispatch-sync [:option [:supabase :providers]
+                (r/dispatch-sync [:set [:options :supabase :providers]
                                   {:google true, :github true, :facebook true}])
                 (panel-state! "closed")
                 (r/reg-fx :http-xhrio

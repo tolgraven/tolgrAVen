@@ -57,7 +57,12 @@
               (update!)
               ;; The first frame also catches transitions starting after layout.
               (reset! *frame (js/requestAnimationFrame follow!)))
-            (when observer (.observe observer element) (.observe observer anchor))
+            (when observer
+              (.observe observer element)
+              ;; Sibling content can move a fixed-size action without animating
+              ;; the action or its ancestors. Observe their changing layout too.
+              (doseq [ancestor (take-while some? (iterate #(.-parentElement %) anchor))]
+                (.observe observer ancestor)))
             #(do (when @*frame (js/cancelAnimationFrame @*frame))
                  (when observer (.disconnect observer))))))
       [anchor label])
