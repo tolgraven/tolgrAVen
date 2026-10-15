@@ -22,8 +22,10 @@
       (let [start (js/performance.now)]
         (letfn [(frame! [samples]
                   (let [elapsed (- (js/performance.now) start)
+                        placeholder (.querySelector element ".blog-comment-collapsed-placeholder")
                         samples' (conj samples {:time elapsed
                                                 :heights (heights element)
+                                                :placeholder? (some? placeholder)
                                                 :outer (some-> (.querySelector element ".blog-comment-reply-outer")
                                                                .getBoundingClientRect .-height)})]
                     (if (> elapsed duration)
@@ -125,6 +127,63 @@
                   (let [samples (await! (sample! element 420))]
                     (is (every? #(>= (:outer %) (- initial 0.5)) samples)))
                   (is (identical? row (.querySelector element ".blog-comment-reply-row")))))
+              (finally (close!) (reset! restore/*context context)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest hydrated-placeholder-retires-its-document-clock-before-native-exit
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture!))
+                context @restore/*context
+                *ready? (r/atom false)
+                *expanded? (r/atom true)]
+            (try
+              ;; Exercise network SSR entrance policy, unlike the SPA handoff
+              ;; above. Keep its real completed CSS clocks before exit.
+              (restore/begin! {:hydrate? true})
+              (await! (support/render! root [<thread-handoff> *ready? *expanded?]))
+              (let [outer (.querySelector element ".blog-comment-reply-outer")
+                    placeholder (.closest (.querySelector outer ".blog-comment-collapsed-placeholder")
+                                          ".blog-comment-reply")
+                    entrance (vec (array-seq (.getAnimations placeholder)))]
+                (is (= "true" (.getAttribute placeholder "data-document-appear")))
+                (is (= #{"document-opacity" "document-zoom-y"}
+                       (set (map #(.-animationName %) entrance)))
+                    "The native styles supply both original SSR entrance clocks")
+                (await! (js/Promise.allSettled (into-array (map #(.-finished %) entrance))))
+                (is (every? #(= "finished" (.-playState %)) entrance))
+                (restore/hydrated!)
+                (await! (support/settle!))
+                (is (identical? placeholder
+                                (.closest (.querySelector outer ".blog-comment-collapsed-placeholder")
+                                          ".blog-comment-reply")))
+                (is (= "true" (.getAttribute placeholder "data-document-appear"))
+                    "Completing hydration retains the same settled SSR clock")
+                (let [initial (.-height (.getBoundingClientRect outer))]
+                  (is (pos? initial))
+                  (reset! *ready? true)
+                  (r/flush)
+                  (is (.contains outer placeholder) "Presence retains the actual placeholder on exit")
+                  (is (.contains (.-classList placeholder) "exiting"))
+                  (is (nil? (.getAttribute placeholder "data-document-appear"))
+                      "An exiting root cannot retain the fill-both SSR entrance")
+                  (is (some #(and (= "running" (.-playState %))
+                                  (contains? #{"opacity" "transform"} (.-transitionProperty %)))
+                            (array-seq (.getAnimations placeholder)))
+                      "Native exit transitions run instead of already-finished document clocks")
+                  (let [samples (await! (sample! element 420))]
+                    (is (every? #(>= (:outer %) (- initial 0.5)) samples)
+                        "Finished SSR clocks cannot remove the placeholder before the reply grows")
+                    (is (some #(and (:placeholder? %) (< (nth (:heights %) 0 0) 1)) samples)
+                        "The placeholder survives the reply's initial zero-height frames")
+                    (is (every? #(or (>= (nth (:heights %) 0 0) (- initial 0.5))
+                                    (:placeholder? %)) samples)
+                        "Only a reply that covers the collapsed footprint can outlive the placeholder")
+                    (is (some #(< initial (:outer %) (- (:outer (last samples)) 1)) samples)
+                        "The handoff includes continuous intermediate container heights"))
+                  (is (not (.contains outer placeholder)))
+                  (is (nil? (.querySelector outer ".blog-comment-collapsed-placeholder")))))
               (finally (close!) (reset! restore/*context context)))))
         (.catch #(is false (str %)))
         (.finally done))))
