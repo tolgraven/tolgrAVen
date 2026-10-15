@@ -356,25 +356,25 @@ $definitions: (
                                       hsl(280, 15%, 88%),
                                       var(--bg-1)),
 
-    red       : rgb(104, 56, 50),
+    "red"     : rgb(104, 56, 50),
     red-2     : rgb(87, 47, 46),
     red-3     : rgb(117, 67, 66),
-    green     : rgb(80, 92, 60),
+    "green"   : rgb(80, 92, 60),
     green-2   : rgb(59, 70, 39) ,
     green-3   : rgb(92, 109, 74),
-    yellow    : rgb(109, 94, 51),
+    "yellow"  : rgb(109, 94, 51),
     yellow-2  : rgb(104, 87, 54),
     yellow-3  : rgb(108, 100, 64),
-    blue      : rgb(49, 63, 85),
+    "blue"    : rgb(49, 63, 85),
     blue-2    : rgb(54, 70, 89),
     blue-3    : rgb(73, 86, 102),
-    purple    : rgb(94, 65, 78),
+    "purple"  : rgb(94, 65, 78),
     purple-2  : rgb(87, 56, 68),
     purple-3  : rgb(108, 81, 91),
-    aqua      : rgb(62, 92, 82),
+    "aqua"    : rgb(62, 92, 82),
     aqua-2    : rgb(67, 90, 76),
     aqua-3    : rgb(81, 104, 90),
-    orange    : rgb(102, 73, 57),
+    "orange"  : rgb(102, 73, 57),
     orange-2  : rgb(109, 80, 76),
     orange-3  : rgb(108, 82, 59),
     
@@ -389,7 +389,7 @@ $definitions: (
 // TODO also change rest of defs to SCSS and turn into regular CSS vars like this?
 @mixin theme-vars($map, $prefix: "") {
   @each $k, $v in $map {
-    $name: if($prefix == "", $k, "#{$prefix}-#{$k}");
+    $name: if(sass($prefix == ""): $k; else: "#{$prefix}-#{$k}");
     @if meta.type-of($v) == "map" {
       @include theme-vars($v, $name);
     } @else {
