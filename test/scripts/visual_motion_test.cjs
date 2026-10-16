@@ -308,6 +308,203 @@ test('a parked native start and later pointer resumes do not accumulate receipts
   } finally { f.observer.stop(); }
 });
 
+
+function exactClock(f, target, kind = 'transition', state = 'running') {
+  const animation = f.clock(target, kind, null, state);
+  animation.effect.composite = 'replace';
+  animation.effect.getTiming = () => ({duration: 150, delay: 0, endDelay: 0,
+    direction: 'normal', easing: 'linear', fill: 'backwards', iterationStart: 0, iterations: 1});
+  return animation;
+}
+function exactStart(f, target, animation, type = 'transitionrun', extra = {}) {
+  f.listeners.get(type)({type, target, animation, propertyName: 'opacity', animationName: 'opacity',
+    pseudoElement: '', ...extra});
+}
+
+test('exact native starts retain canceled definitions without borrowing the live replacement', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'section'};
+  const canceled = exactClock(f, target, 'transition', 'idle'), replacement = exactClock(f, target);
+  canceled.effect.getKeyframes = () => [{offset: 0, opacity: '0'}, {offset: 1, opacity: '0.4'}];
+  try {
+    f.active([replacement]);
+    exactStart(f, target, canceled);
+    let state = f.observer.snapshot();
+    assert.equal(state.gaps.length, 0);
+    assert.equal(state.triggered.length, 2);
+    const canceledEntry = state.triggered.find(value => value.activation === 'canceled-before-observation');
+    assert.equal(canceledEntry.keyframes[1].opacity, '0.4');
+    assert.equal(canceled.playState, 'idle', 'Recording never mutates native playback');
+    exactStart(f, target, canceled, 'transitioncancel');
+    exactStart(f, target, replacement);
+    exactStart(f, target, replacement, 'transitionend');
+    assert.equal(f.observer.snapshot().gaps.length, 0, 'Exact old cancellation preserves the replacement receipt');
+    exactStart(f, target, replacement);
+    assert.match(f.observer.snapshot().gaps[0], /already consumed/);
+    f.active([]); f.event(target);
+    assert.equal(f.observer.snapshot().gaps.length, 2, 'A later missing legacy start remains a hard gap');
+    assert.equal(/"animation":|startTime|currentTime|playState/.test(JSON.stringify(state.triggered)), false);
+  } finally { f.observer.stop(); }
+  assert.equal(f.listeners.size, 0); assert.equal(f.frames.size, 0); assert.equal(f.disconnected, true);
+});
+
+test('exact native running and finished starts can be absent from the live animation list', () => {
+  for (const kind of ['animation', 'transition']) for (const state of ['running', 'finished']) {
+    const f = startFixture(), target = {nodeType: 1, localName: 'article'};
+    try {
+      const animation = exactClock(f, target, kind, state);
+      exactStart(f, target, animation, kind === 'animation' ? 'animationstart' : 'transitionrun');
+      assert.equal(f.observer.snapshot().triggered.length, 1);
+      assert.equal(f.observer.snapshot().gaps.length, 0);
+      exactStart(f, target, animation, kind === 'animation' ? 'animationstart' : 'transitionrun');
+      assert.match(f.observer.snapshot().gaps[0], /already consumed/);
+    } finally { f.observer.stop(); }
+  }
+});
+
+test('exact parked starts preserve actual resumes and report unobserved activation before completion', () => {
+  for (const live of [false, true]) {
+    const f = startFixture(), target = {nodeType: 1, localName: 'figure'};
+    const animation = exactClock(f, target, 'animation', 'paused');
+    try {
+      if (live) f.active([animation]);
+      exactStart(f, target, animation, 'animationstart');
+      assert.equal(f.observer.snapshot().triggered.length, 0);
+      animation.playState = 'running'; f.active([animation]); f.listeners.get('pointerover')();
+      animation.playState = 'paused'; f.listeners.get('pointerout')();
+      animation.playState = 'running'; f.listeners.get('focusin')();
+      assert.equal(f.observer.snapshot().triggered.length, 2);
+      animation.playState = 'finished'; f.active([]);
+      exactStart(f, target, animation, 'animationend');
+      assert.equal(f.observer.snapshot().gaps.length, 0);
+    } finally { f.observer.stop(); }
+  }
+  for (const ending of ['animationend', 'animationcancel']) {
+    const f = startFixture(), target = {nodeType: 1, localName: 'figure'};
+    const animation = exactClock(f, target, 'animation', 'paused');
+    try {
+      exactStart(f, target, animation, 'animationstart');
+      animation.playState = ending === 'animationend' ? 'finished' : 'idle';
+      exactStart(f, target, animation, ending);
+      assert.equal(f.observer.snapshot().triggered.length, 0, 'An unseen resume is not fabricated');
+      assert.match(f.observer.snapshot().gaps[0], /unobserved activation/);
+    } finally { f.observer.stop(); }
+  }
+  const f = startFixture(), target = {nodeType: 1, localName: 'figure'};
+  try {
+    exactStart(f, target, exactClock(f, target, 'animation', 'idle'), 'animationstart');
+    assert.equal(f.observer.snapshot().triggered.length, 0);
+    assert.match(f.observer.snapshot().gaps[0], /unobserved activation/);
+  } finally { f.observer.stop(); }
+});
+
+test('a previous activation cannot conceal a later unobserved parked resume', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'figure'};
+  const animation = exactClock(f, target, 'animation');
+  try {
+    f.active([animation]); exactStart(f, target, animation, 'animationstart');
+    assert.equal(f.observer.snapshot().triggered.length, 1);
+    animation.playState = 'paused'; f.listeners.get('pointerout')();
+    // A later resume and finish happen without a sampled running state. The
+    // finished fill-none object is already absent when its event is delivered.
+    f.active([]); animation.playState = 'finished';
+    exactStart(f, target, animation, 'animationend');
+    assert.equal(f.observer.snapshot().triggered.length, 1, 'The missing resume is not invented');
+    assert.match(f.observer.snapshot().gaps[0], /unobserved activation/);
+  } finally { f.observer.stop(); }
+});
+
+test('native definitions preserve unsupported optional fields and valid no-op keyframes', () => {
+  for (const frames of [[], [{offset: 0, computedOffset: 0, easing: 'linear', composite: 'auto'}]]) {
+    const f = startFixture(), target = {nodeType: 1, localName: 'article'};
+    const animation = exactClock(f, target, 'animation');
+    animation.effect.getKeyframes = () => frames;
+    try {
+      assert.equal(animation.effect.iterationComposite, undefined, 'Chrome does not expose this optional API');
+      exactStart(f, target, animation, 'animationstart');
+      let snapshot = JSON.parse(JSON.stringify(f.observer.snapshot()));
+      assert.equal(snapshot.gaps.length, 0);
+      assert.deepEqual(snapshot.triggered[0].keyframes, frames, 'An actual empty/no-op definition stays exact');
+      assert.equal('iterationComposite' in snapshot.triggered[0], false, 'Unsupported data is not fabricated');
+    } finally { f.observer.stop(); }
+  }
+  const f = startFixture(), target = {nodeType: 1, localName: 'article'};
+  const animation = exactClock(f, target, 'animation');
+  animation.effect.iterationComposite = 'accumulate';
+  try {
+    exactStart(f, target, animation, 'animationstart');
+    assert.equal(f.observer.snapshot().triggered[0].iterationComposite, 'accumulate', 'Supported optional values remain captured');
+  } finally { f.observer.stop(); }
+});
+
+test('an exact native event rejects mismatches and incomplete effects instead of borrowing a replacement', () => {
+  const changes = [
+    a => ({}),
+    a => { a.animationName = 'opacity'; return a; },
+    a => { a.transitionProperty = 'height'; return a; },
+    a => { a.effect.target = {nodeType: 1, localName: 'section'}; return a; },
+    a => { a.effect.pseudoElement = '::before'; return a; },
+    a => { a.effect = null; return a; },
+    a => { Object.defineProperty(a, 'effect', {get() { throw Error('effect unavailable'); }}); return a; },
+    a => { a.effect.getTiming = () => ({}); return a; },
+    a => { a.effect.getTiming = () => { throw Error('timing unavailable'); }; return a; },
+    a => { delete a.effect.composite; return a; },
+    a => { a.playbackRate = NaN; return a; },
+    a => { a.effect.getKeyframes = () => null; return a; },
+    a => { a.effect.getKeyframes = () => ({}); return a; },
+    a => { a.effect.getKeyframes = () => [null]; return a; },
+    a => { a.effect.getKeyframes = () => [[]]; return a; },
+    a => { a.effect.getKeyframes = () => { throw Error('keyframes unavailable'); }; return a; }
+  ];
+  for (const [index, change] of changes.entries()) {
+    const f = startFixture(), target = {nodeType: 1, localName: 'section'};
+    const valid = exactClock(f, target);
+    try {
+      f.active([valid]);
+      const invalid = change(exactClock(f, target, index === 1 ? 'animation' : 'transition', 'idle'));
+      exactStart(f, target, invalid);
+      assert.equal(f.observer.snapshot().gaps.length, 1, 'Invalid case ' + index + ' is explicit');
+      exactStart(f, target, valid);
+      assert.equal(f.observer.snapshot().gaps.length, 1, 'Invalid case ' + index + ' cannot consume the valid receipt');
+    } finally { f.observer.stop(); }
+  }
+});
+
+test('exact cancellation isolates native pseudo clocks and accessor failures retain a hard gap', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'section'};
+  const first = exactClock(f, target), pseudo = exactClock(f, target), other = exactClock(f, {nodeType: 1, localName: 'aside'});
+  pseudo.effect.pseudoElement = '::before';
+  try {
+    f.active([first]); exactStart(f, target, first);
+    f.active([pseudo, other]); f.observer.sample();
+    first.playState = 'idle'; exactStart(f, target, first, 'transitioncancel');
+    exactStart(f, target, pseudo, 'transitionrun', {pseudoElement: '::before'});
+    exactStart(f, other.effect.target, other);
+    assert.equal(f.observer.snapshot().gaps.length, 0);
+    const event = {type: 'transitionrun', target, propertyName: 'opacity',
+      get animation() { throw Error('accessor unavailable'); }};
+    f.listeners.get('transitionrun')(event);
+    assert.match(f.observer.snapshot().gaps[0], /Cannot read native CSS event animation/);
+  } finally { f.observer.stop(); }
+});
+
+test('exact receipts survive effect removal, retire by identity, and preserve null legacy starts', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'section'};
+  const old = exactClock(f, target), next = exactClock(f, target);
+  try {
+    f.active([old]); f.observer.sample(); f.active([next]); f.observer.sample();
+    old.effect = null;
+    exactStart(f, target, old);
+    exactStart(f, target, old, 'transitioncancel');
+    exactStart(f, target, next);
+    assert.equal(f.observer.snapshot().gaps.length, 0);
+    f.active([]); f.event(target);
+    assert.equal(f.observer.snapshot().gaps.length, 1);
+    const fallback = exactClock(f, target); f.active([fallback]);
+    exactStart(f, target, null);
+    assert.equal(f.observer.snapshot().gaps.length, 1, 'Null takes the unchanged legacy attribution path');
+  } finally { f.observer.stop(); }
+});
+
 test('dormant hover, conditional motion and keyframes remain comparable before activation', () => {
   const {createMotionObserver} = fixture();
   const style = values => Object.assign(Object.keys(values), {

@@ -231,7 +231,10 @@ readiness call, including every scroll tile, reevaluates their visibility and
 acquisition. This prevents an offscreen footer from blocking a scroll that would
 otherwise acquire its lazy images. A fading caret otherwise never has stable
 opacity. Native error fallbacks, failed images, unsettled layout and an
-unexpected viewport/DPR fail capture. Set only this fixture origin's Chrome zoom
+unexpected viewport/DPR fail capture. Settlement failures report elapsed time,
+stable samples, document visibility, remaining finite clocks/font upgrades and
+the last changed geometry field; the deadline and native checks stay unchanged.
+Set only this fixture origin's Chrome zoom
 to 100%; do not hide environment changes behind a tolerance.
 
 `--case cv-regular-open-narrow` limits diagnosis to one case. The full comparison
@@ -349,8 +352,18 @@ An observer is installed before native fixture initialization and marks initial,
 action and raster-scroll phases before those actions run. It records every
 activation of native `CSSAnimation` and `CSSTransition` objects: target/pseudo,
 name or property, full `KeyframeEffect.getTiming()` and `getKeyframes()`, composition
-and playback rate. Paused/idle objects do not count until they run; native pointer
+and playback rate. Parked objects do not count until they run; native pointer
 and focus/keyboard events wake observation so resuming the same object is captured.
+When a native start exposes `event.animation`, attribution uses that exact object,
+including a canceled transition absent from `getAnimations()`. Its retained complete
+definition is recorded with `activation: canceled-before-observation`; this records
+the real transition start without claiming its idle state was running or finished.
+An unknown canceled CSS animation, or completion after an unobserved parked resume,
+remains an explicit activation gap. Invalid exact references never borrow a live
+replacement. Null/absent references retain the strict legacy receipt path.
+Empty native keyframe arrays and no-op frames remain exact definitions. Optional
+API fields such as `iterationComposite` are retained when available, never required.
+An earlier activation cannot excuse a later unobserved resume before completion.
 Delayed running objects are recorded while pending; finite and zero-duration
 objects remain in the record after finishing. Start/current times, frame clocks
 and elapsed progress are deliberately excluded. Infinite clocks are measured

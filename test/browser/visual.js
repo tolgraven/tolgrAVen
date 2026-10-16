@@ -47,11 +47,41 @@
   function createMotionObserver(win, initialPhase = 'initial') {
     const doc = win.document, states = new WeakMap(), triggered = [], gaps = [];
     const pendingStarts = new Map(), started = new WeakSet(), openStarts = [];
+    const definitions = new WeakMap(), activated = new WeakSet();
     const CSSAnimation = win.CSSAnimation, CSSTransition = win.CSSTransition;
     const requestFrame = win.requestAnimationFrame.bind(win), cancelFrame = win.cancelAnimationFrame.bind(win);
     let phase = initialPhase, stopped = false, request = null, nextOccurrence = 0;
     const pseudoElements = new Set(['::before', '::after', '::marker', '::backdrop',
       '::first-letter', '::first-line', '::placeholder', '::file-selector-button']);
+    function definition(animation, kind) {
+      const effect = animation.effect;
+      if (!effect) throw new Error('CSS motion has no native effect');
+      const target = effect.target?.element || effect.target;
+      // Native form-control type attributes are not pseudo selectors.
+      const pseudo = effect.pseudoElement || (effect.target?.element && effect.target.type) || null;
+      const name = kind === 'animation' ? animation.animationName : animation.transitionProperty;
+      return {animation, target, pseudo, kind, name, value: canonical({
+        phase, target: elementPath(target), pseudo, kind, name,
+        timing: effect.getTiming(), keyframes: effect.getKeyframes(),
+        composite: effect.composite, iterationComposite: effect.iterationComposite,
+        playbackRate: animation.playbackRate})};
+    }
+    function complete(entry) {
+      const value = entry.value;
+      return ['delay', 'direction', 'duration', 'easing', 'endDelay', 'fill',
+        'iterationStart', 'iterations'].every(key => value.timing?.[key] !== undefined) &&
+        Array.isArray(value.keyframes) &&
+        value.keyframes.every(frame => frame && typeof frame === 'object' && !Array.isArray(frame)) &&
+        value.composite !== undefined &&
+        Number.isFinite(value.playbackRate);
+    }
+    function capture(animation, entry, canceled = false) {
+      if (triggered.length >= 4096) throw new Error('CSS motion observation exceeds 4096 instances');
+      if (entry.pseudo) pseudoElements.add(entry.pseudo);
+      triggered.push(canceled ? {...entry.value, activation: 'canceled-before-observation'} : entry.value);
+      definitions.set(animation, entry);
+      activated.add(animation);
+    }
     function sample() {
       if (stopped) return;
       for (const animation of doc.getAnimations()) {
@@ -60,34 +90,67 @@
         if (!kind) continue;
         const previous = states.get(animation), state = animation.playState;
         states.set(animation, state);
-        // Creation can leave native CSS clocks paused until hover/focus. Capture
-        // their first activation and every later resume, not their parked state.
-        // Finished clocks may have run between samples, including zero duration.
+        // Parked creation is not activation. Preserve every actual resume, and
+        // finished clocks that ran between samples, including zero duration.
         if (!['running', 'finished'].includes(state) || state === previous ||
           (state === 'finished' && previous === 'running')) continue;
         try {
-          const effect = animation.effect;
-          const target = effect.target?.element || effect.target;
-          // Only CSSPseudoElement wrappers use type as a pseudo selector;
-          // ordinary controls expose unrelated button/input type attributes.
-          const pseudo = effect.pseudoElement || (effect.target?.element && effect.target.type) || null;
-          if (pseudo) pseudoElements.add(pseudo);
-          if (triggered.length >= 4096) throw new Error('CSS motion observation exceeds 4096 instances');
-          const name = kind === 'animation' ? animation.animationName : animation.transitionProperty;
-          triggered.push(canonical({phase, target: elementPath(target), pseudo, kind, name,
-            timing: effect.getTiming(), keyframes: effect.getKeyframes(),
-            composite: effect.composite, iterationComposite: effect.iterationComposite,
-            playbackRate: animation.playbackRate}));
-          // A native event can be queued until after this object disappears.
-          // Each captured start may acknowledge one event, never later clocks
-          // at the same DOM path. Parked starts already observed do not leave
-          // fresh receipts every time pointer/focus resumes that same object.
-          // Unclaimed resumes retain their original receipt order too.
+          const entry = definition(animation, kind);
+          capture(animation, entry);
           if (previous === 'finished') started.delete(animation);
           if (!started.has(animation) && !pendingStarts.has(animation))
-            pendingStarts.set(animation, {target, pseudo, kind, name, order: ++nextOccurrence});
+            pendingStarts.set(animation, {...entry, order: ++nextOccurrence});
         } catch (error) { gaps.push(String(error)); }
       }
+    }
+    function exactEvent(event, animation, kind, name, pseudo, starts) {
+      const gap = message => gaps.push('Native CSS event has ' + message + ': ' + elementPath(event.target) + ' ' + name);
+      try {
+        if (!(kind === 'animation' ? animation instanceof CSSAnimation : animation instanceof CSSTransition))
+          throw new Error('a mismatched animation kind');
+        let entry;
+        try { entry = definition(animation, kind); }
+        catch (error) {
+          // A complete definition already captured from this exact object can
+          // survive effect removal. It cannot authorize a different object.
+          let effect;
+          try { effect = animation.effect; } catch (_) { /* Retained receipt below. */ }
+          if (effect) throw error;
+          entry = definitions.get(animation);
+          if (!entry) throw error;
+        }
+        if (entry.target !== event.target || entry.kind !== kind || entry.name !== name || entry.pseudo !== pseudo)
+          throw new Error('a mismatched native target/name/pseudo');
+        if (!complete(entry)) throw new Error('an incomplete native definition');
+        if (starts) {
+          if (started.has(animation) && !pendingStarts.has(animation))
+            throw new Error('an already consumed native start');
+          const state = animation.playState, previous = states.get(animation);
+          if (!activated.has(animation) && state === 'idle') {
+            // transitionrun identifies a real CSS transition even if it was
+            // canceled while pending. CSS animationstart can also occur while
+            // initially paused, so an unknown canceled animation stays a gap.
+            if (kind !== 'transition' || previous === 'paused')
+              throw new Error('an unobserved activation after cancellation');
+            capture(animation, entry, true);
+          } else if (!activated.has(animation) && ['running', 'finished'].includes(state)) {
+            if (previous === 'paused') throw new Error('an unobserved activation after a parked start');
+            capture(animation, entry);
+          }
+          definitions.set(animation, entry);
+          states.set(animation, state);
+          openStarts.push({...entry, order: pendingStarts.get(animation)?.order || ++nextOccurrence});
+          pendingStarts.delete(animation);
+          started.add(animation);
+        } else {
+          if (!activated.has(animation) && event.type.endsWith('end') ||
+            states.get(animation) === 'paused' && (event.type.endsWith('end') || animation.playState === 'idle'))
+            gap('an unobserved activation before completion');
+          pendingStarts.delete(animation);
+          const index = openStarts.findIndex(entry => entry.animation === animation);
+          if (index !== -1) openStarts.splice(index, 1);
+        }
+      } catch (error) { gap(String(error)); }
     }
     function tick() {
       request = null;
@@ -104,6 +167,15 @@
         const pseudo = event.pseudoElement || null;
         const matches = entry => entry.target === event.target && entry.kind === kind &&
           entry.name === name && entry.pseudo === pseudo;
+        const starts = ['animationstart', 'transitionrun'].includes(event.type);
+        let exact, failed = false;
+        try { exact = event.animation; }
+        catch (error) { gaps.push('Cannot read native CSS event animation: ' + String(error)); failed = true; }
+        if (failed || exact != null) {
+          if (!failed) exactEvent(event, exact, kind, name, pseudo, starts);
+          if (!stopped && request === null) request = requestFrame(tick);
+          return;
+        }
         const current = doc.getAnimations();
         const matching = current.filter(animation => {
           const effect = animation.effect;
@@ -121,7 +193,7 @@
           const queued = available ? null : [...pendingStarts].find(([, entry]) => matches(entry));
           const animation = available || queued?.[0];
           openStarts.push(pendingStarts.get(animation) ||
-            {target: event.target, kind, name, pseudo, order: ++nextOccurrence});
+            {animation, target: event.target, kind, name, pseudo, order: ++nextOccurrence});
           if (animation) {
             pendingStarts.delete(animation);
             started.add(animation);
@@ -313,7 +385,7 @@
     });
   }
   async function ready() {
-    const deadline = performance.now() + 15000;
+    const startedAt = performance.now(), deadline = startedAt + 15000;
     while (!document.querySelector('#app main') && performance.now() < deadline) await frame();
     if (!document.querySelector('#app main')) throw new Error('Native fixture did not mount');
     const minimum = Number(new URLSearchParams(location.search).get('settle') || 0);
@@ -332,7 +404,7 @@
     }))), 'Background images did not decode');
     // Finish native finite entrances first, then align infinite clocks before
     // comparing computed appearance: a fading caret never has stable opacity.
-    let stable = 0, previous = '';
+    let stable = 0, previous = '', penultimate = '';
     while (performance.now() < deadline) {
       motion?.sample();
       await Promise.all([...document.images].filter(image => imageRequired(image)).map(imageReady));
@@ -351,10 +423,39 @@
       if (document.querySelector('[data-font-phase="failed"]')) throw new Error('Native fixture font upgrade failed');
       stable = current === previous && !finite.length && !pendingFont ? stable + 1 : 0;
       if (stable >= 4) break;
-      previous = current;
+      penultimate = previous; previous = current;
       await pause(100);
     }
-    if (stable < 4) throw new Error('Layout or native motion did not settle');
+    if (stable < 4) {
+      const before = penultimate ? JSON.parse(penultimate) : [];
+      const after = previous ? JSON.parse(previous) : [];
+      let changed = before.length === after.length ? null :
+        {field: 'element-count', before: before.length, after: after.length};
+      for (let index = 0; !changed && index < after.length; index++) {
+        for (const field of Object.keys(after[index])) {
+          if (JSON.stringify(before[index]?.[field]) !== JSON.stringify(after[index][field])) {
+            changed = {selector: after[index].selector, index, field,
+              before: before[index]?.[field], after: after[index][field]};
+            break;
+          }
+        }
+      }
+      const finite = document.getAnimations().filter(animation => animation.playState === 'running' &&
+        animation.effect.getTiming().iterations !== Infinity);
+      const pending = [...document.querySelectorAll('[data-font-phase]')].filter(element =>
+        ['initial', 'fallback', 'prepared', 'crossfade'].includes(element.dataset.fontPhase));
+      throw new Error('Layout or native motion did not settle: ' + JSON.stringify({
+        elapsedMs: performance.now() - startedAt, stableSamples: stable, sampled: !!previous,
+        visibility: document.visibilityState,
+        finiteCount: finite.length,
+        finite: finite.slice(0, 8).map(animation => ({name: animation.animationName || animation.transitionProperty,
+          target: elementPath(animation.effect.target?.element || animation.effect.target),
+          timing: canonical(animation.effect.getTiming())})),
+        pendingFontCount: pending.length,
+        pendingFonts: pending.slice(0, 8).map(element => ({selector: elementPath(element), phase: element.dataset.fontPhase})),
+        changed
+      }));
+    }
     await frame(); await frame();
     if (document.querySelector('[role="alert"], .component-error')) throw new Error('Native fixture contains an error fallback');
     if (errors.length) throw new Error(errors.join('\n'));
