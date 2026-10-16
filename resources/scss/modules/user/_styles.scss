@@ -70,6 +70,8 @@
 
 
 .user-back-btn {
+  // Keep the native corner control above the following avatar wrapper.
+  z-index: 1;
   opacity: 0;
   transition: opacity 0.5s;
   &.showing {

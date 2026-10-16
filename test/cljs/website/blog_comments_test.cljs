@@ -235,13 +235,18 @@
                            :text "Reply body"
                            :ts 1})
                 replies (comment "reply" "root")
-                grandchild (assoc (comment "grandchild" "reply") :reply-count 0)]
+                grandchild (assoc (comment "grandchild" "reply") :reply-count 0)
+                ;; Presence retains only the hidden collapsed placeholder while
+                ;; it exits. A real reply must still reach its appeared state.
+                unentered-selector (str ".appear-wrapper:not(.appeared)"
+                                        ":not(.exiting[aria-hidden='true'][inert]:has(> .blog-comment-collapsed-placeholder))")]
             (.appendChild (.-body js/document) element)
             (try
               (restore/begin! {:hydrate? false, :back? false})
               (r/dispatch-sync [:set [:common/route] (reitit/match-by-path routes/router "/blog/post/42")])
               (r/dispatch-sync [:blog/expand-comment-thread [42 "root"] true])
               (await! (load-module! :markdown))
+              (await! (styles/acquire! :blog))
               (doseq [[parent rows] [["root" [replies]] ["reply" [grandchild]] ["grandchild" []]]]
                 (r/dispatch-sync [:store/scoped (scoped/query-key (comments/thread-query 42 parent))
                                   {:docs (mapv #(hash-map :id (:id %) :data %) rows)}]))
@@ -309,7 +314,7 @@
                   (is (nil? (.querySelector actions ".blog-comment-edit-btn")))
                   (reset! *active-user nil)
                   (await! (support/settle!)))
-                (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared)")))
+                (is (zero? (.-length (.querySelectorAll element unentered-selector)))
                     "Initial child transforms cannot trap visible replies")
                 ;; Each pair finishes open, including reversals before the
                 ;; delayed child-unmount and before its entrance completes.
@@ -332,7 +337,7 @@
                 (await! (tick! 300))
                 (is (= 3 (.-length (.querySelectorAll element ".blog-comment-around"))))
                 (is (= 3 (count (re-seq #"Reply body" (.-textContent element)))))
-                (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared)")))))
+                (is (zero? (.-length (.querySelectorAll element unentered-selector)))))
               (finally
                 (support/unmount! root)
                 (.remove element)

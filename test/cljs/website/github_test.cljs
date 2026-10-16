@@ -12,6 +12,7 @@
             [website.modules.github.subs]
             [website.components.activity :as activity]
             [website.component.data :as data]
+            [website.loader.styles :as styles]
             [website.events]
             [website.subs]
             [website.react :as r]
@@ -396,18 +397,39 @@
       (-> (go-promise
             (let [root (await! (support/create-root! container))]
               (try
-                (await! (support/render! root [activity/<calendar>
-                                               [{:date "2026-10-12", :count 42, :level 4}]
-                                               [views/<day-details> "detail-failure-test"]]))
-                (is (empty? @*requests) "No day requests before user intent")
-                (.focus (.querySelector container "[data-date]") #js {:preventScroll true})
-                (await! (support/wait-for! #(some-> (.querySelector js/document ".activity-calendar__popup")
-                                                             .-textContent
-                                                             (string/includes? "Breakdown temporarily unavailable."))))
-                (let [popup (.querySelector js/document ".activity-calendar__popup")]
-                  (is (string/includes? (.-textContent popup) "42 contributions"))
-                  (is (= 1 (count @*requests)))
-                  (is (zero? (.-length (.querySelectorAll popup "button, details, summary")))))
+                ;; The portal needs its own native stylesheet; the preceding
+                ;; case releases its local link on unmount.
+                (await! (styles/acquire! :github))
+                ;; Keep the focus-owned anchor independent of report reflow.
+                (await! (support/render! root
+                          [:div {:style {:position "fixed", :top "0", :width "18rem"}}
+                           [activity/<calendar>
+                            [{:date "2026-10-12", :count 42, :level 4}]
+                            [views/<day-details> "detail-failure-test"]]]))
+                (let [requests-before (count @*requests)]
+                  ;; The display reporter can still be smoothly scrolling from
+                  ;; the preceding case. End that test-owned scroll and drain
+                  ;; its native events before opening a scroll-dismissed tooltip.
+                  (.scrollTo js/window #js {:top (.-scrollY js/window), :behavior "instant"})
+                  (await! (support/settle!))
+                  (.focus (.querySelector container "[data-date]") #js {:preventScroll true})
+                  (await! (support/wait-for! #(.querySelector js/document ".activity-calendar__popup")))
+                  (let [position (.-position (js/getComputedStyle
+                                              (.querySelector js/document ".activity-calendar__popup")))]
+                    (await! (support/wait-for! #(some-> (.querySelector js/document ".activity-calendar__popup")
+                                                               .-textContent
+                                                               (string/includes? "Breakdown temporarily unavailable."))))
+                    ;; Capture together before assertion output reflows the
+                    ;; report and correctly dismisses the native popup again.
+                    (let [popup (.querySelector js/document ".activity-calendar__popup")
+                          text (.-textContent popup)
+                          requests-after (count @*requests)
+                          control-count (.-length (.querySelectorAll popup "button, details, summary"))]
+                      (is (zero? requests-before) "No day requests before user intent")
+                      (is (= "fixed" position) "The native tooltip portal stays out of document flow")
+                      (is (string/includes? text "42 contributions"))
+                      (is (= 1 requests-after))
+                      (is (zero? control-count)))))
                 (finally (support/unmount! root) (.remove container)))))
           (.catch #(is false (str %)))
           (.finally (fn []
