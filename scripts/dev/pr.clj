@@ -82,7 +82,10 @@
          details' (merge-details (session-details (:details old))
                                  (session-details (:details supplied)) details)
          entries (vec (for [id ids :let [detail (get details' id)] :when detail]
-                        (assoc (update detail :titles #(vec (remove nil? %))) :id id)))
+                        (cond-> {:id id
+                                 :titles (vec (remove nil? (:titles detail)))
+                                 :worktrees (vec (:worktrees detail))}
+                          (:title detail) (assoc :title (:title detail)))))
          metadata (cond-> {:owner owner, :contributors contributors'}
                     (seq entries) (assoc :details entries))
          entry (fn [role id]
