@@ -118,6 +118,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   SPA Back and external Back, looking for flashes, jumps and replayed animations.
   SSR query variants retain separate HTML/state, reuse only matching fresh public
   data, and never extend freshness without a successful provider read.
+- Infinite-clock alignment acknowledges only its own exact delayed backwards seek.
+  Native animationend from that seek retains captured timing/keyframes; unexplained
+  ends, changed definitions, another object and later missed resumes still fail.
 - Visual captures return one complete geometry fixture per MCP request. Pin suite
   bytes/hash and Git head before browser work; changed suite bytes invalidate
   completion metadata while preserving partial evidence and owned-page cleanup.

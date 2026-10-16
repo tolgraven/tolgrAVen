@@ -47,7 +47,7 @@
   function createMotionObserver(win, initialPhase = 'initial') {
     const doc = win.document, states = new WeakMap(), triggered = [], gaps = [];
     const pendingStarts = new Map(), started = new WeakSet(), openStarts = [];
-    const definitions = new WeakMap(), activated = new WeakSet();
+    const definitions = new WeakMap(), activated = new WeakSet(), alignedEnds = new Map();
     const CSSAnimation = win.CSSAnimation, CSSTransition = win.CSSTransition;
     const requestFrame = win.requestAnimationFrame.bind(win), cancelFrame = win.cancelAnimationFrame.bind(win);
     let phase = initialPhase, stopped = false, request = null, nextOccurrence = 0;
@@ -90,6 +90,7 @@
         if (!kind) continue;
         const previous = states.get(animation), state = animation.playState;
         states.set(animation, state);
+        if (state === 'running') alignedEnds.delete(animation);
         // Parked creation is not activation. Preserve every actual resume, and
         // finished clocks that ran between samples, including zero duration.
         if (!['running', 'finished'].includes(state) || state === previous ||
@@ -143,7 +144,13 @@
           pendingStarts.delete(animation);
           started.add(animation);
         } else {
-          if (!activated.has(animation) && event.type.endsWith('end') ||
+          const aligned = alignedEnds.get(animation);
+          const alignedEnd = aligned && event.type === 'animationend' && event.elapsedTime === 0 &&
+            animation.playState === 'paused' && animation.currentTime === 0 &&
+            animation.effect === aligned.effect && JSON.stringify(entry.value.timing) === aligned.timing;
+          alignedEnds.delete(animation);
+          if (alignedEnd) started.delete(animation);
+          else if (!activated.has(animation) && event.type.endsWith('end') ||
             states.get(animation) === 'paused' && (event.type.endsWith('end') || animation.playState === 'idle'))
             gap('an unobserved activation before completion');
           pendingStarts.delete(animation);
@@ -151,6 +158,26 @@
           if (index !== -1) openStarts.splice(index, 1);
         }
       } catch (error) { gap(String(error)); }
+    }
+    function alignInfinite(animation) {
+      if (stopped) return;
+      sample();
+      const timing = animation.effect.getTiming();
+      if (animation.playState !== 'running' || timing.iterations !== Infinity) return;
+      // Seeking an active, delayed CSS animation into its before phase emits a
+      // native animationend, even with infinite iterations. Acknowledge only
+      // this observer-owned backwards seek; actual unobserved resumes still fail.
+      if (animation instanceof CSSAnimation && activated.has(animation) &&
+          timing.delay > 0 && Number.isFinite(animation.currentTime) && animation.currentTime >= timing.delay) {
+        alignedEnds.set(animation, {effect: animation.effect, timing: JSON.stringify(canonical(timing))});
+      }
+      try {
+        animation.pause(); animation.currentTime = 0;
+        states.set(animation, animation.playState);
+      } catch (error) {
+        alignedEnds.delete(animation);
+        throw error;
+      }
     }
     function tick() {
       request = null;
@@ -222,13 +249,13 @@
     mutations.observe(doc, {subtree: true, childList: true, attributes: true});
     wake();
     return {
-      sample,
+      sample, alignInfinite,
       phase(value) { sample(); phase = value; },
       stop() {
         sample(); stopped = true;
         if (request !== null) cancelFrame(request);
         mutations.disconnect();
-        pendingStarts.clear(); openStarts.length = 0;
+        pendingStarts.clear(); openStarts.length = 0; alignedEnds.clear();
         events.forEach(name => doc.removeEventListener(name, wake, true));
       },
       snapshot() {
@@ -414,7 +441,7 @@
       if (!finite.length) {
         for (const animation of animations) {
           if (animation.effect.getTiming().iterations === Infinity && animation.playState === 'running') {
-            animation.pause(); animation.currentTime = 0;
+            motion.alignInfinite(animation);
           }
         }
       }

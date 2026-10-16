@@ -413,6 +413,163 @@ test('a previous activation cannot conceal a later unobserved parked resume', ()
   } finally { f.observer.stop(); }
 });
 
+function delayedBlink(f, target, options = {}) {
+  const animation = exactClock(f, target, 'animation');
+  const timing = {...animation.effect.getTiming(), duration: 2000, delay: 250,
+    iterations: Infinity, fill: 'none', ...options};
+  let pauses = 0;
+  animation.animationName = 'blinking';
+  animation.currentTime = 251.703;
+  animation.startTime = 100;
+  animation.pause = () => { pauses++; animation.playState = 'paused'; animation.startTime = null; };
+  animation.effect.getTiming = () => ({...timing});
+  return {animation, timing, pauses: () => pauses};
+}
+function blinkEvent(f, target, animation, type = 'animationend', extra = {}) {
+  exactStart(f, target, animation, type, {animationName: 'blinking', elapsedTime: 0, ...extra});
+}
+
+test('owned delayed infinite alignment acknowledges only its exact one-shot native seek end', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'label'};
+  const clock = delayedBlink(f, target), {animation} = clock;
+  try {
+    f.active([animation]); blinkEvent(f, target, animation, 'animationstart');
+    f.observer.alignInfinite(animation);
+    assert.equal(clock.pauses(), 1);
+    assert.equal(animation.playState, 'paused'); assert.equal(animation.currentTime, 0);
+    assert.equal(animation.startTime, null);
+    // A second ready()/phase call must preserve, not replace, its queued end.
+    f.observer.alignInfinite(animation); f.observer.phase('capture');
+    assert.equal(clock.pauses(), 1, 'An already parked clock is not realigned');
+    blinkEvent(f, target, animation);
+    assert.equal(f.observer.snapshot().gaps.length, 0);
+    assert.equal(f.observer.snapshot().triggered.length, 1, 'Owned alignment is not a new activation');
+    blinkEvent(f, target, animation);
+    assert.match(f.observer.snapshot().gaps[0], /unobserved activation/,
+      'One owned seek cannot excuse a second end');
+  } finally { f.observer.stop(); }
+});
+
+test('consumed alignment retires its start and preserves a later actual delay crossing', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'label'};
+  const {animation} = delayedBlink(f, target);
+  try {
+    f.active([animation]); blinkEvent(f, target, animation, 'animationstart');
+    f.observer.alignInfinite(animation); blinkEvent(f, target, animation);
+    animation.playState = 'running'; animation.currentTime = 260;
+    f.listeners.get('focusin')();
+    blinkEvent(f, target, animation, 'animationstart');
+    f.observer.alignInfinite(animation); blinkEvent(f, target, animation);
+    const state = f.observer.snapshot();
+    assert.equal(state.gaps.length, 0, 'The new start is not already consumed');
+    assert.equal(state.triggered.length, 2, 'Both actual activations remain in the contract');
+    assert.ok(state.triggered.every(entry => entry.timing.delay === 250 && entry.timing.iterations === 'Infinity'));
+    assert.equal(/currentTime|startTime|alignedEnd/.test(JSON.stringify(state.triggered)), false);
+  } finally { f.observer.stop(); }
+});
+
+test('alignment cannot excuse another object or an unowned or non-crossing seek', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'label'};
+  const {animation} = delayedBlink(f, target), other = delayedBlink(f, target).animation;
+  try {
+    f.active([animation]); blinkEvent(f, target, animation, 'animationstart');
+    f.observer.alignInfinite(animation);
+    other.playState = 'paused'; other.currentTime = 0;
+    blinkEvent(f, target, other);
+    assert.equal(f.observer.snapshot().gaps.length, 1);
+    blinkEvent(f, target, animation);
+    assert.equal(f.observer.snapshot().gaps.length, 1, 'Another object cannot consume the owned receipt');
+  } finally { f.observer.stop(); }
+  for (const scenario of ['unowned', 'before-delay', 'zero-delay', 'finite']) {
+    const fresh = startFixture(), clock = delayedBlink(fresh, target);
+    try {
+      fresh.active([clock.animation]); blinkEvent(fresh, target, clock.animation, 'animationstart');
+      if (scenario === 'before-delay') clock.animation.currentTime = 100;
+      if (scenario === 'zero-delay') clock.timing.delay = 0;
+      if (scenario === 'finite') clock.timing.iterations = 1;
+      if (scenario !== 'unowned') fresh.observer.alignInfinite(clock.animation);
+      clock.animation.playState = 'paused'; clock.animation.currentTime = 0;
+      fresh.observer.sample(); blinkEvent(fresh, target, clock.animation);
+      assert.match(fresh.observer.snapshot().gaps[0], /unobserved activation/, scenario);
+    } finally { fresh.observer.stop(); }
+  }
+});
+
+test('aligned ends fail closed for elapsed time, changed native timing, effect or seek destination', () => {
+  const changes = [
+    clock => ({elapsedTime: 0.001}),
+    clock => { clock.timing.delay = 500; return {}; },
+    clock => { clock.timing.duration = 1000; return {}; },
+    clock => { clock.timing.iterations = 1; return {}; },
+    clock => { clock.animation.effect = {...clock.animation.effect}; return {}; },
+    clock => { clock.animation.currentTime = 1; return {}; }
+  ];
+  for (const [index, change] of changes.entries()) {
+    const f = startFixture(), target = {nodeType: 1, localName: 'label'}, clock = delayedBlink(f, target);
+    try {
+      f.active([clock.animation]); blinkEvent(f, target, clock.animation, 'animationstart');
+      f.observer.alignInfinite(clock.animation);
+      blinkEvent(f, target, clock.animation, 'animationend', change(clock));
+      assert.match(f.observer.snapshot().gaps[0], /unobserved activation/, 'Invalid aligned end ' + index);
+    } finally { f.observer.stop(); }
+  }
+});
+
+test('an actual observed resume or a different completion retires the owned seek acknowledgement', () => {
+  for (const resumed of [false, true]) {
+    const f = startFixture(), target = {nodeType: 1, localName: 'label'};
+    const {animation} = delayedBlink(f, target);
+    try {
+      f.active([animation]); blinkEvent(f, target, animation, 'animationstart');
+      f.observer.alignInfinite(animation);
+      if (resumed) {
+        animation.playState = 'running'; animation.currentTime = 100;
+        f.listeners.get('focusin')();
+        animation.playState = 'paused'; animation.currentTime = 0; f.observer.sample();
+      } else blinkEvent(f, target, animation, 'animationcancel');
+      blinkEvent(f, target, animation);
+      assert.match(f.observer.snapshot().gaps[0], /unobserved activation/);
+      assert.equal(f.observer.snapshot().triggered.length, resumed ? 2 : 1);
+    } finally { f.observer.stop(); }
+  }
+});
+
+test('an observed idle-to-running restart invalidates an older owned seek receipt', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'label'};
+  const {animation} = delayedBlink(f, target);
+  try {
+    f.active([animation]); blinkEvent(f, target, animation, 'animationstart');
+    f.observer.alignInfinite(animation);
+    animation.playState = 'idle'; f.observer.sample();
+    animation.playState = 'running'; animation.currentTime = 100; f.observer.sample();
+    animation.playState = 'paused'; animation.currentTime = 0; f.observer.sample();
+    blinkEvent(f, target, animation);
+    assert.equal(f.observer.snapshot().triggered.length, 2, 'Both actual running periods were sampled');
+    assert.match(f.observer.snapshot().gaps[0], /unobserved activation/,
+      'An old alignment cannot authorize an end after intervening activity');
+  } finally { f.observer.stop(); }
+});
+
+test('failed owned seeking cannot leave a receipt and stopped observers never align clocks', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'label'}, clock = delayedBlink(f, target);
+  try {
+    f.active([clock.animation]); blinkEvent(f, target, clock.animation, 'animationstart');
+    Object.defineProperty(clock.animation, 'currentTime', {configurable: true,
+      get: () => 251.703, set() { throw Error('Native seek failed'); }});
+    assert.throws(() => f.observer.alignInfinite(clock.animation), /Native seek failed/);
+    Object.defineProperty(clock.animation, 'currentTime', {value: 0, writable: true, configurable: true});
+    f.observer.sample(); blinkEvent(f, target, clock.animation);
+    assert.match(f.observer.snapshot().gaps[0], /unobserved activation/);
+  } finally { f.observer.stop(); }
+  const fresh = startFixture(), later = delayedBlink(fresh, target);
+  const savedWake = fresh.listeners.get('animationend');
+  fresh.observer.stop();
+  fresh.observer.alignInfinite(later.animation);
+  savedWake({type: 'animationend', target, animation: later.animation, animationName: 'blinking', elapsedTime: 0});
+  assert.equal(later.pauses(), 0); assert.equal(later.animation.currentTime, 251.703);
+  assert.equal(fresh.frames.size, 0); assert.equal(fresh.listeners.size, 0); assert.equal(fresh.disconnected, true);
+});
+
 test('native definitions preserve unsupported optional fields and valid no-op keyframes', () => {
   for (const frames of [[], [{offset: 0, computedOffset: 0, easing: 'linear', composite: 'auto'}]]) {
     const f = startFixture(), target = {nodeType: 1, localName: 'article'};

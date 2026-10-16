@@ -368,7 +368,11 @@ An earlier activation cannot excuse a later unobserved resume before completion.
 Delayed running objects are recorded while pending; finite and zero-duration
 objects remain in the record after finishing. Start/current times, frame clocks
 and elapsed progress are deliberately excluded. Infinite clocks are measured
-before the existing raster alignment pauses them.
+before the existing raster alignment pauses them. A backwards seek from an active
+positive-delay clock to zero can emit a native `animationend`. The observer owns
+that alignment and consumes a one-shot receipt only for the exact captured object,
+unchanged effect/timing, paused zero position and zero elapsed event. Actual
+resumes discard that receipt; unexplained ends remain observation gaps.
 
 Snapshots also record the computed animation/transition declaration list for
 every light-DOM element and standard pseudo, plus stylesheet-declared and
