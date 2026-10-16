@@ -24,10 +24,12 @@
 
 (deftest names-and-worktrees-survive-renames-and-unavailable-local-data
   (let [original (pr/append-footer "Body" nil owner []
-                                   {owner {:title "First title", :titles ["Generated description" "First title"],
+                                   {owner {:title "First title"
+                                           :titles ["Generated description" "First title"]
                                            :worktrees ["/work/first"]}})
         updated (pr/append-footer "Revised" original editor []
-                                  {owner {:title "Current title", :titles ["Current title"],
+                                  {owner {:title "Current title"
+                                          :titles ["Current title"]
                                           :worktrees ["/work/second"]}})
         preserved (pr/append-footer updated updated editor [] {})]
     (is (str/includes? updated "In charge: **Current title**"))
@@ -35,7 +37,8 @@
     (is (str/includes? updated "    - /work/first\n    - /work/second"))
     (is (= updated preserved))
     (is (= updated (pr/append-footer updated updated editor []
-                                     {owner {:title "Current title", :titles ["Current title"],
+                                     {owner {:title "Current title"
+                                          :titles ["Current title"]
                                              :worktrees ["/work/second"]}})))))
 
 (deftest session-metadata-cannot-inject-markdown-or-footer-markers

@@ -22,12 +22,58 @@ def records(path):
         return
 
 
+def command_directories(source):
+    """Read literal JSON exec_command arguments, skipping JS strings/comments.
+
+    Dynamic expressions and non-JSON object literals are intentionally omitted.
+    Never evaluate session code to recover metadata.
+    """
+    index = 0
+    decoder = json.JSONDecoder()
+    while index < len(source):
+        char = source[index]
+        if source.startswith('//', index):
+            newline = source.find('\n', index)
+            index = len(source) if newline < 0 else newline + 1
+        elif source.startswith('/*', index):
+            end = source.find('*/', index + 2)
+            index = len(source) if end < 0 else end + 2
+        elif char in ["'", '"', '`', '/']:
+            # Slash literals are skipped conservatively too; division can cause
+            # omission, never execution or publication of an ambiguous fragment.
+            quote = char
+            index += 1
+            while index < len(source):
+                if source[index] == '\\':
+                    index += 2
+                elif source[index] == quote:
+                    index += 1
+                    break
+                else:
+                    index += 1
+        elif source.startswith('tools.exec_command(', index) and (index == 0 or not (source[index - 1].isalnum() or source[index - 1] in '_$.')):
+            start = index + len('tools.exec_command(')
+            index = start
+            try:
+                arguments, end = decoder.raw_decode(source[start:].lstrip())
+                offset = len(source[start:]) - len(source[start:].lstrip())
+                remainder = source[start + offset + end:].lstrip()
+                if remainder.startswith(')') and isinstance(arguments, dict):
+                    yield arguments.get('workdir')
+            except ValueError:
+                pass
+        else:
+            index += 1
+
+
 def metadata(home, ids):
     result = {ident: {'titles': [], 'worktrees': []} for ident in ids}
 
     def add(ident, key, value):
         if isinstance(value, str) and value.strip():
             if key == 'worktrees':
+                if not Path(value).is_absolute() or any(ord(c) < 32 for c in value):
+                    return
                 match = re.match(r'(.*/\.codex/worktrees/[^/]+/[^/]+)(?:/.*)?$', value)
                 value = match[1] if match else value
             if value not in result[ident][key]:
@@ -87,9 +133,8 @@ def metadata(home, ids):
                         if isinstance(arguments_map, dict):
                             add(ident, 'worktrees', arguments_map.get('workdir'))
                         elif payload.get('name', '').split('.')[-1] == 'exec':
-                            # Orchestrated exec_command calls retain literal workdir props.
-                            for match in re.finditer(r'\bworkdir[\"\']?\s*:\s*("(?:[^"\\]|\\.)*")', arguments):
-                                add(ident, 'worktrees', json.loads(match[1]))
+                            for directory in command_directories(arguments):
+                                add(ident, 'worktrees', directory)
             break
         except (sqlite3.Error, OSError, ValueError):
             continue

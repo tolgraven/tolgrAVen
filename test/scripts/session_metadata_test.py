@@ -42,6 +42,17 @@ class SessionMetadataTest(unittest.TestCase):
             self.assertNotIn('SECRET', json.dumps(result))
             self.assertNotIn('UNRELATED', json.dumps(result))
 
+    def test_script_fixtures_comments_and_dynamic_arguments_are_not_worktrees(self):
+        source = r'''const fixture = {workdir: "/private/example"};
+        const text = 'tools.exec_command({"workdir":"/private/secret"})';
+        // tools.exec_command({"workdir":"/private/comment"})
+        /* tools.exec_command({"workdir":"/private/block"}) */
+        const template = `tools.exec_command({"workdir":"/private/template"})`;
+        const regex = /tools.exec_command({"workdir":"secret"})/;
+        tools.exec_command({"workdir": lookup()});
+        await tools.exec_command({"workdir":"/work/actual", "cmd":"true"});'''
+        self.assertEqual(list(metadata.command_directories(source)), ['/work/actual'])
+
     def test_missing_or_incompatible_local_state_keeps_index(self):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
