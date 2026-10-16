@@ -50,7 +50,7 @@ class SessionMetadataTest(unittest.TestCase):
         const template = `tools.exec_command({"workdir":"/private/template"})`;
         const regex = /tools.exec_command({"workdir":"secret"})/;
         tools.exec_command({"workdir": lookup()});
-        await tools.exec_command({"workdir":"/work/actual", "cmd":"true"});'''
+        await tools.exec_command({workdir:"/work/actual", cmd:"true"});'''
         self.assertEqual(list(metadata.command_directories(source)), ['/work/actual'])
 
     def test_missing_or_incompatible_local_state_keeps_index(self):

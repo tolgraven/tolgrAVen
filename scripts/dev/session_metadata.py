@@ -22,14 +22,45 @@ def records(path):
         return
 
 
-def command_directories(source):
-    """Read literal JSON exec_command arguments, skipping JS strings/comments.
+def literal_arguments(source):
+    """Read an object with literal keys and JSON values; reject expressions."""
+    decoder = json.JSONDecoder()
+    remaining = source.lstrip()
+    if not remaining.startswith('{'):
+        raise ValueError('Expected literal object')
+    remaining = remaining[1:].lstrip()
+    result = {}
+    while not remaining.startswith('}'):
+        if remaining.startswith('"'):
+            key, end = decoder.raw_decode(remaining)
+        else:
+            match = re.match(r'[a-zA-Z_$][a-zA-Z0-9_$]*', remaining)
+            if not match:
+                raise ValueError('Expected literal key')
+            key, end = match[0], match.end()
+        remaining = remaining[end:].lstrip()
+        if not remaining.startswith(':'):
+            raise ValueError('Expected colon')
+        remaining = remaining[1:].lstrip()
+        value, end = decoder.raw_decode(remaining)
+        result[key] = value
+        remaining = remaining[end:].lstrip()
+        if remaining.startswith(','):
+            remaining = remaining[1:].lstrip()
+        elif not remaining.startswith('}'):
+            raise ValueError('Nonliteral property value')
+    if not remaining[1:].lstrip().startswith(')'):
+        raise ValueError('Nonliteral tool arguments')
+    return result
 
-    Dynamic expressions and non-JSON object literals are intentionally omitted.
+
+def command_directories(source):
+    """Read literal exec_command arguments, skipping JS strings/comments.
+
+    Dynamic expressions and non-JSON values are intentionally omitted.
     Never evaluate session code to recover metadata.
     """
     index = 0
-    decoder = json.JSONDecoder()
     while index < len(source):
         char = source[index]
         if source.startswith('//', index):
@@ -55,11 +86,7 @@ def command_directories(source):
             start = index + len('tools.exec_command(')
             index = start
             try:
-                arguments, end = decoder.raw_decode(source[start:].lstrip())
-                offset = len(source[start:]) - len(source[start:].lstrip())
-                remainder = source[start + offset + end:].lstrip()
-                if remainder.startswith(')') and isinstance(arguments, dict):
-                    yield arguments.get('workdir')
+                yield literal_arguments(source[start:]).get('workdir')
             except ValueError:
                 pass
         else:
