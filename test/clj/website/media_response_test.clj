@@ -14,7 +14,6 @@
            [false 200 "/js/compiled/out/blog.0123456789ABCDEF0123456789ABCDEF.js" "text/javascript" true]
            [false 200 "/js/compiled/out/blog.0123456789abcdef0123456789abcdef.js" "text/html" false]
            [false 404 "/js/compiled/out/blog.0123456789abcdef0123456789abcdef.js" "text/javascript" false]
-           [true 200 "/js/compiled/out/blog.0123456789abcdef0123456789abcdef.js" "text/javascript" false]
            [false 200 "/js/compiled/out/blog.js" "text/javascript" false]
            [false 200 "/api/content/bootstrap" "application/json" false]]]
     (with-redefs [config/env {:dev dev?}]
@@ -25,6 +24,31 @@
             response (handler {:uri uri})]
         (is (= (when cache? "public, max-age=31536000, immutable")
                (get-in response [:headers "Cache-Control"])))))))
+
+(deftest development-javascript-cannot-retain-a-previous-shadow-instance
+  (with-redefs [config/env {:dev true}]
+    (doseq [uri ["/js/compiled/out/main.js"
+                 "/js/compiled/out/blog.0123456789abcdef0123456789abcdef.js"
+                 "/js/compiled/out/cv.js"
+                 "/js/compiled/out/cljs-runtime/shadow.cljs.devtools.client.env.js"
+                 "/js/document/head.js"
+                 "/js/return/return-worker.js"]
+            status [200 304]]
+      (let [original {:status status
+                      :headers {"Content-Type" "text/javascript; charset=utf-8"
+                                "Last-Modified" "Wed, 21 Oct 2015 07:28:00 GMT"}
+                      :body "worker identity"}
+            response ((middleware/wrap-module-cache (constantly original)) {:uri uri})]
+        (is (= "no-store" (get-in response [:headers "Cache-Control"])))
+        (is (= original (update response :headers dissoc "Cache-Control")))))))
+
+(deftest development-script-policy-keeps-other-response-owners
+  (with-redefs [config/env {:dev true}]
+    (doseq [[uri mime] [["/api/content" "application/json"]
+                        ["/js/compiled/out/missing.js" "text/html"]
+                        ["/vendor/library.js" "text/javascript"]]]
+      (let [response {:status 200, :headers {"Content-Type" mime}, :body "unchanged"}]
+        (is (= response ((middleware/wrap-module-cache (constantly response)) {:uri uri})))))))
 
 (deftest optimized-image-responses
   (testing "production asset middleware preserves image bytes and MIME types"
