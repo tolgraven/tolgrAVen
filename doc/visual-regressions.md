@@ -246,7 +246,8 @@ A selected `currentSrc` or cached dimensions alone do not release Chrome’s laz
 readiness call, including every scroll tile, reevaluates their visibility and
 acquisition. This prevents an offscreen footer from blocking a scroll that would
 otherwise acquire its lazy images. A fading caret otherwise never has stable
-opacity. Native error fallbacks, failed images, unsettled layout and an
+opacity. Native console errors (including duplicate React keys), error fallbacks, failed
+images, unsettled layout and an
 unexpected viewport/DPR fail capture. Settlement failures report elapsed time,
 stable samples, document visibility, remaining finite clocks/font upgrades and
 the last changed geometry field; the deadline and native checks stay unchanged.
@@ -409,6 +410,26 @@ capture gaps; they cannot be approved as complete observations. Queued native
 starts consume one receipt tied to the captured animation and actual DOM target;
 a historical path/property match cannot excuse a later missing instance. Add
 native interaction cases for states not exercised by the suite.
+
+Same-origin iframe documents have separately owned observers and scoped
+`motion.documents` records containing their actual geometry and full motion
+contract. This optional field is absent on non-frame captures. Parent readiness
+also waits for child loading, fonts, required images/backgrounds, finite clocks
+and stable child geometry. Navigation/removal retain the checked outgoing record
+and release its listeners, observer and frame callbacks; disposal releases all
+child references. Child errors/gaps remain parent capture failures.
+
+A parent iframe `load` listener runs too late to prove parser-time animation
+coverage. An accessible cooperating document can call
+`parent.visualFixture.observeFrame(window)` as its first parser script, before
+its styles activate. Without that early observation, only a script-disabled
+sandbox document with completely inspectable styles, no authored motion rules
+(including dormant rules), no active clocks and no computed animation/transition
+can establish a static-document observation. The existing authored-frame fixture
+keeps `sandbox="allow-same-origin"`; its scripts cannot run, so no bootstrap is
+pretended or sandbox permission added. Script-capable late documents, inaccessible
+cross-origin frames/stylesheets and shadow roots remain explicit gaps. This
+bounded static proof does not establish arbitrary provider iframe motion coverage.
 
 Motion coverage requires a separately reviewed candidate and a repeat capture:
 

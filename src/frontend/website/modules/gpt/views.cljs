@@ -36,7 +36,8 @@
   (let [open? (r/atom false)
         thread (r/subscribe [:gpt/thread id])]
     (fn [id]
-      (let [user @(r/subscribe [:user/user (:user @thread)])]
+      (let [thread' @thread
+            user @(r/subscribe [:user/user (:user thread')])]
         [:div.gpt-thread-container
          [:div.flex
           {:style {:align-items "center"}}
@@ -53,9 +54,9 @@
            [:div.gpt-messages.gpt-thread.open
             {:ref #(when % (set! (.-scrollTop %) (.-scrollHeight %)))}
 
-            (for [[prompt response] (partition 2 2 "..." (:messages @thread))]
-              ^{:key (str "gpt-message-" (:user @thread) "-" (:time @thread))}
-              [<gpt-message> prompt response @thread])
+            (for [[index [prompt response]] (map-indexed vector (partition 2 2 "..." (:messages thread')))]
+              ^{:key (str "gpt-message-" id "-" index)}
+              [<gpt-message> prompt response thread'])
 
             [:div.gpt-input.flex
              [ui-inputs/<input-text>

@@ -1173,3 +1173,258 @@ test('geometry driver verifies the intended surface after readiness and rejects 
     assert.equal(fixture.calls.filter(value => value === 'stop').length, 1);
   }
 });
+
+function framedMotionFixture({sandbox = 'allow-same-origin', readyState = 'complete', initialURL} = {}) {
+  const {createMotionObserver} = fixture();
+  function realm() {
+    const listeners = new Map(), frames = new Map(), observers = [];
+    let next = 0;
+    class CSSAnimation {}
+    class CSSTransition {}
+    const body = {nodeType: 1, localName: 'body', children: [], parentElement: null,
+      getBoundingClientRect: () => ({x: 0, y: 0, width: 320, height: 192})};
+    const doc = {URL: 'http://fixture.test/document', readyState, styleSheets: [], active: [], elements: [],
+      body: {querySelectorAll: () => body.children},
+      getAnimations: () => doc.active,
+      querySelectorAll: selector => selector === 'iframe' ? doc.elements.filter(element => element.tagName === 'IFRAME') : doc.elements,
+      addEventListener: (name, callback) => listeners.set(name, callback),
+      removeEventListener: name => listeners.delete(name)};
+    const win = {document: doc, CSSAnimation, CSSTransition,
+      MutationObserver: class {
+        constructor(callback) { this.callback = callback; this.disconnected = false; observers.push(this); }
+        observe() {} disconnect() { this.disconnected = true; }
+      },
+      requestAnimationFrame: callback => { frames.set(++next, callback); return next; },
+      cancelAnimationFrame: id => frames.delete(id),
+      getComputedStyle: () => ({content: 'none', getPropertyValue: name =>
+        name === 'animation-name' ? 'none' : ['transition-duration', 'transition-delay'].includes(name) ? '0s' : ''})};
+    doc.defaultView = win;
+    const element = {nodeType: 1, localName: 'article', tagName: 'ARTICLE', id: 'native-child',
+      className: '', children: [], parentElement: body, textContent: 'Native child content',
+      getAttribute: () => null,
+      getBoundingClientRect: () => ({x: 8, y: 16, width: 288, height: 160})};
+    body.children = [element]; doc.elements = [element];
+    return {win, doc, listeners, frames, observers, element, body};
+  }
+  const parent = realm(), child = realm(), frameListeners = new Map();
+  const frame = {nodeType: 1, localName: 'iframe', tagName: 'IFRAME', parentElement: null,
+    ownerDocument: parent.doc, contentDocument: child.doc, contentWindow: child.win,
+    getAttribute: name => name === 'sandbox' ? sandbox : name === 'src' ? '/document' : null,
+    addEventListener: (name, callback) => frameListeners.set(name, callback),
+    removeEventListener: name => frameListeners.delete(name)};
+  child.win.frameElement = frame; parent.doc.elements = [frame];
+  if (initialURL) child.doc.URL = initialURL;
+  const observer = createMotionObserver(parent.win);
+  const snapshot = () => JSON.parse(JSON.stringify(observer.snapshot()));
+  return {parent, child, frame, frameListeners, observer, snapshot, realm};
+}
+
+test('script-disabled static same-origin frames retain actual scoped geometry and full motion definitions', () => {
+  const f = framedMotionFixture();
+  try {
+    const first = f.snapshot();
+    assert.deepEqual(first.gaps, []);
+    assert.equal(first.documents.length, 1);
+    const child = first.documents[0];
+    assert.equal(child.frame, 'iframe:nth-child(1)');
+    assert.equal(child.source, '/document');
+    assert.equal(child.generation, 1);
+    assert.deepEqual(child.geometry[0].box, [8, 16, 288, 160]);
+    assert.equal(child.geometry[0].text, 'Native child content');
+    assert.equal(child.motion.declarations.length, 9);
+    assert.equal(f.observer.documents()[1], f.child.doc);
+    f.child.element.getBoundingClientRect = () => ({x: 9, y: 16, width: 287, height: 160});
+    assert.notDeepEqual(f.snapshot().documents[0].geometry, child.geometry, 'Child layout is measured rather than waived');
+  } finally { f.observer.stop(); }
+  for (const realm of [f.parent, f.child]) {
+    assert.equal(realm.listeners.size, 0); assert.equal(realm.frames.size, 0);
+    assert.equal(realm.observers.every(observer => observer.disconnected), true);
+  }
+  assert.equal(f.frameListeners.size, 0);
+});
+
+test('late script-capable or unsandboxed frames fail closed even when currently motion-free', () => {
+  for (const sandbox of [null, 'allow-same-origin allow-scripts']) {
+    const f = framedMotionFixture({sandbox});
+    try { assert.match(f.snapshot().gaps.join('\n'), /missed parser-time motion observation/); }
+    finally { f.observer.stop(); }
+  }
+});
+
+test('late static proof rejects dormant CSS motion, inaccessible stylesheets and named paused animations', () => {
+  for (const variant of ['dormant', 'inaccessible', 'parked']) {
+    const f = framedMotionFixture();
+    try {
+      if (variant === 'dormant') f.child.doc.styleSheets = [{href: '/native.css', cssRules: [{
+        selectorText: 'article:hover', style: {getPropertyValue: name => name === 'transition' ? 'opacity 1s' : '',
+          getPropertyPriority: () => ''}
+      }]}];
+      if (variant === 'inaccessible') f.child.doc.styleSheets = [{href: '/private.css',
+        get cssRules() { throw Object.assign(new Error('blocked'), {name: 'SecurityError'}); }}];
+      if (variant === 'parked') f.child.win.getComputedStyle = () => ({content: 'none',
+        getPropertyValue: name => name === 'animation-name' ? 'parked-entrance' : ''});
+      const result = f.snapshot();
+      assert.notDeepEqual(result.gaps, []);
+      assert.ok(result.documents[0].motion.sourceRules.length || result.documents[0].motion.gaps.length || variant === 'parked');
+    } finally { f.observer.stop(); }
+  }
+});
+
+test('parser-time cooperative child observation captures short native clocks with propagated phases and alignment', () => {
+  const f = framedMotionFixture({sandbox: 'allow-same-origin allow-scripts', readyState: 'loading'});
+  try {
+    // A real cooperating parser calls this before stylesheet activation. Mere
+    // loading readyState without that explicit call cannot claim early coverage.
+    const late = f.snapshot(); assert.match(late.gaps.join('\n'), /missed parser-time/);
+  } finally { f.observer.stop(); }
+  const g = framedMotionFixture({sandbox: 'allow-same-origin allow-scripts', readyState: 'loading', initialURL: 'about:blank'});
+  try {
+    // Replace the initial unobserved about:blank before the parent sees a network
+    // document, so observeFrame is the first acquisition of this document.
+    const next = g.realm(); next.doc.readyState = 'loading'; next.win.frameElement = g.frame;
+    g.frame.contentDocument = next.doc; g.frame.contentWindow = next.win;
+    g.observer.observeFrame(next.win);
+    next.doc.readyState = 'complete';
+    g.observer.phase('action');
+    const animation = Object.assign(new next.win.CSSAnimation(), {
+      animationName: 'child-entrance', playState: 'running', playbackRate: 1, currentTime: 0,
+      effect: {target: next.element, pseudoElement: null, composite: 'replace', iterationComposite: 'replace',
+        getTiming: () => ({duration: 0, delay: 0, endDelay: 0, fill: 'none', direction: 'normal',
+          easing: 'linear', iterations: 1, iterationStart: 0}), getKeyframes: () => [{opacity: '0'}, {opacity: '1'}]}
+    });
+    next.doc.active = [animation]; next.listeners.get('animationstart')({type: 'animationstart',
+      target: next.element, animationName: 'child-entrance', animation});
+    next.doc.active = [];
+    const result = g.snapshot(), child = result.documents.at(-1);
+    assert.equal(child.motion.triggered.length, 1);
+    assert.equal(child.motion.triggered[0].phase, 'action');
+    assert.equal(child.motion.triggered[0].timing.duration, 0);
+    assert.deepEqual(child.motion.gaps, []);
+    assert.equal(result.gaps.some(message => message.includes('missed parser-time')), false);
+    const infinite = Object.assign(new next.win.CSSAnimation(), {...animation, animationName: 'child-caret',
+      playState: 'running', currentTime: 400,
+      effect: {...animation.effect, getTiming: () => ({duration: 2000, delay: 0, iterations: Infinity})},
+      pause() { this.playState = 'paused'; }});
+    next.doc.active = [infinite];
+    assert.equal(g.observer.animations().includes(infinite), true);
+    g.observer.alignInfinite(infinite);
+    assert.equal(infinite.playState, 'paused'); assert.equal(infinite.currentTime, 0);
+  } finally { g.observer.stop(); }
+});
+
+test('frame navigation and removal retire child records and release owned document wakeups', () => {
+  const f = framedMotionFixture();
+  const next = f.realm(); next.win.frameElement = f.frame;
+  try {
+    f.frame.contentDocument = next.doc; f.frame.contentWindow = next.win;
+    f.frameListeners.get('load')();
+    assert.equal(f.child.listeners.size, 0); assert.equal(f.child.frames.size, 0);
+    let result = f.snapshot();
+    assert.deepEqual(result.gaps, []); assert.equal(result.documents.length, 2);
+    assert.deepEqual(result.documents.map(record => record.generation), [1, 2]);
+    f.parent.doc.elements = []; f.observer.sample();
+    assert.equal(next.listeners.size, 0); assert.equal(next.frames.size, 0);
+    assert.equal(f.frameListeners.size, 0);
+    result = f.snapshot(); assert.equal(result.documents.length, 2);
+    assert.equal(result.documents[1].frame, 'iframe:nth-child(1)');
+  } finally { f.observer.stop(); }
+});
+
+test('cross-origin, pending replacement and child shadow roots remain observation gaps', () => {
+  for (const variant of ['cross-origin', 'pending', 'shadow']) {
+    const f = framedMotionFixture();
+    try {
+      if (variant === 'cross-origin') f.frame.contentDocument = null;
+      if (variant === 'pending') {
+        f.frame.contentDocument = {...f.child.doc, URL: 'about:blank'};
+        f.frame.contentWindow = {...f.child.win, document: f.frame.contentDocument};
+      }
+      if (variant === 'shadow') f.child.element.shadowRoot = {};
+      const result = f.snapshot();
+      assert.notDeepEqual(result.gaps, [], variant + ' cannot inherit static document coverage');
+    } finally { f.observer.stop(); }
+  }
+});
+
+test('a missing child native start propagates to the parent instead of a passing host-only snapshot', () => {
+  const f = framedMotionFixture();
+  try {
+    f.child.listeners.get('animationstart')({type: 'animationstart', target: f.child.element,
+      animationName: 'unobserved-child', pseudoElement: ''});
+    assert.match(f.snapshot().gaps.join('\n'), /Child document.*no observable definition/);
+  } finally { f.observer.stop(); }
+});
+
+test('child pending state cannot settle behind unchanged host geometry', () => {
+  const f = framedMotionFixture({readyState: 'loading'});
+  try {
+    assert.equal(f.observer.pendingDocuments(), true);
+    f.child.doc.readyState = 'complete';
+    assert.equal(f.observer.pendingDocuments(), false);
+    f.frame.contentDocument = null;
+    assert.equal(f.observer.pendingDocuments(), true);
+  } finally { f.observer.stop(); }
+});
+
+test('retired geometry uses the captured document rather than a navigated WindowProxy document', () => {
+  const f = framedMotionFixture();
+  try {
+    const next = f.realm(); next.element.textContent = 'Replacement document';
+    // Browser WindowProxy identity survives navigation while its document changes.
+    f.child.win.document = next.doc; f.frame.contentDocument = next.doc;
+    f.frameListeners.get('load')();
+    const records = f.snapshot().documents;
+    assert.equal(records[0].geometry[0].text, 'Native child content');
+    assert.equal(records[1].geometry[0].text, 'Replacement document');
+  } finally { f.observer.stop(); }
+});
+
+test('removing an unsupported child cannot erase a missed parser-time observation gap', () => {
+  const f = framedMotionFixture({sandbox: 'allow-same-origin allow-scripts'});
+  try {
+    f.parent.doc.elements = []; f.observer.sample();
+    const result = f.snapshot();
+    assert.equal(result.documents.length, 1);
+    assert.match(result.gaps.join('\n'), /missed parser-time motion observation/);
+  } finally { f.observer.stop(); }
+});
+
+test('non-frame native motion snapshots retain the previous record shape exactly', () => {
+  const f = startFixture();
+  try {
+    const result = JSON.parse(JSON.stringify(f.observer.snapshot()));
+    assert.deepEqual(Object.keys(result), ['version', 'properties', 'styles', 'declarations', 'sourceRules', 'triggered', 'gaps']);
+    assert.equal('documents' in result, false);
+  } finally { f.observer.stop(); }
+});
+
+test('native console errors fail readiness while preserving the original logger and pagehide ownership', async () => {
+  const listeners = new Map(), calls = [];
+  const original = function (...args) { calls.push({owner: this, args}); };
+  const console = {error: original};
+  const window = {console, addEventListener: (name, handler) => listeners.set(name, handler)};
+  const fonts = Object.assign([], {ready: Promise.resolve(), load: () => Promise.resolve([])});
+  const document = {body: {querySelectorAll: () => []}, fonts, images: [],
+    querySelector: selector => selector === '#app main' ? {} : null};
+  window.document = document;
+  vm.runInNewContext(readFileSync('test/browser/visual.js', 'utf8'), {
+    window, document, performance, URLSearchParams, location: {search: ''},
+    setTimeout: callback => setTimeout(callback, 0), clearTimeout,
+    requestAnimationFrame: callback => setTimeout(callback, 0)
+  });
+  // Install after construction so this focused check owns no CSS observer.
+  document.getAnimations = () => [];
+  const nativeArgs = ['Encountered two children with the same key, `%s`.', 'gpt-message-collision', {private: 'not captured'}];
+  console.error(...nativeArgs);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].owner, console);
+  assert.deepEqual(calls[0].args, nativeArgs, 'Native diagnostics must still reach the original console');
+  await assert.rejects(window.visualFixture.ready(), /Encountered two children.*gpt-message-collision/);
+  listeners.get('pagehide')();
+  assert.equal(console.error, original);
+
+  const nextOwner = () => {};
+  console.error = nextOwner;
+  listeners.get('pagehide')();
+  assert.equal(console.error, nextOwner, 'Disposal must preserve a later owner');
+});

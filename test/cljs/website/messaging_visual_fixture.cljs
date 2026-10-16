@@ -148,13 +148,23 @@
     ;; Local form intent only; never dispatch Enter, Send or New thread.
     (r/dispatch-sync [:form-field path text])))
 
+(defn ^:export thread-messages! [messages]
+  (when-not (= :gpt (module-for (:component @*observation)))
+    (throw (js/Error. "Only the local GPT fixture owns thread messages")))
+  (let [thread (assoc (get threads "visual-thread-first") :messages (js->clj messages))
+        opts {:path-document [:gpt-threads :visual-thread-first]}]
+    (when (validation/explain store-schema/private-data thread)
+      (throw (js/Error. "Invalid local GPT messages")))
+    (r/dispatch-sync [:store/scoped (scoped/query-key opts)
+                      {:id "visual-thread-first", :data thread}])))
+
 (defn ^:export state []
   (clj->js {:component (:component @*observation)
             :mounted (:mounted? @*observation)
             :reads (mapv scoped/query-key (sort-by pr-str (:reads @*observation)))
             :rejected (:rejected @*observation)
-            :chat-draft @(r/sub [:form-field [:chat]])
-            :thread-draft @(r/sub [:form-field [:gpt-thread "visual-thread-first"]])}))
+            :chat-draft @(r/sub [:get :state :form-field :chat])
+            :thread-draft @(r/sub [:get :state :form-field :gpt-thread "visual-thread-first"])}))
 
 (m/defpage <page> [component]
   (r/use-effect

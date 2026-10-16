@@ -127,6 +127,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   completion metadata while preserving partial evidence and owned-page cleanup.
   Geometry-only capture parks the native pointer outside all iframe bounds and
   verifies separation plus exact child viewport/DPR before and after actions.
+- Same-origin frame captures include their own native geometry and CSS motion.
+  Preserve sandbox permissions. Late attachment passes only for fully inspected,
+  script-disabled documents with no authored/dormant/active motion; otherwise report
+  the observation gap. Cross-origin and shadow roots still require their own proof.
 - Hover visual states use observed accessibility snapshot UIDs through configured
   Chrome MCP, verify their native selector/`:hover` result, and park the pointer
   on task-owned driver markup before navigation. Keep real keyboard traversal

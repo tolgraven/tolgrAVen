@@ -39,9 +39,15 @@
                  (= component "authored-frame") [:markdown-components]
                  (#{"inspector-data" "inspector-error"} component) [:data-inspector]
                  :else [])]
-    (reduce (fn [pending owner]
-              (.then pending (fn [_] (loader/acquire-code! owner))))
-            (js/Promise.resolve nil) owners)))
+    (-> (reduce (fn [pending owner]
+                  (.then pending (fn [_] (loader/acquire-code! owner))))
+                (js/Promise.resolve nil) owners)
+        (.then (fn [_]
+                 ;; Native :depends reads the SDK cache before the pooled reader.
+                 ;; Install its real code/API before rejecting provider acquisition;
+                 ;; the scoped local result below then satisfies that same cache.
+                 (when (= component "authored-comment-quote")
+                   (supabase/ensure-code!)))))))
 
 (defonce *cleanup (atom nil))
 (defonce *reads (atom []))

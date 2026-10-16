@@ -1,6 +1,17 @@
 /* Test-only measurement: native rendered DOM is never replaced or restyled. */
 (() => {
   const errors = [];
+  if (window.console?.error) {
+    const original = window.console.error;
+    const observed = function (...args) {
+      errors.push(args.filter(value => typeof value === 'string').join(' ') || 'Native console.error');
+      return Reflect.apply(original, this, args);
+    };
+    window.console.error = observed;
+    window.addEventListener('pagehide', () => {
+      if (window.console.error === observed) window.console.error = original;
+    }, {once: true});
+  }
   window.addEventListener('error', event => errors.push(event.message ||
     ('Resource failed: ' + (event.target.src || event.target.href || event.target.tagName))), true);
   window.addEventListener('unhandledrejection', event => errors.push(String(event.reason)));
@@ -46,6 +57,88 @@
   // have vanished. Read native definitions; never compare wall-clock progress.
   function createMotionObserver(win, initialPhase = 'initial') {
     const doc = win.document, states = new WeakMap(), triggered = [], gaps = [];
+    const children = new Map(), retiredDocuments = [];
+    const gap = message => { if (!gaps.includes(message)) gaps.push(message); };
+    function childRecord(entry) {
+      return {frame: entry.path, source: entry.source, generation: entry.generation,
+        geometry: geometry(entry.window, entry.document), motion: entry.observer.snapshot()};
+    }
+    function validateChild(entry, child) {
+      const sandbox = entry.frame.getAttribute('sandbox'), path = entry.path;
+      // A load listener cannot observe CSS that started and vanished during
+      // parsing. Only a script-disabled, fully inspected, motion-free static
+      // document can prove that late attachment missed no native CSS clocks.
+      // Any dormant motion declaration also rejects this proof.
+      const scriptless = sandbox !== null && !sandbox.split(/\s+/).includes('allow-scripts');
+      const noMotion = !child.motion.triggered.length && !child.motion.sourceRules.length &&
+        !entry.observer.animations().length && child.motion.declarations.every(([, , index]) => {
+          const values = child.motion.styles[index];
+          return motionProperties.every((name, index) => {
+            if (name === 'animation-name') return values[index].split(',').every(value => !value.trim() || value.trim() === 'none');
+            if (['transition-duration', 'transition-delay'].includes(name)) return values[index].split(',').every(value => !value.trim() || Number.parseFloat(value) === 0);
+            return true;
+          });
+        });
+      if (!entry.early && !(scriptless && noMotion))
+        gap('Child document missed parser-time motion observation: ' + path);
+      if (entry.document.readyState !== 'complete') gap('Child document has not completed loading: ' + path);
+      for (const message of child.motion.gaps) gap('Child document ' + path + ': ' + message);
+    }
+    function retireChild(entry) {
+      if (entry.observer) {
+        try {
+          const child = childRecord(entry); validateChild(entry, child); retiredDocuments.push(child);
+        }
+        catch (error) { gap('Cannot retain child document observation: ' + String(error)); }
+        entry.observer.stop(); entry.observer = null;
+      }
+    }
+    function observeFrame(childWindow, early = true) {
+      if (stopped) throw new Error('Cannot observe a child document after disposal');
+      let frame, childDocument;
+      try {
+        frame = childWindow.frameElement; childDocument = childWindow.document;
+        if (!frame || frame.ownerDocument !== doc || frame.contentWindow !== childWindow ||
+            frame.contentDocument !== childDocument) throw new Error('Child window does not belong to this document');
+      } catch (error) { throw new Error('Cannot inspect child document: ' + String(error)); }
+      let entry = children.get(frame);
+      if (!entry) {
+        entry = {frame, observer: null, generation: 0, loaded: () => syncFrames()};
+        children.set(frame, entry); frame.addEventListener('load', entry.loaded);
+      }
+      if (entry.document === childDocument && entry.observer) return entry;
+      retireChild(entry);
+      entry.path = elementPath(frame);
+      entry.document = childDocument; entry.window = childWindow;
+      entry.source = frame.getAttribute('src'); entry.generation++;
+      entry.early = early && childDocument.readyState === 'loading';
+      entry.observer = createMotionObserver(childWindow, phase);
+      return entry;
+    }
+    function syncFrames() {
+      if (stopped) return;
+      const frames = [...doc.querySelectorAll('iframe')].filter(element => element.tagName === 'IFRAME');
+      for (const [frame, entry] of children) if (!frames.includes(frame)) {
+        retireChild(entry); frame.removeEventListener('load', entry.loaded); children.delete(frame);
+      }
+      for (const frame of frames) {
+        let entry = children.get(frame);
+        if (!entry) {
+          entry = {frame, observer: null, generation: 0, loaded: () => syncFrames()};
+          children.set(frame, entry); frame.addEventListener('load', entry.loaded);
+        }
+        try {
+          const childDocument = frame.contentDocument;
+          if (!childDocument || !frame.contentWindow) continue;
+          // Insertion first exposes an unrelated initial about:blank document.
+          // Its observer cannot establish coverage of the eventual network page.
+          if (childDocument.URL === 'about:blank' && frame.getAttribute('src') &&
+              frame.getAttribute('src') !== 'about:blank') continue;
+          if (childDocument !== entry.document) observeFrame(frame.contentWindow, false);
+          else entry.path = elementPath(frame);
+        } catch (_) { /* Snapshot reports inaccessible/pending children fail closed. */ }
+      }
+    }
     const pendingStarts = new Map(), started = new WeakSet(), openStarts = [];
     const definitions = new WeakMap(), activated = new WeakSet(), alignedEnds = new Map();
     const CSSAnimation = win.CSSAnimation, CSSTransition = win.CSSTransition;
@@ -84,6 +177,8 @@
     }
     function sample() {
       if (stopped) return;
+      syncFrames();
+      for (const entry of children.values()) entry.observer?.sample();
       for (const animation of doc.getAnimations()) {
         const kind = animation instanceof CSSAnimation ? 'animation' :
           animation instanceof CSSTransition ? 'transition' : null;
@@ -161,6 +256,9 @@
     }
     function alignInfinite(animation) {
       if (stopped) return;
+      for (const entry of children.values()) {
+        if (entry.observer?.animations().includes(animation)) return entry.observer.alignInfinite(animation);
+      }
       sample();
       const timing = animation.effect.getTiming();
       if (animation.playState !== 'running' || timing.iterations !== Infinity) return;
@@ -249,12 +347,33 @@
     mutations.observe(doc, {subtree: true, childList: true, attributes: true});
     wake();
     return {
-      sample, alignInfinite,
-      phase(value) { sample(); phase = value; },
+      sample, alignInfinite, observeFrame,
+      animations() {
+        syncFrames();
+        return [...doc.getAnimations(), ...[...children.values()].flatMap(entry => entry.observer?.animations() || [])];
+      },
+      documents() {
+        syncFrames();
+        return [doc, ...[...children.values()].flatMap(entry => entry.observer?.documents() || [])];
+      },
+      pendingDocuments() {
+        syncFrames();
+        return [...children.values()].some(entry => {
+          try {
+            return !entry.observer || entry.frame.contentDocument !== entry.document ||
+              entry.document.readyState !== 'complete' || entry.observer.pendingDocuments();
+          } catch (_) { return true; }
+        });
+      },
+      phase(value) { sample(); phase = value; for (const entry of children.values()) entry.observer?.phase(value); },
       stop() {
         sample(); stopped = true;
         if (request !== null) cancelFrame(request);
         mutations.disconnect();
+        for (const [frame, entry] of children) {
+          retireChild(entry); frame.removeEventListener('load', entry.loaded);
+        }
+        children.clear();
         pendingStarts.clear(); openStarts.length = 0; alignedEnds.clear();
         events.forEach(name => doc.removeEventListener(name, wake, true));
       },
@@ -305,7 +424,7 @@
         [...doc.styleSheets || [], ...doc.adoptedStyleSheets || []].forEach(sheet => inspectSheet(sheet));
         for (const element of doc.querySelectorAll('*')) {
           if (['SCRIPT', 'STYLE', 'LINK', 'META', 'TITLE', 'HEAD'].includes(element.tagName)) continue;
-          if (element.shadowRoot || element.tagName === 'IFRAME') {
+          if (element.shadowRoot) {
             const gap = 'Separate document/shadow root requires its own motion observer: ' + elementPath(element);
             if (!gaps.includes(gap)) gaps.push(gap);
           }
@@ -323,9 +442,19 @@
             declarations.push([elementPath(element), pseudo, indexes.get(key)]);
           }
         }
+        const documents = [...retiredDocuments];
+        for (const [frame, entry] of children) {
+          const path = elementPath(frame);
+          let readable = false;
+          try { readable = frame.contentDocument === entry.document && !!entry.observer; } catch (_) {}
+          if (!readable) { gap('Inaccessible or pending child document requires its own motion observer: ' + path); continue; }
+          const child = childRecord(entry);
+          validateChild(entry, child);
+          documents.push(child);
+        }
         return {version: MOTION, properties: motionProperties, styles, declarations, sourceRules,
           triggered: [...triggered].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
-          gaps: [...gaps]};
+          ...(documents.length ? {documents} : {}), gaps: [...gaps]};
       }
     };
   }
@@ -354,8 +483,8 @@
     decodedImages.set(image, image.currentSrc);
   }
   const motion = typeof document !== 'undefined' && document.getAnimations ? createMotionObserver(window) : null;
-  function generated(element, selector) {
-    const style = getComputedStyle(element, selector);
+  function generated(element, selector, win = window) {
+    const style = win.getComputedStyle(element, selector);
     if (style.content === 'none' || style.content === 'normal') return null;
     return {
       content: style.content, display: style.display, position: style.position,
@@ -374,13 +503,13 @@
       boxShadow: style.boxShadow, textShadow: style.textShadow
     };
   }
-  function geometry() {
-    const selected = [...document.body.querySelectorAll('*')].filter(element =>
+  function geometry(win = window, doc = win.document) {
+    const selected = [...doc.body.querySelectorAll('*')].filter(element =>
       !['SCRIPT', 'STYLE', 'LINK'].includes(element.tagName));
     return selected.map(element => {
       const box = element.getBoundingClientRect();
       const parent = element.parentElement.getBoundingClientRect();
-      const style = getComputedStyle(element);
+      const style = win.getComputedStyle(element);
       return {
         tag: element.tagName, id: element.id, class: element.className,
         selector: element.id ? '#' + element.id : element.tagName.toLowerCase() +
@@ -407,7 +536,7 @@
           alignItems: style.alignItems, justifyContent: style.justifyContent,
           flexDirection: style.flexDirection, textAlign: style.textAlign
         },
-        generated: {before: generated(element, '::before'), after: generated(element, '::after')}
+        generated: {before: generated(element, '::before', win), after: generated(element, '::after', win)}
       };
     });
   }
@@ -435,7 +564,23 @@
     while (performance.now() < deadline) {
       motion?.sample();
       await Promise.all([...document.images].filter(image => imageRequired(image)).map(imageReady));
-      const animations = document.getAnimations();
+      const childDocuments = (motion?.documents() || [document]).slice(1);
+      for (const child of childDocuments) {
+        const childWindow = child.defaultView;
+        await timeout(child.fonts.ready, 'Child document fonts did not become ready');
+        const childFonts = new Set([...child.querySelectorAll('*')].map(element => childWindow.getComputedStyle(element).font).filter(Boolean));
+        await timeout(Promise.all([...childFonts].map(font => child.fonts.load(font))), 'Child consumer fonts did not load');
+        await Promise.all([...child.images].filter(image => imageRequired(image, childWindow)).map(imageReady));
+        const childBackgrounds = new Set([...child.querySelectorAll('*')].flatMap(element =>
+          [null, '::before', '::after'].flatMap(selector => backgroundURLs(childWindow.getComputedStyle(element, selector).backgroundImage))));
+        await timeout(Promise.all([...childBackgrounds].map(src => new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => image.decode().then(resolve, reject);
+          image.onerror = () => reject(new Error('Child fixture background failed: ' + src));
+          image.src = new URL(src, child.baseURI).href;
+        }))), 'Child background images did not decode');
+      }
+      const animations = motion?.animations() || document.getAnimations();
       const finite = animations.filter(animation =>
         animation.playState === 'running' && animation.effect.getTiming().iterations !== Infinity);
       if (!finite.length) {
@@ -445,10 +590,11 @@
           }
         }
       }
-      const current = JSON.stringify(geometry());
+      const current = JSON.stringify(childDocuments.length ?
+        [geometry(), childDocuments.map(child => geometry(child.defaultView))] : geometry());
       const pendingFont = document.querySelector('[data-font-phase="initial"], [data-font-phase="fallback"], [data-font-phase="prepared"], [data-font-phase="crossfade"]');
       if (document.querySelector('[data-font-phase="failed"]')) throw new Error('Native fixture font upgrade failed');
-      stable = current === previous && !finite.length && !pendingFont ? stable + 1 : 0;
+      stable = current === previous && !finite.length && !pendingFont && !motion?.pendingDocuments() ? stable + 1 : 0;
       if (stable >= 4) break;
       penultimate = previous; previous = current;
       await pause(100);
@@ -467,7 +613,7 @@
           }
         }
       }
-      const finite = document.getAnimations().filter(animation => animation.playState === 'running' &&
+      const finite = (motion?.animations() || document.getAnimations()).filter(animation => animation.playState === 'running' &&
         animation.effect.getTiming().iterations !== Infinity);
       const pending = [...document.querySelectorAll('[data-font-phase]')].filter(element =>
         ['initial', 'fallback', 'prepared', 'crossfade'].includes(element.dataset.fontPhase));
@@ -489,6 +635,7 @@
   }
   window.visualFixture = {
     ready, backgroundURLs, imageRequired, createMotionObserver, motion,
+    observeFrame: childWindow => motion.observeFrame(childWindow),
     snapshot: () => ({
       viewport: [innerWidth, innerHeight, devicePixelRatio],
       document: [scrollX, scrollY, document.scrollingElement.scrollHeight],
