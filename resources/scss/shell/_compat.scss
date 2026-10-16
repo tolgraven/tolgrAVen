@@ -140,7 +140,7 @@
     font-size: 0.72rem;
     --space-sides: calc(0.5 * var(--space)); /* remember -sides based on the smaller num for mobile (since margins are more precious) */
     --space-edges: calc(0.0 * var(--space));
-    --line-width-vert: 0rem;
+    --line-width-vert: 0;
   }
   #top-banner { /* need a better solution for ensuring doesnt overflow... like a tallet image? */
     padding-top: 0;
@@ -150,7 +150,7 @@
   :root { // these settings work down til about 260 then footer doubles up. Also get issues with heading image bleeding out on right hmm.
     font-size: 0.67rem;
     --space-edges: calc(0.1 * var(--space));
-    --line-width-vert: 0rem;
+    --line-width-vert: 0;
   }
 }
 

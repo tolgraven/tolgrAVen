@@ -4,6 +4,13 @@
 
 $line-width-base: 2.0px; // Retain the original fixed border baseline.
 
+/* Normalize the menu clip's zero without changing legacy border consumers. */
+@property --menu-border-width {
+  syntax: '<length-percentage>';
+  inherits: true;
+  initial-value: 0%;
+}
+
 /* wanted to put in own file but wasnt compatible with live reload solution... */
 :root { /* general vars */
   /* SIZES */
@@ -49,8 +56,9 @@ $line-width-base: 2.0px; // Retain the original fixed border baseline.
                             ((1 - var(--menu-width-fraction)) / 2) +
                             0.75 * var(--space) -
                             var(--fiddle-multiplier) * var(--line-width));
+  --menu-border-width: calc(var(--line-width-vert));
   --right-marker:       calc(100% -
-                             1.5 * var(--line-width-vert) -
+                             1.5 * var(--menu-border-width) -
                              var(--left-marker)); /* makes sense right side needs one more unit since it has the right border... */
   --top-to-menu-height: calc(2 * var(--space-top) + 1.55em);
   
