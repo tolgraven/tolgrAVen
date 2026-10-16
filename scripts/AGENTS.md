@@ -123,9 +123,20 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - `dev/pr.clj` owns `bb pr` description attribution and the tracked
   `prepare-commit-msg` session trailer hook. Preserve the original owner and
   recorded contributors on every body rewrite; attribution comes only from
-  explicit IDs, the current session, and commit trailers. See `doc/tooling.md`.
+  explicit IDs, the current session, and commit trailers. `session_metadata.py`
+  reads only their recorded names and working directories; never publish prompts,
+  previews or transcript text. Preserve former names/paths in the managed footer
+  when local metadata changes or disappears. See `doc/tooling.md`.
 - Static Neovim fixtures reuse the module's portable isolation policy for their
   document/worker paths; the explicit unsupported alias has no document isolation.
   Keep the direct `:neovim-check` bundle route separate from `:app-test` resources.
   Standalone visual cases await an optional owned disposal hook on success/failure
   before the next navigation; active WASM cases must never use the iframe batch.
+
+- Host SSD migration is explicit through `ops/host/coolify-storage.py`: verify the
+  provisioned filesystem, drain deployments, preserve originals until live
+  verification, and require mounts before Docker starts. Never format implicitly.
+  Scheduled `coolify-storage-cleanup.py` owns only aged managed deployment images
+  and unused Docker cache; preserve rollback/container references and all volumes.
+  Its timer must skip inactive Docker and missing mounts without activating either.
+  See `doc/coolify-storage.md`.

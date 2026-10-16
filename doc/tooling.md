@@ -153,8 +153,16 @@ legacy cleanup and the full completion procedure.
 Use `bb pr` in place of `gh pr` in this repository. It runs the installed GitHub
 CLI against `tolgraven/tolgrAVen` and appends a managed **Codex sessions** footer
 to PR descriptions. The footer records the original session in charge and other
-contributing sessions as `codex resume UUID` commands. It publishes only session
-identifiers, never transcripts or local session files.
+contributing sessions with their current recorded title, former titles/generated
+descriptions, worktree paths and a secondary `codex resume UUID` command. Only
+those metadata fields are published; prompts, transcripts and session files are not.
+The read-only local adapter uses `CODEX_HOME` (default `~/.codex`), the session
+name index and installed SQLite thread metadata. Recorded turn/tool working
+directories include retired worktrees; the current publishing directory is added
+only to the current session. Metadata history is preserved in the managed footer
+across later renames, missing local sessions and edits from another machine.
+Unavailable metadata leaves the resume command usable. History absent from local
+records or earlier footers cannot be reconstructed.
 
 ```sh
 bb hooks
@@ -193,3 +201,6 @@ before a write so existing provenance cannot be silently discarded.
 
 Run focused wrapper/hook tests with
 `bb --classpath scripts:test/scripts -m pr-test` (also in `bb test:scripts`).
+
+Bux's persistent SSD mounts and scheduled deployment-image/cache retention are
+managed by the explicit host tools in [Coolify storage](coolify-storage.md).

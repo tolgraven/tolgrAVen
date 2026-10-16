@@ -5,6 +5,8 @@
             [clojure.java.io :as io]
             [clojure.string :as string]
             [clj-http.client :as http]
+            [mount.core :as mount]
+            [website.config :as config]
             [website.content.contract :as contract]
             [website.page-router :as pages]
             [website.content.service :as content]))
@@ -95,6 +97,14 @@
 (deftest startup-declarations-include-common-shell-and-module-heading
   (is (every? (set (pages/immediate-keys)) [:document :header :footer :blog]))
   (is (not (contains? (set (pages/immediate-keys)) :gallery))))
+
+(deftest production-startup-still-requires-shell-content
+  (with-redefs [config/env {:dev false}
+                content/settings (constantly {:url "https://unavailable.test"})
+                http/get (fn [& _] (throw (java.net.ConnectException. "refused")))]
+    (try
+      (is (thrown? RuntimeException (mount/start #'content/startup-content)))
+      (finally (mount/stop #'content/startup-content)))))
 
 (deftest public-content-identifies-its-source-without-exposing-credentials
   (doseq [[settings expected] [[{} "seed"] [{:url "https://cms.test" :token "private"} "strapi"]]]
