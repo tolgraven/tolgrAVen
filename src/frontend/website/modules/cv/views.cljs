@@ -5,9 +5,11 @@
     [website.media.schema :as media-schema]
     [website.modules.cv.schema :as cv-schema]
     [website.component.registry]
+    [website.component.restore :as restore]
     [clojure.string :as string]
     [website.react :as r]
     [website.loader :as loader]
+    [website.listener :as listener]
 
     [website.components.image :as img]
     [website.components.icon-catalog :as icon-catalog]
@@ -310,19 +312,36 @@
                        (when element (set! (.-scrollLeft element) (.-scrollWidth element))))
         ref-fn (fn [el]
                  (if el
-                   (do
+                   (let [returned? (and (restore/document-return?)
+                                        (or (restore/document-enter?) (restore/back-document?)))
+                         stop-pagehide! (when-not returned?
+                                          (listener/listen! timer-key
+                                            [{:target "window"
+                                              :event "pagehide"
+                                              ;; Cancel before a retained document freezes,
+                                              ;; without waiting for its event queue to resume.
+                                              :handler (fn [_]
+                                                         (r/dispatch-sync [:dispatch-in/cancel timer-key])
+                                                         ;; Ref setup may still be queued. Retire it
+                                                         ;; after those existing setup events too.
+                                                         (cancel!))}]))]
                      (r/dispatch [:ls/store-val [:cv-visited] true])
-                     (doseq [[ms event] (cond-> [[2000 [:state [:fullscreen :cv] true]]]
-                                         (not @visited)
-                                         (into [[3000 [:scroll/by 50]]
-                                                [4500 [:scroll/by -37]]
-                                                [5500 [:focus-element "fullscreen-btn"]]]))]
-                       (r/dispatch [:dispatch-in/set {:k timer-key
-                                                     :ms ms
-                                                     :dispatch-n [event]}]))
+                     ;; The initial returned page stays settled. A later SPA
+                     ;; visit has a new page context and keeps the usual demo.
+                     (when-not returned?
+                       (doseq [[ms event] (cond-> [[2000 [:state [:fullscreen :cv] true]]]
+                                           (not @visited)
+                                           (into [[3000 [:scroll/by 50]]
+                                                  [4500 [:scroll/by -37]]
+                                                  [5500 [:focus-element "fullscreen-btn"]]]))]
+                         (r/dispatch [:dispatch-in/set {:k timer-key
+                                                       :ms ms
+                                                       :dispatch-n [event]}])))
                      ;; React owns this native ref's lifetime, including ref
                      ;; replacement and StrictMode's setup/cleanup replay.
-                     cancel!)
+                     (fn []
+                       (when stop-pagehide! (stop-pagehide!))
+                       (cancel!)))
                    (cancel!)))]
    (fn []
     (let [{:keys [title caption cv image-assets]} @(r/subscribe [:content/view [:cv]])

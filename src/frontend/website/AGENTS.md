@@ -21,6 +21,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - The CV first-visit demo uses its original delayed events under an instance-owned
   `:dispatch-in` key. Its native ref cleanup cancels only that instance's timers;
   late native-handle acknowledgements stop canceled work without restoring it.
+  Initial document returns skip the demo through the shared return/page context;
+  later ordinary SPA visits retain it. Its owned pagehide listener cancels timers
+  synchronously before BFCache can freeze the document and releases on ref cleanup.
 
 - Action labels measure their committed native anchor and portal. Follow finite
   ancestor motion and observe ancestor size changes only while the label is open;

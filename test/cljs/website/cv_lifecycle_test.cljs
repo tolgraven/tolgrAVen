@@ -13,6 +13,7 @@
   (async done
     (let [restore-db! (r/make-restore-fn)
           context @restore/*context
+          return-marker (.getAttribute (.-documentElement js/document) "data-document-return")
           scroll-y (.-scrollY js/window)
           active-element (.-activeElement js/document)
           original-set-timeout js/setTimeout
@@ -78,21 +79,45 @@
                   seed (js->clj (await! (.json response)) :keywordize-keys true)
                   root (await! (support/create-root! element))]
               (reset! *root root)
-              (doseq [mounted? [true false]]
+              (doseq [mode [:mounted :unmounted :pagehide :early-pagehide :network-return :paired-return :spa-from-returned]
+                      :let [mounted? (not= mode :unmounted)
+                            returned? (#{:network-return :paired-return :spa-from-returned} mode)
+                            active? (boolean (#{:mounted :spa-from-returned} mode))
+                            expected-times (if (#{:network-return :paired-return} mode)
+                                             [] [2000 3000 4500 5500])]]
                 (r/dispatch-sync [:editor-visual/install seed false])
                 (r/dispatch-sync [:state [:cv :visited] false])
                 (r/dispatch-sync [:state [:fullscreen :cv] false])
-                (restore/begin! {})
+                (restore/begin! (case mode
+                                  :mounted {:hydrate? true}
+                                  :network-return {:hydrate? true}
+                                  :paired-return {:hydrate? true, :back? true}
+                                  :spa-from-returned {:hydrate? true}
+                                  {}))
+                (when (#{:network-return :spa-from-returned} mode) (restore/hydrated!))
+                (when (= mode :spa-from-returned) (restore/navigate! "/cv"))
+                (if returned?
+                  (.setAttribute (.-documentElement js/document) "data-document-return" "true")
+                  (.removeAttribute (.-documentElement js/document) "data-document-return"))
                 (reset! *now 0)
                 (reset! *scheduled [])
                 (reset! *delivered [])
                 (reset! *pending {})
                 (await! (support/render! root
-                          [:main {:style {:min-height "500vh"}}
+                          [:main {:style {:min-height "500vh"}
+                                  :ref (when (= mode :early-pagehide)
+                                         (fn [element]
+                                           (when element
+                                             (is (empty? @*scheduled) "Pagehide can precede queued timer setup")
+                                             (.dispatchEvent js/window
+                                               (js/PageTransitionEvent. "pagehide" #js {:persisted true})))))}
                            [:button {:id "destination-origin"} "Focus before the demo"]
                            [cv/<cv>]]))
-                (await! (support/wait-for! #(= 4 (count @*scheduled)) "CV did not schedule its native demo"))
-                (is (= [2000 3000 4500 5500] @*scheduled) "Preserve the mounted first-visit demo's original timing")
+                (await! (support/settle!))
+                (when (seq expected-times)
+                  (await! (support/wait-for! #(= 4 (count @*scheduled)) "CV did not schedule its native demo")))
+                (is (= expected-times @*scheduled)
+                    (str "Preserve ordinary first-visit timing and suppress only the initial return: " mode))
                 (let [cv-node (.querySelector element "#cv")]
                   (is (some? cv-node) "The actual CV owner mounted")
                   (when-not mounted?
@@ -105,30 +130,53 @@
                     (await! (support/settle!))
                     (is (false? (.-isConnected cv-node)) "SPA-style replacement unmounted the actual CV")
                     (is (empty? @*pending) "Leaving CV cancels its owned demo timers"))
+                  (when (= mode :pagehide)
+                    (.dispatchEvent js/window (js/PageTransitionEvent. "pagehide" #js {:persisted true}))
+                    (await! (support/settle!)))
+                  (when (#{:pagehide :early-pagehide} mode)
+                    (is (.-isConnected cv-node) "A retained document keeps its mounted CV")
+                    (is (empty? @*pending) "Pagehide cancels the CV demo before a retained document freezes"))
+                  ;; Let fonts and the preceding assertions paint before using
+                  ;; the shared window; reporter reflow is not a CV timer action.
+                  (await! (.-ready (.-fonts js/document)))
+                  (await! (support/settle!))
                   (.scrollTo js/window #js {:top 0, :behavior "instant"})
                   (let [origin (.querySelector element "#destination-origin")
                         focus-target (.querySelector element "#fullscreen-btn")]
                     (.focus origin #js {:preventScroll true})
-                    (await! (drive! 2000))
-                    (is (= mounted? (boolean (await! (support/state-at! [:state :fullscreen :cv]))))
-                        "Only the mounted CV may auto-expand")
-                    (await! (drive! 3000))
-                    (when mounted?
-                      (await! (support/wait-for! #(pos? (.-scrollY js/window)) "Mounted CV did not scroll down")))
-                    (let [down (.-scrollY js/window)]
-                      (await! (drive! 4500))
-                      (when mounted?
-                        (await! (support/wait-for! #(< (.-scrollY js/window) down) "Mounted CV did not scroll back")))
-                      (await! (drive! 5500))
-                      (when (some #(= :focus-element (first %)) @*delivered)
-                        (await! (support/wait-for! #(identical? (.querySelector element "#fullscreen-btn")
-                                                              (.-activeElement js/document))
-                                                  "Native delayed focus did not commit")))
-                      (if mounted?
-                        (is (identical? focus-target (.-activeElement js/document)) "Mounted demo focuses its native control")
-                        (do
-                          (is (zero? (.-scrollY js/window)) "Unmounted CV cannot scroll the destination")
-                          (is (identical? origin (.-activeElement js/document)) "Unmounted CV cannot focus a destination control"))))))
+                    (await! (support/settle!))
+                    (let [initial-scroll (.-scrollY js/window)
+                          initial-root-top (.-offsetTop element)]
+                      (await! (drive! 2000))
+                      (let [fullscreen? (boolean (await! (support/state-at! [:state :fullscreen :cv])))]
+                        (await! (drive! 3000))
+                        (when active?
+                          (await! (support/wait-for! #(pos? (.-scrollY js/window)) "Mounted CV did not scroll down")))
+                        (let [down (.-scrollY js/window)]
+                          (await! (drive! 4500))
+                          (when active?
+                            (await! (support/wait-for! #(< (.-scrollY js/window) down) "Mounted CV did not scroll back")))
+                          (await! (drive! 5500))
+                          (when (some #(= :focus-element (first %)) @*delivered)
+                            (await! (support/wait-for! #(identical? (.querySelector element "#fullscreen-btn")
+                                                                  (.-activeElement js/document))
+                                                      "Native delayed focus did not commit")))
+                          ;; Collect the whole outcome before assertions can reflow
+                          ;; the test reporter and alter native scroll anchoring.
+                          (let [final-scroll (.-scrollY js/window)
+                                final-focus (.-activeElement js/document)]
+                            (is (= active? fullscreen?) "Only an active ordinary CV demo may auto-expand")
+                            (if active?
+                              (is (identical? focus-target final-focus) "Mounted demo focuses its native control")
+                              (do
+                                (is (= initial-scroll final-scroll)
+                                    (str "Inactive CV demos cannot move the viewport: " mode
+                                         {:initial-scroll initial-scroll
+                                          :final-scroll final-scroll
+                                          :initial-root-top initial-root-top
+                                          :final-root-top (.-offsetTop element)
+                                          :delivered @*delivered}))
+                                (is (identical? origin final-focus) "Inactive CV demos cannot move focus")))))))))
                 (await! (support/render! root nil)))))
           (.catch #(is false (str %)))
           (.finally
@@ -142,6 +190,9 @@
                   (r/clear-global-interceptor :cv-lifecycle-test/actions)
                   (.remove element)
                   (reset! restore/*context context)
+                  (if (nil? return-marker)
+                    (.removeAttribute (.-documentElement js/document) "data-document-return")
+                    (.setAttribute (.-documentElement js/document) "data-document-return" return-marker))
                   (restore-db!)
                   (when (.-isConnected active-element) (.focus active-element #js {:preventScroll true}))
                   (.scrollTo js/window #js {:top scroll-y, :behavior "instant"})
