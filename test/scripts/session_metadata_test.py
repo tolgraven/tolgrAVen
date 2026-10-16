@@ -76,9 +76,16 @@ class SessionMetadataTest(unittest.TestCase):
             self.assertEqual(result['titles'], ['Generated description', 'Current name'])
             self.assertNotIn('PRIVATE', json.dumps(result))
 
-    def test_missing_or_incompatible_local_state_keeps_index(self):
-        with tempfile.TemporaryDirectory() as directory:
-            home = Path(directory)
-            (home / 'session_index.jsonl').write_text('broken\n' + json.dumps({'id': ID, 'thread_name': 'Recorded name'}))
-            (home / 'state_5.sqlite').write_text('broken')
-            self.assertEqual(metadata.metadata(home, [ID])[ID]['title'], 'Recorded name')
+    def test_missing_or_incompatible_local_state_omits_unverified_index_names(self):
+        for state in ['missing', 'broken', 'no-matching-row']:
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory)
+                (home / 'session_index.jsonl').write_text('broken\n' + json.dumps({'id': ID, 'thread_name': 'PRIVATE ORIGINAL PROMPT'}))
+                if state == 'broken':
+                    (home / 'state_5.sqlite').write_text('broken')
+                elif state == 'no-matching-row':
+                    with sqlite3.connect(home / 'state_5.sqlite') as db:
+                        db.execute('create table threads (id text, title text)')
+                result = metadata.metadata(home, [ID])[ID]
+                self.assertNotIn('PRIVATE', json.dumps(result))
+                self.assertNotIn('title', result)

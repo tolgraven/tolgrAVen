@@ -95,6 +95,7 @@ def command_directories(source):
 
 def metadata(home, ids):
     result = {ident: {'titles': [], 'worktrees': []} for ident in ids}
+    index_names = {ident: [] for ident in ids}
 
     def add(ident, key, value):
         if isinstance(value, str) and value.strip():
@@ -108,9 +109,9 @@ def metadata(home, ids):
 
     for item in records(home / 'session_index.jsonl'):
         ident = item.get('id')
-        if ident in result:
-            add(ident, 'titles', item.get('thread_name'))
-            result[ident]['title'] = item.get('thread_name')
+        name = item.get('thread_name')
+        if ident in result and isinstance(name, str) and name.strip():
+            index_names[ident].append(name)
 
     databases = sorted(home.glob('state_*.sqlite'), key=lambda p: int(p.stem.split('_')[-1]), reverse=True)
     for database in databases:
@@ -128,9 +129,12 @@ def metadata(home, ids):
                 prompts = [item.get('first_user_message'), item.get('preview')]
                 if not item.get('first_user_message'):
                     prompts.append(item.get('title'))
-                result[ident]['titles'] = [v for v in result[ident]['titles'] if v not in prompts]
-                if result[ident].get('title') in prompts:
-                    result[ident].pop('title', None)
+                # Index names alone can also be legacy prompts. Publish history
+                # only with a known prompt to exclude or an explicit name match.
+                for indexed in index_names[ident]:
+                    if indexed == item.get('name') or (item.get('first_user_message') and indexed not in prompts):
+                        add(ident, 'titles', indexed)
+                        result[ident]['title'] = indexed
                 title = item.get('title')
                 if title and title not in prompts:
                     add(ident, 'titles', title)
