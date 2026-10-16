@@ -4,7 +4,6 @@
             [website.modules.blog-editor.views :as views]
             [website.modules.blog-editor.draft-schema :as draft-schema]
             [website.media.schema :as media-schema]
-            [website.supabase.runtime :as supabase]
             [website.validation :as validation]))
 
 (def form
@@ -68,15 +67,19 @@
                                 [:blog-editor/untrack-drafts :draft-detach]]]
       (r/reg-fx effect (fn [_] (swap! *effects conj {:operation operation}))))
     (r/reg-fx :blog-editor/commit-drafts (fn [_] (reject-write! :private-draft)))
-    (set! supabase/authenticated-request!
-      (fn [method uri data on-success on-error & options]
+    (r/reg-fx :supabase/request
+      (fn [{:keys [method uri on-success]}]
         (swap! *effects conj {:method method, :uri uri})
         (if (= :get method)
           (if (= "/api/supabase/media?offset=0&limit=24" uri)
-            (on-success library)
+            (r/dispatch (conj on-success library))
             (throw (js/Error. "Unexpected post editor fixture read")))
           (reject-write! :provider-request))))
-    (r/reg-fx :http-xhrio (fn [_] (reject-write! :http)))))
+    (r/reg-fx :http-xhrio
+      (fn [{:keys [method]}]
+        (if (= :get method)
+          (throw (js/Error. "Unexpected HTTP read in post editor visual fixture"))
+          (reject-write! :http))))))
 
 (defn ^:export state []
   {:form @(r/sub [:get :state :form-field :post-blog])
