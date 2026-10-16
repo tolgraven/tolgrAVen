@@ -323,6 +323,7 @@
                                      (or inherited-hydration? (restore/initial-hydration?))))
         [committed? set-committed!] (r/use-state false)
         *trigger (r/use-ref nil)
+        custom-loading? (boolean (and (not <before>) (:<loading> options)))
         complete! (r/use-callback
                     (fn []
                       ;; A parser may have introduced another unhydrated SSR
@@ -370,10 +371,13 @@
       (fn []
         (if (and (not context/*server?*) (not active?) (not committed?) (.-current *trigger))
           (let [marker (.-current *trigger)
-                target (if ssr? (.-nextElementSibling marker) marker)]
-            (or (activation/setup! target (assoc options :args args)) nil))
+                target (if ssr? (.-nextElementSibling marker) marker)
+                geometry-targets (if (and custom-loading? (not hidden?) (not ssr?))
+                                   (vec (array-seq (.-children marker)))
+                                   [target])]
+            (or (activation/setup! target (assoc options :args args) geometry-targets) nil))
           nil))
-      [module options args active? committed? ssr?])
+      [module options args active? committed? hidden? ssr? custom-loading?])
     (cond
       hidden? (when <before>
                 [:div.before-loading-container
@@ -385,7 +389,11 @@
               [:template {:ref *trigger :data-module-boundary (name module)}])
             content]
       (and requested? (or ready? failure)) [<module-content> options args complete! false]
-      :else [:section.module-load-placeholder {:ref *trigger :data-loading-active requested?}
+      :else [(if custom-loading? :div.module-load-placeholder :section.module-load-placeholder)
+             (cond-> {:ref *trigger, :data-loading-active requested?}
+               ;; Custom roots retain their native float/inline footprint while
+               ;; the boundary owns intent across every fallback child.
+               custom-loading? (assoc :style {:display "contents"}))
              (fallback-form options args requested?)])))
 
 (defn component-vector

@@ -300,3 +300,236 @@
                   (r/dispatch [:component-data/remove path]))))))
         (.catch #(is false (str %)))
         (.finally done))))
+
+(defn <reserved-avatar> [& _]
+  [:div.user-avatar-container {:data-custom-avatar true}
+   [:span.user-avatar {:aria-hidden true, :style {:visibility "hidden"}}]])
+
+(defn <fragment-loading> [& _]
+  [:<>
+   [:span {:data-first-loading-child true} "Pending section"]
+   [:button {:type "button", :data-loading-intent true} "Open pending section"]])
+
+(defn- comment-footprint [element]
+  (let [text (.querySelector element "[data-budget-text]")
+        card (.querySelector element ".blog-comment")
+        avatar (.querySelector element "[data-custom-avatar]")]
+    {:text-top (.-offsetTop text)
+     :card-height (.-offsetHeight card)
+     :avatar-height (.-offsetHeight avatar)
+     :avatar-float (.-cssFloat (js/getComputedStyle avatar))}))
+
+(defn- drain-transport! [module transport]
+  ((:css! transport))
+  ((:code! transport))
+  (if (seq @(:started transport))
+    (loader/load! {:module module})
+    (js/Promise.resolve nil)))
+
+(deftest custom-functional-loading-retains-its-native-comment-footprint
+  (async done
+    (-> (go-promise
+          (let [module (keyword (str "custom-footprint-" (random-uuid)))
+                element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                observers (observer-fixture!)
+                transport (transport-fixture! module {:id module :view {:view <reserved-avatar>}})]
+            (set! (.-cssText (.-style element))
+                  "position:fixed;top:1rem;left:1rem;width:24rem;z-index:99999")
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (styles/acquire-path! "/css/website/main.css"))
+              (await! (styles/acquire! :blog))
+              (await! (support/render! root
+                        [:div.blog
+                         [:section.blog-comment
+                          (m/<> {:module module :<loading> <reserved-avatar>})
+                          [:div.blog-comment-main
+                           [:h3.blog-comment-title "Native comment budget"]
+                           [:div {:data-budget-text true} "Text below the title"]]]]))
+              (let [pending (comment-footprint element)
+                    avatar (.querySelector element "[data-custom-avatar]")
+                    observer (some #(when (identical? avatar @(:element %)) %) @(:observers observers))]
+                (is (some? observer) "Visibility observes the functional fallback's actual native child")
+                (is (empty? @(:started transport)) "A pending custom root waits for normal proximity")
+                (when observer ((:fire! observer) true))
+                (await! (support/wait-for! #(seq @(:started transport))))
+                (await! (drain-transport! module transport))
+                (await! (support/wait-for! #(nil? (.querySelector element ".module-load-placeholder"))))
+                (let [loaded (comment-footprint element)]
+                  (is (pos? (:avatar-height pending)) "The native pending avatar reserves real height")
+                  (is (= "left" (:avatar-float pending)))
+                  (is (= pending loaded)
+                      "Code arrival adds no section padding, border or text-budget jump")))
+              (support/unmount! root)
+              (is (every? #(deref (:stopped? %)) @(:observers observers)))
+              (finally
+                (support/unmount! root)
+                (try
+                  (await! (drain-transport! module transport))
+                  (finally
+                    (.remove element)
+                    ((:restore! transport))
+                    ((:restore! observers))))))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest fragment-loading-observes-native-roots-and-retains-sibling-intent
+  (async done
+    (-> (go-promise
+          (doseq [intent [:click :focus :view]]
+            (let [module (keyword (str "fragment-" (name intent) "-" (random-uuid)))
+                  element (.createElement js/document "div")
+                  root (await! (support/create-root! element))
+                  observers (observer-fixture!)
+                  transport (transport-fixture! module {:id module :view {:view <target>}})]
+              (.appendChild (.-body js/document) element)
+              (try
+                (await! (support/render! root
+                          [:div
+                           [:button {:type "button", :data-outside-intent true} "Unrelated control"]
+                           (m/<> {:module module :<loading> <fragment-loading>}
+                                 "Loaded fragment" (fn []))]))
+                (let [first-child (.querySelector element "[data-first-loading-child]")
+                      sibling (.querySelector element "[data-loading-intent]")
+                      installed @(:observers observers)
+                      observed (mapv #(deref (:element %)) installed)
+                      sibling-observer (some #(when (identical? sibling @(:element %)) %) installed)]
+                  (is (some #(identical? first-child %) observed)
+                      "Proximity uses the fragment's first actual native element")
+                  (is (some? sibling-observer)
+                      "A later visible root retains proximity activation")
+                  (.click (.querySelector element "[data-outside-intent]"))
+                  (await! (support/settle!))
+                  (is (empty? @(:started transport)) "Intent outside the module owner cannot activate it")
+                  (case intent
+                    :click (.click sibling)
+                    :focus (.focus sibling #js {:preventScroll true})
+                    :view (when sibling-observer ((:fire! sibling-observer) true)))
+                  (await! (support/wait-for! #(seq @(:started transport))
+                            (str "A later fallback sibling lost its " intent " activation")))
+                  ;; Multiple roots reporting visibility share one acquisition.
+                  (doseq [observer installed] ((:fire! observer) true))
+                  (await! (support/settle!))
+                  (is (= [:css :js] @(:started transport))))
+                (await! (drain-transport! module transport))
+                (await! (support/wait-for! #(.querySelector element "[data-viewport-target]")))
+                (is (= "Loaded fragment" (.-textContent (.querySelector element "[data-viewport-target]"))))
+                (finally
+                  (support/unmount! root)
+                  (try
+                    (await! (drain-transport! module transport))
+                    (finally
+                      (.remove element)
+                      ((:restore! transport))
+                      ((:restore! observers)))))))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest custom-loading-unmount-retires-proximity-and-sibling-intent
+  (async done
+    (-> (go-promise
+          (let [module (keyword (str "custom-cleanup-" (random-uuid)))
+                element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                observers (observer-fixture!)
+                transport (transport-fixture! module {:id module :view {:view <target>}})]
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root
+                        (m/<> {:module module :<loading> <fragment-loading>} "Unused" (fn []))))
+              (let [owner (.querySelector element ".module-load-placeholder")
+                    sibling (.querySelector element "[data-loading-intent]")
+                    installed (vec @(:observers observers))]
+                (is (seq installed) "The pending module installed proximity observation")
+                (support/unmount! root)
+                ;; Retain only test-owned detached markup in the document so a
+                ;; leaked document-capture intent listener would still see it.
+                (.appendChild element owner)
+                (.click sibling)
+                (.dispatchEvent sibling (js/Event. "focusin" #js {:bubbles true}))
+                (doseq [observer installed] ((:fire! observer) true))
+                (.dispatchEvent js/window (js/Event. "resize"))
+                (await! (support/settle!))
+                (is (empty? @(:started transport)) "Retired native intent and stale visibility cannot acquire code")
+                (is (= (count installed) (count @(:observers observers)))
+                    "Unmount removes resize-driven observation")
+                (is (every? #(deref (:stopped? %)) installed)))
+              (finally
+                (support/unmount! root)
+                (try
+                  (await! (drain-transport! module transport))
+                  (finally
+                    (.remove element)
+                    ((:restore! transport))
+                    ((:restore! observers))))))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest empty-custom-loading-preserves-immediate-and-manual-acquisition
+  (async done
+    (-> (go-promise
+          (doseq [mode [:event :immediate]]
+            (let [module (keyword (str "empty-loading-" (name mode) "-" (random-uuid)))
+                  element (.createElement js/document "div")
+                  root (await! (support/create-root! element))
+                  observers (observer-fixture!)
+                  transport (transport-fixture! module {:id module :view {:view <target>}})]
+              (.appendChild (.-body js/document) element)
+              (try
+                (await! (support/render! root
+                          (m/<> {:module module :load-on mode :<loading> [:<>]}
+                                "Empty fallback resolved" (fn []))))
+                (is (empty? @(:observers observers)) "Empty manual/immediate roots need no geometry target")
+                (when (= :event mode)
+                  (is (empty? @(:started transport)) "An empty manual fallback remains intent-controlled")
+                  (r/dispatch [:scope/init module]))
+                (await! (support/wait-for! #(seq @(:started transport))
+                          (str "Empty fallback did not acquire through " mode)))
+                (is (= [:css :js] @(:started transport)))
+                (await! (drain-transport! module transport))
+                (await! (support/wait-for! #(.querySelector element "[data-viewport-target]")))
+                (is (= "Empty fallback resolved"
+                       (.-textContent (.querySelector element "[data-viewport-target]"))))
+                (finally
+                  (support/unmount! root)
+                  (try
+                    (await! (drain-transport! module transport))
+                    (finally
+                      (.remove element)
+                      ((:restore! transport))
+                      ((:restore! observers)))))))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest default-loading-retains-its-section-and-existing-proximity-owner
+  (async done
+    (-> (go-promise
+          (let [module (keyword (str "default-loading-" (random-uuid)))
+                element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                observers (observer-fixture!)
+                transport (transport-fixture! module {:id module :view {:view <target>}})]
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root (m/<> {:module module} "Default fallback" (fn []))))
+              (let [owner (.querySelector element ".module-load-placeholder")
+                    observer (some #(when (identical? owner @(:element %)) %) @(:observers observers))]
+                (is (= "SECTION" (.-tagName owner)) "The generic pending section is preserved")
+                (is (some? (.querySelector owner ".component-skeleton")))
+                (is (some? observer) "Default proximity still observes the original pending owner")
+                (is (empty? @(:started transport)))
+                (when observer ((:fire! observer) true)))
+              (await! (support/wait-for! #(seq @(:started transport))))
+              (await! (drain-transport! module transport))
+              (await! (support/wait-for! #(.querySelector element "[data-viewport-target]")))
+              (finally
+                (support/unmount! root)
+                (try
+                  (await! (drain-transport! module transport))
+                  (finally
+                    (.remove element)
+                    ((:restore! transport))
+                    ((:restore! observers))))))))
+        (.catch #(is false (str %)))
+        (.finally done))))

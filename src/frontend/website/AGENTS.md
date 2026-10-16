@@ -248,8 +248,12 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Use `<component>` names, `defc` features and `defpage` boundaries. `m/<>` selects
   direct or lazy module exports; it does not add a permanent wrapper. Module
   exports default to proximity activation; `:load-on` and `loader/<trigger>`
-  configure intent/earlier triggers. Hidden panels use explicit intent. Completed
-  SSR boundaries retain native nodes until activation and inner hydration commit.
+  configure intent/earlier triggers. Hidden panels use explicit intent. Custom
+  loading roots retain native layout through a boxless intent owner; proximity
+  observes their element roots, while intent covers all fallback siblings. Empty
+  custom fragments remain valid for immediate/manual activation. Generic loading
+  sections keep their existing layout. Completed SSR boundaries retain native
+  nodes until activation and inner hydration commit.
   Nested owners and formatters capture inherited hydration even after the root
   settles; newly inserted children use ordinary SPA behavior after owner commit.
   User controls/avatars do not depend on Markdown or Link Preview; comments use

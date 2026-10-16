@@ -62,6 +62,8 @@ Their dates determine position/size within the seed's shared timeline range;
 the case scrolls the native timeline to that historical entry before capture.
 Full CV category guards retain the reference glyphs, font metrics, gradient,
 label gaps and positions relative to their headings at both widths.
+The open-menu cases also hit-test each visible native toolbar control; positive
+rectangles alone cannot detect a decorative cover intercepting the controls.
 The original editor comparison fixture remains unchanged.
 Home cases retain native intro/story/media owners and the public seed. Intro guards compare all three call-to-action control and text boxes against the native reference at both widths. Separate trusted-hover cases retain the original opacity fade; navigation stays in single native links. Story
 image expansion clicks the actual inset image. Gallery start/end cases set their
@@ -78,7 +80,9 @@ Post/comment cases render the native blog container and post, including the
 post-owned comment section. Avatar guards retain the original fixed blur and spread
 in post headers, comment cards and GitHub entries at both widths. Preserve blog paragraph margins and the comment
 text column's original width beside/under avatars, including folded code fades
-and intermediate expansion/collapse heights. Standalone comment cases use the
+and intermediate expansion/collapse heights. Cold custom avatar fallbacks keep
+that same footprint during optional account-code acquisition; the module's intent
+owner must not introduce a generic section's padding or border. Standalone comment cases use the
 native standalone view separately. Thread cases supply two replies and a grandchild through the
 managed comment subscription boundary; the production reply components own
 their nesting and layout. Search cases render the native expandable Search UI
