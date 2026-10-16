@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Read allowlisted local Codex names and working directories for explicit IDs."""
+import json
+import os
+from pathlib import Path
+import re
+import sqlite3
+import sys
+
+UUID = re.compile(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}')
+
+
+def records(path):
+    try:
+        with path.open() as stream:
+            for line in stream:
+                try:
+                    yield json.loads(line)
+                except ValueError:
+                    continue
+    except OSError:
+        return
+
+
+def metadata(home, ids):
+    result = {ident: {'titles': [], 'worktrees': []} for ident in ids}
+
+    def add(ident, key, value):
+        if isinstance(value, str) and value.strip():
+            if key == 'worktrees':
+                match = re.match(r'(.*/\.codex/worktrees/[^/]+/[^/]+)(?:/.*)?$', value)
+                value = match[1] if match else value
+            if value not in result[ident][key]:
+                result[ident][key].append(value)
+
+    for item in records(home / 'session_index.jsonl'):
+        ident = item.get('id')
+        if ident in result:
+            add(ident, 'titles', item.get('thread_name'))
+            result[ident]['title'] = item.get('thread_name')
+
+    databases = sorted(home.glob('state_*.sqlite'), key=lambda p: int(p.stem.split('_')[-1]), reverse=True)
+    for database in databases:
+        try:
+            with sqlite3.connect(database.as_uri() + '?mode=ro', uri=True, timeout=1) as connection:
+                connection.row_factory = sqlite3.Row
+                columns = {r[1] for r in connection.execute('pragma table_info(threads)')}
+                selected = [k for k in ['id', 'name', 'title', 'first_user_message', 'preview', 'cwd', 'rollout_path'] if k in columns]
+                placeholders = ','.join('?' for _ in ids)
+                rows = connection.execute(f"select {','.join(selected)} from threads where id in ({placeholders})", ids).fetchall()
+            for row in rows:
+                item = dict(row)
+                ident = item['id']
+                # Legacy title/preview fields often contain the complete prompt.
+                prompts = [item.get('first_user_message'), item.get('preview')]
+                result[ident]['titles'] = [v for v in result[ident]['titles'] if v not in prompts]
+                if result[ident].get('title') in prompts:
+                    result[ident].pop('title', None)
+                title = item.get('title')
+                if title and title not in [item.get('first_user_message'), item.get('preview')]:
+                    add(ident, 'titles', title)
+                name = item.get('name')
+                add(ident, 'titles', name)
+                if name:
+                    result[ident]['title'] = name
+                elif title in result[ident]['titles'] and not result[ident].get('title'):
+                    result[ident]['title'] = title
+                add(ident, 'worktrees', item.get('cwd'))
+                rollout = Path(item.get('rollout_path') or '')
+                # Never follow a path outside Codex's session archives.
+                if not any(rollout.resolve().is_relative_to((home / folder).resolve()) for folder in ['sessions', 'archived_sessions']):
+                    continue
+                for event in records(rollout):
+                    payload = event.get('payload', {})
+                    if not isinstance(payload, dict):
+                        continue
+                    if event.get('type') in ['session_meta', 'turn_context']:
+                        add(ident, 'worktrees', payload.get('cwd'))
+                    if event.get('type') == 'response_item' and payload.get('type') in ['function_call', 'custom_tool_call']:
+                        arguments = payload.get('arguments', payload.get('input', ''))
+                        if not isinstance(arguments, str):
+                            continue
+                        try:
+                            arguments_map = json.loads(arguments)
+                        except ValueError:
+                            arguments_map = None
+                        if isinstance(arguments_map, dict):
+                            add(ident, 'worktrees', arguments_map.get('workdir'))
+                        elif payload.get('name', '').split('.')[-1] == 'exec':
+                            # Orchestrated exec_command calls retain literal workdir props.
+                            for match in re.finditer(r'\bworkdir[\"\']?\s*:\s*("(?:[^"\\]|\\.)*")', arguments):
+                                add(ident, 'worktrees', json.loads(match[1]))
+            break
+        except (sqlite3.Error, OSError, ValueError):
+            continue
+    return result
+
+
+if __name__ == '__main__':
+    ids = sys.argv[1:]
+    if not ids or not all(UUID.fullmatch(ident) for ident in ids):
+        raise SystemExit('Expected explicit Codex thread UUIDs')
+    home = Path(os.environ.get('CODEX_HOME', Path.home() / '.codex')).resolve()
+    result = metadata(home, ids)
+    current = os.environ.get('CODEX_THREAD_ID') or os.environ.get('CODEX_SESSION_ID')
+    if current in result and os.getcwd() not in result[current]['worktrees']:
+        result[current]['worktrees'].append(os.getcwd())
+    print(json.dumps(result))
