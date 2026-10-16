@@ -96,6 +96,17 @@ route geometry remain native. This verifies map layout/behavior, not parity of
 external cartographic imagery. Missing native ReactLeaflet exports fail rather
 than substituting a map. Browser execution and matching captures remain required.
 
+Full posting-page cases retain the native heading/page, rich/source editor,
+preview, draft chooser and post-only image/component pickers. Local draft reads
+return schema-checked records through the original result events; private storage
+attach/detach effects are recorded without tracking or flushing browser drafts.
+The image library has one validated local read response; all provider/HTTP writes
+and draft commits fail closed. Native mode changes and draft selection must keep
+one post editor, canonical fields and the live preview. Picker captures require
+real catalogue entries or decoded images and viewport bounds. These fixtures do
+not verify durable autosave, publication or upload; native captures are still
+required before claiming these states work or match a baseline.
+
 Keep the installed Chrome running with its configured DevTools connection:
 
 ```sh
