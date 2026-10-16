@@ -13,6 +13,7 @@
             [website.modules.docs.subs]
             [website.modules.instagram.views :as instagram]
             [website.modules.instagram.subs]
+            [website.strava-visual-fixture :as strava-fixture]
             [website.components.ui.overlays :as overlays]
             [website.modules.github.views :as github]
             [website.modules.github.model :as github-model]
@@ -410,7 +411,7 @@
                "thread" "post" "standalone-comments" "search-mixed"
                "shell" "shell-scroll" "shell-panels" "header" "footer" "post-footer" "services" "cv"
                "home-intro" "home-story" "home-image-media" "github"
-               "docs-index" "docs-topic" "instagram"} component)
+               "docs-index" "docs-topic" "instagram" "strava"} component)
       (editor/init! false)
       (-> (js/fetch "/fixtures/editor-seed.json")
           (.then #(.json %))
@@ -514,17 +515,21 @@
                 (r/reg-sub :search/selected (fn [_ _] -1))
                 (r/reg-sub :search/get (fn [_ _] 0)))
               (when (= "github" component) (github-transport!))
+              (when (= "strava" component) (strava-fixture/install-transport!))
               (when (#{"docs-index" "docs-topic" "instagram"} component)
                 (public-read-transport!))
               (when (#{"docs-index" "docs-topic"} component)
                 (r/dispatch-sync [:docs/set-page (if (= component "docs-index") "index" "docs")]))
-              (restore/begin! (if (#{"docs-index" "docs-topic" "instagram" "shell-panels"} component) {} {:back? true}))
+              (restore/begin! (if (#{"docs-index" "docs-topic" "instagram" "shell-panels" "strava"} component) {} {:back? true}))
               (-> (loader/load! {:module :markdown})
                   (.then (fn [_]
                            (case component
                              "github" (loader/load! {:module :github})
                              ("docs-index" "docs-topic") (loader/acquire-code! :docs)
                              "instagram" (loader/acquire-code! :instagram)
+                             "strava" (-> (loader/load! {:module :maps})
+                                          (.then (fn [_] (loader/load! {:module :carousel})))
+                                          (.then (fn [_] (loader/load! {:module :strava}))))
                              nil)))
                   (.then (fn [_]
                            (r/render (r/create-root (.getElementById js/document "app"))
@@ -540,5 +545,6 @@
                                "github" [<main-fixture> [github/<commits>]]
                                ("docs-index" "docs-topic") [<docs-fixture>]
                                "instagram" [<instagram-fixture>]
+                               "strava" [strava-fixture/<fixture>]
                                ("home-intro" "home-story" "home-image-media") [<home-fixture> component]
                                [<box-fixture> (= component "cv-container")])))))))))))

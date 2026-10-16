@@ -1002,6 +1002,118 @@
       ],
       "path": "/fixtures/neovim-unsupported.html?visual=unsupported",
       "standalone": true
+    },
+    {
+      "id": "strava-totals-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=strava",
+      "action": "const deadline = performance.now() + 10000; const waitFor = async (predicate, message) => { while (!predicate()) { if (performance.now() > deadline) throw new Error(message); await new Promise(resolve => requestAnimationFrame(resolve)); } }; await waitFor(() => document.querySelectorAll('.strava-activity-dot:not(.strava-activity-dot-expanded)').length === 2 && document.querySelector('.strava-athlete')?.textContent.includes('Visual Cyclist'), 'Native Strava athlete and activities did not mount'); await waitFor(() => [...document.querySelectorAll('.strava-activity-dot')].every(dot => Number.parseFloat(dot.style.width) >= 0.85), 'Native activity dot mount deadlines did not finish'); await waitFor(() => [...document.querySelectorAll('.strava-stats h3')].some(node => node.textContent === 'Total') && document.querySelector('.strava-stats')?.textContent.includes('120'), 'Native totals body is missing; current baseline selected-tab lookup does not render its component'); const next = document.querySelector('#strava-general-stats-carousel .carousel-next-btn'); if (!next) throw new Error('Native totals carousel did not mount'); next.click(); await waitFor(() => document.querySelector('#strava-general-stats-carousel .carousel-item-main')?.textContent.includes('2026'), 'Native year totals did not become active'); ",
+      "capture_assert": "if (![...document.querySelectorAll('.strava-stats h3')].some(node => node.textContent === 'Total') || !document.querySelector('#strava-general-stats-carousel .carousel-item-main')?.textContent.includes('2026')) throw new Error('Native totals are missing before capture')"
+    },
+    {
+      "id": "strava-activity-summary-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=strava",
+      "action": "const deadline = performance.now() + 10000; const waitFor = async (predicate, message) => { while (!predicate()) { if (performance.now() > deadline) throw new Error(message); await new Promise(resolve => requestAnimationFrame(resolve)); } }; await waitFor(() => document.querySelectorAll('.strava-activity-dot:not(.strava-activity-dot-expanded)').length === 2 && document.querySelector('.strava-athlete')?.textContent.includes('Visual Cyclist'), 'Native Strava athlete and activities did not mount'); await waitFor(() => [...document.querySelectorAll('.strava-activity-dot')].every(dot => Number.parseFloat(dot.style.width) >= 0.85), 'Native activity dot mount deadlines did not finish'); document.querySelectorAll('.strava-activity-dot')[1].click(); await waitFor(() => document.querySelector('.strava-activity-full h3')?.textContent.includes('Fixture morning ride') && document.querySelector('.strava-activity-stats-numbers')?.textContent.includes('175') && document.querySelector('.strava-kudo-dot') && document.querySelector('canvas#strava-activity-map'), 'Native expanded activity content did not mount'); document.querySelector('.strava-activity-full').scrollIntoView({block:'center',behavior:'instant'}); ",
+      "capture_assert": "if (!document.querySelector('.strava-activity-dot-expanded .strava-activity-full h3')?.textContent.includes('Fixture morning ride') || !document.querySelector('.strava-activity-stats-numbers')?.textContent.includes('175') || !document.querySelector('.strava-activity-photo img')?.complete || !document.querySelector('canvas#strava-activity-map')) throw new Error('Native expanded summary was lost before capture');"
+    },
+    {
+      "id": "strava-activity-graphs-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=strava",
+      "action": "const deadline = performance.now() + 10000; const waitFor = async (predicate, message) => { while (!predicate()) { if (performance.now() > deadline) throw new Error(message); await new Promise(resolve => requestAnimationFrame(resolve)); } }; await waitFor(() => document.querySelectorAll('.strava-activity-dot:not(.strava-activity-dot-expanded)').length === 2 && document.querySelector('.strava-athlete')?.textContent.includes('Visual Cyclist'), 'Native Strava athlete and activities did not mount'); await waitFor(() => [...document.querySelectorAll('.strava-activity-dot')].every(dot => Number.parseFloat(dot.style.width) >= 0.85), 'Native activity dot mount deadlines did not finish'); document.querySelectorAll('.strava-activity-dot')[1].click(); await waitFor(() => document.querySelector('.strava-activity-full h3')?.textContent.includes('Fixture morning ride') && document.querySelector('.strava-activity-stats-numbers')?.textContent.includes('175') && document.querySelector('.strava-kudo-dot') && document.querySelector('canvas#strava-activity-map'), 'Native expanded activity content did not mount'); document.querySelector('.strava-activity-full').scrollIntoView({block:'center',behavior:'instant'}); const button = [...document.querySelectorAll('.strava-activity-tabs button')].find(button => button.textContent === 'graphs'); if (!button) throw new Error('Native graphs tab is missing'); button.click(); await waitFor(() => document.querySelectorAll('.strava-activity-graphs canvas').length === 4, 'Native activity graphs did not mount'); ",
+      "capture_assert": "const canvases = [...document.querySelectorAll('.strava-activity-graphs canvas')]; if (canvases.length !== 4 || canvases.some(canvas => { const bounds = canvas.getBoundingClientRect(); return bounds.width <= 0 || bounds.height <= 0 || !canvas.width || !canvas.height || !canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data.some((value,index) => index % 4 === 3 && value); })) throw new Error('Native activity graphs are missing, empty or not painted');"
+    },
+    {
+      "id": "strava-activity-map-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=strava",
+      "action": "const deadline = performance.now() + 10000; const waitFor = async (predicate, message) => { while (!predicate()) { if (performance.now() > deadline) throw new Error(message); await new Promise(resolve => requestAnimationFrame(resolve)); } }; await waitFor(() => document.querySelectorAll('.strava-activity-dot:not(.strava-activity-dot-expanded)').length === 2 && document.querySelector('.strava-athlete')?.textContent.includes('Visual Cyclist'), 'Native Strava athlete and activities did not mount'); await waitFor(() => [...document.querySelectorAll('.strava-activity-dot')].every(dot => Number.parseFloat(dot.style.width) >= 0.85), 'Native activity dot mount deadlines did not finish'); document.querySelectorAll('.strava-activity-dot')[1].click(); await waitFor(() => document.querySelector('.strava-activity-full h3')?.textContent.includes('Fixture morning ride') && document.querySelector('.strava-activity-stats-numbers')?.textContent.includes('175') && document.querySelector('.strava-kudo-dot') && document.querySelector('canvas#strava-activity-map'), 'Native expanded activity content did not mount'); document.querySelector('.strava-activity-full').scrollIntoView({block:'center',behavior:'instant'}); if (!globalThis.ReactLeaflet?.MapContainer || !globalThis.ReactLeaflet?.TileLayer || !globalThis.ReactLeaflet?.Polyline) throw new Error('Native ReactLeaflet exports are unavailable; fixture will not fake map components'); if (!website.strava_visual_fixture.local_tiles_ready_QMARK_()) throw new Error('Native map local tile read boundary is not configured'); const button = [...document.querySelectorAll('.strava-activity-tabs button')].find(button => button.textContent === 'map'); if (!button) throw new Error('Native map tab is missing'); button.click(); await waitFor(() => document.querySelector('.leaflet-container .leaflet-overlay-pane path')?.getAttribute('d') && document.querySelectorAll('.leaflet-tile-loaded').length > 0, 'Native map polyline and tiles did not mount'); ",
+      "capture_assert": "if (!document.querySelector('.leaflet-container .leaflet-overlay-pane path')?.getAttribute('d') || !document.querySelector('.leaflet-control-zoom-in') || !document.querySelector('.leaflet-tile-loaded')) throw new Error('Native map content or controls missing before capture'); if (website.strava_visual_fixture.local_tile_reads() <= 0 || [...document.querySelectorAll('.leaflet-tile-loaded')].some(image => image.src !== new URL('/img/strava-heatmap-new-320w.webp', location.href).href)) throw new Error('Map tiles bypassed the owned local read boundary')"
+    },
+    {
+      "id": "strava-kudos-hover-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=strava",
+      "action": "const deadline = performance.now() + 10000; const waitFor = async (predicate, message) => { while (!predicate()) { if (performance.now() > deadline) throw new Error(message); await new Promise(resolve => requestAnimationFrame(resolve)); } }; await waitFor(() => document.querySelectorAll('.strava-activity-dot:not(.strava-activity-dot-expanded)').length === 2 && document.querySelector('.strava-athlete')?.textContent.includes('Visual Cyclist'), 'Native Strava athlete and activities did not mount'); await waitFor(() => [...document.querySelectorAll('.strava-activity-dot')].every(dot => Number.parseFloat(dot.style.width) >= 0.85), 'Native activity dot mount deadlines did not finish'); document.querySelectorAll('.strava-activity-dot')[1].click(); await waitFor(() => document.querySelector('.strava-activity-full h3')?.textContent.includes('Fixture morning ride') && document.querySelector('.strava-activity-stats-numbers')?.textContent.includes('175') && document.querySelector('.strava-kudo-dot') && document.querySelector('canvas#strava-activity-map'), 'Native expanded activity content did not mount'); document.querySelector('.strava-activity-full').scrollIntoView({block:'center',behavior:'instant'}); ",
+      "native_hover": {
+        "selector": ".strava-activity-kudos .strava-kudo-dot",
+        "role": "image",
+        "name": "Strava",
+        "assert": "const popup = element.closest('.strava-kudo-dot-container').querySelector('.strava-kudos-popup'); if (!popup?.textContent.includes('Native Supporter') || popup.getBoundingClientRect().height <= 0) throw new Error('Native kudos hover did not show its real supporter popup')"
+      },
+      "capture_assert": "if (!document.querySelector('.strava-activity-dot-expanded .strava-activity-full h3')?.textContent.includes('Fixture morning ride') || !document.querySelector('.strava-activity-stats-numbers')?.textContent.includes('175') || !document.querySelector('.strava-activity-photo img')?.complete || !document.querySelector('canvas#strava-activity-map')) throw new Error('Native expanded summary was lost before capture');"
+    },
+    {
+      "id": "strava-totals-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=strava",
+      "action": "const deadline = performance.now() + 10000; const waitFor = async (predicate, message) => { while (!predicate()) { if (performance.now() > deadline) throw new Error(message); await new Promise(resolve => requestAnimationFrame(resolve)); } }; await waitFor(() => document.querySelectorAll('.strava-activity-dot:not(.strava-activity-dot-expanded)').length === 2 && document.querySelector('.strava-athlete')?.textContent.includes('Visual Cyclist'), 'Native Strava athlete and activities did not mount'); await waitFor(() => [...document.querySelectorAll('.strava-activity-dot')].every(dot => Number.parseFloat(dot.style.width) >= 0.85), 'Native activity dot mount deadlines did not finish'); await waitFor(() => [...document.querySelectorAll('.strava-stats h3')].some(node => node.textContent === 'Total') && document.querySelector('.strava-stats')?.textContent.includes('120'), 'Native totals body is missing; current baseline selected-tab lookup does not render its component'); const next = document.querySelector('#strava-general-stats-carousel .carousel-next-btn'); if (!next) throw new Error('Native totals carousel did not mount'); next.click(); await waitFor(() => document.querySelector('#strava-general-stats-carousel .carousel-item-main')?.textContent.includes('2026'), 'Native year totals did not become active'); ",
+      "capture_assert": "if (![...document.querySelectorAll('.strava-stats h3')].some(node => node.textContent === 'Total') || !document.querySelector('#strava-general-stats-carousel .carousel-item-main')?.textContent.includes('2026')) throw new Error('Native totals are missing before capture')"
+    },
+    {
+      "id": "strava-activity-summary-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=strava",
+      "action": "const deadline = performance.now() + 10000; const waitFor = async (predicate, message) => { while (!predicate()) { if (performance.now() > deadline) throw new Error(message); await new Promise(resolve => requestAnimationFrame(resolve)); } }; await waitFor(() => document.querySelectorAll('.strava-activity-dot:not(.strava-activity-dot-expanded)').length === 2 && document.querySelector('.strava-athlete')?.textContent.includes('Visual Cyclist'), 'Native Strava athlete and activities did not mount'); await waitFor(() => [...document.querySelectorAll('.strava-activity-dot')].every(dot => Number.parseFloat(dot.style.width) >= 0.85), 'Native activity dot mount deadlines did not finish'); document.querySelectorAll('.strava-activity-dot')[1].click(); await waitFor(() => document.querySelector('.strava-activity-full h3')?.textContent.includes('Fixture morning ride') && document.querySelector('.strava-activity-stats-numbers')?.textContent.includes('175') && document.querySelector('.strava-kudo-dot') && document.querySelector('canvas#strava-activity-map'), 'Native expanded activity content did not mount'); document.querySelector('.strava-activity-full').scrollIntoView({block:'center',behavior:'instant'}); ",
+      "capture_assert": "if (!document.querySelector('.strava-activity-dot-expanded .strava-activity-full h3')?.textContent.includes('Fixture morning ride') || !document.querySelector('.strava-activity-stats-numbers')?.textContent.includes('175') || !document.querySelector('.strava-activity-photo img')?.complete || !document.querySelector('canvas#strava-activity-map')) throw new Error('Native expanded summary was lost before capture');"
+    },
+    {
+      "id": "strava-activity-graphs-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=strava",
+      "action": "const deadline = performance.now() + 10000; const waitFor = async (predicate, message) => { while (!predicate()) { if (performance.now() > deadline) throw new Error(message); await new Promise(resolve => requestAnimationFrame(resolve)); } }; await waitFor(() => document.querySelectorAll('.strava-activity-dot:not(.strava-activity-dot-expanded)').length === 2 && document.querySelector('.strava-athlete')?.textContent.includes('Visual Cyclist'), 'Native Strava athlete and activities did not mount'); await waitFor(() => [...document.querySelectorAll('.strava-activity-dot')].every(dot => Number.parseFloat(dot.style.width) >= 0.85), 'Native activity dot mount deadlines did not finish'); document.querySelectorAll('.strava-activity-dot')[1].click(); await waitFor(() => document.querySelector('.strava-activity-full h3')?.textContent.includes('Fixture morning ride') && document.querySelector('.strava-activity-stats-numbers')?.textContent.includes('175') && document.querySelector('.strava-kudo-dot') && document.querySelector('canvas#strava-activity-map'), 'Native expanded activity content did not mount'); document.querySelector('.strava-activity-full').scrollIntoView({block:'center',behavior:'instant'}); const button = [...document.querySelectorAll('.strava-activity-tabs button')].find(button => button.textContent === 'graphs'); if (!button) throw new Error('Native graphs tab is missing'); button.click(); await waitFor(() => document.querySelectorAll('.strava-activity-graphs canvas').length === 4, 'Native activity graphs did not mount'); ",
+      "capture_assert": "const canvases = [...document.querySelectorAll('.strava-activity-graphs canvas')]; if (canvases.length !== 4 || canvases.some(canvas => { const bounds = canvas.getBoundingClientRect(); return bounds.width <= 0 || bounds.height <= 0 || !canvas.width || !canvas.height || !canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data.some((value,index) => index % 4 === 3 && value); })) throw new Error('Native activity graphs are missing, empty or not painted');"
+    },
+    {
+      "id": "strava-activity-map-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=strava",
+      "action": "const deadline = performance.now() + 10000; const waitFor = async (predicate, message) => { while (!predicate()) { if (performance.now() > deadline) throw new Error(message); await new Promise(resolve => requestAnimationFrame(resolve)); } }; await waitFor(() => document.querySelectorAll('.strava-activity-dot:not(.strava-activity-dot-expanded)').length === 2 && document.querySelector('.strava-athlete')?.textContent.includes('Visual Cyclist'), 'Native Strava athlete and activities did not mount'); await waitFor(() => [...document.querySelectorAll('.strava-activity-dot')].every(dot => Number.parseFloat(dot.style.width) >= 0.85), 'Native activity dot mount deadlines did not finish'); document.querySelectorAll('.strava-activity-dot')[1].click(); await waitFor(() => document.querySelector('.strava-activity-full h3')?.textContent.includes('Fixture morning ride') && document.querySelector('.strava-activity-stats-numbers')?.textContent.includes('175') && document.querySelector('.strava-kudo-dot') && document.querySelector('canvas#strava-activity-map'), 'Native expanded activity content did not mount'); document.querySelector('.strava-activity-full').scrollIntoView({block:'center',behavior:'instant'}); if (!globalThis.ReactLeaflet?.MapContainer || !globalThis.ReactLeaflet?.TileLayer || !globalThis.ReactLeaflet?.Polyline) throw new Error('Native ReactLeaflet exports are unavailable; fixture will not fake map components'); if (!website.strava_visual_fixture.local_tiles_ready_QMARK_()) throw new Error('Native map local tile read boundary is not configured'); const button = [...document.querySelectorAll('.strava-activity-tabs button')].find(button => button.textContent === 'map'); if (!button) throw new Error('Native map tab is missing'); button.click(); await waitFor(() => document.querySelector('.leaflet-container .leaflet-overlay-pane path')?.getAttribute('d') && document.querySelectorAll('.leaflet-tile-loaded').length > 0, 'Native map polyline and tiles did not mount'); ",
+      "capture_assert": "if (!document.querySelector('.leaflet-container .leaflet-overlay-pane path')?.getAttribute('d') || !document.querySelector('.leaflet-control-zoom-in') || !document.querySelector('.leaflet-tile-loaded')) throw new Error('Native map content or controls missing before capture'); if (website.strava_visual_fixture.local_tile_reads() <= 0 || [...document.querySelectorAll('.leaflet-tile-loaded')].some(image => image.src !== new URL('/img/strava-heatmap-new-320w.webp', location.href).href)) throw new Error('Map tiles bypassed the owned local read boundary')"
+    },
+    {
+      "id": "strava-kudos-hover-narrow",
+      "viewport": [
+        400,
+        800
+      ],
+      "path": "/fixtures/visual.html?component=strava",
+      "action": "const deadline = performance.now() + 10000; const waitFor = async (predicate, message) => { while (!predicate()) { if (performance.now() > deadline) throw new Error(message); await new Promise(resolve => requestAnimationFrame(resolve)); } }; await waitFor(() => document.querySelectorAll('.strava-activity-dot:not(.strava-activity-dot-expanded)').length === 2 && document.querySelector('.strava-athlete')?.textContent.includes('Visual Cyclist'), 'Native Strava athlete and activities did not mount'); await waitFor(() => [...document.querySelectorAll('.strava-activity-dot')].every(dot => Number.parseFloat(dot.style.width) >= 0.85), 'Native activity dot mount deadlines did not finish'); document.querySelectorAll('.strava-activity-dot')[1].click(); await waitFor(() => document.querySelector('.strava-activity-full h3')?.textContent.includes('Fixture morning ride') && document.querySelector('.strava-activity-stats-numbers')?.textContent.includes('175') && document.querySelector('.strava-kudo-dot') && document.querySelector('canvas#strava-activity-map'), 'Native expanded activity content did not mount'); document.querySelector('.strava-activity-full').scrollIntoView({block:'center',behavior:'instant'}); ",
+      "native_hover": {
+        "selector": ".strava-activity-kudos .strava-kudo-dot",
+        "role": "image",
+        "name": "Strava",
+        "assert": "const popup = element.closest('.strava-kudo-dot-container').querySelector('.strava-kudos-popup'); if (!popup?.textContent.includes('Native Supporter') || popup.getBoundingClientRect().height <= 0) throw new Error('Native kudos hover did not show its real supporter popup')"
+      },
+      "capture_assert": "if (!document.querySelector('.strava-activity-dot-expanded .strava-activity-full h3')?.textContent.includes('Fixture morning ride') || !document.querySelector('.strava-activity-stats-numbers')?.textContent.includes('175') || !document.querySelector('.strava-activity-photo img')?.complete || !document.querySelector('canvas#strava-activity-map')) throw new Error('Native expanded summary was lost before capture');"
     }
   ]
 }
