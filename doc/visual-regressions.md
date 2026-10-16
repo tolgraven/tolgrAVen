@@ -103,7 +103,9 @@ attach/detach effects are recorded without tracking or flushing browser drafts.
 The image library has one validated local read response; all provider/HTTP writes
 and draft commits fail closed. Native mode changes and draft selection must keep
 one post editor, canonical fields and the live preview. Picker captures require
-real catalogue entries or decoded images and viewport bounds. These fixtures do
+real catalogue entries or decoded images and viewport bounds. Picker captures
+scroll the existing Save draft label into view and verify native hit-testing at
+the overlap so positioned page controls cannot paint through an open menu. These fixtures do
 not verify durable autosave, publication or upload; native captures are still
 required before claiming these states work or match a baseline.
 
