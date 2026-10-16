@@ -32,7 +32,7 @@
         preserved (pr/append-footer updated updated editor [] {})]
     (is (str/includes? updated "In charge: **Current title**"))
     (is (str/includes? updated "Earlier titles/descriptions: Generated description; First title"))
-    (is (str/includes? updated "/work/first, /work/second"))
+    (is (str/includes? updated "    - /work/first\n    - /work/second"))
     (is (= updated preserved))
     (is (= updated (pr/append-footer updated updated editor []
                                      {owner {:title "Current title", :titles ["Current title"],

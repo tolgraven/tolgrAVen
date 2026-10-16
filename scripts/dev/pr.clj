@@ -92,7 +92,8 @@
                           (str "  - Earlier titles/descriptions: "
                                (str/join "; " (map markdown-text former)) "\n"))
                         (when (seq worktrees)
-                          (str "  - Worktrees: " (str/join ", " (map markdown-text worktrees)) "\n")))))]
+                          (str "  - Worktrees:\n"
+                               (apply str (map #(str "    - " (markdown-text %) "\n") worktrees)))))))]
      (str (str/trimr (:body supplied)) "\n\n" start-marker "\n<!-- "
           (-> (json/generate-string metadata) (str/replace "<" "\\u003c") (str/replace ">" "\\u003e")) " -->\n"
           "### Codex sessions\n\n"
