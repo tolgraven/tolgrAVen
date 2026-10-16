@@ -22,6 +22,46 @@
     (is (= 1 (count (re-seq #"### Codex sessions" refreshed))))
     (is (str/ends-with? refreshed (str pr/end-marker "\n")))))
 
+(deftest names-and-worktrees-survive-renames-and-unavailable-local-data
+  (let [original (pr/append-footer "Body" nil owner []
+                                   {owner {:title "First title"
+                                           :titles ["Generated description" "First title"]
+                                           :worktrees ["/work/first"]}})
+        updated (pr/append-footer "Revised" original editor []
+                                  {owner {:title "Current title"
+                                          :titles ["Current title"]
+                                          :worktrees ["/work/second"]}})
+        preserved (pr/append-footer updated updated editor [] {})]
+    (is (str/includes? updated "In charge: **Current title**"))
+    (is (str/includes? updated "Earlier titles/descriptions: Generated description; First title"))
+    (is (str/includes? updated "    - /work/first\n    - /work/second"))
+    (is (= updated preserved))
+    (is (= updated (pr/append-footer updated updated editor []
+                                     {owner {:title "Current title"
+                                          :titles ["Current title"]
+                                             :worktrees ["/work/second"]}})))))
+
+(deftest missing-titles-remain-renderable-and-stable-across-refreshes
+  (let [empty-details {owner {:titles [], :worktrees []}}
+        original (pr/append-footer "Body" nil owner [] empty-details)
+        refreshed (pr/append-footer original original owner [] empty-details)
+        named (pr/append-footer "Body" nil owner []
+                                {owner {:title "Recorded name", :titles ["Recorded name"], :worktrees []}})
+        unavailable (pr/append-footer named named owner [] empty-details)]
+    (is (= original refreshed))
+    (is (= refreshed (pr/append-footer refreshed refreshed owner [] empty-details)))
+    (is (= named unavailable))
+    (is (str/includes? unavailable "Recorded name"))))
+
+(deftest session-metadata-cannot-inject-markdown-or-footer-markers
+  (let [title (str "Title *markup*\n" pr/end-marker)
+        body (pr/append-footer "Body" nil owner []
+                               {owner {:title title, :titles [title], :worktrees ["/work/<script>`"]}})]
+    (is (= title (get-in (pr/split-footer body) [:details 0 :title])))
+    (is (= 1 (count (re-seq (re-pattern pr/end-marker) body))))
+    (is (str/includes? body "&#42;markup&#42;"))
+    (is (not (str/includes? body "<script>")))))
+
 (deftest malformed-provenance-is-never-erased
   (doseq [body [(str "body\n" pr/start-marker)
                 (str pr/end-marker)
@@ -51,7 +91,8 @@
         existing {:body previous,
                   :url "https://github.com/tolgraven/tolgrAVen/pull/1",
                   :commits [{:messageBody (str "Work\n\nCodex-Session: " peer)}]}]
-    (with-redefs [pr/current-session (constantly editor)
+    (with-redefs [pr/local-session-details (constantly {})
+                  pr/current-session (constantly editor)
                   pr/run! (fn [command & [options]]
                             (swap! calls conj [command options])
                             {:exit 0, :out (json/generate-string existing)})]
@@ -66,7 +107,8 @@
 
 (deftest creation-collects-only-the-selected-base-range
   (let [calls (atom [])]
-    (with-redefs [pr/current-session (constantly owner)
+    (with-redefs [pr/local-session-details (constantly {})
+                  pr/current-session (constantly owner)
                   pr/run! (fn [command & [options]]
                             (swap! calls conj [command options])
                             {:exit 0,
@@ -82,13 +124,15 @@
 (deftest preflight-and-provider-failures-do-not-write
   (doseq [args [["--title" "No body"] ["--body" "Body" "--head" "other"]]]
     (let [writes (atom [])]
-      (with-redefs [pr/current-session (constantly owner)
+      (with-redefs [pr/local-session-details (constantly {})
+                  pr/current-session (constantly owner)
                     pr/run! (fn [command & _]
                               (when (= "gh" (first command)) (swap! writes conj command))
                               {:out "codex/work"})]
         (is (thrown? Exception (pr/write-pr! "create" args))))
       (is (empty? @writes))))
-  (with-redefs [pr/current-session (constantly owner)
+  (with-redefs [pr/local-session-details (constantly {})
+                  pr/current-session (constantly owner)
                 pr/run! (fn [& _] (throw (ex-info "provider failed" {:exit 17})))]
     (is (= 17 (try (pr/write-pr! "edit" ["1"]) (catch Exception e (:exit (ex-data e))))))))
 

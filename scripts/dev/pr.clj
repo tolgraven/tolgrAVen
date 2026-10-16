@@ -35,30 +35,87 @@
             match (re-find pattern body)]
         (when-not (and (= 1 starts ends) match)
           (throw (ex-info "Malformed or duplicate Codex session footer; preserve and repair it before editing" {})))
-        (let [{:keys [owner contributors]} (json/parse-string (second match) true)]
+        (let [{:keys [owner contributors details]} (json/parse-string (second match) true)]
           (when-not (vector? contributors)
             (throw (ex-info "Malformed Codex session contributors" {})))
-          {:body (str/replace body (first match) "")
-           :owner (session-id owner)
-           :contributors (mapv session-id contributors)})))))
+          (cond-> {:body (str/replace body (first match) "")
+                    :owner (session-id owner)
+                    :contributors (mapv session-id contributors)}
+            details (assoc :details details)))))))
 
-(defn append-footer [body previous session contributors]
-  (let [supplied (split-footer body)
-        old (split-footer previous)
-        owner (or (:owner old) (:owner supplied) session)
-        contributors' (vec (remove #{owner} (distinct (concat (:contributors old)
-                                                               (:contributors supplied)
-                                                               [session] contributors))))
-        metadata {:owner owner, :contributors contributors'}
-        entry (fn [role id] (str "- " role ": `codex resume " id "`\n"))]
-    (str (str/trimr (:body supplied)) "\n\n" start-marker "\n<!-- "
-         (json/generate-string metadata) " -->\n"
-         "### Codex sessions\n\n"
-         (entry "In charge" owner)
-         (if (seq contributors')
-           (apply str (map #(entry "Contributor" %) contributors'))
-           "- Other contributing sessions: none recorded.\n")
-         end-marker "\n")))
+(defn text-value [value]
+  (when-not (and (string? value) (not (str/blank? value)))
+    (throw (ex-info "Malformed Codex session detail" {})))
+  value)
+
+(defn session-details [details]
+  (into {} (for [{:keys [id title titles worktrees]} (or details [])]
+             [(session-id id)
+              (cond-> {:titles (mapv text-value (or titles []))
+                       :worktrees (mapv text-value (or worktrees []))}
+                title (assoc :title (text-value title)))])))
+
+(defn merge-details [& details]
+  (apply merge-with
+         (fn [old fresh]
+           (let [title (or (:title fresh) (:title old))]
+             (cond-> {:titles (vec (distinct (remove nil? (concat (:titles old) [(:title old)]
+                                                                 (:titles fresh) [(:title fresh)]))))
+                      :worktrees (vec (distinct (concat (:worktrees old) (:worktrees fresh))))}
+               title (assoc :title title)))) details))
+
+(defn markdown-text [value]
+  (-> value (str/replace #"[\r\n]+" " ")
+      (str/escape {\& "&amp;", \< "&lt;", \> "&gt;", \` "&#96;", \* "&#42;", \_ "&#95;",
+                   \[ "&#91;", \] "&#93;", \\ "&#92;"})))
+
+(defn append-footer
+  ([body previous session contributors] (append-footer body previous session contributors {}))
+  ([body previous session contributors details]
+   (let [supplied (split-footer body)
+         old (split-footer previous)
+         owner (or (:owner old) (:owner supplied) session)
+         contributors' (vec (remove #{owner} (distinct (concat (:contributors old)
+                                                              (:contributors supplied)
+                                                              [session] contributors))))
+         ids (into [owner] contributors')
+         details' (merge-details (session-details (:details old))
+                                 (session-details (:details supplied)) details)
+         entries (vec (for [id ids :let [detail (get details' id)] :when detail]
+                        (cond-> {:id id
+                                 :titles (vec (remove nil? (:titles detail)))
+                                 :worktrees (vec (:worktrees detail))}
+                          (:title detail) (assoc :title (:title detail)))))
+         metadata (cond-> {:owner owner, :contributors contributors'}
+                    (seq entries) (assoc :details entries))
+         entry (fn [role id]
+                 (let [{:keys [title titles worktrees]} (get details' id)
+                       former (remove #(or (nil? %) (= title %)) titles)]
+                   (str "- " role ": " (when title (str "**" (markdown-text title) "** — "))
+                        "`codex resume " id "`\n"
+                        (when (seq former)
+                          (str "  - Earlier titles/descriptions: "
+                               (str/join "; " (map markdown-text former)) "\n"))
+                        (when (seq worktrees)
+                          (str "  - Worktrees:\n"
+                               (apply str (map #(str "    - " (markdown-text %) "\n") worktrees)))))))]
+     (str (str/trimr (:body supplied)) "\n\n" start-marker "\n<!-- "
+          (-> (json/generate-string metadata) (str/replace "<" "\\u003c") (str/replace ">" "\\u003e")) " -->\n"
+          "### Codex sessions\n\n"
+          (entry "In charge" owner)
+          (if (seq contributors')
+            (apply str (map #(entry "Contributor" %) contributors'))
+            "- Other contributing sessions: none recorded.\n")
+          end-marker "\n"))))
+
+(defn local-session-details [ids]
+  (try
+    (let [result (run! (into ["python3" "scripts/dev/session_metadata.py"] ids))
+          details (json/parse-string (:out result) true)]
+      (into {} (for [[id detail] details] [(name id) detail])))
+    (catch Exception _
+      (binding [*out* *err*] (println "Local Codex metadata unavailable; preserving recorded session details."))
+      {})))
 
 (def value-flags
   #{"--body" "-b" "--body-file" "-F" "--title" "-t" "--base" "-B" "--head" "-H"
@@ -128,8 +185,13 @@
                    (map :messageBody (:commits existing))
                    [(output ["git" "log" (str "origin/" base "..HEAD")
                              "--format=%(trailers:key=Codex-Session)"])])
-        body (append-footer (if body-source (body-text body-source) (:body existing))
-                            (:body existing) session' (concat contributors (trailer-sessions messages)))
+        contributors' (concat contributors (trailer-sessions messages))
+        supplied (if body-source (body-text body-source) (:body existing))
+        ids (vec (distinct (remove nil? (concat [session'] contributors'
+                                                         (mapcat (fn [body] (let [footer (split-footer body)]
+                                                                            (cons (:owner footer) (:contributors footer))))
+                                                                 [supplied (:body existing)])))))
+        body (append-footer supplied (:body existing) session' contributors' (local-session-details ids))
         command (into ["gh" "pr" operation "--repo" repository]
                       (concat (if existing [(:url existing)] []) forward
                               (when (and (= operation "create") (not (or (values "--base") (values "-B"))))

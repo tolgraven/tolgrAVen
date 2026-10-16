@@ -119,7 +119,10 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - `dev/pr.clj` owns `bb pr` description attribution and the tracked
   `prepare-commit-msg` session trailer hook. Preserve the original owner and
   recorded contributors on every body rewrite; attribution comes only from
-  explicit IDs, the current session, and commit trailers. See `doc/tooling.md`.
+  explicit IDs, the current session, and commit trailers. `session_metadata.py`
+  reads only their recorded names and working directories; never publish prompts,
+  previews or transcript text. Preserve former names/paths in the managed footer
+  when local metadata changes or disappears. See `doc/tooling.md`.
 
 - Host SSD migration is explicit through `ops/host/coolify-storage.py`: verify the
   provisioned filesystem, drain deployments, preserve originals until live
