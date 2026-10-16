@@ -338,3 +338,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   to verify that the tour and focus no longer run. That page explicitly uses
   `init-cv-visit!`; ordinary visual CV/CMS captures use an in-memory visit transport
   while retaining the native mount, durable claim and delayed module events.
+
+- Messaging visual fixtures retain Home/module parents and managed query contracts;
+  local drafts use form events and all provider writes fail closed. Include multiple
+  GPT prompt/reply pairs. Published widget fixtures use the native Markdown catalog,
+  and diagnostics keep their error portal. Experiments acquire their own styles;
+  preserve unfinished model-viewer behavior. Pending SoundCloud geometry does not
+  prove external player paint or running video behavior.

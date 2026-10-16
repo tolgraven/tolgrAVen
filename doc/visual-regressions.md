@@ -98,6 +98,21 @@ correct singular/plural labels, remove zero/absent labels, and retain their nati
 metadata placement. These cases do not verify live count acquisition, cold
 hydration or navigation; those need separate checks.
 
+Chat, GPT and public-profile fixtures retain their Home section/module parents.
+Schema-checked records enter through the existing managed reader boundary; local
+composer drafts use the registered form events. Provider acquisition and writes
+fail closed. GPT open states include multiple prompt/reply pairs so key collisions
+cannot hide behind a single-message example. Timestamp hover cases still require
+observed accessibility targets and native pointer input.
+
+Published widget cases use the actual Markdown parser and component catalog for
+aside/settings, inline Search, quoted comments and a measured sandboxed local
+frame. Diagnostics use their native lazy exports and error portal. Experiments
+retain their real page, tabs and feature styles. The model-viewer prototype has
+no registered implementation in current source; its placeholder is preserved,
+not presented as working 3D. SoundCloud pending states are deterministic fixtures;
+external player paint and the running video interlude need separate live checks.
+
 Reply progression cases fold and reopen the real two-sibling thread using its
 native controls. They sample container height, each row's height and body opacity
 together; fading children beneath an instantly expanded container must fail.
@@ -536,6 +551,18 @@ and container, `.github-diff` parent and editor are retained; these component
 cases do not exercise GitHub's revision controller,
 menu metadata or remote acquisition. Missing approved raster/motion baselines
 remain verification gaps; captures never approve them automatically.
+
+Editable Neovim initial/menu states use the same isolated document with
+`?visual=workspace` at both widths. They retain the native bare `main`, `defpage`
+and `.neovim-page` parent. The real pinned profile configures first; fixture-owned
+RPC seeds two small session-only Clojure/SCSS files before initial-file/UI attach.
+The first visible grid must already contain that exact Clojure file. Readiness
+checks real editable options, native mouse/reversed-cursor configuration, Bruvbox,
+Meta, tree/devicons, airline, custom Clojure mappings and colorcolumn/diminactive
+settings. The normal native disclosure supplies repository/import/help controls.
+These captures do not claim trusted keyboard input or native wheel/click behavior;
+`visualFixture.workspaceState()` exposes read-only process state for separate
+hands-on checks. They retain the same one-worker/unmount/disposal requirement.
 
 Header closed/menu-open cases require the reference link-control dimensions at
 wide/narrow widths, the original thin right seam and the actual native glyphs.

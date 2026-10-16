@@ -3,6 +3,7 @@
   (:require [clojure.string :as string]
             [website.react :as r]
             [website.editor-visual :as editor]
+            [website.messaging-visual-fixture :as messaging-fixture]
             [website.component.restore :as restore]
             [website.component.data :as data]
             [website.supabase.runtime :as supabase]
@@ -16,6 +17,7 @@
             [website.strava-visual-fixture :as strava-fixture]
             [website.post-editor-visual-fixture :as post-editor-fixture]
             [website.link-preview-fixture :as link-preview-fixture]
+            [website.additional-visual-fixture :as additional-fixture]
             [website.components.ui.overlays :as overlays]
             [website.modules.github.views :as github]
             [website.modules.github.model :as github-model]
@@ -521,15 +523,18 @@
         component (.get params "component")
         composer? (and (= component "comments-auth")
                        (contains? #{"rich" "plain"} (.get params "composer")))]
-    (if-not (#{"page-layout" "page-layout-vertical"
+    (cond
+      (messaging-fixture/components component) (messaging-fixture/init! component)
+      (not (or (additional-fixture/component-names component)
+                (#{"page-layout" "page-layout-vertical"
                "cv-regular" "cv-container" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
                "thread" "post" "standalone-comments" "search-mixed" "search-extensions" "blog-archive"
                "shell" "shell-scroll" "shell-panels" "shell-account" "header" "footer" "post-footer" "services" "cv"
                "home-intro" "home-story" "home-image-media" "github"
                "docs-index" "docs-topic" "instagram" "strava" "post-editor" "cms-services" "cms-cv" "cms-gallery"
-               "link-preview-ready" "link-preview-metadata" "link-preview-unavailable"} component)
+               "link-preview-ready" "link-preview-metadata" "link-preview-unavailable"} component)))
       (editor/init! false)
-      (-> (js/fetch "/fixtures/editor-seed.json")
+      :else (-> (js/fetch "/fixtures/editor-seed.json")
           (.then #(.json %))
           ;; Settled layout cases use one deterministic native font state. The
           ;; dedicated font suite still exercises cold fallback and crossfades.
@@ -679,8 +684,22 @@
                                           (.then (fn [_] (loader/load! {:module :strava}))))
                              nil)))
                   (.then (fn [_]
+                           (when (additional-fixture/component-names component)
+                             (additional-fixture/prepare! component))))
+                  (.then (fn [_]
+                           (when (additional-fixture/component-names component)
+                             (additional-fixture/install! component {:comment-row comment-row
+                                                                     :search-response search-response}))))
+                  (.then (fn [_]
                            (r/render (r/create-root (.getElementById js/document "app"))
-                             (case component
+                             (if (additional-fixture/component-names component)
+                               (if (additional-fixture/experiments? component)
+                                 [:main#main.main-content.perspective-top [additional-fixture/<fixture> component]]
+                                 [:<>
+                                  [<main-fixture> [additional-fixture/<fixture> component]]
+                                  ;; Match the native page's error portal sibling.
+                                  (when (= component "inspector-error") [:div#error-portal])])
+                               (case component
                                ("page-layout" "page-layout-vertical") [<layout-fixture> (= component "page-layout-vertical")]
                                ("search-mixed" "search-extensions") [<search-fixture>]
                                ("post" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge" "thread")
@@ -700,7 +719,7 @@
                                ("link-preview-ready" "link-preview-metadata" "link-preview-unavailable")
                                [link-preview-fixture/<visual-fixture>]
                                ("home-intro" "home-story" "home-image-media") [<home-fixture> component]
-                               [<box-fixture> (= component "cv-container")])))))))))))
+                               [<box-fixture> (= component "cv-container")]))))))))))))
 
 (defn ^:export init! []
   (init-fixture! false))
