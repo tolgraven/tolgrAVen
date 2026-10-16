@@ -97,6 +97,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Prepared-source validation still includes the released main bytes.
   Only successful fingerprinted
   chunk responses receive immutable caching; plain names and errors must not.
+  Development browser chunks, CLJS runtime files and document/return bootstraps
+  use `no-store` so a restart cannot reuse another Shadow worker's identity.
 - Streaming uses Hiccup document parts and the existing flush-aware Ring body;
   do not split serialized pages by marker strings. Headers cannot change after flush.
   Compress that body directly with sync-flush gzip when accepted; do not convert

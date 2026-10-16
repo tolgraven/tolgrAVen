@@ -172,13 +172,22 @@
 
 (defn wrap-module-cache [handler]
   (fn [request]
-    (let [response (handler request)]
-      (if (and (not (:dev env)) (= 200 (:status response))
-               (re-find #"(?i)^(?:application|text)/javascript(?:;|$)"
-                        (get-in response [:headers "Content-Type"] ""))
-               (re-matches #"/js/compiled/out/[a-zA-Z0-9_-]+\.[a-fA-F0-9]{32}\.js" (:uri request "")))
+    (let [response (handler request)
+          javascript? (re-find #"(?i)^(?:application|text)/javascript(?:;|$)"
+                              (get-in response [:headers "Content-Type"] ""))
+          uri (:uri request "")]
+      (cond
+        ;; Development URLs keep their names across Shadow restarts, but their
+        ;; bytes carry the current worker's connection identity.
+        (and (:dev env) javascript?
+             (re-matches #"/js/(?:compiled/out|document|return)/.+" uri))
+        (assoc-in response [:headers "Cache-Control"] "no-store")
+
+        (and (not (:dev env)) (= 200 (:status response)) javascript?
+             (re-matches #"/js/compiled/out/[a-zA-Z0-9_-]+\.[a-fA-F0-9]{32}\.js" uri))
         (assoc-in response [:headers "Cache-Control"] "public, max-age=31536000, immutable")
-        response))))
+
+        :else response))))
 
 (defn wrap-media-cache
   "Image/video filenames are immutable: publish changed content under a new name.
