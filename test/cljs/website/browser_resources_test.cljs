@@ -48,8 +48,9 @@
   (with-redefs [context/*interactive? (atom true)
                 restore/*context (atom {})
                 restore/*pending-layout (atom #{})]
-    (doseq [ready-state ["loading" "complete"]]
-      (testing ready-state
+    (doseq [ready-state ["loading" "complete"]
+            budget [nil 7 0.25]]
+      (testing (str ready-state " with idle budget " budget)
         (let [original-frame js/requestAnimationFrame
               original-cancel-frame js/cancelAnimationFrame
               original-idle js/requestIdleCallback
@@ -87,8 +88,8 @@
             (is (nil? @*idle))
             ((second @*frames))
             (is (zero? @*loads))
-            (@*idle)
-            (is (= 1 @*loads))
+            (@*idle (when budget #js {:timeRemaining (fn [] budget)}))
+            (is (= 1 @*loads) "Small positive native idle slices can start deferred acquisition")
             (@*stop)
             (@*idle)
             (is (= 1 @*loads) "Cancelled work cannot acquire a script")
@@ -117,7 +118,7 @@
           *retry (atom nil)
           *loads (atom 0)
           *stop (atom nil)
-          painted-idle! (fn [] (@*frame) (@*frame) (@*idle))]
+          painted-idle! (fn [] (@*frame) (@*frame) (@*idle #js {:timeRemaining (fn [] 7)}))]
       (try
         (js/Object.defineProperty js/document "readyState"
                                   #js {:configurable true :value "complete"})
@@ -141,8 +142,19 @@
         (is (zero? @*loads) "Mounted page bindings must settle first")
         (reset! restore/*pending-layout #{})
         (@*retry)
+        (@*frame) (@*frame)
+        (@*idle #js {:timeRemaining (fn [] 0)})
+        (is (zero? @*loads) "A ready page still waits when the native idle slice is exhausted")
+        (@*retry)
         (painted-idle!)
-        (is (= 1 @*loads))
+        (is (= 1 @*loads) "The next positive slice starts acquisition after the same readiness gates")
+        (reset! *stop (resources/after-page! #(swap! *loads inc)))
+        (@*frame) (@*frame)
+        (@*idle #js {:timeRemaining (fn [] 0)})
+        (@*stop)
+        (@*retry)
+        (painted-idle!)
+        (is (= 1 @*loads) "Cancellation during an exhausted slice makes retry and idle callbacks inert")
         (finally
           (when @*stop (@*stop))
           (js/Reflect.deleteProperty js/document "readyState")
