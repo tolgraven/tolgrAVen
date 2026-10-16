@@ -61,9 +61,9 @@
     ;; editor lifetime remain intact. Replace only private storage I/O; these
     ;; disposable documents neither track nor flush the user's browser drafts.
     (r/reg-fx :blog-editor/read-drafts
-      (fn [{:keys [id owner account token before restore?]}]
+      (fn [{:keys [id owner account token before restore? document-id]}]
         (swap! *effects conj {:operation :draft-read})
-        (r/dispatch [:blog/drafts-read owner account token id before restore? nil nil collection])))
+        (r/dispatch [:blog/drafts-read owner account token id before restore? document-id nil collection])))
     (doseq [[effect operation] [[:blog-editor/track-drafts :draft-attach]
                                 [:blog-editor/untrack-drafts :draft-detach]]]
       (r/reg-fx effect (fn [_] (swap! *effects conj {:operation operation}))))
@@ -79,10 +79,10 @@
     (r/reg-fx :http-xhrio (fn [_] (reject-write! :http)))))
 
 (defn ^:export state []
-  {:form @(r/subscribe [:form-field [:post-blog]])
-   :draft (select-keys @(r/subscribe [:state [:blog-editor :draft]]) [:status :named? :document-id])
+  {:form @(r/sub [:get :state :form-field :post-blog])
+   :draft (select-keys @(r/sub [:get :state :blog-editor :draft]) [:status :named? :document-id])
    :editors (count (filter #(= :post (:kind %))
-                          (vals @(r/subscribe [:state [:blog-editor :editors]]))))
+                          (vals @(r/sub [:get :state :blog-editor :editors]))))
    :draft-reads (count (filter #(= :draft-read (:operation %)) @*effects))
    :library-reads (count (filter #(= :get (:method %)) @*effects))
    :writes (count (filter #(= :blocked-write (:operation %)) @*effects))})
