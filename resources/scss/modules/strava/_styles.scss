@@ -416,6 +416,8 @@
     position: absolute;
     font-size: 120%;
     min-width: 14em;
+    // Split details are a popup, not a full-height statistics panel.
+    min-height: 2.5em;
   }
 }
 
