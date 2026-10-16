@@ -270,3 +270,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   worktrees, unavailable stores and exclusion of prompts/unrelated sessions.
   It runs with `bb test:scripts`; no browser or
   Java build is involved.
+
+- CV visit tests mount the real CV, await persisted snapshot restoration, retain
+  legacy flags, and verify SPA/remount/reload suppression plus stale-timer guards
+  and exact scroll return. `cv-visit-motion.html?component=cv` measures real
+  storage-backed motion from a nonzero origin; reload the same isolated context
+  to verify that the tour and focus no longer run.

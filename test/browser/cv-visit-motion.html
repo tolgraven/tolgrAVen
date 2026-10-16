@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CV first-visit motion fixture</title>
+  <link rel="stylesheet" href="/css/website/main.css">
+  <link rel="stylesheet" href="/css/website/modules/home.css">
+  <link rel="stylesheet" href="/css/website/modules/cv.css">
+  <link rel="stylesheet" href="/css/website/modules/blog.css">
+  <link rel="stylesheet" href="/css/website/modules/user.css">
+  <link rel="stylesheet" href="/css/website/modules/highlight.css">
+  <link rel="stylesheet" href="/css/website/modules/search.css">
+  <link rel="stylesheet" href="/css/website/icons.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="/fixtures/visual-clock.js"></script>
+  <script>
+    window.cvVisitCheck = {finished: false};
+    (async () => {
+      const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+      const deadline = performance.now() + 15000;
+      while (!document.querySelector('#cv.fullscreen') && performance.now() < deadline) await frame();
+      if (!document.querySelector('#cv.fullscreen')) throw new Error('CV did not mount');
+      window.scrollTo({top: 120, behavior: 'instant'});
+      await frame(); await frame();
+      const origin = scrollY, samples = [origin];
+      const record = () => samples.push(scrollY);
+      window.addEventListener('scroll', record, {passive: true});
+      await new Promise(resolve => setTimeout(resolve, 6500));
+      window.removeEventListener('scroll', record);
+      window.cvVisitCheck = {finished: true, origin, end: scrollY,
+        minimum: Math.min(...samples), maximum: Math.max(...samples),
+        events: samples.length - 1, focused: document.activeElement.id};
+    })();
+  </script>
+  <script src="/js/test.js"></script>
+  <script src="/fixtures/visual.js"></script>
+  <script>website.cv_visit_test.enable_storage_BANG_(); website.visual_fixture.init_BANG_();</script>
+</body>
+</html>
