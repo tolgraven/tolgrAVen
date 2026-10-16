@@ -30,6 +30,8 @@ The full module graph needs the demonstrated 3 GiB heap. From the printed
 `/fixtures/visual.html` reuses the CMS seed and production components, fixes only
 provider data, and retains native handlers, Markdown, measurement and
 module loading. `test/visual/suite.json` declares exact states and viewports.
+The capture driver explicitly foregrounds its owned task tab before measurement.
+The MCP's emulated focus and visible state alone do not establish tab activation.
 The fixture anchors its calendar to 2026-10-15 so ongoing CV entries keep stable
 endpoints across calendar years. Wall time still advances with `performance.now`;
 native timers, deadlines and finite motion retain their normal lifecycle.

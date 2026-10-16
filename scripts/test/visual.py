@@ -415,6 +415,7 @@ def capture(args):
         try:
             page = owned_page(client)
             client.page = page
+            client.call("select_page", pageId=page, bringToFront=True)
             script_cases = [case for case in cases if not case.get("native_hover") and not case.get("standalone")]
             if args.geometry_only and script_cases:
                 # Keep the owned driver tab, but return one complete geometry at

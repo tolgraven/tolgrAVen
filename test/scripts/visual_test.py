@@ -264,6 +264,9 @@ class VisualTest(unittest.TestCase):
                        if name == 'evaluate_script' and 'visualDriver.capture' in arguments['function']]
             self.assertEqual(1, len(batches)); self.assertIn('ordinary', batches[0]); self.assertNotIn('native-edit-hover', batches[0])
             self.assertEqual(1, sum(name == 'new_page' for name, _ in client.calls))
+            foreground = client.calls.index(('select_page', {'pageId': 73, 'bringToFront': True}))
+            first_measurement = next(index for index, (name, _) in enumerate(client.calls) if name == 'emulate')
+            self.assertLess(foreground, first_measurement, 'Emulated focus cannot establish a foreground capture')
             self.assertEqual(1, sum(name == 'close_page' for name, _ in client.calls))
             state = json.loads((args.output / 'native-edit-hover.json').read_text())
             self.assertEqual([400, 800, 1], state['viewport'])

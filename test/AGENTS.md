@@ -125,8 +125,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Visual captures return one complete geometry fixture per MCP request. Pin suite
   bytes/hash and Git head before browser work; changed suite bytes invalidate
   completion metadata while preserving partial evidence and owned-page cleanup.
-  Geometry-only capture parks the native pointer outside all iframe bounds and
-  verifies separation plus exact child viewport/DPR before and after actions.
+  Foreground the owned capture tab explicitly before measurement; MCP focus/visibility
+  emulation does not establish physical tab activation. Geometry-only capture parks
+  the native pointer outside all iframe bounds and verifies separation plus exact
+  child viewport/DPR before and after actions.
 - Same-origin frame captures include their own native geometry and CSS motion.
   Preserve sandbox permissions. Late attachment passes only for fully inspected,
   script-disabled documents with no authored/dormant/active motion; otherwise report
