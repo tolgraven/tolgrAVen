@@ -1,4 +1,5 @@
 (require '[build.neovim-workspace :as workspace]
+         '[website.build.packaging :as packaging]
          '[clojure.java.io :as io]
          '[clojure.test :refer [deftest is run-tests]])
 (deftest sources-use-allowlisted-roots-and-packaging-policy
@@ -19,4 +20,20 @@
         (is (= #{"editor" "editor style"} (set (map :text bundled)))))
       (finally
         (doseq [file (reverse (file-seq root))] (io/delete-file file))))))
+(deftest production-output-exclusions-preserve-editor-scss
+  (let [root (.toFile (java.nio.file.Files/createTempDirectory "scss-editor-bundle-test" (make-array java.nio.file.attribute.FileAttribute 0)))
+        paths ["resources/scss/main.scss" "resources/scss/dev.scss"
+               "resources/scss/shell/_vars.scss" "resources/scss/modules/neovim.scss"
+               "src/frontend/website/components/example.cljs"]]
+    (try
+      (doseq [path paths]
+        (io/make-parents (io/file root path))
+        (spit (io/file root path) (str "Source: " path)))
+      (let [plan {:exclusions packaging/generated-style-exclusions}
+            files (workspace/source-files root (packaging/source-exclusions plan))]
+        (is (= (set paths) (set (map :path files))))
+        (is (every? #(string? (:text %)) files)))
+      (finally
+        (doseq [file (reverse (file-seq root))] (io/delete-file file))))))
+
 (let [summary (run-tests)] (when (pos? (+ (:fail summary) (:error summary))) (System/exit 1)))

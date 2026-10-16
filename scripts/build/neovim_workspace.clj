@@ -41,10 +41,11 @@
     (spit file (str (json/generate-string (assoc profile :files files) {:escape-non-ascii true}) "\n"))))
 
 (defn -main [& _]
-  (let [exclusions (:exclusions (packaging/plan))]
+  (let [plan (packaging/plan)
+        exclusions (:exclusions plan)]
     (if (some #(re-find % "public/vendor/neovim/workspace.json") exclusions)
       (do (io/delete-file output true) (println "Neovim disabled; source bundle omitted"))
-      (let [files (vec (source-files "." exclusions))]
+      (let [files (vec (source-files "." (packaging/source-exclusions plan)))]
         (sync-profile!)
         (io/make-parents output)
         (spit output (json/generate-string {:version 1, :root "tolgrAVen", :files files}))

@@ -59,6 +59,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   while revalidating; only fresh entries bypass it.
   Presentation query variants may reuse fresh data for the same path/selection,
   preserving its original timestamp, but must render their own paired HTML/state.
+- Local production passes its isolated Node renderer path to asset preparation;
+  CSS pruning must retain SSR-only skeleton/entrance selectors as well as browser
+  classes. Never infer an SSR renderer from browser-only release inputs.
 - Optimus fingerprints the shell and each declared module stylesheet independently;
   shared styles keep one URL across consumer modules. A separate deferred icon
   bundle uses one Sass-compressed selector/font-face sheet; Optimus fingerprints
@@ -97,6 +100,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Prepared-source validation still includes the released main bytes.
   Only successful fingerprinted
   chunk responses receive immutable caching; plain names and errors must not.
+  Development browser chunks, CLJS runtime files and document/return bootstraps
+  use `no-store` so a restart cannot reuse another Shadow worker's identity.
 - Streaming uses Hiccup document parts and the existing flush-aware Ring body;
   do not split serialized pages by marker strings. Headers cannot change after flush.
   Compress that body directly with sync-flush gzip when accepted; do not convert

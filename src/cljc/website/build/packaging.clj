@@ -7,6 +7,15 @@
 (def stylesheet-root "resources/public/css/website/modules")
 (def stylesheet-source-root "resources/scss/modules")
 
+;; Generated resources are omitted from jars, never from the editor's sources.
+(def generated-style-exclusions
+  [#"^public/css/website/dev(?:\.min)?\.css$"
+   #"^public/css/website/(?:modules/)?[^/]+(?<!\.min)\.css$"
+   #"^public/css/website/\.build-revision\.json$"])
+
+(defn source-exclusions [plan]
+  (remove (set generated-style-exclusions) (:exclusions plan)))
+
 (defn module-defaults
   "Share source-only conventions with packaging before Lein resolves dependencies."
   [entry spec]
@@ -137,6 +146,7 @@
                        (for [{:keys [id]} all :when (not (enabled? id))]
                          (re-pattern (str "^public/css/website/modules/icons-" (name id) "(?:\\.min)?\\.css$")))
                        (when-not (enabled? :neovim) [#"^public/vendor/neovim/"])
+                       generated-style-exclusions
                        [#"^public/vendor/supabase\.js(?:\.map)?$"
                         #"^supabase/(?:schema|operations)\.sql$"
                         #"^site\.overrides\.(edn|css)$"]))}))
