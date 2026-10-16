@@ -13,7 +13,7 @@
     [website.components.image :as img]
     [website.components.shell :as views]
     [website.util :as util :refer [at]]
-    [react-leaflet]))
+    ["react-leaflet" :as react-leaflet]))
 
 (declare <activity-map>)
 (declare <activity-map-canvas>)
@@ -476,15 +476,15 @@
   {:features [[:appear "opacity slow"]]}
   [lats lngs latlng]
   [:div [:div
-         [:> js/ReactLeaflet.MapContainer
+         [:> react-leaflet/MapContainer
           {:center [(/ (apply + lats) (count lats))
                     (/ (apply + lngs) (count lngs))]
            :zoom 11}
 
-          [:> js/ReactLeaflet.TileLayer
+          [:> react-leaflet/TileLayer
            {:attribution "&copy; contributors"
             :url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"}]
-          [:> js/ReactLeaflet.Polyline
+          [:> react-leaflet/Polyline
            {:pathOptions {:color "#fc4c02"}
             :positions latlng}]]]])
 
