@@ -13,6 +13,7 @@ needed to run these tasks; they use Babashka's built-in libraries.
 | Uploads | `scripts/media/images.clj` | JVM upload adapter and Docker codec smoke test; standalone `bb` script |
 | Videos | `bb videos [--force] [files...]`, `bb videos:responsive` | Manual assets; FFmpeg VP9/AV1, muted output, original MP4 fallback |
 | Development | `bb cpu <action>`, `tolgraven-cpu` | Serialized isolated Docker agent builds and scoped macOS CPU monitor; see [resource controls](resource-controls.md) |
+| Development | `bb pr <operation>` | Repository-scoped GitHub CLI wrapper; session attribution on create/edit |
 | Development | `bb hooks`, `bb pair <operation>` | Per-checkout setup and installed re-frame-pair skill |
 | Renderer tests | `bb ssr:fixtures [--worker path]` | Actual compiled generic Node renderer; generates browser hydration fixtures |
 | Browser tests | `bb test:browser [--port 4002]` | Static component suite and fixtures; loopback HTTP-kit server (`--glass-output PATH` serves the focused glass suite/playground) |
@@ -146,3 +147,60 @@ servers as their checks finish, and reuse a task tab for sequential checks.
 Preserve user-owned pages and other sessions' active work. See
 [resource-controls.md](resource-controls.md) for cache location, ownership checks,
 legacy cleanup and the full completion procedure.
+
+## PR session attribution
+
+Use `bb pr` in place of `gh pr` in this repository. It runs the installed GitHub
+CLI against `tolgraven/tolgrAVen` and appends a managed **Codex sessions** footer
+to PR descriptions. The footer records the original session in charge and other
+contributing sessions with their current recorded title, former titles/generated
+descriptions, worktree paths and a secondary `codex resume UUID` command. Only
+those metadata fields are published; prompts, transcripts and session files are not.
+The read-only local adapter uses `CODEX_HOME` (default `~/.codex`), the session
+name index and installed SQLite thread metadata. Recorded turn/tool working
+directories include retired worktrees; the current publishing directory is added
+only to the current session. Metadata history is preserved in the managed footer
+across later renames, missing local sessions and edits from another machine.
+Unavailable metadata leaves the resume command usable. History absent from local
+records or earlier footers cannot be reconstructed.
+
+```sh
+bb hooks
+bb pr create --draft --title "Describe the change" --body-file /path/to/body.md
+bb pr edit 123 --body-file /path/to/revised-body.md
+bb pr edit 123 --contributor 01234567-89ab-cdef-0123-456789abcdef
+bb pr checks 123
+```
+
+`CODEX_THREAD_ID` (falling back to `CODEX_SESSION_ID`) identifies the current
+session; `--session UUID` supplies it explicitly outside Codex. Later edits retain
+the original owner, merge earlier contributors and add the editing session.
+Repeated edits never duplicate the footer. `--contributor UUID` is repeatable.
+The installed `prepare-commit-msg` hook adds a `Codex-Session` trailer when a
+Codex session commits, preserving previous session trailers on amendments. Ordinary
+commits outside Codex are unchanged. If you maintain a separate hook chain, include
+both tracked hooks. Never infer contributors from other active chats or repository
+activity: for earlier commits without trailers, supply their known IDs explicitly.
+
+Creation collects trailers only from the current branch's commits beyond
+`origin/<base>` (default `master`); fetch origin before creating a PR. Editing
+collects trailers from the selected PR's remote commits, so an explicit PR selector
+does not accidentally attribute the current checkout's unrelated commits.
+
+Create requires an explicit `--body`/`-b` or `--body-file`/`-F` (`-` reads stdin).
+Edit without a body preserves the current description and refreshes attribution;
+body replacement also retains its prior attribution. Use `--title` on create for
+noninteractive operation. Create must run from the intended head branch. Supported
+write flags cover title, base, head, draft, maintainers, labels, reviewers, projects,
+assignees and milestones; long `--flag=value` and short `-Ffile` forms work.
+Interactive editor/web, fill, template, recover, dry-run and attachment flags fail
+before writing: they can replace or append to the supplied body. All other PR
+operations pass through to `gh pr`. Raw `gh` remains available, but bypasses this
+repository's attribution policy. Malformed or duplicate managed footers fail
+before a write so existing provenance cannot be silently discarded.
+
+Run focused wrapper/hook tests with
+`bb --classpath scripts:test/scripts -m pr-test` (also in `bb test:scripts`).
+
+Bux's persistent SSD mounts and scheduled deployment-image/cache retention are
+managed by the explicit host tools in [Coolify storage](coolify-storage.md).

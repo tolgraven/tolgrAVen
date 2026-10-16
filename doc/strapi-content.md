@@ -98,6 +98,10 @@ content requests. Failed reads release their waiters for retry.
 Reload after an edit to see it, allowing for this cache. With no CMS configured,
 local development uses `resources/content-seed.json` on the backend. A configured
 CMS failure returns 503 and never silently restores the original seed.
+In development, an initial shell read failure logs a warning and allows the REPL
+and HTTP server to start. The owned refresh worker continues retrying and installs
+the shell when the CMS returns; no restart or configuration change is needed.
+Production still requires the initial shell read to succeed.
 
 `website.content.contract/module-content` is the shared dependency manifest.
 A lazy module's `spec` includes `:content` referencing this manifest, including

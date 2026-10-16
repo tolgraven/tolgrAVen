@@ -263,3 +263,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - `website.macros-loading-test` uses a fresh bounded JVM to verify macro loading
   and annotated argument parsing without initializing Malli; warmed test suites
   cannot establish that compiler boundary.
+
+- `pr-test` exercises PR footer ownership, body replacement and malformed metadata,
+  provider failures, selected-PR commit attribution, and the real commit hook in
+  disposable Git repositories. Metadata fixtures cover title history, retired
+  worktrees, unavailable stores and exclusion of prompts/unrelated sessions.
+  It runs with `bb test:scripts`; no browser or
+  Java build is involved.

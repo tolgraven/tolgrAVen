@@ -100,6 +100,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Prepared-source validation still includes the released main bytes.
   Only successful fingerprinted
   chunk responses receive immutable caching; plain names and errors must not.
+  Development browser chunks, CLJS runtime files and document/return bootstraps
+  use `no-store` so a restart cannot reuse another Shadow worker's identity.
 - Streaming uses Hiccup document parts and the existing flush-aware Ring body;
   do not split serialized pages by marker strings. Headers cannot change after flush.
   Compress that body directly with sync-flush gzip when accepted; do not convert
@@ -265,6 +267,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 - CMS cache locking covers only request/promise ownership. Keep upstream and
   media I/O outside the shared lock; identical missing-section requests share reads,
   independent sections proceed concurrently, and failure releases all waiters.
-- Only shared shell CMS content gates HTTP startup. The existing owned refresh
+- Only shared shell CMS content gates production HTTP startup. Development keeps
+  the REPL/HTTP running during CMS outages, with unavailable content and the same
+  owned refresh worker retrying; never substitute seed for a configured CMS.
+  The existing owned refresh
   worker warms module headings after readiness; a failed heading retains its
   last good value and cannot block healthy headings or unrelated routes.

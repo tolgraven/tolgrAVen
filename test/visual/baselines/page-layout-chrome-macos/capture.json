@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "suite_sha256": "6a3e801b8a7a8869ea32692662c6673b55a3c268d1dc947b22cac07827911b50",
+  "cases": [
+    "page-layout-wide",
+    "page-layout-narrow",
+    "page-layout-vertical-wide",
+    "page-layout-vertical-narrow"
+  ],
+  "git_head": "acacc5d8122b602e8e9de8988846cc7eca354cfa",
+  "pixels": true,
+  "raster": "overlapping-viewports-v1",
+  "approval": {
+    "reviewer": "Codex, explicit visual review requested by repository owner",
+    "reference": "https://web.bux.tolgraven.se/experiments/layout at 74eee32d; reviewed feature PR #192 and requested grid/vertical alternatives",
+    "reason": "Inspected all four native fixture states and both additional scroll tiles. Verified wide/narrow article spacing, index alignment, wrapping, edges and backgrounds against the deployed article/index; vertical states establish the requested new composition. Provider widgets are verified live separately, not frozen into these deterministic baselines."
+  }
+}

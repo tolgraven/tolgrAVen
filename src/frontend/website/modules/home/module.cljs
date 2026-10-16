@@ -11,5 +11,6 @@
                       :content [:intro :services :moneyshot :story :interlude :soundcloud :gallery]}]}
    :pages pages/spec
    :view {:page #'views/<auto>
+          :dynamic-page #'views/<dynamic-page>
           :float-image #'layout/<float-img>
           :text-images #'layout/<auto-layout-text-imgs>}})

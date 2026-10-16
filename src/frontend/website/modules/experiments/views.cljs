@@ -402,18 +402,20 @@
   {:depends [{:source :strapi :keys [:common]}]}
   []
   [ui-layout/<with-heading> [:common :banner-heading]
-   (let [routes {:parallax <parallax>
+   (let [routes {:dynamic-layout (m/<> :home/dynamic-page "experiments")
+                 :parallax <parallax>
                  :model-viewer <model-viewer>
                  :liquid-glass glass/<playground>
                  :leaflet <leaflet>
                  :search (m/<> :search/view "blog-posts")
                  :broken [:div]}
-         tab @(r/subscribe [:state [:experiments]])]
+         tab (or @(r/subscribe [:state [:experiments]]) :dynamic-layout)
+         selected (get routes tab)]
      [:section.experiments.solid-bg.fullwide.noborder
       [:ul.tabs-container.flex
        (for [tab-key (keys routes)] ^{:key tab-key}
                                     [:li [:a {:href @(r/subscribe [:href :test-tab {:tab tab-key}])}
                                           [:button {:class (if (= tab tab-key) "bottomborder" "topborder")}
                                            tab-key]]])]
-      [ui-boundary/<safe> :experiments [(tab routes)]]])
+      [ui-boundary/<safe> :experiments (if (vector? selected) selected [selected]) tab]])
    {:title "Experiments" :tint "green"}])
