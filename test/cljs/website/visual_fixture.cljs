@@ -29,6 +29,8 @@
             [website.modules.blog.subs]
             [website.modules.blog-preview.views :as preview]
             [website.modules.search.views :as search]
+            [website.modules.search.model :as search-model]
+            [website.validation :as validation]
             [website.components.shell :as shell]
             [website.components.media :as media]
             [website.modules.home.sections :as home]
@@ -218,6 +220,30 @@
               (assoc-in [:document :kind] "blog-comment")
               (assoc-in [:document :href] "/blog/post/42/comment/113"))
           (assoc-in hit [:document :id] "post-43")]})
+
+(def extended-search-response
+  (let [commit (first github-commits)]
+    (-> search-response
+        (assoc :found 5)
+        (update :hits into
+          [(assoc hit
+                  :document {:id (str "github-" (:sha commit))
+                             :kind "github-commit"
+                             :title "GitHub highlighted change"
+                             :text "Native text around the highlighted commit."
+                             :href (str "/github/commits/" (:sha commit))
+                             :repository "visual-user/visual-repo"
+                             :author "Visual contributor"}
+                  :preview :github-preview/commit
+                  :title (search-model/marked-segments "GitHub <mark>highlighted</mark> change"))
+           (assoc hit
+                  :document {:id "site-section-services"
+                             :kind "site-section"
+                             :title "Site highlighted section"
+                             :text "Native text around the highlighted site section."
+                             :href "/section/services"}
+                  :preview :home-preview/section
+                  :title (search-model/marked-segments "Site <mark>highlighted</mark> section"))]))))
 
 (m/defpage <fixture-page>
   "Use the native page-root container: direct grid children stretch to main's minimum height."
@@ -409,7 +435,7 @@
                        (contains? #{"rich" "plain"} (.get params "composer")))]
     (if-not (#{"page-layout" "page-layout-vertical"
                "cv-regular" "cv-container" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
-               "thread" "post" "standalone-comments" "search-mixed"
+               "thread" "post" "standalone-comments" "search-mixed" "search-extensions"
                "shell" "shell-scroll" "shell-panels" "header" "footer" "post-footer" "services" "cv"
                "home-intro" "home-story" "home-image-media" "github"
                "docs-index" "docs-topic" "instagram" "strava" "post-editor"} component)
@@ -508,14 +534,19 @@
                               :root comment-row
                               :parent post-row}
                              {})))
-              (when (= "search-mixed" component)
-                (r/reg-sub :search/open? (fn [_ _] true))
-                (r/reg-sub :search/query (fn [_ _] (:query search-response)))
-                (r/reg-sub :search/response (fn [_ _] search-response))
-                (r/reg-sub :search/pending? (fn [_ _] false))
-                (r/reg-sub :search/error (fn [_ _] nil))
-                (r/reg-sub :search/selected (fn [_ _] -1))
-                (r/reg-sub :search/get (fn [_ _] 0)))
+              (when (#{"search-mixed" "search-extensions"} component)
+                (let [response (if (= "search-extensions" component)
+                                 extended-search-response
+                                 search-response)]
+                  (when (validation/explain search-model/result response)
+                    (throw (js/Error. "Invalid native search fixture response")))
+                  (r/reg-sub :search/open? (fn [_ _] true))
+                  (r/reg-sub :search/query (fn [_ _] (:query response)))
+                  (r/reg-sub :search/response (fn [_ _] response))
+                  (r/reg-sub :search/pending? (fn [_ _] false))
+                  (r/reg-sub :search/error (fn [_ _] nil))
+                  (r/reg-sub :search/selected (fn [_ _] -1))
+                  (r/reg-sub :search/get (fn [_ _] 0))))
               (when (= "github" component) (github-transport!))
               (when (= "strava" component) (strava-fixture/install-transport!))
               (when (= "post-editor" component) (post-editor-fixture/install! editor/profile))
@@ -539,7 +570,7 @@
                            (r/render (r/create-root (.getElementById js/document "app"))
                              (case component
                                ("page-layout" "page-layout-vertical") [<layout-fixture> (= component "page-layout-vertical")]
-                               "search-mixed" [<search-fixture>]
+                               ("search-mixed" "search-extensions") [<search-fixture>]
                                ("post" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge" "thread")
                                [<post-fixture> component]
                                "standalone-comments" [<standalone-fixture>]

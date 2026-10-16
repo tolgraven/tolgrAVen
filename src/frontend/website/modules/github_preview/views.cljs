@@ -4,7 +4,7 @@
             [website.modules.search.presentation :as presentation]))
 
 (defc <commit> [{:keys [document title excerpt]} :- model/hit]
-  [:article.search-instant-result.github-commit
+  [:article.search-instant-result.search-instant-result--summary.github-commit
    [:div.github-commit-message
     [:div.info (:repository document) " · " (:author document)]
     [:div.github-commit-titles

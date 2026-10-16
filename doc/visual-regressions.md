@@ -98,6 +98,14 @@ route geometry remain native. This verifies map layout/behavior, not parity of
 external cartographic imagery. Missing native ReactLeaflet exports fail rather
 than substituting a map. Browser execution and matching captures remain required.
 
+Extended Search cases retain its native main-sibling panel and lazy preview
+module selection. Schema-checked GitHub/Home hits join the original blog results;
+the two additional captures scroll only Search's own result container and require
+both module destinations, safe marks and visible links. Summary previews use the
+existing compact row spacing and responsive horizontal inset. No preview view is
+copied or substituted. These local records do not verify live indexing or destination
+navigation; native execution and approved pixel baselines remain required.
+
 Full posting-page cases retain the native heading/page, rich/source editor,
 preview, draft chooser and post-only image/component pickers. Local draft reads
 return schema-checked records through the original result events; private storage

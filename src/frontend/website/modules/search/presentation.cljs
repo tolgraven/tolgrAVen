@@ -11,6 +11,6 @@
         segments))
 
 (defc <fallback> [hit :- model/hit]
-  [:article.search-instant-result
+  [:article.search-instant-result.search-instant-result--summary
    [:h3 [:a {:href (get-in hit [:document :href])} [<fragments> (:title hit)]]]
    [:p [<fragments> (:excerpt hit)]]])
