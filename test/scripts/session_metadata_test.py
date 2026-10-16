@@ -53,6 +53,29 @@ class SessionMetadataTest(unittest.TestCase):
         await tools.exec_command({workdir:"/work/actual", cmd:"true"});'''
         self.assertEqual(list(metadata.command_directories(source)), ['/work/actual'])
 
+    def test_ambiguous_legacy_titles_are_omitted(self):
+        for comparisons in [False, True]:
+            with self.subTest(comparisons=comparisons), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory)
+                with sqlite3.connect(home / 'state_5.sqlite') as db:
+                    fields = ', first_user_message text, preview text' if comparisons else ''
+                    db.execute('create table threads (id text, title text' + fields + ')')
+                    db.execute('insert into threads (id,title) values (?,?)', (ID, 'PRIVATE ORIGINAL PROMPT'))
+                (home / 'session_index.jsonl').write_text(json.dumps({'id': ID, 'thread_name': 'PRIVATE ORIGINAL PROMPT'}))
+                result = metadata.metadata(home, [ID])[ID]
+                self.assertNotIn('PRIVATE', json.dumps(result))
+                self.assertNotIn('title', result)
+
+    def test_generated_description_distinct_from_known_prompt_is_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            with sqlite3.connect(home / 'state_5.sqlite') as db:
+                db.execute('create table threads (id text, name text, title text, first_user_message text)')
+                db.execute('insert into threads values (?,?,?,?)', (ID, 'Current name', 'Generated description', 'PRIVATE PROMPT'))
+            result = metadata.metadata(home, [ID])[ID]
+            self.assertEqual(result['titles'], ['Generated description', 'Current name'])
+            self.assertNotIn('PRIVATE', json.dumps(result))
+
     def test_missing_or_incompatible_local_state_keeps_index(self):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)

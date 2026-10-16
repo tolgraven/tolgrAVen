@@ -126,11 +126,13 @@ def metadata(home, ids):
                 ident = item['id']
                 # Legacy title/preview fields often contain the complete prompt.
                 prompts = [item.get('first_user_message'), item.get('preview')]
+                if not item.get('first_user_message'):
+                    prompts.append(item.get('title'))
                 result[ident]['titles'] = [v for v in result[ident]['titles'] if v not in prompts]
                 if result[ident].get('title') in prompts:
                     result[ident].pop('title', None)
                 title = item.get('title')
-                if title and title not in [item.get('first_user_message'), item.get('preview')]:
+                if title and title not in prompts:
                     add(ident, 'titles', title)
                 name = item.get('name')
                 add(ident, 'titles', name)
