@@ -316,8 +316,12 @@ const externalBack = async ({label = 'Home', selectors = ['#app #intro'], shellS
     // Policy is evidence to assert after observing the actual page, never a
     // prerequisite that conceals motion when the return policy itself breaks.
     check(returned.documentElement.hasAttribute('data-image-direct'), `${label} Back retains the native image return policy`);
+    check(returned.defaultView.getComputedStyle(returned.documentElement).scrollBehavior === 'auto',
+      `${label}: external Back keeps native scroll restoration instant before interaction`);
     observer.phase('post-return-interaction');
     const afterSearch = await searchMotion(label + ' after Back');
+    check(returned.defaultView.getComputedStyle(returned.documentElement).scrollBehavior === 'smooth',
+      `${label}: first interaction restores the authored smooth scrolling`);
     const interactions = JSON.parse(results.dataset.externalBackInteractions || '{}');
     const afterShell = shellScroll ? await shellScrollMotion(label + ' after Back') : null;
     interactions[expectedURL] = {before: beforeSearch, after: afterSearch, beforeShell, afterShell};

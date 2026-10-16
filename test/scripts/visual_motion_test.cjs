@@ -833,7 +833,7 @@ test('reply motion evidence rejects height teleports and opacity-only layout jum
   assert.ok(staticBody.every(row => row.continuous && !row.fading && !row.sliding));
 });
 
-function returnFixture({gaps = [], policy = true, readinessFailure = false, returnedDuration = 1800, disabledSearch = false, quickSearch = false, lazySearch = false, replaceSearchButton = false, delayedScroll = false, delayedFocus = false} = {}) {
+function returnFixture({gaps = [], policy = true, readinessFailure = false, returnedDuration = 1800, disabledSearch = false, quickSearch = false, lazySearch = false, replaceSearchButton = false, delayedScroll = false, delayedFocus = false, missedReturnAuto = false, stuckPostIntentAuto = false} = {}) {
   const calls = [], frames = new Map(), listeners = new Map(), timers = new Map();
   const results = {dataset: {}, append() {}}, observers = [];
   const url = 'http://127.0.0.1:4114/cv?motion-return=proof#skills';
@@ -841,6 +841,7 @@ function returnFixture({gaps = [], policy = true, readinessFailure = false, retu
   class CSSAnimation {}
   class CSSTransition {}
   const documentFor = navigation => {
+    let interacted = false;
     const app = {pending: false, spinner: false,
       hasAttribute: () => app.pending,
       querySelector: selector => selector === 'main' || app.spinner ? {} : null};
@@ -850,6 +851,7 @@ function returnFixture({gaps = [], policy = true, readinessFailure = false, retu
       removeEventListener: (name, callback) => { assert.equal(panel.listeners.get(name), callback); panel.listeners.delete(name); }};
     let currentButton;
     const clickSearch = () => {
+      interacted = true;
       calls.push((navigation === 'navigate' ? 'before' : 'after') + ':search-click');
       panel.present = true; panel.open = !panel.open;
       const duration = quickSearch ? 1 : panel.open ? (navigation === 'navigate' ? 1800 : returnedDuration) : 400;
@@ -877,6 +879,13 @@ function returnFixture({gaps = [], policy = true, readinessFailure = false, retu
         selector === 'button.search-ui-btn' ? currentButton : null,
       documentElement: {hasAttribute(name) {calls.push('policy:' + name); return policy;}}};
     const win = {document, CSSAnimation, CSSTransition, scrollX: 0, scrollY: 0,
+      getComputedStyle(element) {
+        assert.equal(element, document.documentElement, 'Return scrolling policy is measured on the actual document root');
+        const scrollBehavior = navigation === 'navigate' ? 'smooth' :
+          interacted ? (stuckPostIntentAuto ? 'auto' : 'smooth') : (missedReturnAuto ? 'smooth' : 'auto');
+        calls.push(`scroll-style:${navigation === 'navigate' ? 'before' : 'after'}:${scrollBehavior}`);
+        return {scrollBehavior};
+      },
       performance: {getEntriesByType: () => [{type: navigation}]},
       addEventListener: (name, callback) => listeners.set(document, callback),
       removeEventListener: (name, callback) => {assert.equal(listeners.get(document), callback); listeners.delete(document);}};
@@ -973,6 +982,35 @@ test('native Back observes before readiness, saves route evidence, and cleans su
   }
 });
 
+
+test('native Back measures instant restoration before input and restores authored smooth scrolling after intent', async () => {
+  for (const options of [{}, {missedReturnAuto: true}, {stuckPostIntentAuto: true}]) {
+    const fixture = returnFixture(options), {context, calls, results, url} = fixture;
+    const run = context.observeBack({label: 'CV', selectors: ['#app .cv-intro']});
+    if (options.missedReturnAuto) await assert.rejects(run, /native scroll restoration instant before interaction/);
+    else if (options.stuckPostIntentAuto) await assert.rejects(run, /first interaction restores the authored smooth scrolling/);
+    else await run;
+    const initialStyle = calls.findIndex(value => value.startsWith('scroll-style:after:'));
+    const firstClick = calls.indexOf('after:search-click');
+    assert.ok(initialStyle > calls.indexOf('observation-window'), 'Root policy cannot conceal pre-input motion observation');
+    assert.ok(initialStyle > calls.indexOf('snapshot'), 'The real motion result is retained before checking root scrolling policy');
+    assert.ok(JSON.parse(results.dataset.externalBackCases)[url].positions.samples.some(value => value.ready));
+    if (options.missedReturnAuto) {
+      assert.equal(calls[initialStyle], 'scroll-style:after:smooth');
+      assert.equal(firstClick, -1, 'A missing return guard fails before any post-return input');
+    } else {
+      assert.equal(calls[initialStyle], 'scroll-style:after:auto');
+      assert.ok(firstClick > initialStyle, 'The return policy is measured before the first ordinary Search click');
+      const finalStyle = calls.findLastIndex(value => value.startsWith('scroll-style:after:'));
+      assert.ok(finalStyle > calls.lastIndexOf('after:search-click'), 'The released policy is checked after ordinary Search interaction');
+      assert.equal(calls[finalStyle], `scroll-style:after:${options.stuckPostIntentAuto ? 'auto' : 'smooth'}`);
+      assert.equal(fixture.returned.querySelector('.search-ui').open, false);
+      assert.equal(fixture.returned.querySelector('.search-ui').listeners.size, 0);
+    }
+    assert.ok(fixture.observers.every(observer => observer.stopped));
+    assert.equal(fixture.frames.size, 0); assert.equal(fixture.timers.size, 0); assert.equal(fixture.listeners.size, 0);
+  }
+});
 
 test('home native Back retains its original proof shape and a failed readiness wait releases observers', async () => {
   const home = returnFixture();

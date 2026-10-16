@@ -25,7 +25,7 @@
   previews before discovery; later SPA navigation clears the image return policy.
   Native Back also installs document-return and temporary settling attributes
   before CSS. Retain the network SSR tree, settle its automatic clocks, and
-  release only the temporary transition guard on first input. Shell components
+  release only the temporary transition/instant-scroll guard on first input. Shell components
   retain their own settled state; later menu/comment interactions stay animated.
 - Verify compiled output with `test/scripts/document_image_test.cjs`, generated SSR
   fixtures and native browser cold/history/BFCache checks. Source-reader checks alone

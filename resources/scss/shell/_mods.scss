@@ -578,6 +578,9 @@ html[data-document-return] {
 // First user intent releases this temporary guard; persistent document clocks
 // have their own settled rules, so releasing controls cannot replay an entrance.
 html[data-return-settling] {
+  // Native history restoration must not inherit the usual smooth navigation.
+  scroll-behavior: auto;
+
   :is(#app, #ssr-shell),
   :is(#app, #ssr-shell) *,
   :is(#app, #ssr-shell)::before,

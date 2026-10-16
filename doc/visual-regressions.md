@@ -423,7 +423,9 @@ Initial browser history restoration remains recorded without being mistaken for
 a ready-route movement. It stores bounded Home observation evidence in `#results.dataset.externalBack`
 and per-URL Home, Blog, CV and Docs evidence in `dataset.externalBackCases`.
 Each route matches the full departing URL; its observer attaches before content
-readiness, and return-policy flags are asserted after motion collection. It does
+readiness, and return-policy flags are asserted after motion collection. The root must use
+instant native restoration before interaction, then regain its authored smooth
+scroll behavior after the first control click. It does
 not rewrite application HTML, seed return state or forge navigation timing.
 After saving that observation and checking policy, each route measures actual
 Search opening/closing `max-height` transitions and compares their full native
