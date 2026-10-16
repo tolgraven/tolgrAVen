@@ -242,14 +242,15 @@
 
 (defc <user-btn> {:icons ["solid/user"]}
   [model]
-  [:a.button.user-btn.noborder
-   {:href @(r/subscribe [:href-add-query
-                          {:userBox (not @(r/subscribe [:user/ui-open?]))}])
-    :aria-label "User account"
-    :title "User account"}
-    (if-let [user @(r/subscribe [:user/active-user])]
-      [<user-avatar> (merge user {:no-zoom true}) "btn-img"]
-      [:i.user-btn {:class "fa fa-user"}])])
+  (let [open? @(r/subscribe [:user/ui-open?])]
+    [:button.user-btn.noborder
+     {:type "button"
+      :on-click #(r/dispatch [(if open? :user/request-close-ui :user/request-open-ui)])
+      :aria-label "User account"
+      :title "User account"}
+     (if-let [user @(r/subscribe [:user/active-user])]
+       [<user-avatar> (merge user {:no-zoom true}) "btn-img"]
+       [:i.user-btn {:class "fa fa-user"}])]))
 
 
 (defc <user-box> "Wrapper for user views"

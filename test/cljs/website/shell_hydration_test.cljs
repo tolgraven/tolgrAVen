@@ -87,6 +87,18 @@
    (loader/component-vector {:module module, :load-on :immediate} [*sibling-committed?])
    [shell/<footer> [{:id "hydration", :title "Native sticky footer"}]]])
 
+(defn- check-anonymous-account-focus! [element]
+  (go-promise
+    (let [button (.querySelector element "header .user-btn.noborder")]
+      (is (= "BUTTON" (.-tagName button)) "Account actions retain native Space/Enter activation")
+      (is (= "button" (.-type button)) "The account control cannot submit a containing form")
+      (.focus button #js {:preventScroll true})
+      (await! (support/settle!))
+      (is (identical? button (.querySelector element "header .user-btn.noborder"))
+          "Focusing the closed account control never replaces its native node")
+      (is (identical? button (.-activeElement js/document))
+          "The closed account control retains keyboard focus through acquisition frames"))))
+
 (deftest pending-ssr-sibling-does-not-delay-native-shell-visibility
   (async done
     (let [restore-db! (r/make-restore-fn)
@@ -150,6 +162,7 @@
                                               (contains? @(:started acquisition) module))
                                         "Shell did not commit beside its pending SSR sibling"))
               (restore/hydrated!)
+              (await! (check-anonymous-account-focus! element))
               (is (false? @*sibling-committed?))
               (is (identical? sibling (.querySelector element "[data-deferred-shell-sibling]"))
                   "Pending hydration retains completed SSR content")

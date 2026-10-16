@@ -101,12 +101,14 @@
                           :height "1.2em"
                           :filter "var(--light-to-dark)"}}]])
 
-(defc ^:private <pending-user-button> []
-  [:a.button.user-btn.noborder
-   {:href @(r/subscribe [:href-add-query {:userBox true}])
-    :aria-label "User account"
-    :title "User account"}
-   [:i.user-btn.fa.fa-user]])
+(defc ^:private <anonymous-user-button> []
+  (let [open? @(r/subscribe [:user/ui-open?])]
+    [:button.user-btn.noborder
+     {:type "button"
+      :on-click #(r/dispatch [(if open? :user/request-close-ui :user/request-open-ui)])
+      :aria-label "User account"
+      :title "User account"}
+     [:i.user-btn.fa.fa-user]]))
 
 (defn- use-restored-shell []
   (let [returned? (restore/document-return?)
@@ -175,9 +177,9 @@
       (when-enabled :user nil
        (if @(r/subscribe [:user/active-user])
         (m/<> :user/btn)
-        (m/<> {:module :user
-               :view :btn
-               :<before> <pending-user-button>})))
+        ;; The panel owns code acquisition. Focusing this control must not
+        ;; replace it with a lazy view and lose the user's keyboard position.
+        [<anonymous-user-button>]))
       [:label.burger {:for "nav-menu-open"}]]]
 
      [:div.fill-side-top

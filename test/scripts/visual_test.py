@@ -75,6 +75,24 @@ class HoverClient:
 
 
 class VisualTest(unittest.TestCase):
+    def test_evaluation_preserves_literal_markdown_fences_inside_json(self):
+        payload = {"summary": "", "body": "Code: ```clojure\n(+ 1 2)\n``` and ```json {not a second result}```",
+                   "nested": ["quotes \" and slash \\"], "unicode": "å"}
+        client = object.__new__(visual.MCP)
+        client.call = lambda *args, **kwargs: {"content": [
+            {"type": "text", "text": "Tool notice"},
+            {"type": "text", "text": "Script ran on page and returned:\n```json\n" + json.dumps(payload) + "\n```"}]}
+        self.assertEqual(payload, client.evaluate("() => document.body.innerText"))
+
+    def test_evaluation_rejects_incomplete_json_or_missing_closing_fence(self):
+        client = object.__new__(visual.MCP)
+        for text in ['```json\n{"body":"truncated', '```json\n{"body":"valid"}',
+                     '```json\n{"body":"valid"} {}\n```']:
+            with self.subTest(text=text):
+                client.call = lambda *args, **kwargs: {"content": [{"type": "text", "text": text}]}
+                with self.assertRaises((ValueError, RuntimeError)):
+                    client.evaluate("() => document.body.innerText")
+
     def test_owned_background_page_uses_observed_unique_url_and_new_id_never_selection(self):
         client = HoverClient()
         self.assertEqual(73, visual.owned_page(client))

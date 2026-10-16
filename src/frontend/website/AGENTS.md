@@ -18,12 +18,12 @@
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/ssr.md`, and `doc/dev-console.md`.
 
-- The CV first-visit demo uses its original delayed events under an instance-owned
-  `:dispatch-in` key. Its native ref cleanup cancels only that instance's timers;
-  late native-handle acknowledgements stop canceled work without restoring it.
-  Initial document returns skip the demo through the shared return/page context;
-  later ordinary SPA visits retain it. Its owned pagehide listener cancels timers
-  synchronously before BFCache can freeze the document and releases on ref cleanup.
+- The CV visit feature owns its pagehide listener and mount identity. Cleanup and
+  pagehide synchronously invalidate that owner's delayed module events, including
+  source callbacks already queued before React disposal; stale generations
+  cannot scroll, focus or expand another view. Initial document returns still
+  restore and claim the visit, but skip automatic motion through the shared return
+  and page context. Later ordinary SPA visits retain their usual behavior.
 
 - Action labels measure their committed native anchor and portal. Follow finite
   ancestor motion and observe ancestor size changes only while the label is open;
@@ -691,3 +691,13 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Restored shell guards suppress initial clocks only. Menu or header scroll-state
   changes release the header guard permanently for that mounted shell; ordinary
   hide/show logo motion must work after external Back as well as initial loading.
+
+- CV first-visit motion belongs to module events and its mounted lifecycle. Restore
+  migrated visit snapshots before deciding; retain the durable legacy visit marker,
+  claim the visit in app-db before scheduling, and guard delayed effects by mount
+  generation. The demo returns to its measured starting scroll position.
+
+- The anonymous account trigger is a stable native header button. Its existing
+  User request events update the query; the page owns lazy panel acquisition.
+  Focusing the trigger must retain its node and focus without acquiring/replacing
+  a fallback. Loaded account controls retain native Space/Enter activation too.

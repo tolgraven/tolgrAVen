@@ -23,5 +23,5 @@
             (errors/user-friendly-error error)
             (.printStackTrace error *err*)
             (throw error))))))
-  (assets/prepare! "target/production/resources")
+  (assets/prepare! "target/production/resources" "target/production/ssr/site.js")
   (shutdown-agents))

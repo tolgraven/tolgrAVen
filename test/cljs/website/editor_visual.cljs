@@ -177,7 +177,25 @@
   (swap! *cms-effects conj {:operation operation})
   (throw (js/Error. "CMS visual fixtures do not acquire providers, upload or publish")))
 
-(defn install-cms! []
+(defn install-cv-visit!
+  ([] (install-cv-visit! (fn [_])))
+  ([save!]
+   ;; Only disposable visual CV documents use this read/write transport. Keep
+   ;; the native mount, visit-restored, durable claim and delayed events intact;
+   ;; neither the legacy store nor component.storage reads a user's disk.
+   (let [*saved (atom {})]
+     (r/reg-cofx :ls #(assoc % :ls @*saved))
+     (r/reg-fx :ls
+       (fn [value]
+         (save! value)
+         (when-not (= {:cv-visited true} value)
+           (throw (js/Error. "CV visual fixtures only save their in-memory visit marker")))
+         (reset! *saved value)))
+     (r/reg-fx :cv/restore-visit
+       (fn [generation]
+         (r/dispatch [:cv/visit-restored generation (true? (:cv-visited @*saved))]))))))
+
+(defn install-cms! [component]
   ;; Only the new disposable CMS cases install these boundaries. The manual
   ;; editor-visual comparison and its opt-in loopback transport stay unchanged.
   (let [settings {:admin-url nil, :writable? true}
@@ -207,6 +225,9 @@
         (if (= {:cv-visited true} value)
           (swap! *cms-effects conj {:operation :local-visit})
           (reject-cms-effect! :write))))
+    (when (= component "cms-cv")
+      ;; Retain CMS's strict write accounting around the same local CV marker.
+      (install-cv-visit! (r/get-handler :fx :ls)))
     (r/dispatch-sync [:state [:supabase-init] :ready])
     (r/dispatch-sync [:state [:active-user] profile])
     ;; The real owner/settings result and toggle events establish edit mode.

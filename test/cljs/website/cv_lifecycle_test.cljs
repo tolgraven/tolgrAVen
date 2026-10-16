@@ -9,194 +9,345 @@
             [website.modules.cv.views :as cv]
             [website.test-support :as support]))
 
+;; Keep awaited phases separate: one large core.async state machine generates
+;; JavaScript too deeply nested for Chrome to evaluate before tests can start.
+(defn- cv-fixture []
+  {:restore-db! (r/make-restore-fn)
+   :context @restore/*context
+   :return-marker (.getAttribute (.-documentElement js/document) "data-document-return")
+   :scroll-y (.-scrollY js/window)
+   :active-element (.-activeElement js/document)
+   :original-set-timeout js/setTimeout
+   :schedule! (r/get-handler :fx :dispatch-later)
+   :element (.createElement js/document "div")
+   :*root (atom nil)
+   :*scheduling? (atom false)
+   :*next-id (atom 0)
+   :*pending (atom {})
+   :*scheduled (atom [])
+   :*timer-events (atom [])
+   :*delivered (atom [])
+   :*claims (atom [])
+   :*restorations (atom [])
+   :*hold-restore? (atom false)
+   :*now (atom 0)})
+
+(defn- install-cv-clock!
+  [{:keys [original-set-timeout schedule! *scheduling? *next-id *pending *scheduled
+           *timer-events *delivered *claims *restorations *hold-restore? *now]}]
+  ;; Only the registered effect's native clock changes. The actual dispatch-later
+  ;; callbacks, CV events, DOM and scroll/focus effects still run.
+  (set! js/setTimeout
+    (fn [callback milliseconds & args]
+      (if (and @*scheduling? (#{2000 3000 4500 5500} milliseconds))
+        (let [id (swap! *next-id dec)]
+          (swap! *scheduled conj milliseconds)
+          (swap! *pending assoc id {:at (+ @*now milliseconds)
+                                    :callback #(.apply callback nil (to-array args))})
+          id)
+        (.apply original-set-timeout js/window (to-array (into [callback milliseconds] args))))))
+  (r/reg-fx :dispatch-later
+    (fn [arguments]
+      (let [timers (if (map? arguments) [arguments] arguments)]
+        (swap! *timer-events into (map :dispatch timers))
+        (reset! *scheduling? true)
+        (try (schedule! arguments) (finally (reset! *scheduling? false))))))
+  ;; cv-visit-test covers actual disk/legacy migration. Control only its result
+  ;; effect here, including late results after the owning component departs.
+  (r/reg-fx :cv/restore-visit
+    (fn [generation]
+      (swap! *restorations conj generation)
+      (when-not @*hold-restore?
+        (r/dispatch [:cv/visit-restored generation false]))))
+  (r/reg-cofx :ls #(assoc % :ls {}))
+  (r/reg-fx :ls #(swap! *claims conj %))
+  (r/reg-global-interceptor
+    (r/->interceptor
+      :id :cv-lifecycle-test/actions
+      :after (fn [context]
+               (let [event (get-in context [:coeffects :event])]
+                 (when (#{:cv/fullscreen :cv/demo} (first event))
+                   (swap! *delivered conj event)))
+               context))))
+
+(defn- drive-cv-clock! [{:keys [*pending *now *delivered]} time]
+  (go-promise
+    (let [jobs (sort-by (comp :at val) (filter #(<= (:at (val %)) time) @*pending))
+          delivered (count @*delivered)]
+      (reset! *now time)
+      (doseq [[id {:keys [callback]}] jobs]
+        (swap! *pending dissoc id)
+        (callback))
+      ;; Inactive generations still process these events but produce no effects.
+      (when (seq jobs)
+        (await! (support/wait-for! #(>= (count @*delivered) (+ delivered (count jobs)))
+                                  "CV timer callbacks did not reach their real events")))
+      (await! (support/settle!)))))
+
+(defn- cv-mode [mode]
+  (let [late? (boolean (#{:late-unmounted :late-pagehide} mode))]
+    {:mode mode
+     :unmounted? (boolean (#{:unmounted :late-unmounted} mode))
+     :pagehide? (boolean (#{:pagehide :late-pagehide} mode))
+     :returned? (boolean (#{:network-return :paired-return :spa-from-returned} mode))
+     :active? (boolean (#{:mounted :spa-from-returned} mode))
+     :late? late?
+     :expected-times (cond
+                       (#{:network-return :paired-return} mode) []
+                       (or late? (= mode :early-pagehide)) [2000]
+                       :else [2000 3000 4500 5500])}))
+
+(defn- prepare-cv-mode!
+  [{:keys [*hold-restore? *now *scheduled *timer-events *delivered *claims *restorations *pending]}
+   {:keys [mode returned? late?]} seed]
+  (r/dispatch-sync [:editor-visual/install seed false])
+  (r/dispatch-sync [:state [:cv :visited] false])
+  (r/dispatch-sync [:state [:fullscreen :cv] false])
+  (restore/begin! (case mode
+                    (:mounted :network-return :spa-from-returned) {:hydrate? true}
+                    :paired-return {:hydrate? true, :back? true}
+                    {}))
+  (when (#{:network-return :spa-from-returned} mode) (restore/hydrated!))
+  (when (= mode :spa-from-returned) (restore/navigate! "/cv"))
+  (if returned?
+    (.setAttribute (.-documentElement js/document) "data-document-return" "true")
+    (.removeAttribute (.-documentElement js/document) "data-document-return"))
+  (reset! *hold-restore? late?)
+  (reset! *now 0)
+  (reset! *scheduled [])
+  (reset! *timer-events [])
+  (reset! *delivered [])
+  (reset! *claims [])
+  (reset! *restorations [])
+  (reset! *pending {}))
+
+(defn- mount-cv-mode!
+  [{:keys [*root element *scheduled *timer-events *restorations *claims]}
+   {:keys [mode late? expected-times]}]
+  (go-promise
+    (await! (support/render! @*root
+              [:main {:style {:min-height "500vh"}
+                      :ref (when (= mode :early-pagehide)
+                             (fn [node]
+                               (when node
+                                 (is (empty? @*scheduled) "Pagehide can precede queued timer setup")
+                                 (.dispatchEvent js/window
+                                   (js/PageTransitionEvent. "pagehide" #js {:persisted true})))))}
+               [:button {:id "destination-origin"} "Focus before the demo"]
+               [cv/<cv>]]))
+    (await! (support/wait-for! #(= 1 (count @*restorations))
+                              "The mounted CV did not acquire its visit result"))
+    (when-not (or late? (= mode :early-pagehide))
+      (await! (support/wait-for! #(seq @*claims) "The native visit claim did not commit")))
+    (await! (support/settle!))
+    (is (= expected-times @*scheduled)
+        (str "Preserve first-visit deadlines and suppress retired/returned generations: " mode))
+    (let [cv-node (.querySelector element "#cv")
+          demo (await! (support/state-at! [:state :cv :demo]))]
+      (is (some? cv-node) "The actual CV owner mounted")
+      (when (#{:network-return :paired-return} mode)
+        (is (true? (await! (support/state-at! [:state :cv :visited])))
+            "A settled return still claims its durable visit")
+        (is (= [{:cv-visited true}] @*claims) "Return suppression does not discard the native durable claim"))
+      {:cv-node cv-node, :demo demo, :old-events @*timer-events})))
+
+(defn- retire-cv-mode!
+  [{:keys [*root *restorations *scheduled *claims]}
+   {:keys [mode unmounted? pagehide? late?]}
+   {:keys [cv-node demo]}]
+  (go-promise
+    (when unmounted?
+      (await! (support/render! @*root
+                [:main {:style {:min-height "500vh"}}
+                 [:button {:id "destination-origin"} "Destination focus"]
+                 [:div {:style {:height "200vh"}}]
+                 [:button {:id "fullscreen-btn"} "Different destination control"]]))
+      ((:stop (first (:cv pages/controllers))) nil)
+      (await! (support/settle!))
+      (is (false? (.-isConnected cv-node)) "SPA-style replacement unmounted the actual CV"))
+    (when pagehide?
+      (.dispatchEvent js/window (js/PageTransitionEvent. "pagehide" #js {:persisted true}))
+      (await! (support/settle!)))
+    (when (or pagehide? (= mode :early-pagehide))
+      (is (.-isConnected cv-node) "A retained document keeps its mounted CV"))
+    (when late?
+      (is (= [(:generation demo)] @*restorations) "The real visit acquisition was held")
+      (r/dispatch-sync [:cv/visit-restored (:generation demo) false])
+      (await! (support/settle!))
+      (is (= [2000] @*scheduled) "A late storage result cannot schedule a departed generation")
+      (is (empty? @*claims) "A late result cannot claim a departed visit"))))
+
+(defn- prepare-cv-observation! [{:keys [element]}]
+  (go-promise
+    ;; Finish font/reporter reflow before measuring the shared viewport.
+    (await! (.-ready (.-fonts js/document)))
+    (await! (support/settle!))
+    (.scrollTo js/window #js {:top 0, :behavior "instant"})
+    (let [origin (.querySelector element "#destination-origin")
+          focus-target (.querySelector element "#fullscreen-btn")]
+      (.focus origin #js {:preventScroll true})
+      (await! (support/settle!))
+      {:origin origin, :focus-target focus-target, :initial-scroll (.-scrollY js/window)})))
+
+(defn- observe-cv-down! [fixture {:keys [active?]}]
+  (go-promise
+    (await! (drive-cv-clock! fixture 2000))
+    (let [fullscreen? (boolean (await! (support/state-at! [:state :fullscreen :cv])))
+          before-down (.-scrollY js/window)]
+      (await! (drive-cv-clock! fixture 3000))
+      (when active?
+        (await! (support/wait-for! #(> (.-scrollY js/window) before-down)
+                                  "Mounted CV did not scroll down")))
+      (let [down (.-scrollY js/window)
+            saved-origin (await! (support/state-at! [:state :cv :demo :origin]))]
+        {:fullscreen? fullscreen?, :before-down before-down, :down down, :saved-origin saved-origin}))))
+
+(defn- observe-cv-return! [fixture {:keys [active?]} {:keys [focus-target]} {:keys [before-down]}]
+  (go-promise
+    (await! (drive-cv-clock! fixture 4500))
+    (when active?
+      (await! (support/wait-for! #(= before-down (.-scrollY js/window))
+                                "Mounted CV did not return to its exact origin")))
+    (await! (drive-cv-clock! fixture 5500))
+    (when active?
+      (await! (support/wait-for! #(identical? focus-target (.-activeElement js/document))
+                                "Native delayed focus did not commit")))
+    {:final-scroll (.-scrollY js/window), :final-focus (.-activeElement js/document)}))
+
+(defn- assert-cv-outcome!
+  [{:keys [mode active?]} {:keys [origin focus-target initial-scroll]}
+   {:keys [fullscreen? before-down down saved-origin]} {:keys [final-scroll final-focus]}]
+  ;; All native outcomes are collected before these reports can reflow the page.
+  (is (= active? fullscreen?) "Only an active ordinary CV demo may auto-expand")
+  (if active?
+    (do
+      (is (> down before-down) "Mounted demo really scrolls down")
+      (is (= before-down saved-origin final-scroll)
+          "Back and preventScroll focus preserve the absolute pre-demo origin")
+      (is (identical? focus-target final-focus) "Mounted demo focuses its native control"))
+    (do
+      (is (= initial-scroll final-scroll) (str "Inactive CV demo cannot move viewport: " mode))
+      (is (identical? origin final-focus) "Inactive CV demo cannot move focus"))))
+
+(defn- prepare-cv-remount! [{:keys [*root element]}]
+  (go-promise
+    (await! (support/render! @*root nil))
+    (await! (support/render! @*root [:main {:style {:min-height "500vh"}}
+                                   [:button {:id "destination-origin"} "New owner focus"]
+                                   [cv/<cv>]]))
+    (let [current (await! (support/state-at! [:state :cv :demo]))
+          origin (.querySelector element "#destination-origin")]
+      (r/dispatch-sync [:state [:fullscreen :cv] false])
+      (.focus origin #js {:preventScroll true})
+      (await! (support/settle!))
+      {:current current, :origin origin, :baseline (.-scrollY js/window)})))
+
+(defn- check-cv-stale-owner! [{:keys [demo old-events]} {:keys [current origin baseline]}]
+  (go-promise
+    (r/dispatch-sync [:cv/unmount (:owner demo)])
+    (doseq [event old-events] (r/dispatch-sync event))
+    (await! (support/settle!))
+    (let [retained (await! (support/state-at! [:state :cv :demo]))
+          fullscreen? (await! (support/state-at! [:state :fullscreen :cv]))
+          position (.-scrollY js/window)
+          focus (.-activeElement js/document)]
+      (is (and (some? (:owner demo)) (not= (:owner demo) (:owner current)))
+          "Remount acquires a distinct actual feature owner")
+      (is (> (:generation current) (:generation demo)) "Remount advances its timer generation")
+      (is (and (:active? retained) (= (:owner current) (:owner retained)))
+          "Stale owned cleanup cannot retire the newly mounted CV")
+      (is (and (false? fullscreen?) (= baseline position) (identical? origin focus))
+          "Old generation callbacks cannot scroll, expand or focus the new owner"))))
+
+(defn- check-cv-mode! [{:keys [*root] :as fixture} seed mode]
+  (go-promise
+    (let [options (cv-mode mode)]
+      (prepare-cv-mode! fixture options seed)
+      (let [mounted (await! (mount-cv-mode! fixture options))]
+        (await! (retire-cv-mode! fixture options mounted))
+        (let [start (await! (prepare-cv-observation! fixture))
+              down (await! (observe-cv-down! fixture options))
+              returned (await! (observe-cv-return! fixture options start down))]
+          (assert-cv-outcome! options start down returned))
+        (when (= mode :mounted)
+          (let [remounted (await! (prepare-cv-remount! fixture))]
+            (await! (check-cv-stale-owner! mounted remounted))))
+        (await! (support/render! @*root nil))))))
+
+(defn- check-cv-queued-retirement! [{:keys [*root element *delivered] :as fixture} seed]
+  (go-promise
+    (let [options (cv-mode :mounted)]
+      (prepare-cv-mode! fixture options seed)
+      (let [{:keys [cv-node demo]} (await! (mount-cv-mode! fixture options))
+            scroll! (r/get-handler :fx :scroll/by)
+            *scroll-effects (atom [])]
+        (await! (prepare-cv-observation! fixture))
+        ;; Record the actual effect and still execute it. This catches a retired
+        ;; source event even when native smooth scrolling has not painted yet.
+        (r/reg-fx :scroll/by
+          (fn [arguments]
+            (swap! *scroll-effects conj {:arguments arguments
+                                        :cv-connected? (.-isConnected cv-node)})
+            (scroll! arguments)))
+        (try
+          (let [delivered (count @*delivered)]
+            (r/dispatch [:cv/demo (:generation demo) :down])
+            (r/dispatch [:cv/fullscreen (:generation demo)])
+            ;; React unmount is synchronous; leave the source event queue intact.
+            (support/unmount! @*root)
+            (reset! *root nil)
+            (let [detached? (not (.-isConnected cv-node))
+                  destination (await! (support/create-root! element))]
+              (reset! *root destination)
+              (await! (support/render! destination
+                        [:main {:style {:min-height "500vh"}}
+                         [:button {:id "fullscreen-btn"} "Different destination control"]]))
+              (await! (support/wait-for! #(>= (count @*delivered) (+ delivered 2))
+                                        "Queued CV events did not reach their registered handlers"))
+              (await! (support/settle!))
+              (let [fullscreen? (await! (support/state-at! [:state :fullscreen :cv]))
+                    effects @*scroll-effects]
+                (is detached? "Queued callback race actually unmounted the CV before draining events")
+                (is (false? fullscreen?) "A queued fullscreen event cannot expand after owner disposal")
+                (is (empty? effects)
+                    (str "A queued demo event cannot issue a scroll effect after owner disposal: " effects)))))
+          (finally (r/reg-fx :scroll/by scroll!)))))))
+
+(defn- dispose-cv-fixture!
+  [{:keys [*root *pending element original-set-timeout context return-marker
+           restore-db! active-element scroll-y]}]
+  (try
+    (when @*root (support/unmount! @*root))
+    (finally
+      (reset! *pending {})
+      (set! js/setTimeout original-set-timeout)
+      (r/clear-global-interceptor :cv-lifecycle-test/actions)
+      (.remove element)
+      (reset! restore/*context context)
+      (if (nil? return-marker)
+        (.removeAttribute (.-documentElement js/document) "data-document-return")
+        (.setAttribute (.-documentElement js/document) "data-document-return" return-marker))
+      (restore-db!)
+      (when (.-isConnected active-element) (.focus active-element #js {:preventScroll true}))
+      (.scrollTo js/window #js {:top scroll-y, :behavior "instant"}))))
+
 (deftest cv-demo-keeps-its-mounted-timing-and-releases-actions-on-unmount
   (async done
-    (let [restore-db! (r/make-restore-fn)
-          context @restore/*context
-          return-marker (.getAttribute (.-documentElement js/document) "data-document-return")
-          scroll-y (.-scrollY js/window)
-          active-element (.-activeElement js/document)
-          original-set-timeout js/setTimeout
-          original-clear-timeout js/clearTimeout
-          schedule! (r/get-handler :fx :dispatch-in/set)
-          element (.createElement js/document "div")
-          *root (atom nil)
-          *scheduling? (atom false)
-          *next-id (atom 0)
-          *owned (atom #{})
-          *pending (atom {})
-          *scheduled (atom [])
-          *delivered (atom [])
-          *now (atom 0)
-          drive! (fn [time]
-                   (go-promise
-                     (let [jobs (sort-by (comp :at val) (filter #(<= (:at (val %)) time) @*pending))
-                           delivered (count @*delivered)]
-                       (doseq [[id {:keys [callback]}] jobs]
-                         (swap! *pending dissoc id)
-                         (callback))
-                       (reset! *now time)
-                       (when (seq jobs)
-                         (await! (support/wait-for! #(>= (count @*delivered) (+ delivered (count jobs)))
-                                                   "CV timer callbacks did not reach their real events")))
-                       (await! (support/settle!)))))]
-      ;; Substitute only the original timer effect's native clock. Its registered
-      ;; events, callbacks, DOM refs, scroll and focus effects remain unchanged.
-      (set! js/setTimeout
-            (fn [callback milliseconds & args]
-              (if (and @*scheduling? (#{2000 3000 4500 5500} milliseconds))
-                (let [id (swap! *next-id dec)]
-                  (swap! *owned conj id)
-                  (swap! *scheduled conj milliseconds)
-                  (swap! *pending assoc id {:at (+ @*now milliseconds)
-                                            :callback #(.apply callback nil (to-array args))})
-                  id)
-                (.apply original-set-timeout js/window (to-array (into [callback milliseconds] args))))))
-      (set! js/clearTimeout
-            (fn [id]
-              (if (contains? @*owned id)
-                (swap! *pending dissoc id)
-                (original-clear-timeout id))))
-      (r/reg-fx :dispatch-in/set
-                (fn [arguments]
-                  (reset! *scheduling? true)
-                  (try (schedule! arguments) (finally (reset! *scheduling? false)))))
-      (r/reg-cofx :ls #(assoc % :ls {}))
-      (r/reg-fx :ls (fn [_]))
-      (r/reg-global-interceptor
-        (r/->interceptor
-          :id :cv-lifecycle-test/actions
-          :after (fn [context]
-                   (let [event (get-in context [:coeffects :event])]
-                     (when (or (#{:scroll/by :focus-element} (first event))
-                               (and (= :state (first event)) (= [:fullscreen :cv] (second event))))
-                       (swap! *delivered conj event)))
-                   context)))
-      (.appendChild (.-body js/document) element)
+    (let [{:keys [element *root] :as fixture} (cv-fixture)]
       (-> (go-promise
+            (install-cv-clock! fixture)
+            (.appendChild (.-body js/document) element)
             (let [response (await! (js/fetch "/fixtures/editor-seed.json"))
                   _ (when-not (.-ok response) (throw (js/Error. "Missing local CV test seed")))
                   seed (js->clj (await! (.json response)) :keywordize-keys true)
                   root (await! (support/create-root! element))]
               (reset! *root root)
-              (doseq [mode [:mounted :unmounted :pagehide :early-pagehide :network-return :paired-return :spa-from-returned]
-                      :let [mounted? (not= mode :unmounted)
-                            returned? (#{:network-return :paired-return :spa-from-returned} mode)
-                            active? (boolean (#{:mounted :spa-from-returned} mode))
-                            expected-times (if (#{:network-return :paired-return} mode)
-                                             [] [2000 3000 4500 5500])]]
-                (r/dispatch-sync [:editor-visual/install seed false])
-                (r/dispatch-sync [:state [:cv :visited] false])
-                (r/dispatch-sync [:state [:fullscreen :cv] false])
-                (restore/begin! (case mode
-                                  :mounted {:hydrate? true}
-                                  :network-return {:hydrate? true}
-                                  :paired-return {:hydrate? true, :back? true}
-                                  :spa-from-returned {:hydrate? true}
-                                  {}))
-                (when (#{:network-return :spa-from-returned} mode) (restore/hydrated!))
-                (when (= mode :spa-from-returned) (restore/navigate! "/cv"))
-                (if returned?
-                  (.setAttribute (.-documentElement js/document) "data-document-return" "true")
-                  (.removeAttribute (.-documentElement js/document) "data-document-return"))
-                (reset! *now 0)
-                (reset! *scheduled [])
-                (reset! *delivered [])
-                (reset! *pending {})
-                (await! (support/render! root
-                          [:main {:style {:min-height "500vh"}
-                                  :ref (when (= mode :early-pagehide)
-                                         (fn [element]
-                                           (when element
-                                             (is (empty? @*scheduled) "Pagehide can precede queued timer setup")
-                                             (.dispatchEvent js/window
-                                               (js/PageTransitionEvent. "pagehide" #js {:persisted true})))))}
-                           [:button {:id "destination-origin"} "Focus before the demo"]
-                           [cv/<cv>]]))
-                (await! (support/settle!))
-                (when (seq expected-times)
-                  (await! (support/wait-for! #(= 4 (count @*scheduled)) "CV did not schedule its native demo")))
-                (is (= expected-times @*scheduled)
-                    (str "Preserve ordinary first-visit timing and suppress only the initial return: " mode))
-                (let [cv-node (.querySelector element "#cv")]
-                  (is (some? cv-node) "The actual CV owner mounted")
-                  (when-not mounted?
-                    (await! (support/render! root
-                              [:main {:style {:min-height "500vh"}}
-                               [:button {:id "destination-origin"} "Destination focus"]
-                               [:div {:style {:height "200vh"}}]
-                               [:button {:id "fullscreen-btn"} "Different destination control"]]))
-                    ((:stop (first (:cv pages/controllers))) nil)
-                    (await! (support/settle!))
-                    (is (false? (.-isConnected cv-node)) "SPA-style replacement unmounted the actual CV")
-                    (is (empty? @*pending) "Leaving CV cancels its owned demo timers"))
-                  (when (= mode :pagehide)
-                    (.dispatchEvent js/window (js/PageTransitionEvent. "pagehide" #js {:persisted true}))
-                    (await! (support/settle!)))
-                  (when (#{:pagehide :early-pagehide} mode)
-                    (is (.-isConnected cv-node) "A retained document keeps its mounted CV")
-                    (is (empty? @*pending) "Pagehide cancels the CV demo before a retained document freezes"))
-                  ;; Let fonts and the preceding assertions paint before using
-                  ;; the shared window; reporter reflow is not a CV timer action.
-                  (await! (.-ready (.-fonts js/document)))
-                  (await! (support/settle!))
-                  (.scrollTo js/window #js {:top 0, :behavior "instant"})
-                  (let [origin (.querySelector element "#destination-origin")
-                        focus-target (.querySelector element "#fullscreen-btn")]
-                    (.focus origin #js {:preventScroll true})
-                    (await! (support/settle!))
-                    (let [initial-scroll (.-scrollY js/window)
-                          initial-root-top (.-offsetTop element)]
-                      (await! (drive! 2000))
-                      (let [fullscreen? (boolean (await! (support/state-at! [:state :fullscreen :cv])))]
-                        (await! (drive! 3000))
-                        (when active?
-                          (await! (support/wait-for! #(pos? (.-scrollY js/window)) "Mounted CV did not scroll down")))
-                        (let [down (.-scrollY js/window)]
-                          (await! (drive! 4500))
-                          (when active?
-                            (await! (support/wait-for! #(< (.-scrollY js/window) down) "Mounted CV did not scroll back")))
-                          (await! (drive! 5500))
-                          (when (some #(= :focus-element (first %)) @*delivered)
-                            (await! (support/wait-for! #(identical? (.querySelector element "#fullscreen-btn")
-                                                                  (.-activeElement js/document))
-                                                      "Native delayed focus did not commit")))
-                          ;; Collect the whole outcome before assertions can reflow
-                          ;; the test reporter and alter native scroll anchoring.
-                          (let [final-scroll (.-scrollY js/window)
-                                final-focus (.-activeElement js/document)]
-                            (is (= active? fullscreen?) "Only an active ordinary CV demo may auto-expand")
-                            (if active?
-                              (is (identical? focus-target final-focus) "Mounted demo focuses its native control")
-                              (do
-                                (is (= initial-scroll final-scroll)
-                                    (str "Inactive CV demos cannot move the viewport: " mode
-                                         {:initial-scroll initial-scroll
-                                          :final-scroll final-scroll
-                                          :initial-root-top initial-root-top
-                                          :final-root-top (.-offsetTop element)
-                                          :delivered @*delivered}))
-                                (is (identical? origin final-focus) "Inactive CV demos cannot move focus")))))))))
-                (await! (support/render! root nil)))))
+              (doseq [mode [:mounted :unmounted :pagehide :early-pagehide :network-return
+                            :paired-return :spa-from-returned :late-unmounted :late-pagehide]]
+                (await! (check-cv-mode! fixture seed mode)))
+              (await! (check-cv-queued-retirement! fixture seed))))
           (.catch #(is false (str %)))
-          (.finally
-            (fn []
-              (try
-                (when @*root (support/unmount! @*root))
-                (finally
-                  (reset! *pending {})
-                  (set! js/setTimeout original-set-timeout)
-                  (set! js/clearTimeout original-clear-timeout)
-                  (r/clear-global-interceptor :cv-lifecycle-test/actions)
-                  (.remove element)
-                  (reset! restore/*context context)
-                  (if (nil? return-marker)
-                    (.removeAttribute (.-documentElement js/document) "data-document-return")
-                    (.setAttribute (.-documentElement js/document) "data-document-return" return-marker))
-                  (restore-db!)
-                  (when (.-isConnected active-element) (.focus active-element #js {:preventScroll true}))
-                  (.scrollTo js/window #js {:top scroll-y, :behavior "instant"})
-                  (done)))))))))
+          (.finally #(try (dispose-cv-fixture! fixture) (finally (done))))))))
 
 (defn- event-effects [id db event]
   ;; Invoke the actual registered handler without installing native timers.

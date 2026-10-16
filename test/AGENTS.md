@@ -41,6 +41,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   prove isolated release-before-watches, scoped HTTP readiness, bounded failure
   and real REPL acknowledgement while compilation is blocked.
 
+- `node --test test/scripts/css_pruning_test.mjs` covers production selector
+  liveness, runtime families/states, cross-sheet variable/animation dependencies,
+  font aliases and failure-before-write. Verify the actual released asset graph
+  and affected routes with pruned CSS too; fixtures alone cannot prove all UI states.
 - Cold layout/handler JVM suites require compiled `:document` resources. Build
   them in the isolated test checkout, or reuse its standalone release output; see
   `doc/testing.md`. The full JVM suite also requires the compiled `:ssr` worker
@@ -322,3 +326,11 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   site-reader hooks, eager development validation and registered route
   subscriptions. Await the fixture's owned disposal hook after capture and on
   failure, asserting worker termination before starting the next session.
+
+- CV visit tests mount the real CV, await persisted snapshot restoration, retain
+  legacy flags, and verify SPA/remount/reload suppression plus stale-timer guards
+  and exact scroll return. `cv-visit-motion.html?component=cv` measures real
+  storage-backed motion from a nonzero origin; reload the same isolated context
+  to verify that the tour and focus no longer run. That page explicitly uses
+  `init-cv-visit!`; ordinary visual CV/CMS captures use an in-memory visit transport
+  while retaining the native mount, durable claim and delayed module events.

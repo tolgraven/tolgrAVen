@@ -90,7 +90,6 @@
    [:listener/scroll]
    [:listener/popstate-back]
    [:ls/get-path [:form-field] [:state :form-field]]
-   [:ls/get-path [:cv-visited] [:state :cv :visited]]
    [:cookie/show-notice]
    [:booted :site]])
 

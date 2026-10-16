@@ -127,10 +127,11 @@ server must send `Service-Worker-Allowed: /` for the worker script.
 synchronizes the editable `vendor/neovim/init.lua` and `browser.vim` into the
 pinned profile (including `after/syntax/nerdtree.vim`) and creates the ignored `vendor/neovim/workspace.json` from the
 current checkout's `src/` and `resources/scss/` text files. Symlinks, other roots,
-config files and binary assets are excluded. The existing packaging policy
-also prunes disabled modules and their style sources; disabling Neovim omits
-its workspace bundle and packaging excludes all its public assets. This is a
-build snapshot, not access to the server checkout at runtime.
+config files and binary assets are excluded. Selected SCSS source is bundled
+for editing even when production CSS pruning removes rules from its generated
+stylesheet; disabled modules and their sources remain excluded. Disabling
+Neovim omits its workspace bundle and packaging excludes all its public assets.
+This is a build snapshot, not access to the server checkout at runtime.
 
 The small `nvim-profile-worker.js` adapter loads the profile/workspace alongside
 startup, then uses Emscripten `preRun` to populate the virtual filesystem before

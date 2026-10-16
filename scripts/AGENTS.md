@@ -10,7 +10,9 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   checks readiness and exact bounds after each scroll.
   Capture creates candidates; strict pixel/geometry comparison never updates
   approved baselines. Preserve
-  environment checks and missing-case failures. See `doc/visual-regressions.md`.
+  environment checks and missing-case failures. Decode fenced evaluation results
+  with the JSON parser before checking their closing fence: rendered Markdown can
+  contain literal fences inside the payload. See `doc/visual-regressions.md`.
 
 - `build/styles.mjs` compiles shell, development inspector and module CSS entries
   with locked Sass/PostCSS, compiles the separate icon sheet and vendors
@@ -18,6 +20,11 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   be inlined safely. `--if-stale` verifies source/tool/font/icon-declaration inputs
   and every raw/minified output before skipping compilation; development startup
   runs that guard before opening HTTP. Keep full builds and the watch workflow aligned.
+- Production preparation invokes `build/prune-styles.mjs` after release, using
+  shipped chunks and selected sheets. Keep variable/animation liveness shared
+  across lazy sheets and preserve runtime selector families and attribute states.
+  Development CSS/watch output and bundled editor SCSS remain complete;
+  generated-output exclusions must not filter source files. See `doc/styles.md`.
 - `test/server.clj` accepts `--glass-output` for isolated glass fixture output;
   it serves current shared CSS and leaves ordinary browser-suite routing intact.
 - `test/ssr.clj` saves renderer export metadata with each HTML/state hydration

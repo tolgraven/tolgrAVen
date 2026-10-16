@@ -200,9 +200,15 @@ class MCP:
         result = self.call("evaluate_script", function=function, **arguments)
         for item in result.get("content", []):
             if item.get("type") == "text":
-                match = re.search(r"```json\s*(.*?)\s*```", item["text"], re.S)
+                match = re.search(r"```json\s*", item["text"])
                 if match:
-                    return json.loads(match.group(1))
+                    # Markdown in a JSON string can contain the same fence.
+                    # Let the JSON decoder find the value's exact boundary.
+                    payload = item["text"][match.end():]
+                    value, end = json.JSONDecoder().raw_decode(payload)
+                    if not payload[end:].lstrip().startswith("```"):
+                        raise RuntimeError("Missing evaluation result closing fence")
+                    return value
         raise RuntimeError(f"Missing evaluation result: {result}")
 
     def close(self):

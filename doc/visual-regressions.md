@@ -39,8 +39,9 @@ equivalent native/ready font aliases. The separate font suite exercises cold
 fallback and crossfade behavior.
 Shell fixtures keep the header and full footer outside `main`, as in the native
 page. Header checks include the full width and active page seam, plus pending
-Search/User controls before intent acquisition; their wrappers retain listeners
-without introducing flex boxes or changing native button fonts. The closed menu retains its original small gradient frame; guards compare its
+Search and stable anonymous User controls. Search's intent wrapper adds no flex
+box; the native User button retains focus while the page acquires its panel.
+Both controls retain their original native button fonts. The closed menu retains its original small gradient frame; guards compare its
 box and position at both widths, rather than removing it as presumed leftover UI. Normal and expanded framing cases also measure the native gutter widths,
 positions and footer pseudo-elements through the existing shell state events.
 Expanded framing isolates those shell owners; the CV cases cover the timeline itself. The combined shell includes the sticky footer; the full footer owns its

@@ -41,8 +41,9 @@
   (shell ["bb" "--classpath" "scripts:src/cljc:src/frontend:test/scripts" "-m" "tools-test"])
   (shell ["bb" "--classpath" "scripts:test/scripts" "-m" "pr-test"])
   (shell ["node" "--test" "test/scripts/document_image_test.cjs" "test/scripts/editor_styles_test.mjs"
-          "test/scripts/style_overrides_test.mjs" "test/scripts/visual_clock_test.cjs"
-          "test/scripts/visual_motion_test.cjs" "test/scripts/reset_test.cjs"])
+          "test/scripts/style_overrides_test.mjs" "test/scripts/css_pruning_test.mjs"
+          "test/scripts/visual_clock_test.cjs" "test/scripts/visual_motion_test.cjs"
+          "test/scripts/reset_test.cjs"])
   (shell ["python3" "-m" "unittest" "discover" "-s" "test/scripts" "-p" "*_test.py"]))
 
 (defn supabase! [& [action & args]]

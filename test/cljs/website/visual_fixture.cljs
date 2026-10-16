@@ -516,7 +516,7 @@
   [:main#main.main-content [<layout-surface> vertical?]])
 
 
-(defn ^:export init! []
+(defn- init-fixture! [real-cv-storage?]
   (let [params (js/URLSearchParams. (.-search js/location))
         component (.get params "component")
         composer? (and (= component "comments-auth")
@@ -543,8 +543,10 @@
             (fn [seed]
               (rfe/start! routes/router (fn [_ _]) {:use-fragment false})
               (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) false])
+              (when (and (= component "cv") (not real-cv-storage?))
+                (editor/install-cv-visit!))
               (when (#{"cms-services" "cms-cv" "cms-gallery"} component)
-                (editor/install-cms!))
+                (editor/install-cms! component))
               (when composer?
                 ;; Only these cases deny provider I/O. The real comment owner
                 ;; supplies :library? false and never needs a post draft or Auth.
@@ -699,3 +701,10 @@
                                [link-preview-fixture/<visual-fixture>]
                                ("home-intro" "home-story" "home-image-media") [<home-fixture> component]
                                [<box-fixture> (= component "cv-container")])))))))))))
+
+(defn ^:export init! []
+  (init-fixture! false))
+
+(defn ^:export init-cv-visit! []
+  ;; The manual visit/reload check deliberately exercises the native disk owner.
+  (init-fixture! true))

@@ -4,8 +4,10 @@
     [website.content.fields :as fields]
     [website.media.schema :as media-schema]
     [website.modules.cv.schema :as cv-schema]
+    [website.modules.cv.events]
     [website.component.registry]
     [website.component.restore :as restore]
+    [website.component :as component]
     [clojure.string :as string]
     [website.react :as r]
     [website.loader :as loader]
@@ -302,47 +304,36 @@
 
 
  ;; XXX TODO take out stuff specific to me (including categories, skill categories, logo etc) so is fully adaptable for others...
+;; The generic :lifecycle callbacks belong to an instance spec. This module
+;; feature owns the visit even when callers render the ordinary zero-arg CV.
+(component/register-feature! :cv/visit
+  {:root? false
+   :setup (fn [_] (atom nil))
+   :mount (fn [state _]
+            (let [owner (random-uuid)
+                  returned? (and (restore/document-return?)
+                                 (or (restore/document-enter?) (restore/back-document?)))
+                  retire! (fn []
+                            ;; Disposal must win over source events already queued.
+                            (r/dispatch-sync [:cv/unmount owner])
+                            ;; Mount may still be queued; retire that exact owner too.
+                            (r/dispatch [:cv/unmount owner]))
+                  stop! (listener/listen! :cv/visit
+                          [{:target "window"
+                            :event "pagehide"
+                            :handler (fn [_] (retire!))}])]
+              (reset! state {:stop! stop!, :retire! retire!})
+              (r/dispatch [:cv/mount {:owner owner, :returned? (boolean returned?)}])))
+   :unmount (fn [state]
+              (when-let [{:keys [stop! retire!]} @state]
+                (stop!)
+                (retire!)))})
+
 (m/defc <cv> "Main cv component"
+  {:features [:cv/visit]}
   []
-  (let [;_ (r/dispatch [:ls/get-path [:cv-visited] [:state :cv :visited]])
-        visited (r/subscribe [:state [:cv :visited]])
-        timer-key (keyword (str (gensym "cv-demo-")))
-        cancel! #(r/dispatch [:dispatch-in/cancel timer-key])
-        timeline-ref (fn [element]
-                       (when element (set! (.-scrollLeft element) (.-scrollWidth element))))
-        ref-fn (fn [el]
-                 (if el
-                   (let [returned? (and (restore/document-return?)
-                                        (or (restore/document-enter?) (restore/back-document?)))
-                         stop-pagehide! (when-not returned?
-                                          (listener/listen! timer-key
-                                            [{:target "window"
-                                              :event "pagehide"
-                                              ;; Cancel before a retained document freezes,
-                                              ;; without waiting for its event queue to resume.
-                                              :handler (fn [_]
-                                                         (r/dispatch-sync [:dispatch-in/cancel timer-key])
-                                                         ;; Ref setup may still be queued. Retire it
-                                                         ;; after those existing setup events too.
-                                                         (cancel!))}]))]
-                     (r/dispatch [:ls/store-val [:cv-visited] true])
-                     ;; The initial returned page stays settled. A later SPA
-                     ;; visit has a new page context and keeps the usual demo.
-                     (when-not returned?
-                       (doseq [[ms event] (cond-> [[2000 [:state [:fullscreen :cv] true]]]
-                                           (not @visited)
-                                           (into [[3000 [:scroll/by 50]]
-                                                  [4500 [:scroll/by -37]]
-                                                  [5500 [:focus-element "fullscreen-btn"]]]))]
-                         (r/dispatch [:dispatch-in/set {:k timer-key
-                                                       :ms ms
-                                                       :dispatch-n [event]}])))
-                     ;; React owns this native ref's lifetime, including ref
-                     ;; replacement and StrictMode's setup/cleanup replay.
-                     (fn []
-                       (when stop-pagehide! (stop-pagehide!))
-                       (cancel!)))
-                   (cancel!)))]
+  (let [timeline-ref (fn [element]
+                       (when element (set! (.-scrollLeft element) (.-scrollWidth element))))]
    (fn []
     (let [{:keys [title caption cv image-assets]} @(r/subscribe [:content/view [:cv]])
         {:keys [timeline skills]} cv
@@ -391,8 +382,7 @@
         fullscreen? (when @(r/subscribe [:fullscreen/get :cv])
                       "fullscreen")]
     [:section#cv.cv.nopadding.noborder
-     {:class fullscreen?
-      :ref ref-fn}
+     {:class fullscreen?}
      [<intro> cv]
      [:div.cv-boxes
       {:ref timeline-ref}
