@@ -127,6 +127,8 @@ server format handlers retain their native JVM Java-time support.
 - Site capabilities are resolved from file defaults plus optional CMS overrides before build/provisioning.
   Module specs own storage/content/pages/server declarations; disabled owners stay out of artifacts.
   Read `doc/site-capabilities.md` for build snapshots, dependency validation and retained-data tests.
+- Editor source selection uses `packaging/source-exclusions`; generated CSS
+  intermediates/dev-sheet exclusions apply to jar output, never to SCSS sources.
 - Packaging excludes both generated `site.overrides.edn` and `site.overrides.css`;
   only the validated, compiled shell CSS carries CMS variable overrides at runtime.
 
@@ -144,7 +146,9 @@ server format handlers retain their native JVM Java-time support.
 - `build/assets.clj` prepares the existing Optimus inventory after production
   Shadow/CSS outputs. Keep asset transformations out of runtime startup and preserve
   the CSS/font reference contract. Its explicit resource-root entry point also serves
-  isolated local production output; `doc/middleware.md` describes the artifact.
+  isolated local production output. Prune selected CSS against released browser
+  chunks/document scripts and server markup before Optimus loads bytes; publish
+  no manifest after pruning failure. See `doc/styles.md` and `doc/middleware.md`.
 
 - `build/authoring.clj` extracts canonical identities, docstrings and signatures of selected
   public render components without evaluating source. Rich help is editor-owned;
