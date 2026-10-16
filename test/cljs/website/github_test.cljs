@@ -88,25 +88,33 @@
                             labels (.querySelector message ".github-commit-titles")
                             line-height (js/parseFloat (.-lineHeight (js/getComputedStyle info)))
                             row-style (js/getComputedStyle row)
+                            padding-left (js/parseFloat (.-paddingLeft row-style))
+                            padding-right (js/parseFloat (.-paddingRight row-style))
+                            ;; The display reporter can move this fixture as it
+                            ;; prints passing assertions above it. Read related
+                            ;; native boxes together before reporting any result.
                             row-rect (.getBoundingClientRect row)
-                            info-rect (.getBoundingClientRect info)]
-                        (is (pos? (js/parseFloat (.-paddingLeft row-style)))
+                            info-rect (.getBoundingClientRect info)
+                            labels-rect (when labels (.getBoundingClientRect labels))
+                            label-rects (when labels
+                                          (mapv #(.getBoundingClientRect %)
+                                                (array-seq (.querySelectorAll labels ":scope > span"))))]
+                        (is (pos? padding-left)
                             "Each row has space between its content and the left border")
-                        (is (pos? (js/parseFloat (.-paddingRight row-style)))
+                        (is (pos? padding-right)
                             "Each row has space between its content and the right border")
                         (is (<= (.-height info-rect) (+ 1 (* 3 line-height)))
                             "Commit text occupies at most three lines")
                         (when labels
-                          (let [labels-rect (.getBoundingClientRect labels)]
-                            (is (<= (js/Math.abs (- (.-top labels-rect) (.-top info-rect))) 1)
-                                "Labels share the message's top row")
-                            (is (>= (.-left labels-rect) (.-right info-rect))
-                                "Labels stay to the right of the text")
-                            (is (< (.-right labels-rect) (.-right row-rect))
-                                "Labels remain inset from the right border")
-                            (doseq [label (array-seq (.querySelectorAll labels ":scope > span"))]
-                              (is (>= (.-left (.getBoundingClientRect label)) (.-right info-rect))
-                                  "Both category and sublabel stay in the right column"))))))
+                          (is (<= (js/Math.abs (- (.-top labels-rect) (.-top info-rect))) 1)
+                              "Labels share the message's top row")
+                          (is (>= (.-left labels-rect) (.-right info-rect))
+                              "Labels stay to the right of the text")
+                          (is (< (.-right labels-rect) (.-right row-rect))
+                              "Labels remain inset from the right border")
+                          (doseq [label-rect label-rects]
+                            (is (>= (.-left label-rect) (.-right info-rect))
+                                "Both category and sublabel stay in the right column")))))
                     (is (= "theme" (.-textContent (.querySelector (.item rows 1) ".subtitle"))))
                     (is (= "scss" (.-textContent (.querySelector (.item rows 1) ".title"))))
                     (let [long-info (.querySelector (.item rows 0) ".info")]
