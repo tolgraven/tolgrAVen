@@ -668,7 +668,7 @@
             [img/<picture> (merge (:logo tab) {:class "strava-stats-tab-img"})]
             [:div (:caption tab)]]))]
 
-       (:<comp> @active-tab)])))
+       (some #(when (= (:id %) @active-tab) (:<comp> %)) tabs)])))
 
 (defc ^:private <profile-background>
   {:features [[:appear "opacity"]]}
