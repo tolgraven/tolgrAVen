@@ -381,6 +381,14 @@ padding and icon presence:
 python3 -m unittest discover -s test/scripts -p visual_test.py
 ```
 
+Native start events consume one captured object receipt. End/cancel events retire
+only the oldest matching captured occurrence, whether its native start was
+observed or preceded observation. This also prevents older unclaimed receipts
+from surviving behind later acknowledged same-name animations. Native Strava demonstrated
+why: an old cancel can arrive after a captured reverse clock finishes, before
+that reverse clock's queued start. It must retain its own receipt; genuinely
+uncaptured starts remain failures.
+
 The motion adapter checks native-object retention, phase attribution, pseudos,
 delays and cleanup; comparator checks deliberately mutate duration, easing,
 keyframes, transition properties, pseudo declarations and missing triggers,

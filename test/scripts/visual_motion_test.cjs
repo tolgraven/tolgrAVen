@@ -125,14 +125,17 @@ test('unobservable native starts are explicit gaps rather than motion passes', (
 });
 
 function startFixture() {
-  const {createMotionObserver} = fixture(), listeners = new Map();
+  const {createMotionObserver} = fixture(), listeners = new Map(), frames = new Map();
+  let disconnected = false, nextFrame = 0;
   class CSSAnimation {}
   class CSSTransition {}
   let active = [];
   const win = {document: {getAnimations: () => active, querySelectorAll: () => [],
     addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name)},
     CSSAnimation, CSSTransition,
-    MutationObserver: class {observe() {} disconnect() {}}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}};
+    MutationObserver: class {observe() {} disconnect() { disconnected = true; }},
+    requestAnimationFrame: callback => { frames.set(++nextFrame, callback); return nextFrame; },
+    cancelAnimationFrame: id => frames.delete(id)};
   const observer = createMotionObserver(win);
   const clock = (target, kind = 'transition', pseudo = null, state = 'running') => Object.assign(
     kind === 'animation' ? new CSSAnimation() : new CSSTransition(), {
@@ -142,11 +145,12 @@ function startFixture() {
       effect: {target, pseudoElement: pseudo, getTiming: () => ({duration: 150, iterations: 1}),
         getKeyframes: () => [{offset: 0, opacity: '0'}, {offset: 1, opacity: '1'}]}
     });
-  const event = (target, type = 'transitionrun', pseudoElement = '') => listeners.get(type)({
-    type, target, pseudoElement, animationName: type.startsWith('animation') ? 'opacity' : undefined,
+  const event = (target, type = 'transitionrun', pseudoElement = '', elapsedTime = 0) => listeners.get(type)({
+    type, target, pseudoElement, elapsedTime, animationName: type.startsWith('animation') ? 'opacity' : undefined,
     propertyName: type.startsWith('transition') ? 'opacity' : undefined
   });
-  return {observer, clock, event, active(values) { active = values; }, listeners};
+  return {observer, clock, event, active(values) { active = values; }, listeners, frames,
+    get disconnected() { return disconnected; }};
 }
 
 test('a captured native start cannot excuse a later missing occurrence at the same target and property', () => {
@@ -207,6 +211,85 @@ test('queued animation receipts cannot acknowledge transition or different pseud
     f.active([f.clock(target)]); f.observer.sample(); f.active([]);
     f.event(target, 'transitioncancel'); f.event(target);
     assert.equal(f.observer.snapshot().gaps.length, 3, 'Canceled unclaimed receipts cannot authorize later starts');
+  } finally { f.observer.stop(); }
+});
+
+test('an old native cancel preserves the later captured reverse occurrence and unrelated receipts', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'section'};
+  const other = {nodeType: 1, localName: 'aside'};
+  const first = f.clock(target), reverse = f.clock(target);
+  first.effect.getTiming = () => ({duration: 2200, iterations: 1});
+  reverse.effect.getTiming = () => ({duration: 37.94676733614284, iterations: 1});
+  try {
+    f.active([first]); f.event(target);
+    f.active([reverse, f.clock(other), f.clock(target, 'transition', '::before')]);
+    f.observer.sample();
+    reverse.playState = 'finished'; f.active([]);
+    // Native Strava ordering: old start, reverse receipt, old cancel,
+    // queued reverse start, reverse end. Its old cancel is not the reverse end.
+    f.event(target, 'transitioncancel', '', 0.068215);
+    f.event(target);
+    f.event(target, 'transitionend', '', 0.03794676733614284);
+    f.event(other); f.event(target, 'transitionrun', '::before');
+    assert.equal(f.observer.snapshot().gaps.length, 0,
+      'The reverse and unrelated target/pseudo receipts retain their own starts');
+    assert.equal(f.observer.snapshot().triggered.length, 4);
+    f.event(target);
+    assert.equal(f.observer.snapshot().gaps.length, 1,
+      'A later genuinely missing occurrence cannot reuse the reverse receipt');
+  } finally { f.observer.stop(); }
+  assert.equal(f.listeners.size, 0);
+  assert.equal(f.frames.size, 0);
+  assert.equal(f.disconnected, true);
+});
+
+test('a pre-observation receipt cannot survive its completion behind a later acknowledged animation', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'section'};
+  const beforeObservation = f.clock(target, 'animation');
+  const acknowledged = f.clock(target, 'animation');
+  try {
+    // Same-name CSS animations may overlap. A's start preceded observation;
+    // B's queued start can precede A's queued end even when A is unavailable.
+    f.active([beforeObservation]); f.observer.sample(); f.active([]);
+    f.active([acknowledged]); f.event(target, 'animationstart');
+    assert.equal(f.observer.snapshot().gaps.length, 0);
+    f.active([]); f.event(target, 'animationend');
+    f.event(target, 'animationstart');
+    assert.equal(f.observer.snapshot().gaps.length, 1,
+      'A later genuinely missing start cannot borrow the completed pre-observation receipt');
+  } finally { f.observer.stop(); }
+});
+
+test('an unacknowledged pointer resume keeps its original receipt ahead of later occurrences', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'section'};
+  const first = f.clock(target, 'animation'), later = f.clock(target, 'animation');
+  try {
+    f.active([first]); f.observer.sample();
+    first.playState = 'paused'; f.listeners.get('pointerout')();
+    f.active([later]); f.observer.sample();
+    first.playState = 'running'; f.active([first]); f.listeners.get('pointerover')();
+    f.active([later]); f.event(target, 'animationstart');
+    f.active([]); f.event(target, 'animationend');
+    f.event(target, 'animationstart');
+    assert.equal(f.observer.snapshot().gaps.length, 1,
+      'Resuming the unclaimed old clock cannot move its receipt behind a later acknowledged clock');
+    assert.equal(f.observer.snapshot().triggered.length, 3,
+      'The actual resume remains an observed activation');
+  } finally { f.observer.stop(); }
+});
+
+test('a completion without an observed start retires only its oldest unavailable receipt', () => {
+  const f = startFixture(), target = {nodeType: 1, localName: 'section'};
+  try {
+    f.active([f.clock(target)]); f.observer.sample(); f.active([]);
+    f.active([f.clock(target)]); f.observer.sample(); f.active([]);
+    f.event(target, 'transitioncancel');
+    f.event(target);
+    assert.equal(f.observer.snapshot().gaps.length, 0,
+      'One cancel cannot retire both an old unclaimed clock and a later captured clock');
+    f.event(target, 'transitionend'); f.event(target);
+    assert.equal(f.observer.snapshot().gaps.length, 1,
+      'The retired old receipt cannot authorize another missing start');
   } finally { f.observer.stop(); }
 });
 

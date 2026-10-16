@@ -46,10 +46,10 @@
   // have vanished. Read native definitions; never compare wall-clock progress.
   function createMotionObserver(win, initialPhase = 'initial') {
     const doc = win.document, states = new WeakMap(), triggered = [], gaps = [];
-    const pendingStarts = new Map(), started = new WeakSet();
+    const pendingStarts = new Map(), started = new WeakSet(), openStarts = [];
     const CSSAnimation = win.CSSAnimation, CSSTransition = win.CSSTransition;
     const requestFrame = win.requestAnimationFrame.bind(win), cancelFrame = win.cancelAnimationFrame.bind(win);
-    let phase = initialPhase, stopped = false, request = null;
+    let phase = initialPhase, stopped = false, request = null, nextOccurrence = 0;
     const pseudoElements = new Set(['::before', '::after', '::marker', '::backdrop',
       '::first-letter', '::first-line', '::placeholder', '::file-selector-button']);
     function sample() {
@@ -82,8 +82,10 @@
           // Each captured start may acknowledge one event, never later clocks
           // at the same DOM path. Parked starts already observed do not leave
           // fresh receipts every time pointer/focus resumes that same object.
+          // Unclaimed resumes retain their original receipt order too.
           if (previous === 'finished') started.delete(animation);
-          if (!started.has(animation)) pendingStarts.set(animation, {target, pseudo, kind, name});
+          if (!started.has(animation) && !pendingStarts.has(animation))
+            pendingStarts.set(animation, {target, pseudo, kind, name, order: ++nextOccurrence});
         } catch (error) { gaps.push(String(error)); }
       }
     }
@@ -118,15 +120,23 @@
             matching.find(animation => !started.has(animation));
           const queued = available ? null : [...pendingStarts].find(([, entry]) => matches(entry));
           const animation = available || queued?.[0];
+          openStarts.push(pendingStarts.get(animation) ||
+            {target: event.target, kind, name, pseudo, order: ++nextOccurrence});
           if (animation) {
             pendingStarts.delete(animation);
             started.add(animation);
           } else gaps.push('Native CSS start had no observable definition: ' + elementPath(event.target) + ' ' + name);
         } else {
-          // End/cancel retires unavailable receipts even if observation began
-          // after their start event; it cannot excuse a future unobserved start.
-          for (const [animation, entry] of pendingStarts)
-            if (matches(entry) && !current.includes(animation)) pendingStarts.delete(animation);
+          // Native Strava queues an old cancel before a later reverse start,
+          // after the reverse finishes. Preserve its receipt behind the older
+          // occurrence, including when the older start preceded observation.
+          const observed = openStarts.filter(matches).sort((a, b) => a.order - b.order)[0];
+          const retired = [...pendingStarts].filter(([animation, entry]) =>
+            matches(entry) && !current.includes(animation))
+            .sort((a, b) => a[1].order - b[1].order)[0];
+          if (retired && (!observed || retired[1].order < observed.order))
+            pendingStarts.delete(retired[0]);
+          else if (observed) openStarts.splice(openStarts.indexOf(observed), 1);
         }
       }
       if (!stopped && request === null) request = requestFrame(tick);
@@ -146,7 +156,7 @@
         sample(); stopped = true;
         if (request !== null) cancelFrame(request);
         mutations.disconnect();
-        pendingStarts.clear();
+        pendingStarts.clear(); openStarts.length = 0;
         events.forEach(name => doc.removeEventListener(name, wake, true));
       },
       snapshot() {
