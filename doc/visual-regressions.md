@@ -140,8 +140,13 @@ Detail-tab cases cover split dots and legends, named lap metrics, segment effort
 speeds and achievement colors at both widths. Split/segment hover uses observed
 native paragraph UIDs and checks the entire popup against its clipping ancestors.
 Only the exact segment-stream GET receives a local array-of-stream-map response;
-the real result event and rendering remain active. These guards reject clipped
-labels even when the expected nodes exist. Adding a case does not establish its
+the real result event and rendering remain active. Await the mounted activity
+before retaining tab references: late detail results can replace the initial
+summary controls. The unfinished segment prototype retains its empty `<pre>`
+and “Map etc goes here” label; its stream vector is interpreted as Hiccup in
+both the reference and current Reagent versions. Verify the exact stored stream
+through the normal subscription and its single read separately from that markup.
+These guards reject clipped labels even when the expected nodes exist. Adding a case does not establish its
 native execution or approve its pixel/motion baseline.
 
 Map transport changes only the fixture-owned native TileLayer's URL read to a
