@@ -48,6 +48,24 @@
    :uri uri
    :headers (or headers {})})
 
+(deftest development-script-policy-survives-static-delivery-and-revalidation
+  (with-redefs [config/env {:dev true}
+                environment/defaults {:middleware identity}
+                middleware/get-bundled-assets (constantly [])
+                resource/resource-request
+                (fn [request _ _]
+                  (when (= "/js/compiled/out/main.js" (:uri request))
+                    {:status 200
+                     :headers {"Last-Modified" "Wed, 21 Oct 2015 07:28:00 GMT"}
+                     :body "current Shadow instance"}))]
+    (let [handler (middleware/wrap-base (constantly {:status 404}))]
+      (doseq [[headers method expected] [[{} :get 200]
+                                         [{} :head 200]
+                                         [{"if-modified-since" "Wed, 21 Oct 2015 07:28:00 GMT"} :get 304]]]
+        (let [response (handler (assoc (request "/js/compiled/out/main.js" headers method) :scheme :http))]
+          (is (= expected (:status response)))
+          (is (= "no-store" (get-in response [:headers "Cache-Control"]))))))))
+
 (deftest integrated-static-source-and-jar-contracts
   (with-redefs [config/env {}]
     (let [file (File/createTempFile "asset-source-" ".avif")
