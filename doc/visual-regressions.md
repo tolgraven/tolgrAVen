@@ -80,14 +80,14 @@ These new cases use ordinary mount motion. Docs sidebar and Instagram caption
 hover states remain unverified until the driver performs genuine pointer actions;
 synthetic events cannot establish native CSS hover behavior.
 
-Strava cases retain the actual section beneath a native page and its fullscreen
-owner outside main. Fixed read responses run through the existing HTTP effect;
+Strava cases render the real one-section Home layout beneath a native page,
+including its module boundary, with the fullscreen owner outside main. Fixed read
+responses run through the existing HTTP effect;
 provider writes and unexpected reads fail. The fixture validates provider data
 against the Strava schema and acquires Strava, Maps and Carousel sheets only for
 these cases. Totals, expanded summary, painted graph canvases, map polyline/tiles
 and genuine kudos hover have explicit content checks: an empty wrapper is not a
-pass. The existing selected-tab body lookup dates to November 2025 and currently
-omits totals; these cases expose that baseline omission without changing it.
+pass. The fixture retains every native tab and prototype body.
 
 Map transport changes only the fixture-owned native TileLayer's URL read to a
 pinned local heatmap image. Its original method is restored on page cleanup,

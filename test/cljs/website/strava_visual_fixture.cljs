@@ -3,7 +3,7 @@
   (:require [clojure.string :as string]
             [website.react :as r]
             [website.macros :as m]
-            [website.modules.strava.views :as strava]
+            [website.modules.home.views :as home]
             [website.modules.strava.schema :as schema]
             [website.validation :as validation]
             [website.components.ui.overlays :as overlays]
@@ -159,7 +159,8 @@
 
 (m/defpage <page> []
   (r/use-layout-effect install-tile-transport! [])
-  [strava/<strava>])
+  [home/<layout> {:identity "home"
+                 :sections [{:identity "strava", :component "strava"}]}])
 
 (defn <fixture> []
   [:<>
