@@ -87,7 +87,9 @@ provider writes and unexpected reads fail. The fixture validates provider data
 against the Strava schema and acquires Strava, Maps and Carousel sheets only for
 these cases. Totals, expanded summary, painted graph canvases, map polyline/tiles
 and genuine kudos hover have explicit content checks: an empty wrapper is not a
-pass. The fixture retains every native tab and prototype body.
+pass. The fixture retains every native tab and prototype body. Narrow kudos hover
+uses its already visible native target: centering the expanded card would scroll
+the overflow-hidden section and let background hover motion clamp that offset.
 
 Map transport changes only the fixture-owned native TileLayer's URL read to a
 pinned local heatmap image. Its original method is restored on page cleanup,
