@@ -85,6 +85,7 @@
                 width "15em"
                 on-change #(r/dispatch-sync (into path [%1 %2]))}}] ;to pass through from outer
    (let [latest-ext-model (or @(r/subscribe path) (at value)) ;how repl this if not passing model but sub?
+         latest-ext-model' (if (nil? latest-ext-model) "" latest-ext-model)
          disabled?        (at disabled?)
          change-on-blur?  (at change-on-blur?)
          id               (str "input-text-" (util/keyvec->str path))
@@ -97,9 +98,9 @@
                                          (->>
                                           (util/em->px id))
                                          (str "px")))})]
-    (when (not= @external-model latest-ext-model) ;; Has model changed externally?
-     (reset! external-model latest-ext-model)
-     (reset! internal-model latest-ext-model))
+    (when (not= @external-model latest-ext-model') ;; Has model changed externally?
+     (reset! external-model latest-ext-model')
+     (reset! internal-model latest-ext-model'))
     [input-type
      (merge {:id id
              :class class, :type type ;for clear button ;"text"

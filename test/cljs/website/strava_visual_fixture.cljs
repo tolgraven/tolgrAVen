@@ -56,6 +56,80 @@
    :weight 72
    :profile_medium "/img/tolgrav-square.png"})
 
+;; These additional fields are consumed by real detail tabs. The module's
+;; extensible activity contract alone does not validate these fixture values.
+(def detail-schema
+  [:merge schema/activity
+   [:map
+    [:splits_metric
+     [:vector {:min 3}
+      [:map
+       [:distance [:and number? [:> 0]]]
+       [:average_speed [:and number? [:> 0]]]
+       [:elevation_difference number?]
+       [:average_heartrate [:and number? [:> 0]]]]]]
+    [:laps
+     [:vector {:min 2}
+      [:map
+       [:name [:string {:min 1}]]
+       [:distance [:and number? [:> 0]]]
+       [:average_speed [:and number? [:> 0]]]
+       [:average_watts [:and number? [:>= 0]]]]]]
+    [:segment_efforts
+     [:vector {:min 3}
+      [:map
+       [:id [:int {:min 1}]]
+       [:name [:string {:min 1}]]
+       [:distance [:and number? [:> 0]]]
+       [:elapsed_time [:and number? [:> 0]]]
+       [:segment [:map [:id [:int {:min 1}]]]]
+       [:achievements
+        [:vector
+         [:or
+          [:map [:type [:enum "pr"]] [:rank [:int {:min 1, :max 3}]]]
+          [:map [:type [:enum "overall" "segment_effort_count_leader"]]
+           [:rank [:int {:min 1}]]]]]]]]]]])
+
+(def segment-efforts
+  [{:id 93001
+    :name "Harbour climb"
+    :distance 1200
+    :elapsed_time 180
+    :segment {:id 92001}
+    :achievements [{:type "pr", :rank 1} {:type "overall", :rank 2}]}
+   {:id 93002
+    :name "Canal sprint"
+    :distance 800
+    :elapsed_time 96
+    :segment {:id 92002}
+    :achievements [{:type "pr", :rank 2} {:type "segment_effort_count_leader", :rank 1}]}
+   {:id 93003
+    :name "Park descent"
+    :distance 1800
+    :elapsed_time 180
+    :segment {:id 92003}
+    :achievements [{:type "pr", :rank 3}]}])
+
+(def segment-stream-path "segments/92001/streams?keys=latlng,altitude&key_by_type=")
+
+(def segment-stream-schema
+  [:tuple
+   [:map
+    [:type [:enum "latlng"]]
+    [:data [:vector {:min 3}
+            [:tuple [:and number? [:>= -90] [:<= 90]]
+             [:and number? [:>= -180] [:<= 180]]]]]]
+   [:map
+    [:type [:enum "altitude"]]
+    [:data [:vector {:min 3} number?]]]])
+
+(def segment-streams
+  [{:type "latlng", :data [[59.31 18.04] [59.311 18.041] [59.312 18.042]]}
+   {:type "altitude", :data [12 18 23]}])
+
+(defonce *segment-reads (atom 0))
+(defn ^:export segment-read-count [] @*segment-reads)
+
 (def details
   (into {} (map (fn [activity]
                   [(:id activity)
@@ -64,11 +138,28 @@
                           :total_elevation_gain 420
                           :kudos_count 1
                           :photos {:count 1, :primary {:urls {:600 "/img/tolgrav-square.png"}}}
-                          :splits_metric [{:distance 1000, :average_speed 6.5, :elevation_difference 4}
-                                          {:distance 1000, :average_speed 8.0, :elevation_difference -3}
-                                          {:distance 1000, :average_speed 7.2, :elevation_difference 2}]
-                          :laps [{:distance 21000, :average_speed 7.1, :average_watts 160}
-                                 {:distance 21000, :average_speed 8.1, :average_watts 185}])]) activities)))
+                          :splits_metric [{:distance 1000
+                                           :average_speed 6.5
+                                           :elevation_difference 4
+                                           :average_heartrate 143}
+                                          {:distance 1000
+                                           :average_speed 8.0
+                                           :elevation_difference -3
+                                           :average_heartrate 153}
+                                          {:distance 1000
+                                           :average_speed 7.2
+                                           :elevation_difference 2
+                                           :average_heartrate 148}]
+                          :laps [{:name "Harbour loop"
+                                  :distance 21000
+                                  :average_speed 7.1
+                                  :average_watts 160}
+                                 {:name "Canal loop"
+                                  :distance 21000
+                                  :average_speed 8.1
+                                  :average_watts 185}]
+                          :segment_efforts (mapv #(update % :id + (* 10 (- (:id activity) 91001)))
+                                                segment-efforts))]) activities)))
 
 (def streams
   (mapv (fn [[kind values]] {:type kind, :data (vec values)})
@@ -99,6 +190,7 @@
       (= path "athlete") athlete
       (= path "athlete/activities") activities
       (= path "segments/starred") []
+      (= path segment-stream-path) segment-streams
       (= path "gear/b8866753") {:name "Fixture bike - Carbon road bike", :converted_distance 2400}
       :else (when-let [[_ id suffix] (re-matches #"activities/(91001|91002)(.*)" path)]
               (cond
@@ -109,12 +201,16 @@
     :else nil))
 
 (defn install-transport! []
-  (when (validation/explain schema/content {:activities activities
-                                           :activity details
-                                           :athlete athlete
-                                           :stats totals
-                                           :activity-stream {91001 streams, 91002 streams}})
+  (when (or (validation/explain schema/content {:activities activities
+                                               :activity details
+                                               :athlete athlete
+                                               :stats totals
+                                               :activity-stream {91001 streams, 91002 streams}
+                                               :segment-stream {92001 segment-streams}})
+            (some #(validation/explain detail-schema %) (vals details))
+            (validation/explain segment-stream-schema segment-streams))
     (throw (js/Error. "Invalid native Strava fixture data")))
+  (reset! *segment-reads 0)
   ;; The native init, fetch, result events and subscriptions remain unchanged.
   ;; Only the existing HTTP transport effect is scoped to these disposable cases.
   (r/reg-fx :http-xhrio
@@ -122,7 +218,11 @@
       (when-not (= :get method)
         (throw (js/Error. "Strava visual fixtures reject provider writes")))
       (if-let [value (response uri (:path url-params))]
-        (r/dispatch (conj on-success value))
+        (do
+          (when (and (= uri "/api/integrations/strava")
+                     (= segment-stream-path (:path url-params)))
+            (swap! *segment-reads inc))
+          (r/dispatch (conj on-success value)))
         (throw (js/Error. (str "Unexpected Strava fixture read: " uri)))))))
 
 (defonce *tile-transport (atom nil))

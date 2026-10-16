@@ -109,14 +109,14 @@
           [<adjacent-post-link> {:direction :prev :post-id (:id post)}]
           [<adjacent-post-link> {:direction :next :post-id (:id post)}]])]}]))
 
-(defc <archive-post> [{{:keys [id ts user title permalink comments] :as post} :post :as spec}]
+(defc <archive-post> [{{:keys [id ts user title permalink comment-count] :as post} :post :as spec} :- schema/post-spec]
   [:div.blog-archive-post
    [:a {:href @(r/subscribe [:blog/permalink-for-path (or permalink id)])}
     [:h2 title]]
    [presentation/<posted-by> {:id id :user user :ts ts}]
-   (when (seq comments)
+   (when (pos? (or comment-count 0))
      [:span {:style {:font-size "0.7em" :filter "brightness(0.8)"}}
-      (util/pluralize (count comments) "comment")])
+      (util/pluralize comment-count "comment")])
    [<tags-list> {:post post}]
    [:div {:style {:padding-top "0.4em" :padding-bottom "var(--space)" :font-size "0.9em"}}
     [presentation/<markdown> @(r/subscribe [:blog/post-preview id])

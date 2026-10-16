@@ -11,6 +11,10 @@
   Declared CV glyphs load with the module; other CMS choices acquire the existing
   compatibility catalog. Regular details close through outside click or Escape.
 
+- Sideways galleries retain intrinsic slide widths and a maximum viewport height.
+  Native, progressive and editing wrappers share that layout. Keep preview layers
+  overlapped and replacement controls clear of the next sticky slide.
+
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/ssr.md`, and `doc/dev-console.md`.
 
@@ -50,6 +54,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   portal, managed day dependency and scoped listeners immediately on exit.
   GitHub configuration uses its module's managed `/api/github/settings` URL
   dependency, installed at `[:module :github :configuration]` before init.
+  An absent settings result is pending (including SSR); only a completed empty
+  response establishes that no repository is configured.
   GitHub search is debounced through events and queries the backend's complete
   Supabase archive; never filter only the browser's loaded subset.
 
@@ -164,6 +170,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   the `:feature/blog-comments` reader feature.
   The folded card's original 25rem budget includes metadata and padding; its owned
   ref/resize measurement supplies the remaining text budget without entrance transforms.
+  Blog prose retains its one-em paragraph margins within the blog sheet. Comment
+  text keeps the original float wrapping around avatars; `overflow: clip` owns
+  folding without a new formatting context that indents the whole text column.
+  The expanded card owns scrolling, retaining that same text width during motion.
   `comment_exports.cljc` pairs its conditional import with the original Var
   export map; merge that map into the literal module specification. Default JVM
   and Codox readers retain the empty adapter without importing comment views.
@@ -260,9 +270,13 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   sheets stay out of the SSR head but still start before Shadow acquisition. Keep
   feature CSS in `resources/scss/modules` and preserve
   ordinary selector specificity. Literal `:icons ["brands/name" "solid/name"]`
-  on a component/module exports font glyphs as SVG masks in the owner’s CSS.
-  Feature ownership comes from its module folder or explicit `:module`; shared
-  components use the shell. Regenerate assets with `bb fonts:icons`. See `doc/styles.md`.
+  on a component/module exports native font-glyph rules in the owner's CSS.
+  Preserve their original font metrics and rasterization; SVG exports remain
+  available as assets. Feature ownership comes from its module folder or explicit
+  `:module`; shared components use the shell. Header links retain native button
+  typography. The shell supplies the small font faces; keep the fixed border
+  baseline independent of route overrides. Regenerate assets with `bb fonts:icons`.
+  See `doc/styles.md`.
 - The root-merged `:font` feature keeps initial text visible and uses re-frame
   readiness/fade events for a late face. Own the font CSS in its consumer module;
   use an optional initial face plus a separately named ready face to prevent an
@@ -445,6 +459,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   capture and profiling remain separate development lifecycles, with no empty UI shim.
   Timing capture is bounded and inactive without a console, picker, or explicit page-capture owner. Keep diagnostics out
   of persistence snapshots and do not let diagnostic events trigger page renders.
+- Page-root crossfade providers memoize equal incoming/outgoing surface maps
+  independently. React context compares identity: controller-only route updates
+  must not invalidate pending SSR descendants. Preserve refs, props and native
+  motion while retaining equal values; keep Reagent batching unchanged.
 - Page navigation uses a brief simultaneous opacity crossfade. Native View Transitions
   and the page-root fallback share duration/easing; neither delays the incoming fade.
   Native page snapshots must not cover the sticky footer: retain its own opaque,

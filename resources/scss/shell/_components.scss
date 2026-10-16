@@ -613,13 +613,26 @@ figcaption, .float-with-caption {
       padding: var(--space);
       border: var(--line-width) solid #bc6c52; //XXX fix real
       background-color: var(--orange);
-      color: #24160f;
+      color: inherit;
 
       .track-title { font-size: 1.17em; }
-      .track-artist { font-weight: bold; }
+      .track-title::first-letter {
+        font-size: 1.075em;
+        line-height: 1em;
+        filter: brightness(107.5%);
+      }
+      .track-artist {
+        font-weight: 600;
+
+        &::first-letter {
+          font-size: inherit;
+          line-height: inherit;
+          filter: none;
+        }
+      }
 
       img {
-        height: 3rem;
+        height: 2rem;
       }
     }
   }

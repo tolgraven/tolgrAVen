@@ -55,6 +55,24 @@
     a, a.button > span:not(.blur-bg) {
       font-size: 0.8rem;
     }
+
+    // Keep native control typography and inline label metrics on linked CTAs.
+    > a.button {
+      font: menu;
+      font: -webkit-small-control;
+      font: -moz-button;
+      text-align: center;
+      align-content: center;
+
+      @media screen and (max-width: 31.25rem) { font-size: 105%; }
+
+      &:hover, &:active {
+        .blur-bg { opacity: 0.8; }
+      }
+    }
+
+    // The original action label had these margins, independently of link text.
+    > button > span:not(.blur-bg) { margin-inline: 0.6em; }
   }
 
 }
@@ -64,7 +82,7 @@
 
   h1 {
     color: var(--light-3);
-    text-shadow: 0.1875rem 0.1875rem 0.5625rem white;
+    text-shadow: calc(1.5 * var(--line-width-base)) calc(1.5 * var(--line-width-base)) calc(4.5 * var(--line-width-base)) white;
   }
   img {
     opacity: 0.3;
@@ -188,7 +206,7 @@
               height 0.2s,
               margin 0.2s,
               padding 0.2s;
-  box-shadow: 0.0625rem 0 1.0625rem 0.1875rem var(--box-bright-heavy);
+  box-shadow: calc(0.5 * var(--line-width-base)) 0 calc(8.5 * var(--line-width-base)) calc(1.5 * var(--line-width-base)) var(--box-bright-heavy);
 
   cursor:  pointer;
   
@@ -233,7 +251,7 @@
       margin-bottom: calc(0.5 * var(--space));
 
       ~ li { /* suddenly started making the icons... weird inner shadow. so skip the header. */
-        text-shadow: 0.0625rem 0.0625rem 0.125rem var(--bg-1);
+        text-shadow: calc(0.5 * var(--line-width-base)) calc(0.5 * var(--line-width-base)) var(--line-width-base) var(--bg-1);
       }
     }
   }
@@ -243,7 +261,7 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
-  h3 {
+  h3, .service-title {
     display: inline;
     position: relative;
     margin-left: 0.4em;
@@ -255,8 +273,8 @@
       width: 98%;
       transform: skew(-30deg);
       position: absolute;
-      bottom: -0.0625rem;
-      left: -0.125rem;
+      bottom: calc(-0.5 * var(--line-width-base));
+      left: calc(-1 * var(--line-width-base));
       z-index: -1;
     }
   }

@@ -80,7 +80,7 @@
   /* width: var(--media-width-main); */
   height: 0; /* hacky way to size by bg-image height... */
   padding-bottom: calc(var(--media-width-main) * var(--logo-ratio)); /* height ratio of logo */
-  box-shadow: inset 0.125rem 0.125rem 0.75rem 0.4375rem var(--box-regular-color-flip);
+  box-shadow: inset var(--line-width-base) var(--line-width-base) calc(6 * var(--line-width-base)) calc(3.5 * var(--line-width-base)) var(--box-regular-color-flip);
   /* overflow: hidden; */
   overflow: clip; // Keep picture pixels inside the original rounded background.
 

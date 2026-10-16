@@ -10,8 +10,10 @@
   tiles with hover evidence from an earlier viewport. Genuine hover cases use the configured
   Chrome MCP, observed accessibility UIDs verified against native selectors, and
   an unhovered starting target; synthetic mouse events do not prove CSS hover.
-  Keep native page/component parents
-  in fixtures. Compare native CSS declarations and triggered keyframes/timing with
+  Keep native page/component parents and stylesheet precedence groups (`shell`
+  before `modules`) in fixtures. React stylesheet preinitialization must append
+  lazy feature styles after the shell, as on actual pages. Compare native CSS
+  declarations and triggered keyframes/timing with
   `--require-motion`; settled geometry is not a motion pass. Observe real external
   Back before interaction, including delayed and pseudo motion, without fabricated
   history/restore state. Missing motion baselines remain explicit gaps. Extend `test/visual/suite.json` for new rendered states.
@@ -57,6 +59,13 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   boundaries, changed props, discarded renders, StrictMode and stale completion
   after navigation/unmount. Require ordinary shell controls to commit before
   unrelated lazy gates release, retaining native SSR nodes and Reagent batching.
+  Exercise the real controlled Search input while code is held: check immediate
+  DOM value, subscribed query and rendered styled text together. Observe original
+  SSR-node removal/hiding continuously; zero raw-fallback count does not prove
+  retention. Repeat trusted native typing alongside fixture input events, and use
+  `/fixtures/shell-hydration-tests.html` in a fresh document for React lifecycle
+  diagnostics that React deduplicates.
+  Drain acquisitions queued by released Promise gates before restoring transports.
   Scoped-state tests use native subscription handles and event writes; persistence
   checks cover pure nonpersistent reads, idempotent eager/subscription acquisition,
   late restoration versus edits, accepted/rejected transactions and explicit deletions.
@@ -197,8 +206,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   `bb test:scripts`.
 
 - Icon SVG checks cover literal/reader-safe declarations, shared/module ownership,
-  original glyph geometry/baseline and font-free masks. Every exported outline
-  must fit its viewport, including overhangs; expanded masks retain layout metrics.
+  original glyph geometry/baseline and native font-glyph rules. Every exported outline
+  must fit its viewport, including overhangs. Native glyph checks preserve fractional
+  control dimensions and the original alignment inherited by relocated panels.
   Python checks require the
   optional authoring fontTools environment described in `doc/styles.md`.
   Icon font checks preserve selected glyph outlines/metrics, verify disjoint core

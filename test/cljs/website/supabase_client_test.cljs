@@ -7,6 +7,7 @@
 
             [website.service-status :as status]
             [website.modules.supabase.client :as client]
+            [website.modules.blog.data :as data]
             [website.supabase.realtime :as realtime]))
 
 (defn tick! [] (js/Promise. (fn [resolve _] (js/setTimeout resolve 0))))
@@ -381,5 +382,28 @@
           (is (= [["blog_comments" 0 10] ["blog_comments" 0 499]] @(:selects mock)))
           (is (= 1 (count (filter #(= "in" (nth % 2)) @(:filters mock)))))
           (is (= 11 (count (last (last @(:filters mock))))) "One IDs query counts all replies")
+          (done))
+        (fn [error] (is false (str error)) (done))))))
+
+(deftest post-summary-counts-use-one-related-metadata-request
+  (async done
+    (let [mock (mock-client)]
+      (reset-client! mock)
+      (reset! (:rows mock)
+              {"blog_posts" [{:doc_id "legacy-a", :id 28, :title "First", :ts 1}
+                             {:doc_id "legacy-b", :id 27, :title "Second", :ts 2}
+                             {:doc_id "legacy-c", :id 26, :title "Third", :ts 3}]
+               "blog_comments" [{:id "a", :parent_post 28}
+                                {:id "b", :parent_post 28}
+                                {:id "c", :parent_post 27}]})
+      (client/read-once! data/summaries-query
+        (fn [result]
+          (is (= {28 2, 27 1, 26 0}
+                 (into {} (map (fn [{:keys [data]}] [(:id data) (:comment-count data)])) (:docs result))))
+          (is (= [["blog_posts" 0 499] ["blog_comments" 0 499]] @(:selects mock)))
+          (is (= [["blog_comments" "parent_post" "in" [28 27 26]]
+                  ["blog_comments" "parent_comment" "is" nil]] @(:filters mock)))
+          (is (every? #(not (contains? (:data %) :text)) (:docs result)))
+          (is (every? #(not (contains? (:data %) :comments)) (:docs result)))
           (done))
         (fn [error] (is false (str error)) (done))))))

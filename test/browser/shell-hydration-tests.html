@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pending SSR and controlled shell checks</title>
+<link data-precedence="shell" rel="stylesheet" href="/css/website/main.min.css">
+<link data-precedence="modules" rel="stylesheet" href="/css/website/modules/styled-input.min.css">
+<link data-precedence="modules" rel="stylesheet" href="/css/website/modules/search.min.css">
+<link data-precedence="modules" rel="stylesheet" href="/css/website/modules/monospace.min.css">
+<link data-precedence="modules" rel="stylesheet" href="/css/website/modules/markdown.min.css">
+<link data-precedence="modules" rel="stylesheet" href="/css/website/modules/icons-highlight.min.css">
+<body>
+<script src="/js/test.js"></script>
+<script>
+const run = shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1;
+shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1 = env =>
+  shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$2(env,
+    /^website\.shell-hydration-test$/);
+shadow.test.browser.init();
+shadow.test.run_all_tests.cljs$core$IFn$_invoke$arity$1 = run;
+</script>
+</body>

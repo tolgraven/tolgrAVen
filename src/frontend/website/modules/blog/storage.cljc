@@ -1,20 +1,29 @@
 (ns website.modules.blog.storage
-  "Seed persistence owned by the blog module; portable declaration data.")
+  "Seed persistence owned by the blog module; portable declaration data."
+  #?(:clj (:require [website.build.site :refer [when-enabled]]))
+  #?(:cljs (:require-macros [website.build.site :refer [when-enabled]])))
 
 (def tables
   [{:table :blog_posts
     :sql "supabase/modules/blog_posts.sql"
     :seed-key :blog_posts
     :collections #{"blog-posts" "blog-post-ids"}
-    :queries {"blog-posts" {:document-key :doc_id
-                            :fields {:id :id
-                                     :user :user_id
-                                     :ts :ts
-                                     :permalink :permalink
-                                     :tags :tags}
-                            :summary "doc_id,id,permalink,user_id,title,tags,score,ts"
-                            :batch-field :id
-                            :cache-document-field :id}}
+    :queries {"blog-posts"
+              (merge {:document-key :doc_id
+                      :fields {:id :id
+                               :user :user_id
+                               :ts :ts
+                               :permalink :permalink
+                               :tags :tags}
+                      :summary "doc_id,id,permalink,user_id,title,tags,score,ts"
+                      :batch-field :id
+                      :cache-document-field :id}
+                     (when-enabled :blog :comments
+                       {:reply-count {:table :blog_comments
+                                      :select "id,parent_post"
+                                      :parent-field :parent_post
+                                      :filters [[:parent_comment "is" nil]]
+                                      :result-field :comment-count}}))}
     :key [:id]
     :order [[:id :asc]]
     :jsonb #{:raw :image_assets}

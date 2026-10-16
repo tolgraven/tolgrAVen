@@ -201,7 +201,11 @@
     ;; Footer icons render at two em high; source selection follows their ratio.
     (with-meta
       (merge {:class "img-icon", :loading "lazy"}
-             (when (and width height) {:sizes (str (* 2 (/ width height)) "em")}) image)
+             (when (and width height) {:sizes (str (* 2 (/ width height)) "em")})
+             image
+             (when (and width height)
+               ;; Rounded responsive candidates must not change the logo's box.
+               {:style (merge {:aspect-ratio (str width " / " height)} (:style image))}))
       (meta image))))
 
 (defc <footer-content> "Upper content (first few rows) of footer"

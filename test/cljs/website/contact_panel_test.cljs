@@ -9,6 +9,7 @@
             [website.component.motion :as motion]
             [website.modules.contact.events]
             [website.modules.contact.views :as contact]
+            [website.components.ui.inputs :as inputs]
             [website.test-support :as support]))
 
 (defn- fixture! []
@@ -31,6 +32,39 @@
                     (.remove style)
                     (reset! restore/*context context)
                     (reset! r/*app-db before))})))
+
+(deftest untouched-and-cleared-text-fields-stay-empty-and-emit-strings
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture!))
+                *changes (atom [])]
+            (try
+              (r/dispatch-sync [:form-field [:contact] {}])
+              (await! (support/render! root
+                        [inputs/<input-text>
+                         :path [:form-field [:contact :name]]
+                         :placeholder "Optional name"
+                         :on-change (fn [& values] (swap! *changes conj (vec values)))]))
+              (let [input (.querySelector element "input")]
+                (is (= "" (.-value input)))
+                (.focus input)
+                (.blur input)
+                (await! (support/settle!))
+                (is (= [["" :blur]] @*changes)
+                    "An untouched optional field must not emit nil on blur")
+                (r/dispatch-sync [:form-field [:contact :name] "Ada"])
+                (await! (support/wait-for! #(= "Ada" (.-value input))))
+                (r/dispatch-sync [:form-field [:contact] {}])
+                (await! (support/wait-for! #(= "" (.-value input))))
+                (is (identical? input (.querySelector element "input"))
+                    "Clearing external state retains the original controlled input")
+                (.focus input)
+                (.blur input)
+                (await! (support/settle!))
+                (is (= [["" :blur] ["" :blur]] @*changes)))
+              (finally (close!)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
 
 (deftest contact-panel-mounts-on-intent-and-unmounts-after-native-exit
   (async done

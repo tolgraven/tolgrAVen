@@ -55,6 +55,7 @@
   (c/optional-map {:id c/id :permalink :?string :user [:maybe c/id]
                    :title :?string :text :?string :tags [:?or :string c/strings]
                    :score [:maybe number?] :ts [:maybe number?]
+                   :comment-count c/nonnegative
                   :image-assets [:map-of :string media/asset]})))
 (when-enabled :blog :comments
   (def comment-record

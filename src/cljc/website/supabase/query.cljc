@@ -71,7 +71,7 @@
         (mapcat (fn [{:keys [table seed-key queries]}]
                   (map (fn [[collection spec]]
                          [collection (cond-> (assoc spec :table (name table) :seed-key seed-key)
-                                       (:reply-count spec) (assoc-in [:reply-count :table] (name table)))])
+                                       (:reply-count spec) (update-in [:reply-count :table] #(name (or % table))))])
                        queries)))
         (mapcat val catalog/definitions)))
 
@@ -118,16 +118,28 @@
                    [field :in (mapv (fn [opts] (some (fn [[f _ v]] (when (= f field) v)) (:where opts))) queries)]
                    predicate)) %)))))
 
+(defn- count-document-id [opts doc]
+  ;; A post's legacy document key differs from the numeric parent_post FK.
+  (if-let [field (:cache-document-field (schemas (path-collection-name opts)))]
+    (get-in doc [:data field])
+    (:id doc)))
+
 (defn reply-count-plan [opts value]
-  (when-let [{:keys [table select parent-field]} (and (:reply-counts? opts)
-                                                    (:reply-count (schemas (path-collection-name opts))))]
+  (when-let [{:keys [table select parent-field filters]}
+             (and (:reply-counts? opts)
+                  (:reply-count (schemas (path-collection-name opts))))]
     (when (seq (:docs value))
-      {:table table :select select :filters [[parent-field "in" (mapv :id (:docs value))]]})))
+      {:table table
+       :select select
+       :filters (into [[parent-field "in" (mapv #(count-document-id opts %) (:docs value))]] filters)})))
 
 (defn with-reply-counts [opts value rows]
-  (let [parent-field (get-in schemas [(path-collection-name opts) :reply-count :parent-field])
+  (let [{:keys [parent-field result-field] :or {result-field :reply-count}}
+        (:reply-count (schemas (path-collection-name opts)))
         counts (frequencies (map parent-field rows))]
-    (update value :docs #(mapv (fn [doc] (assoc-in doc [:data :reply-count] (get counts (:id doc) 0))) %))))
+    (update value :docs
+            #(mapv (fn [doc]
+                     (assoc-in doc [:data result-field] (get counts (count-document-id opts doc) 0))) %))))
 
 (defn- legacy-load-plan [opts]
   (let [{:keys [path-document path-collection] :as query-map} (normalize-query opts)
@@ -183,10 +195,12 @@
     (filterv #(contains? tables (:table %)) (legacy-load-plan opts))))
 
 (defn realtime-tables [query-map]
-  (->> (seed-load-plan query-map)
-       (map :table)
-       distinct
-       vec))
+  (let [count-table (when (:reply-counts? query-map)
+                      (get-in schemas [(path-collection-name query-map) :reply-count :table]))]
+    (->> (cond-> (mapv :table (seed-load-plan query-map))
+           count-table (conj count-table))
+         distinct
+         vec)))
 
 (defn- kw-or-str [k]
   (cond

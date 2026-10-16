@@ -1,6 +1,7 @@
 # Mobile layout checks
 
-The header, main and footer use the same outer gutter and vertical border width.
+The header seam follows the active page line width. Fixed gutter overlays retain
+the original side-gutter dimensions in normal and expanded-CV views.
 The viewport retains Safari's default safe-area containment. Fullscreen overlays,
 fixed footer, HUD and back-to-top controls account for exposed safe-area insets.
 Keep CSS render-blocking for the first paint and retain matching fallback-font

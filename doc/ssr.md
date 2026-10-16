@@ -144,6 +144,9 @@ document. A late error in an already flushed stream cannot change its HTTP heade
 `supabase/query.cljc` defines the public table/field mappings, projections, filters,
 ordering, limits, batching keys and reply-count relation. The JVM reader and browser
 SDK adapter consume those same plans and the existing shared row-to-app-db contract.
+Post summaries include root-comment counts through one related metadata query;
+its ID/parent projection excludes comment bodies, and the paired scoped cache
+retains the same canonical counts for hydration.
 `modules/blog/data.cljc` declares the graph of summaries, selected posts, bounded roots,
 immediate children and public authors. The module’s page spec carries that plan;
 `ssr.clj` has no blog SQL/REST predicates or blog snapshot branch.
@@ -359,28 +362,35 @@ the export. The worker returns HTML together with its module/export inventory;
 Ring saves this metadata with the exact snapshot, including cached presentation
 variants and shell renders. Local return captures carry the same inventory.
 The browser observes the existing section root through a transient template ref
-and releases hydration on proximity or intent. Ancestor re-frame updates retain
-pending SSR through the shared transition batching owner. Code acquisition
+and releases hydration on proximity or intent. Loader and formatter boundaries
+memoize their native Suspense elements and pass them through upstream
+`use-deferred-value`; Reagent batching remains unchanged. Code acquisition
 releases promise gates independently of React commits, avoiding a suspended
-ancestor waiting on its own effect. Inner commit and unmount release ownership;
+ancestor waiting on its own effect. Mounted activation owns its cleanup;
 late hydration does not replay initial appearances.
+
+The page crossfade retains equal incoming and outgoing context values independently.
+React compares provider values by identity, so rebuilding an equal Clojure map on
+controller activation can invalidate pending SSR consumers. Memoize the actual
+surface props through the existing Clojure-equality hook; real motion/prop changes
+still update normally. Delayed-parser checks must run the actual `:page/hydrated`
+controller update before releasing the gate, alongside native controlled typing.
 
 Node renders highlighted code inside completed React Suspense boundaries. The
 browser hydrates the page and small Copy/wrapping controls first, preserving the
 server's native code nodes while the formatter remains suspended. The common
 after-page gate releases its lazy acquisition only after hydration, window load,
 page binding readiness and painted idle frames. React then hydrates the formatter
-against those same nodes. Its own memoized `defc` prevents outer control updates
-from replacing pending server content. Each initial boundary temporarily owns
-React transition batching through Reagent's batching adapter: its ordinary
-`flushSync` would discard a still-unhydrated boundary on ancestor updates.
-Inner commit/unmount releases that ownership; navigation restores ordinary
-batching immediately. Overlapping boundaries retain the override until the last
-owner releases it; stale completions cannot release owners from a later document.
-If a cached child's layout effect completes before its parent's setup, the
-parent acquires no owner. StrictMode cleanup releases its exact owner without
-marking unresolved work complete. The batching access is one documented Reagent
-2.0.1 compatibility boundary; its root API has no public per-boundary flush option.
+against those same nodes. Its own memoized `defc` and deferred native element
+isolate control and formatter props. Capture every element input in the memo's
+Clojure dependencies, and keep the pending element's native identity stable.
+This alone does not prove SSR retention: React's
+[`flushSync` caveats](https://react.dev/reference/react-dom/flushSync#caveats)
+allow pending Suspense fallbacks to be exposed. Verify the real client hydration
+lifecycle with code deliberately held, continuously watching the original nodes.
+The same check must preserve controlled input values and rendered text while
+other code is pending. Module completion, cancelled work, changed props, cached
+content, StrictMode and navigation/unmount need independent coverage.
 Capture the initial hydration decision without a reactive
 subscription to the later completion flag. New SPA code acquires the formatter through
 the normal loader immediately. Paired local documents also render completed

@@ -272,9 +272,15 @@ def observed_target(client, selector, role, name):
     for block in snapshot.get("content", []):
         if block.get("type") != "text":
             continue
-        for match in re.finditer(r'^\s*uid=(\S+)\s+(\S+)\s+("(?:\\.|[^"\\])*")', block["text"], re.M):
+        # Native paragraphs can have an observed role/UID but no quoted AX
+        # name. An explicitly empty name still needs exact selector identity.
+        # Whitespace-only text can omit the role; never consume the next row.
+        for match in re.finditer(r'^[ \t]*uid=(\S+)[ \t]+(\S+)(?:[ \t]+("(?:\\.|[^"\\\r\n])*"))?', block["text"], re.M):
             uid, observed_role, encoded_name = match.groups()
-            if observed_role == role and json.loads(encoded_name) == name and uid not in candidates:
+            if observed_role != role:
+                continue
+            observed_name = json.loads(encoded_name) if encoded_name is not None else ""
+            if observed_name == name and uid not in candidates:
                 candidates.append(uid)
     verified = []
     for uid in candidates:

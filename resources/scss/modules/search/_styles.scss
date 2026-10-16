@@ -35,7 +35,7 @@
     text-align: left;
     font: inherit;
     padding: 0.4em 0.8em;
-    border-bottom: 0.03125rem solid var(--bg-4);
+    border-bottom: calc(0.25 * var(--line-width-base)) solid var(--bg-4);
     transition: background-color 0.2s ease;
 
     &:hover, &[aria-selected="true"] {

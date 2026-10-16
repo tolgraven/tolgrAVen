@@ -17,6 +17,14 @@ query allowlists and realtime identities derive from those declarations. A custo
 owner adds its declarations and module-spec reference; it requires no backend table
 list edit. Legacy Firebase conversion remains a format adapter.
 
+Scoped `:reply-counts?` reads use the query declaration's count projection. It
+normally counts children in the same table into `:reply-count`; Blog summaries
+select root IDs/parent IDs from `blog_comments` into `:comment-count`. The numeric
+post ID supplies its foreign-key filter, independently of the legacy document
+key. Both browser and JVM adapters use one filtered bulk read without comment
+text. Scoped readers observe both tables so insert/delete/move events refresh
+archive counts through the existing managed queue.
+
 Build selection is site-wide. Runtime backend `{:supabase {:modules {:blog
 {:comments false}}}}` can further narrow seed tools but cannot add compiled-out
 owners. Unknown owners/options, non-booleans, duplicate tables/seed keys, missing

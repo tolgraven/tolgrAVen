@@ -297,9 +297,21 @@
      [ui-layout/<fading> :dir "bottom"]]))))
 
 (defc <commits> []
-  (let [[user repo] @(r/subscribe [:github/get-from])]
-    (if (and (seq user) (seq repo))
+  (let [[user repo] @(r/subscribe [:github/get-from])
+        configuration @(r/subscribe [:github/configuration-result])]
+    (cond
+      (and (seq user) (seq repo))
       [:<>
        ^{:key (str user "/" repo)} [<repository> {:init (fn [_] (r/dispatch [:github/init]))}]
        ^{:key user} [<activity> user]]
+
+      ;; SSR has not acquired the managed URL binding. Only a completed
+      ;; settings response can establish that the repository is unconfigured.
+      (nil? configuration)
+      [:section#github-commits.github-commits.covering-2
+       {:aria-busy true}
+       [:h2 "GitHub"]
+       [:p "Loading repository settings…"]]
+
+      :else
       [:section#github-commits.github-commits.covering-2 [:h2 "GitHub"] [:p "Configure a GitHub user and repository in the server settings."]])))

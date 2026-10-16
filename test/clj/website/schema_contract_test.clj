@@ -127,3 +127,10 @@
   (is (m/validate (dsl/->malli ssr/snapshot) {:path "/" :content {} :shell? true}))
   (is (not (m/validate (dsl/->malli ssr/snapshot) {:path "/" :posts [{:title 7}]})))
   (is (not (m/validate (dsl/->malli ssr/settings) {:render-workers 0}))))
+
+(deftest post-summary-counts-accept-zero-and-reject-invalid-values
+  (let [schema (dsl/->malli store/post)]
+    (doseq [n [0 1 42]]
+      (is (m/validate schema {:id 27, :title "Post", :comment-count n})))
+    (doseq [n [-1 "1" nil]]
+      (is (not (m/validate schema {:id 27, :title "Post", :comment-count n}))))))

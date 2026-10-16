@@ -117,6 +117,53 @@ class VisualTest(unittest.TestCase):
                 visual.observed_target(client, '.native-edit', 'button', 'Edit comment')
             self.assertFalse(any(name == 'hover' for name, _ in client.calls))
 
+    def test_unnamed_paragraph_uid_retains_observed_identity_and_fail_closed_matching(self):
+        class ParagraphClient(HoverClient):
+            def call(self, name, **arguments):
+                result = super().call(name, **arguments)
+                if name == 'take_snapshot':
+                    # Same native form as the archived Strava verbose snapshot:
+                    # paragraph has no quoted name; its text child is separate.
+                    text = ('uid=observed-decoy paragraph\n'
+                            '  uid=observed-text "Harbour climb"\n'
+                            '  uid=observed-whitespace " "\n'
+                            'uid=observed-segment paragraph\n'
+                            '  uid=observed-label "Harbour climb"\n'
+                            'uid=observed-named paragraph "Another paragraph"')
+                    return {'content': [{'type': 'text', 'text': text}]}
+                return result
+
+            def evaluate(self, function, **arguments):
+                if 'args' in arguments:
+                    self.calls.append(('evaluate_script', {'function': function, **arguments}))
+                    return self.target_mode == 'ambiguous' or (arguments['args'] == ['observed-segment'] and self.target_mode != 'wrong-selector')
+                return super().evaluate(function, **arguments)
+
+        client = ParagraphClient()
+        self.assertEqual('observed-segment', visual.observed_target(client, '.segment-name', 'paragraph', ''))
+        observed = [arguments['args'] for name, arguments in client.calls
+                    if name == 'evaluate_script' and 'args' in arguments]
+        self.assertEqual([['observed-decoy'], ['observed-segment']], observed)
+        self.assertFalse(any(name == 'hover' for name, _ in client.calls))
+        for mode, role, name in [('ambiguous', 'paragraph', ''),
+                                 ('wrong-selector', 'paragraph', ''),
+                                 ('normal', 'paragraph', 'Harbour climb'),
+                                 ('normal', 'button', '')]:
+            with self.subTest(mode=mode, role=role, name=name):
+                rejected = ParagraphClient(target_mode=mode)
+                with self.assertRaisesRegex(RuntimeError, 'Expected one observed'):
+                    visual.observed_target(rejected, '.segment-name', role, name)
+                self.assertFalse(any(call == 'hover' for call, _ in rejected.calls))
+        target = {'id': 'segment-hover', 'native_hover': {'selector': '.segment-name',
+                  'role': 'paragraph', 'name': '', 'assert': "if (!element.matches(':hover')) throw Error('Missing hover')"}}
+        visual.native_hover(client, target)
+        self.assertEqual(['observed-segment'], [arguments['uid'] for name, arguments in client.calls if name == 'hover'])
+        scripts = '\n'.join(arguments['function'] for name, arguments in client.calls if name == 'evaluate_script')
+        self.assertIn('element.ownerDocument === document && element.isConnected', scripts)
+        self.assertIn('element.matches(".segment-name")', scripts)
+        self.assertIn("element.matches(':hover')", scripts)
+        self.assertNotRegex(scripts, r'dispatchEvent|setAttribute|innerHTML|\.style\s*=|classList\.(add|remove)')
+
     def test_native_hover_parks_real_pointer_then_verifies_native_state_without_dom_marking(self):
         client = HoverClient()
         visual.park_pointer(client, 'http://127.0.0.1:4098')

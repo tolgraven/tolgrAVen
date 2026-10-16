@@ -1,5 +1,8 @@
 @use "sass:map";
 @use "sass:meta";
+@use "sass:math";
+
+$line-width-base: 2.0px; // Retain the original fixed border baseline.
 
 /* wanted to put in own file but wasnt compatible with live reload solution... */
 :root { /* general vars */
@@ -31,7 +34,9 @@
   --comment-gap:         calc(0.20 * var(--space));
 
   --line-scale-factor: 0.5;
-  --line-width:        2.0px; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-base:   #{$line-width-base}; /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
+  --line-width-thin:   #{math.div($line-width-base, 2)};
+  --line-width:        var(--line-width-base);
   --line-width-sm:     calc(1 / (1.5 + var(--line-scale-factor)) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --line-width-md:     calc(((1 + var(--line-scale-factor)) / 2) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */
   --line-width-lg:     calc(1 / (1 + var(--line-scale-factor)) * var(--line-width)); /* main design line/border width */ /* 0.125 normally 2px but nah ends up weird when font scales to like 1.67 and shize */

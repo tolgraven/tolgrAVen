@@ -38,28 +38,73 @@ wait for committed font phases. This prevents cache timing from choosing between
 equivalent native/ready font aliases. The separate font suite exercises cold
 fallback and crossfade behavior.
 Shell fixtures keep the header and full footer outside `main`, as in the native
-page. The combined shell includes the sticky footer; the full footer owns its
+page. Header checks include the full width and active page seam, plus pending
+Search/User controls before intent acquisition; their wrappers retain listeners
+without introducing flex boxes or changing native button fonts. The closed menu retains its original small gradient frame; guards compare its
+box and position at both widths, rather than removing it as presumed leftover UI. Normal and expanded framing cases also measure the native gutter widths,
+positions and footer pseudo-elements through the existing shell state events.
+Expanded framing isolates those shell owners; the CV cases cover the timeline itself. The combined shell includes the sticky footer; the full footer owns its
 post-footer content exactly once. The post-footer case exercises that owning
-footer context rather than rendering its flex content directly in the main grid.
+footer context rather than rendering its flex content directly in the main grid. Footer note
+checks also reject inherited paragraph first-letter enlargement; these lines retain
+the original uniform heading typography. Footer checks retain the original framing
+border on narrow screens and the single row of technology logos. Footer logo
+boxes retain the original source aspect ratio when small responsive renditions
+round their decoded dimensions.
 Services and CV fixtures use a native `defpage` container so the main grid cannot
-stretch individual sections. Isolated CV boxes retain the production timeline
+stretch individual sections. Services captures include the native category expansion
+at both widths. Their guards retain the title/icon line, its gap and underline,
+and the selected category while the other categories minimize.
+Isolated CV boxes retain the production timeline
 column width/height; absolute-positioned entries cannot establish those dimensions.
 Their dates determine position/size within the seed's shared timeline range;
 the case scrolls the native timeline to that historical entry before capture.
+Full CV category guards retain the reference glyphs, font metrics, gradient,
+label gaps and positions relative to their headings at both widths.
 The original editor comparison fixture remains unchanged.
-Home cases retain native intro/story/media owners and the public seed. Story
+Home cases retain native intro/story/media owners and the public seed. Intro guards compare all three call-to-action control and text boxes against the native reference at both widths. Separate trusted-hover cases retain the original opacity fade; navigation stays in single native links. Story
 image expansion clicks the actual inset image. Gallery start/end cases set their
 explicit horizontal position after image decoding, because native mandatory
-scroll snapping can select a different slide while image widths are settling.
+scroll snapping can select a different slide while image widths are settling. Native gallery
+guards compare the reference maximum-height layout and all five intrinsic slide
+widths at both viewports. Progressive preview/final layers must stay overlapped
+inside the same stretched slide; editor upload controls retain their corner owner. The two
+CMS gallery cases use the same native page and verify every image-replacement
+control, without selecting files or allowing provider writes. Native hit tests
+reject a replacement control painted beneath the next sticky slide, even when
+its own rectangle fits inside the image wrapper.
 Post/comment cases render the native blog container and post, including the
-post-owned comment section. Standalone comment cases use the native standalone
-view separately. Thread cases supply two replies and a grandchild through the
+post-owned comment section. Avatar guards retain the original fixed blur and spread
+in post headers, comment cards and GitHub entries at both widths. Preserve blog paragraph margins and the comment
+text column's original width beside/under avatars, including folded code fades
+and intermediate expansion/collapse heights. Standalone comment cases use the
+native standalone view separately. Thread cases supply two replies and a grandchild through the
 managed comment subscription boundary; the production reply components own
 their nesting and layout. Search cases render the native expandable Search UI
-outside main, with fixed results/suggestions instead of a synthetic padded section.
+outside main below the native header, with fixed results/suggestions instead of a
+synthetic padded section. The sticky query must remain below the header and above
+its suggestions; omitting the header invalidates that layout.
 The fixture head uses Highlight's declared monospace/Markdown sheets and the
 styled input's declared sheet, matching the native owners rather than a nonexistent
 `highlight.css` file.
+
+Archive cases render the native Blog page and archive rows, using real summary
+and per-post preview subscriptions. A disposable scoped-read boundary supplies
+validated records and rejects provider acquisition and writes. Capture requires
+formatted excerpts, metadata, tags, truncation links, paragraph margins of one em
+and nonoverlapping native row geometry at both widths. Count updates must show
+correct singular/plural labels, remove zero/absent labels, and retain their native
+metadata placement. These cases do not verify live count acquisition, cold
+hydration or navigation; those need separate checks.
+
+Reply progression cases fold and reopen the real two-sibling thread using its
+native controls. They sample container height, each row's height and body opacity
+together; fading children beneath an instantly expanded container must fail.
+Keep the authored sibling stagger and placeholder footprint, reject autonomous
+viewport movement, and inspect fold disposal plus cached reopening. Classify
+incoming rows against the actual viewport: offscreen rows must settle without
+an entrance. These checks supplement screenshots and CSS timing comparisons;
+modeled comparator traces alone do not establish rendered behavior.
 
 Docs cases render the native Docs page directly under main and read the actual
 Codox index/topic generated in the served build. Run `lein docs` through the bounded
@@ -91,6 +136,14 @@ pass. The fixture retains every native tab and prototype body. Narrow kudos hove
 uses its already visible native target: centering the expanded card would scroll
 the overflow-hidden section and let background hover motion clamp that offset.
 
+Detail-tab cases cover split dots and legends, named lap metrics, segment effort
+speeds and achievement colors at both widths. Split/segment hover uses observed
+native paragraph UIDs and checks the entire popup against its clipping ancestors.
+Only the exact segment-stream GET receives a local array-of-stream-map response;
+the real result event and rendering remain active. These guards reject clipped
+labels even when the expected nodes exist. Adding a case does not establish its
+native execution or approve its pixel/motion baseline.
+
 Map transport changes only the fixture-owned native TileLayer's URL read to a
 pinned local heatmap image. Its original method is restored on page cleanup,
 including failed captures. Leaflet constructors, controls, projection, size and
@@ -105,6 +158,24 @@ both module destinations, safe marks and visible links. Summary previews use the
 existing compact row spacing and responsive horizontal inset. No preview view is
 copied or substituted. These local records do not verify live indexing or destination
 navigation; native execution and approved pixel baselines remain required.
+
+CMS edit cases use native content bindings and page owners, with the toolbar
+outside main. The verified account retains private administrator roles while a
+fixed public-profile read prevents provider acquisition. One local settings GET
+uses its real result event; writes, uploads and unexpected requests fail. Services
+drafts/discard and regular/container CV forms/cancel have separate states at both
+widths. Native hit checks reject controls covered by the fixed toolbar. The CV
+visit effect is acknowledged only in memory; its original demo timing stays active.
+These cases preserve the older manual comparison fixture and do not prove publishing,
+uploads or conflict recovery. Native execution and reviewed baselines remain required.
+
+Readable link-preview cases retain the native content-link feature, page owner,
+managed article read and body portal. Genuine hover opens the real controller;
+schema-checked local responses cover readable blocks/image, metadata-only and
+unavailable content at both widths. Checks require the native destination and
+unobscured close control within the viewport. The blocked frame policy prevents
+remote iframe acquisition; these cases do not establish allowed-frame miniature
+behavior, real provider extraction or approved pixel parity.
 
 Full posting-page cases retain the native heading/page, rich/source editor,
 preview, draft chooser and post-only image/component pickers. Local draft reads
@@ -218,11 +289,22 @@ Auth/network completion and message delivery require separate live checks; these
 layout/motion cases do not establish them. Settings/Contact sheets load only in
 this fixture's own document, without altering the shared head or older cases.
 
+Signed-in account cases retain the native private owner/public-profile merge and
+page-sibling User panel. They cover administrator controls, username/avatar URL
+drafts, masked-to-revealed password inputs, and Back/close disposal at both widths.
+The fixture owner restores its read-only transport and acquisition guards on
+disposal; native blur drafts stay in memory. Credential, upload, logout and write
+intents fail before their handlers. These cases do not submit forms or establish
+real Auth, query-controller navigation, own-comments or provider behavior. Source
+checks alone do not verify their rendered layout, motion or cleanup.
+
 CV skills carousel cases reuse the full native CV page and its actual
 `.cv-skills` owner. Wide/narrow captures cover the Digital next slide and Language
 previous-wrap slide. Actions use the rendered next/previous/index controls, verify
 round trips and wraparound, and require the active heading, content and current
-marker to agree while retaining the same carousel/page nodes. These are control,
+marker to agree while retaining the same carousel/page nodes. Initial and final
+states also require the reference control dimensions and centered marker-row
+geometry, including the icon-font baseline. These are control,
 layout and observed CSS-motion checks; they do not establish touch-drag or genuine
 keyboard traversal coverage. The Home sideways image gallery is a different owner.
 
@@ -244,8 +326,11 @@ ordinary geometry cases reuse the driver with one iframe response at a time. Bef
 the pointer hovers an observed UID for the test driver's neutral heading. The
 fixture target must initially be unhovered. Its role/name is matched from the
 latest accessibility snapshot and its observed UID is verified against the
-checked-in selector in that document before hovering. No UID is inferred from a
-selector, and no application node is marked, restyled or replaced. Capture then
+checked-in selector in that document before hovering. An unnamed native role
+(such as a paragraph) uses an explicit empty case name; its observed UID must
+still match exactly one native selector target. Text-child UIDs are never inferred
+from their parent or label. No UID is inferred from a selector, and no application
+node is marked, restyled or replaced. Capture then
 requires native `:hover` plus the case's actual sidebar/caption/tooltip result.
 The canonical case state records the semantic target and initial-pointer contract,
 not ephemeral UIDs; comparison rejects missing interaction evidence even when
@@ -420,3 +505,28 @@ and container, `.github-diff` parent and editor are retained; these component
 cases do not exercise GitHub's revision controller,
 menu metadata or remote acquisition. Missing approved raster/motion baselines
 remain verification gaps; captures never approve them automatically.
+
+Header closed/menu-open cases require the reference link-control dimensions at
+wide/narrow widths, the original thin right seam and the actual native glyphs.
+They reject inherited page-font sizing, enlarged minimum boxes and changed icon
+baselines while retaining single accessible links.
+
+Contact capture guards retain the original close-glyph dimensions and alignment,
+fixed blur/shadow sizes and transition timing at both reference widths. Check
+actual closing frames and opener focus as well as the settled open panel.
+
+Footer capture guards compare all six brand glyphs, their native dimensions and
+original fixed text-shadow sizes. A mask or drop-shadow filter changes the raster
+and must fail even when its element bounds remain equal.
+
+Search capture guards retain the original fixed caret border/glow, half-pixel
+suggestion separators and normal caret/suggestion transition declarations.
+Repeat real history-return checks separately, where startup motion is suppressed.
+
+Home captures retain fixed logo/card/text shadows and service-title underline
+offsets at both widths. Check computed paint effects as well as element boxes;
+converting these reference pixel sizes to rems changes them with the root font.
+
+Settings panel checks retain the original 0–15 pixel line-width controls and
+their native intrinsic widths. Spacing remains in rem; previously saved rem line
+widths convert using the current root font before entering those pixel controls.

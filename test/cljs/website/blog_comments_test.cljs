@@ -284,8 +284,12 @@
                   (is (= "/blog/post/42/comment/root" (.getAttribute link "href")))
                   (is (= "Permalink" (.getAttribute link "aria-label")))
                   (is (nil? (.getAttribute link "title")) "Labels belong to our UI")
-                  (.focus link)
-                  (await! (support/settle!))
+                  ;; This fixed scene is independent of the growing test
+                  ;; report. Native focus scrolling would dismiss its label.
+                  (.focus link #js {:preventScroll true})
+                  (await! (support/wait-for!
+                            #(.getElementById js/document (.getAttribute link "aria-describedby"))
+                            "Focused permalink mounts its custom label"))
                   (is (= "Permalink" (.-textContent (.getElementById js/document (.getAttribute link "aria-describedby")))))
                   (.dispatchEvent link (js/KeyboardEvent. "keydown" #js {:key "Escape", :bubbles true}))
                   (await! (support/settle!))

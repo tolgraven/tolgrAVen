@@ -32,7 +32,22 @@
         [offset set-offset!] (r/use-state nil)
         *incoming (r/use-ref nil)
         *outgoing (r/use-ref nil)
-        force? (or (not animate?) (nil? outgoing) (= current-key previous-key))]
+        force? (or (not animate?) (nil? outgoing) (= current-key previous-key))
+        surface-props (fn [active?]
+                        {:ref (if active? *incoming *outgoing)
+                         :style (when (and (not active?) (= token (first offset)))
+                                  {:translate (str "0 " (second offset) "px")})
+                         :aria-hidden (when-not active? true)
+                         :inert (when-not active? true)
+                         :class (if active?
+                                  (str "swap-in opacity " (when force? "swap-static ") (when (or force? (= token running) (= token finished)) "swapped-in"))
+                                  (str "swapped " (when (= token running) "opacity swapped-out")))})
+        incoming-props (surface-props true)
+        outgoing-props (surface-props false)
+        ;; React compares context values by identity. Controller-only route
+        ;; updates must not invalidate pending SSR through equal surface props.
+        incoming-props' (r/use-memo (fn [] incoming-props) [incoming-props])
+        outgoing-props' (r/use-memo (fn [] outgoing-props) [outgoing-props])]
     (r/use-layout-effect
       (fn []
         (if force?
@@ -63,14 +78,7 @@
                                 (conj [previous-key false outgoing]))]
        ^{:key (pr-str key)}
        [:r> (r/context-provider component/page-root-context)
-        #js {:value {:ref (if active? *incoming *outgoing)
-                 :style (when (and (not active?) (= token (first offset)))
-                          {:translate (str "0 " (second offset) "px")})
-                 :aria-hidden (when-not active? true)
-                 :inert (when-not active? true)
-                 :class (if active?
-                          (str "swap-in opacity " (when force? "swap-static ") (when (or force? (= token running) (= token finished)) "swapped-in"))
-                          (str "swapped " (when (= token running) "opacity swapped-out")))}}
+        #js {:value (if active? incoming-props' outgoing-props')}
         form])]))
 
 (defpage <page> "Render active page inbetween header, footer and general stuff."

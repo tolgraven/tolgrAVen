@@ -138,6 +138,27 @@
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
 
+(deftest absent-settings-are-pending-until-an-empty-response-arrives
+  (let [subscribe (r/subscribe-function)
+        *configuration (r/atom nil)]
+    (r/with-framework-bindings
+      [r/subscribe (fn
+                     ([query]
+                      (case (first query)
+                        :github/configuration-result *configuration
+                        :github/get-from (r/atom [nil nil])
+                        (subscribe query)))
+                     ([query options] (subscribe query options)))]
+      (let [pending (r/render-to-static-markup [views/<commits>])]
+        (is (string/includes? pending "aria-busy=\"true\""))
+        (is (string/includes? pending "Loading repository settings…"))
+        (is (not (string/includes? pending "loading-spinner")))
+        (is (not (string/includes? pending "Configure a GitHub"))))
+      (reset! *configuration {:settings nil})
+      (let [empty (r/render-to-static-markup [views/<commits>])]
+        (is (string/includes? empty "Configure a GitHub"))
+        (is (not (string/includes? empty "loading-spinner")))))))
+
 (deftest configured-repository-rejects-old-responses
   (async done
     (let [restore! (r/make-restore-fn)

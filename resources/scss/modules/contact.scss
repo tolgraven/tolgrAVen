@@ -17,8 +17,8 @@
   background: linear-gradient(180deg, rgba(65, 20, 160, 0.3),
                                       rgba(80, 20, 200, 0.8) 50%,
                                       rgba(30, 10, 120, 0.36));
-  backdrop-filter: blur(0.25rem); // remember firefox lacks this so need fallback there when using this...
-  box-shadow: 0rem 0rem 1.8125rem 0.1875rem rgba(150, 150, 250, 0.15);
+  backdrop-filter: blur(calc(2 * var(--line-width-base))); // remember firefox lacks this so need fallback there when using this...
+  box-shadow: 0rem 0rem calc(14.5 * var(--line-width-base)) calc(1.5 * var(--line-width-base)) rgba(150, 150, 250, 0.15);
   padding: var(--space) 0.15em;
 
   input, textarea {
@@ -31,6 +31,9 @@
     // padding: none;
     font-size: 150%;
   }
+
+  // The original footer-owned panel centered its close glyph this way.
+  .close-btn i { vertical-align: middle; }
 
   > h2 {
     text-align: center;

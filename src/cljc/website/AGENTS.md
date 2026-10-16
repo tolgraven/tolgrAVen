@@ -26,6 +26,10 @@ implementation in `src/frontend/website/modules/<module>/`, also on the JVM sour
   consumed by `page/document-target` and the standalone native document gate.
 - Public data plans are adapter-independent. Server reads and managed browser
   subscriptions consume the same filters, projections, batching and row shape.
+  Declared count projections may read a related table with fixed filters and a
+  normalized result field. Use the declared canonical document field for foreign
+  keys and include the related table in scoped realtime invalidation. Blog summary
+  root counts read IDs/parents only; never acquire comment bodies for archive labels.
 - Preserve EDN keys/types in persistence contracts. JSON is converted and normalized
   only at transport boundaries. Never include credentials in public snapshots.
 - `ssr/contract_schema.cljc` owns paired renderer responses and module/export

@@ -4,6 +4,8 @@
 
             [website.supabase.scoped :as scoped]
             [website.supabase.query :as query]
+            [website.modules.blog.data :as data]
+            [website.test-support :as support]
             [website.supabase.connection :as connection]
             [website.service-status :as status]
             [website.supabase-client-test :as mocks]))
@@ -122,3 +124,65 @@
             (.finally (fn [] (r/dispose! a) (r/dispose! b)
                         (scoped/connect! (:client old) (:read! old))
                         (reset! r/*app-db before) (done))))))))
+
+(deftest summary-counts-refresh-on-comment-events-and-release-both-streams
+  (async done
+    (let [mock (mocks/mock-client)
+          restore-db! (r/make-restore-fn)
+          old @scoped/*transport
+          *reader (atom nil)
+          reads (atom [])
+          callbacks (atom [])
+          opts data/summaries-query
+          result (fn [n] {:docs [{:id "legacy", :data {:id 27, :title "Post", :comment-count n}}]})]
+      (-> (js/Promise.resolve nil)
+          (.then (fn [_]
+                   ;; Setup belongs to the same failure/cleanup chain as the
+                   ;; assertions, including a missing first read callback.
+                   (scoped/connect! (:sdk mock)
+                                    (fn [query success _]
+                                      (swap! reads conj query)
+                                      (swap! callbacks conj success)))
+                   (let [reader (scoped/ensure-query! opts)]
+                     (reset! *reader reader)
+                     @reader
+                     (scoped/drain!)
+                     (is (= #{"blog-scoped-blog_posts" "blog-scoped-blog_comments"}
+                            (set (keys @(:channels mock)))))
+                     (is (= [opts] @reads))
+                     ((first @callbacks) (result 1))
+                     (mocks/await-value! reader #(= 1 (get-in % [:docs 0 :data :comment-count]))))))
+          (.then (fn [_]
+                   (let [change @(get-in @(:channels mock) ["blog-scoped-blog_comments" :change])]
+                     (change #js {:eventType "DELETE", :old #js {:id "root"}})
+                     (change #js {:eventType "UPDATE", :new #js {:id "other"}}))
+                   (scoped/drain!)
+                   (is (= [opts opts] @reads) "Comment events share one queued summary refresh")
+                   ((second @callbacks) (result 0))
+                   (mocks/await-value! @*reader #(= 0 (get-in % [:docs 0 :data :comment-count])))))
+          (.then (fn [_]
+                   (r/dispose! @*reader)
+                   (scoped/drain!)
+                   (is (= 2 (count @(:removed mock))))
+                   (is (empty? @scoped/*channels))
+                   ((second @callbacks) (result 99))
+                   (mocks/tick!)))
+          (.then (fn [_] (support/subscription-value! [:store/scoped (scoped/query-key opts)])))
+          (.then (fn [value]
+                   (is (= 0 (get-in value [:docs 0 :data :comment-count]))
+                       "Disposed readers ignore late count responses")))
+          (.catch #(is false (str %)))
+          (.finally
+            (fn []
+              (-> (js/Promise.resolve nil)
+                  (.then (fn [_] (when-let [reader @*reader] (r/dispose! reader))))
+                  (.finally (fn [] (scoped/connect! (:client old) (:read! old))))
+                  ;; Retire accepted result/drain events before restoring db,
+                  ;; including failure after the first callback queued a result.
+                  (.finally (fn [] (support/settle!)))
+                  (.catch #(is false (str "Scoped count cleanup: " %)))
+                  (.finally (fn []
+                              (try
+                                (restore-db!)
+                                (catch :default error (is false (str error)))
+                                (finally (done))))))))))))
