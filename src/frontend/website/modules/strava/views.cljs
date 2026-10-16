@@ -270,6 +270,11 @@
         [data-max data-min] (map #(apply % data) [max min])
         [w h] [(.-width canvas) (.-height canvas)]
         size (count data)
+        ;; A constant series has no domain span; retain it as a centered line.
+        scale-y (fn [point]
+                  (- h (* h (if (= data-min data-max)
+                              0.5
+                              (util/rescale-to-frac point data-min data-max)))))
         cursor-index (int (* size (/ (first @cursor-pos) w)))]
     (.clearRect ctx 0 0 w h)
     (set! (.-strokeStyle ctx) (:line colors))
@@ -280,12 +285,12 @@
     (set! (.-shadowOffsetY ctx) 1)
     (set! (.-shadowColor ctx) (:highlight colors));
     (.beginPath ctx)
-    (.moveTo ctx 0 (- h (* h (util/rescale-to-frac (first data) data-min data-max))))
+    (.moveTo ctx 0 (scale-y (first data)))
 
     (doall (map-indexed
      (fn [i point]
       (let [x (* w (util/rescale-to-frac i 0 size))
-            y (- h (* h (util/rescale-to-frac point data-min data-max)))]
+            y (scale-y point)]
         (.lineTo ctx x y)
         (when (= i cursor-index)
           (set! (.-strokeStyle ctx) (:highlight colors))
