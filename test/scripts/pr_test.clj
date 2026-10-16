@@ -41,6 +41,18 @@
                                           :titles ["Current title"]
                                              :worktrees ["/work/second"]}})))))
 
+(deftest missing-titles-remain-renderable-and-stable-across-refreshes
+  (let [empty-details {owner {:titles [], :worktrees []}}
+        original (pr/append-footer "Body" nil owner [] empty-details)
+        refreshed (pr/append-footer original original owner [] empty-details)
+        named (pr/append-footer "Body" nil owner []
+                                {owner {:title "Recorded name", :titles ["Recorded name"], :worktrees []}})
+        unavailable (pr/append-footer named named owner [] empty-details)]
+    (is (= original refreshed))
+    (is (= refreshed (pr/append-footer refreshed refreshed owner [] empty-details)))
+    (is (= named unavailable))
+    (is (str/includes? unavailable "Recorded name"))))
+
 (deftest session-metadata-cannot-inject-markdown-or-footer-markers
   (let [title (str "Title *markup*\n" pr/end-marker)
         body (pr/append-footer "Body" nil owner []

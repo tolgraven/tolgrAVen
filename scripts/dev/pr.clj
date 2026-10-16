@@ -58,9 +58,11 @@
 (defn merge-details [& details]
   (apply merge-with
          (fn [old fresh]
-           {:title (or (:title fresh) (:title old))
-            :titles (vec (distinct (concat (:titles old) [(:title old)] (:titles fresh) [(:title fresh)])))
-            :worktrees (vec (distinct (concat (:worktrees old) (:worktrees fresh))))}) details))
+           (let [title (or (:title fresh) (:title old))]
+             (cond-> {:titles (vec (distinct (remove nil? (concat (:titles old) [(:title old)]
+                                                                 (:titles fresh) [(:title fresh)]))))
+                      :worktrees (vec (distinct (concat (:worktrees old) (:worktrees fresh))))}
+               title (assoc :title title)))) details))
 
 (defn markdown-text [value]
   (-> value (str/replace #"[\r\n]+" " ")
@@ -85,7 +87,7 @@
                     (seq entries) (assoc :details entries))
          entry (fn [role id]
                  (let [{:keys [title titles worktrees]} (get details' id)
-                       former (remove (set [nil title]) titles)]
+                       former (remove #(or (nil? %) (= title %)) titles)]
                    (str "- " role ": " (when title (str "**" (markdown-text title) "** — "))
                         "`codex resume " id "`\n"
                         (when (seq former)
