@@ -3,7 +3,8 @@
   `doc/visual-regressions.md` alongside interaction/motion checks. Capture matching
   narrow/wide states and inspect differences; never refresh approved goldens to
   conceal a regression. Missing/unapproved baselines are verification gaps, not
-  passing results. Geometry mode verifies boxes and computed appearance; pixel
+  passing results. Baseline case/tile JSON may use lossless gzip, with exactly one
+  encoding per record and unchanged approval metadata. Geometry mode verifies boxes and computed appearance; pixel
   parity requires matching raster captures. Raster interaction cases retain their
   actual open/hovered viewport before complete-document scrolling; assert the
   transient surface again immediately before its PNG. Never tag later scrolled

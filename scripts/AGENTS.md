@@ -9,7 +9,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   Raster capture awaits startup readiness before positioning tile zero, then
   checks readiness and exact bounds after each scroll.
   Capture creates candidates; strict pixel/geometry comparison never updates
-  approved baselines. Preserve
+  approved baselines. Per-case/tile records may use lossless `.json.gz`; reject
+  ambiguous encodings and retain every field and plain approval metadata. Preserve
   environment checks and missing-case failures. Decode fenced evaluation results
   with the JSON parser before checking their closing fence: rendered Markdown can
   contain literal fences inside the payload. See `doc/visual-regressions.md`.

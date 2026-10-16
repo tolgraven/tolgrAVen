@@ -449,6 +449,12 @@ Captured candidates are **not approved design baselines**. Compare against
 not approve current broken UI to turn the gate green. Inspect both widths and
 every edge of controls/text before accepting images and geometry.
 
+Case and supplemental-tile JSON may be stored losslessly as `.json.gz`; each stem
+must have exactly one plain or compressed record. Keep `capture.json` and PNGs
+unchanged. Capture still writes plain JSON. Use gzip without timestamps or original
+filenames (`gzip -n -6`) for reproducible storage; compression changes no fields,
+comparison rules, review scope, or approval. Corrupt, missing, or duplicate records fail.
+
 Store reviewed PNG/JSON files and `capture.json` in a versioned directory such as
 `test/visual/baselines/chrome-macos-geometry/`. Record explicit review evidence in its
 `capture.json` `approval` field:

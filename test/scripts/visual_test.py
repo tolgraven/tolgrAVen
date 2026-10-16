@@ -3,6 +3,7 @@ import importlib.util
 import argparse
 import base64
 import hashlib
+import gzip
 import json
 import re
 from pathlib import Path
@@ -75,6 +76,50 @@ class HoverClient:
 
 
 class VisualTest(unittest.TestCase):
+    def test_record_encoding_is_lossless_and_requires_one_unique_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            state = {"geometry": [{"x": 329.2421875, "text": "å\n```json"}],
+                     "motion": {"triggered": [{"keyframes": [{"offset": 0}, {"offset": 1}]}]}}
+            data = (json.dumps(state, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+            plain, compressed = root / "case.json", root / "case.json.gz"
+            with self.assertRaisesRegex(ValueError, "found 0"):
+                visual.read_record(root, "case")
+            plain.write_bytes(data)
+            self.assertEqual(state, visual.read_record(root, "case"))
+            compressed.write_bytes(gzip.compress(data, mtime=0))
+            self.assertEqual(data, gzip.decompress(compressed.read_bytes()))
+            with self.assertRaisesRegex(ValueError, "found 2"):
+                visual.read_record(root, "case")
+            plain.unlink()
+            self.assertEqual(state, visual.read_record(root, "case"))
+
+    def test_record_reader_rejects_corrupt_truncated_and_invalid_compressed_json(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            valid = gzip.compress(b'{"geometry": []}', mtime=0)
+            bad_crc = bytearray(valid); bad_crc[-8] ^= 1
+            for data in (b"not gzip", valid[:-5], bytes(bad_crc), gzip.compress(b"{not json", mtime=0)):
+                with self.subTest(data=data):
+                    (root / "case.json.gz").write_bytes(data)
+                    with self.assertRaises((OSError, ValueError)):
+                        visual.read_record(root, "case")
+
+    def test_capture_preserves_existing_compressed_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suite = root / "suite.json"
+            suite.write_text(json.dumps({"cases": [{"id": "case"}]}))
+            output = root / "capture"; output.mkdir()
+            record = output / "case.json.gz"
+            data = gzip.compress(b'{"geometry": []}', mtime=0)
+            record.write_bytes(data)
+            args = argparse.Namespace(origin="http://127.0.0.1:4098", suite=suite,
+                                      output=output, case=[], geometry_only=True, mcp_command=None)
+            with self.assertRaisesRegex(ValueError, "Capture output already exists"):
+                visual.capture(args)
+            self.assertEqual(data, record.read_bytes())
+
     def test_evaluation_preserves_literal_markdown_fences_inside_json(self):
         payload = {"summary": "", "body": "Code: ```clojure\n(+ 1 2)\n``` and ```json {not a second result}```",
                    "nested": ["quotes \" and slash \\"], "unicode": "å"}
@@ -507,7 +552,7 @@ class VisualTest(unittest.TestCase):
             root = Path(directory)
             suite = root / "suite.json"
             suite.write_text(json.dumps({"cases": [{"id": "comment"}]}))
-            before = {"environment": {}, "geometry": [], "motion": {
+            before = {"environment": {"dpr": 1}, "geometry": [[329.2421875]], "motion": {
                 "version": visual.MOTION, "properties": ["transition-duration"],
                 "styles": [[".3s"]], "declarations": [["article", None, 0]],
                 "sourceRules": [], "triggered": [], "gaps": []}}
@@ -519,6 +564,9 @@ class VisualTest(unittest.TestCase):
                 folder.mkdir()
                 (folder / "capture.json").write_text(json.dumps(metadata))
                 (folder / "comment.json").write_text(json.dumps(before))
+            record = baseline / "comment.json"
+            (baseline / "comment.json.gz").write_bytes(gzip.compress(record.read_bytes(), mtime=0))
+            record.unlink()
             args = argparse.Namespace(suite=suite, baseline=baseline, actual=actual,
                                       output=root / "report", require_motion=True)
             self.assertEqual(0, visual.compare(args))
@@ -531,6 +579,13 @@ class VisualTest(unittest.TestCase):
             self.assertEqual("comment.motion.styles[0][0]", report["cases"][0]["motion"][0]["path"])
             (actual / "comment.json").write_text(json.dumps(before))
             self.assertEqual(0, visual.compare(args))
+            for section, value in (("geometry", [[329.375]]), ("environment", {"dpr": 2})):
+                after = copy.deepcopy(before); after[section] = value
+                (actual / "comment.json").write_text(json.dumps(after))
+                self.assertEqual(1, visual.compare(args))
+                report = json.loads((args.output / "report.json").read_text())
+                self.assertTrue(report["cases"][0][section])
+            (actual / "comment.json").write_text(json.dumps(before))
             metadata.pop("motion")
             (baseline / "capture.json").write_text(json.dumps(metadata))
             with self.assertRaisesRegex(ValueError, "Motion coverage differs"):
@@ -662,8 +717,16 @@ class VisualTest(unittest.TestCase):
                         state["tiles"] = tiles
                     (folder / (tile["stem"] + ".json")).write_text(json.dumps(state))
                     visual.write_png(folder / (tile["stem"] + ".png"), 1, 2, bytes([42, 23, 63, 255] * 2))
+            for record in baseline.glob("comment*.json"):
+                record.with_suffix(".json.gz").write_bytes(gzip.compress(record.read_bytes(), mtime=0))
+                record.unlink()
             args = argparse.Namespace(suite=suite, baseline=baseline, actual=actual, output=root / "report")
             self.assertEqual(0, visual.compare(args))
+            duplicate = baseline / "comment.tile-1.json"
+            duplicate.write_bytes(gzip.decompress((baseline / "comment.tile-1.json.gz").read_bytes()))
+            self.assertEqual(1, visual.compare(args))
+            self.assertIn("found 2", json.loads((args.output / "report.json").read_text())["cases"][0]["error"])
+            duplicate.unlink()
             # Only the second, scrolled viewport changes; the initial image and
             # every measured element remain identical.
             visual.write_png(actual / "comment.tile-1.png", 1, 2, bytes([43, 23, 63, 255, 42, 23, 63, 255]))

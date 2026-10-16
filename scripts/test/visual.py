@@ -4,6 +4,7 @@ import argparse
 import base64
 import binascii
 import hashlib
+import gzip
 import html
 import json
 import os
@@ -118,6 +119,21 @@ def compare_pixels(expected, actual, diff):
         write_png(diff, ew, eh, output)
     return {"passed": changed == 0, "changed_pixels": changed,
             "total_pixels": ew * eh, "changed_bounds": bounds if changed else None}
+
+
+def read_record(folder, stem):
+    """Read one complete case/tile record; never choose between duplicate encodings."""
+    paths = [folder / (stem + suffix) for suffix in (".json", ".json.gz")]
+    present = [path for path in paths if path.exists()]
+    if len(present) != 1:
+        raise ValueError(f"{stem}: expected exactly one .json or .json.gz record; found {len(present)}")
+    path = present[0]
+    opener = gzip.open if path.suffix == ".gz" else Path.open
+    try:
+        with opener(path, "rt", encoding="utf-8") as stream:
+            return json.load(stream)
+    except (EOFError, zlib.error) as error:
+        raise ValueError(f"Unreadable visual record {path}: {error}") from error
 
 
 def geometry_changes(before, after, path=""):
@@ -391,7 +407,7 @@ def capture(args):
     if args.case and set(args.case) - {case["id"] for case in cases}:
         raise ValueError("Unknown visual case")
     args.output.mkdir(parents=True, exist_ok=True)
-    if any(args.output.glob("*.json")) or any(args.output.glob("*.png")):
+    if any(args.output.glob("*.json")) or any(args.output.glob("*.json.gz")) or any(args.output.glob("*.png")):
         raise ValueError("Capture output already exists; use a fresh candidate directory, preserving previous evidence")
     page = None
     with (args.output / "chrome-mcp.log").open("w") as log:
@@ -418,7 +434,9 @@ def capture(args):
                         raise ValueError("Native layout driver omitted or reordered declared cases")
                     result = results[0]
                     if result.get("error"):
-                        failures.append(case["id"] + ": " + result["error"])
+                        failure = case["id"] + ": " + result["error"]
+                        failures.append(failure)
+                        print("Failed geometry " + failure, file=sys.stderr, flush=True)
                     else:
                         state = result["state"]
                         motion_changes(state, state, case["id"])
@@ -518,8 +536,8 @@ def compare(args):
     for case in suite["cases"]:
         ident = case["id"]
         try:
-            expected = json.loads((args.baseline / (ident + ".json")).read_text())
-            actual = json.loads((args.actual / (ident + ".json")).read_text())
+            expected = read_record(args.baseline, ident)
+            actual = read_record(args.actual, ident)
             if case.get("native_hover") and any(state.get("native_hover") != hover_contract(case)
                                                 for state in (expected, actual)):
                 raise ValueError("Missing or changed native hover interaction evidence")
@@ -536,8 +554,8 @@ def compare(args):
                     # arbitrary paths supplied by capture metadata.
                     if stem != ident + (f".tile-{index}" if index else ""):
                         raise ValueError("Invalid viewport tile artifact name")
-                    before = expected if not index else json.loads((args.baseline / (stem + ".json")).read_text())
-                    after = actual if not index else json.loads((args.actual / (stem + ".json")).read_text())
+                    before = expected if not index else read_record(args.baseline, stem)
+                    after = actual if not index else read_record(args.actual, stem)
                     if index:
                         environment.extend(geometry_changes(before["environment"], after["environment"], stem + ".environment"))
                         geometry.extend(geometry_changes(before["geometry"], after["geometry"], stem + ".geometry"))
