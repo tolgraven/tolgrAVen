@@ -266,3 +266,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   worktrees, unavailable stores and exclusion of prompts/unrelated sessions.
   It runs with `bb test:scripts`; no browser or
   Java build is involved.
+
+- CV visit tests mount the real CV, await persisted snapshot restoration, retain
+  legacy flags, and verify SPA/remount/reload suppression plus stale-timer guards
+  and exact scroll return. Browser checks also cover a fresh visitor and a return.

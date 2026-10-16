@@ -619,3 +619,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   supply independent CMS article data; their identity owns anchors. Grid CSS owns
   cold/SSR geometry and `website.breakpoints` exposes breaking-point's inherited
   `:layout/responsive` subscription; `boot` still owns resize listener cleanup.
+
+- CV first-visit motion belongs to module events and its mounted lifecycle. Restore
+  migrated visit snapshots before deciding; retain the durable legacy visit marker,
+  claim the visit in app-db before scheduling, and guard delayed effects by mount
+  generation. The demo returns to its measured starting scroll position.

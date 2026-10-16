@@ -1,7 +1,13 @@
 (ns website.modules.cv.schema
   (:require [website.schema.common :as c]))
 
-(def state (c/optional-map {:visited :boolean}))
+(def state
+  (c/optional-map
+    {:visited :boolean
+     :demo [:map
+            [:generation [:int {:min 1}]]
+            [:active? :boolean]
+            [:?origin number?]]}))
 
 (def zoom-context
   [:map

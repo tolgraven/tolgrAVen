@@ -4,7 +4,9 @@
     [website.content.fields :as fields]
     [website.media.schema :as media-schema]
     [website.modules.cv.schema :as cv-schema]
+    [website.modules.cv.events]
     [website.component.registry]
+    [website.component :as component]
     [clojure.string :as string]
     [website.react :as r]
 
@@ -278,20 +280,19 @@
 
 
  ;; XXX TODO take out stuff specific to me (including categories, skill categories, logo etc) so is fully adaptable for others...
+;; The generic :lifecycle callbacks belong to an instance spec. This module
+;; feature owns the visit even when callers render the ordinary zero-arg CV.
+(component/register-feature! :cv/visit
+  {:root? false
+   :setup identity
+   :mount (fn [_ _] (r/dispatch [:cv/mount]))
+   :unmount (fn [_] (r/dispatch [:cv/unmount]))})
+
 (m/defc <cv> "Main cv component"
+  {:features [:cv/visit]}
   []
-  (let [;_ (r/dispatch [:ls/get-path [:cv-visited] [:state :cv :visited]])
-        visited (r/subscribe [:state [:cv :visited]])
-        timeline-ref (fn [element]
-                       (when element (set! (.-scrollLeft element) (.-scrollWidth element))))
-        ref-fn (fn [el]
-                 (when el
-                   (r/dispatch [:ls/store-val [:cv-visited] true])
-                   (r/dispatch [:dispatch-in/ms 2000 [:state [:fullscreen :cv] true]])
-                   (when (not @visited)
-                     (r/dispatch [:dispatch-in/ms 3000 [:scroll/by 50]])
-                     (r/dispatch [:dispatch-in/ms 4500 [:scroll/by -37]])
-                     (r/dispatch [:dispatch-in/ms 5500 [:focus-element "fullscreen-btn"]]))))]
+  (let [timeline-ref (fn [element]
+                       (when element (set! (.-scrollLeft element) (.-scrollWidth element))))]
    (fn []
     (let [{:keys [title caption cv image-assets]} @(r/subscribe [:content/view [:cv]])
         {:keys [timeline skills]} cv
@@ -340,8 +341,7 @@
         fullscreen? (when @(r/subscribe [:fullscreen/get :cv])
                       "fullscreen")]
     [:section#cv.cv.nopadding.noborder
-     {:class fullscreen?
-      :ref ref-fn}
+     {:class fullscreen?}
      [<intro> cv]
      [:div.cv-boxes
       {:ref timeline-ref}
