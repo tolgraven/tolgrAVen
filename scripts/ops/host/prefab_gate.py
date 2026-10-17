@@ -167,12 +167,14 @@ def verify_runtime(checkout, image, arch, log):
              'bb /app/scripts/media/images.clj /tmp/codecs/image.png; '
              'identify /tmp/codecs/image.webp /tmp/codecs/image.avif')
     recipe = read_blob(checkout, 'Dockerfile') + ('\nFROM media-tools AS prefab-runtime-check\nRUN ' + smoke + '\n').encode()
-    path = Path(checkout) / 'prefab-check.Dockerfile'
-    path.write_bytes(recipe)
-    command(['docker', 'buildx', 'build', '--builder', BUILDER, '--output', 'type=cacheonly',
-             '--target', 'prefab-runtime-check', '--platform', 'linux/' + arch,
-             '--build-arg', 'BUILDER_IMAGE=' + image, '-f', str(path), '--progress=plain', '.'],
-            cwd=checkout, log=log)
+    # A tracked symlink must never redirect a control-process write into /app.
+    with tempfile.NamedTemporaryFile(prefix='runtime-', suffix='.Dockerfile', dir=ROOT) as file:
+        file.write(recipe)
+        file.flush()
+        command(['docker', 'buildx', 'build', '--builder', BUILDER, '--output', 'type=cacheonly',
+                 '--target', 'prefab-runtime-check', '--platform', 'linux/' + arch,
+                 '--build-arg', 'BUILDER_IMAGE=' + image, '-f', file.name, '--progress=plain', '.'],
+                cwd=checkout, log=log)
 
 
 def prefab(checkout, log):

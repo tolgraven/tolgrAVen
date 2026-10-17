@@ -25,6 +25,24 @@ def pull_request(action='synchronize'):
 
 
 class GateFlow(unittest.TestCase):
+    def test_tracked_symlink_cannot_redirect_the_generated_smoke_recipe(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkout = root / 'checkout'
+            checkout.mkdir()
+            protected = root / 'trusted-adapter.php'
+            protected.write_text('trusted control code')
+            (checkout / 'prefab-check.Dockerfile').symlink_to(protected)
+            def inspect_command(args, **kwargs):
+                generated = Path(args[args.index('-f') + 1])
+                self.assertEqual(generated.parent, root)
+                self.assertIn(b'FROM media-tools', generated.read_bytes())
+            with patch.object(gate, 'ROOT', root), patch.object(gate, 'read_blob', return_value=b'FROM scratch\n'), \
+                    patch.object(gate, 'command', side_effect=inspect_command):
+                gate.verify_runtime(checkout, 'fixture:image', 'arm64', None)
+            self.assertEqual(protected.read_text(), 'trusted control code')
+            self.assertEqual(list(root.glob('runtime-*.Dockerfile')), [])
+
     def test_forks_untrusted_associations_and_other_branches_never_build(self):
         self.assertEqual(gate.event_target('pull_request', pull_request())['sha'], 'a' * 40)
         for field, value in [('author_association', 'CONTRIBUTOR'), ('base', {'ref': 'other'}),
