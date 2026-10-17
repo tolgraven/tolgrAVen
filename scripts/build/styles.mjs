@@ -31,17 +31,17 @@ async function inputFiles(directory, extensions) {
 
 async function revision(buildEntries, overrides) {
   const inputs = [
-    'scripts/build/styles.mjs', 'scripts/build/styles-lock.clj', 'scripts/build/editor-styles.mjs', 'scripts/build/style-overrides.mjs',
+    'scripts/build/styles.mjs', 'scripts/build/styles-lock.clj', 'scripts/build/neovim_workspace.clj', 'scripts/build/editor-styles.mjs', 'scripts/build/style-overrides.mjs',
     'package.json', 'package-lock.json', 'resources/icon-fonts.json',
     ...(buildEntries.includes('modules/markdown-editor.scss')
       ? ['node_modules/@mdxeditor/editor/dist/style.css'] : []),
     'resources/public/css/opensans.css',
     ...await inputFiles(root, ['.scss']),
     // Module/component icon declarations and their macros own the style inventory.
-    ...await inputFiles('src/frontend', ['.cljs', '.cljc']),
+    ...await inputFiles('src', ['.clj', '.cljs', '.cljc', '.js', '.lua']),
     ...await inputFiles('env/dev', ['.cljs', '.cljc']),
-    ...await inputFiles('src/cljc', ['.cljc']),
-    ...await inputFiles('src/backend', ['.clj']),
+    ...await inputFiles('resources', ['site.edn', 'site.overrides.edn']),
+    ...await inputFiles('resources/public/vendor/neovim', ['.lua', '.vim']),
   ].sort();
   const hash = crypto.createHash('sha256');
   hash.update(overrides).update('\0');
@@ -59,6 +59,13 @@ async function outputHashes(buildEntries) {
     for (const file of [name, name.replace(/\.css$/, '.min.css')]) {
       hashes[file] = digest(await fs.readFile(path.join(output, file)));
     }
+  }
+  // The same build owns the optional editor workspace/profile. A deleted or
+  // overwritten generated asset must prevent the CSS fast path too.
+  for (const file of ['resources/public/vendor/neovim/workspace.json',
+                       'resources/public/vendor/neovim/profile.json']) {
+    try { hashes[file] = digest(await fs.readFile(file)); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; hashes[file] = null; }
   }
   return hashes;
 }

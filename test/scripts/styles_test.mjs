@@ -140,6 +140,23 @@ try {
     await exited;
   }
 
+  await write('scripts/build/neovim_workspace.clj', `(ns build.neovim-workspace)
+    (defn -main [& _]
+      (.mkdirs (java.io.File. "resources/public/vendor/neovim"))
+      (spit "resources/public/vendor/neovim/workspace.json" "workspace")
+      (spit "resources/public/vendor/neovim/profile.json"
+            (slurp "resources/public/vendor/neovim/init.lua")))`);
+  await write('resources/public/vendor/neovim/init.lua', 'first profile');
+  rebuilt();
+  await fs.rm(path.join(fixture, 'resources/public/vendor/neovim/workspace.json'));
+  rebuilt();
+  assert.equal(await read('resources/public/vendor/neovim/workspace.json'), 'workspace');
+  await write('resources/public/vendor/neovim/init.lua', 'edited profile');
+  rebuilt();
+  assert.equal(await read('resources/public/vendor/neovim/profile.json'), 'edited profile');
+  assert.match(build(), /CSS is current/);
+  checks++;
+
   const partial = spawnSync(process.execPath, ['scripts/build/styles.mjs', '--if-stale', '--sass-only'],
     {cwd: fixture, encoding: 'utf8'});
   assert.notEqual(partial.status, 0);

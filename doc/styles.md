@@ -32,6 +32,10 @@ stamp are renamed atomically. Sources changed during a build are rebuilt again
 before the stamp is published. The freshness check uses existing locked Node
 and Babashka tools; it does not require a separate Sass process or Python.
 
+The CSS freshness stamp also verifies the Neovim workspace/profile outputs and
+their editable Lua/Vim inputs. A missing workspace or profile edit invalidates the
+fast path and reruns the existing generator before styles are marked current.
+
 ## Production pruning
 
 Production asset preparation runs `scripts/build/prune-styles.mjs` after Shadow
