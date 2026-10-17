@@ -3,6 +3,9 @@
   (:require [cljs.core.async]
             [cljs.test :refer-macros [async deftest is testing]]
             [clojure.string :as string]
+            [cljs.reader :as edn]
+            [website.ssr.return-contract :as return-contract]
+            [website.ssr.local]
             [malli.core :as m]
             [website.schema.dsl :as dsl]
             [website.modules.github.message :as message]
@@ -183,6 +186,65 @@
             (is (= "https://github.com/second-user/second-repo" (await! (support/subscription-value! [:github/website-url]))))
             (r/dispatch-sync [:github/save-commits "second-user" "second-repo" 2 1 {:commits [], :total 0, :complete true}])
             (is (= 0 (await! (support/subscription-value! [:github/commit-count])))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
+
+(deftest paired-repository-returns-retain-query-content-and-resume-pagination
+  (async done
+    (let [restore! (r/make-restore-fn)
+          *requests (atom [])
+          commits [{:sha "abcdef1234567"
+                    :message ["Preserved repository result" nil nil]}]]
+      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (-> (go-promise
+            (doseq [query ["" "theme"]]
+              (reset! *requests [])
+              (r/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:set [:module :github :configuration]
+                                {:settings {:user "return-user", :repo "repo"}}])
+              (r/dispatch-sync [:set [:content :github]
+                                {:commits commits
+                                 :total 2235
+                                 :next-cursor "saved-cursor"
+                                 :complete? false}])
+              (r/dispatch-sync [:set [:state :github]
+                                {:target ["return-user" "repo"]
+                                 :query query
+                                 :generation 7
+                                 :pages-fetched [1]
+                                 :commits-fetched ["abcdef1234567"]
+                                 :pages-pending #{2}
+                                 :commits-pending #{"pending"}}])
+              (r/dispatch-sync [:set [:state :form-field :github] {:search query}])
+              (let [saved (-> (await! (support/state-at! []))
+                              return-contract/state-for pr-str edn/read-string)]
+                (r/dispatch-sync [:init/app-db])
+                (r/dispatch-sync [:page-return/install saved])
+                ;; The loader initializes the restored module before its native
+                ;; Suspense boundary hydrates. It must retain that boundary's text.
+                (r/dispatch-sync [:github/init])
+                (await! (support/settle!))
+                (is (= 2235 (await! (support/subscription-value! [:github/commit-count]))))
+                (is (= commits (await! (support/subscription-value! [:github/commits]))))
+                (is (= query (await! (support/subscription-value! [:form-field [:github :search]]))))
+                (is (empty? @*requests) "Completed page one is not cleared or fetched again")
+                (is (nil? (get-in saved [:state :github :pages-pending])))
+                (is (nil? (get-in saved [:state :github :commits-pending])))
+                (r/dispatch-sync [:github/fetch-commits-next "return-user" "repo"])
+                (await! (support/settle!))
+                (is (= [{:user "return-user", :repo "repo", :q query, :cursor "saved-cursor"}]
+                       (mapv :url-params @*requests))
+                    "Pagination resumes at the saved cursor after pending IO is discarded")
+                (r/dispatch-sync [:github/search "changed query"])
+                (is (= "Loading" (await! (support/subscription-value! [:github/commit-count]))))
+                (r/dispatch-sync [:component-data/install [:module :github :configuration]
+                                  {:settings {:user "other-user", :repo "repo"}}])
+                (r/dispatch-sync [:github/init])
+                (r/dispatch-sync [:github/save-commits "return-user" "repo" 7 2
+                                  {:commits commits, :total 9999, :complete true}])
+                (is (= ["other-user" "repo"]
+                       (await! (support/subscription-value! [:github/get-from]))))
+                (is (= "Loading" (await! (support/subscription-value! [:github/commit-count])))))))
           (.catch #(is false (str %)))
           (.finally (fn [] (restore!) (done)))))))
 

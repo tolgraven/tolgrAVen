@@ -63,6 +63,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   dependency, installed at `[:module :github :configuration]` before init.
   An absent settings result is pending (including SSR); only a completed empty
   response establishes that no repository is configured.
+  Paired local returns retain GitHub's feed target/query, generation, completed
+  page/detail identities and owned search field together with the cached content.
+  Exclude pending requests; initialization must preserve the restored heading
+  and rows while query/repository changes still invalidate stale responses.
   GitHub search is debounced through events and queries the backend's complete
   Supabase archive; never filter only the browser's loaded subset.
 

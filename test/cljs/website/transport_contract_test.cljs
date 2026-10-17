@@ -19,6 +19,9 @@
                                    :prefetch-queue [{:url "https://example.org/open"}]}
                     :active-user {:id "author" :access-token "secret"}
                     :login-field {:password "secret"}
+                    :form-field {:github {:search "theme"}
+                                 :login {:password "secret"}
+                                 :contact {:name "Private draft"}}
                     :supabase-init :ready :booted {:store true :blog true}}
             :options {:supabase {:anon-key "excluded" :trusted-author-ids ["author"]}}
             :diagnostics {:expensive "excluded"}}
@@ -31,6 +34,8 @@
     (is (= #{[27 "root"]} (get-in saved [:component "blog" :settings :folded])))
     (is (nil? (get-in saved [:state :active-user :access-token])))
     (is (nil? (get-in saved [:state :login-field])))
+    (is (= {:github {:search "theme"}} (get-in saved [:state :form-field]))
+        "Only the repository search input belongs in a public return pair")
     (is (nil? (get-in saved [:state :supabase-init])))
     (is (nil? (get-in saved [:state :booted :store])))
     (is (nil? (get-in saved [:state :booted :blog])))

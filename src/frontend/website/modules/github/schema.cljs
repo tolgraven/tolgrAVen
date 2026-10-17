@@ -2,6 +2,12 @@
   "Consumed provider fields and UI state; provider extension fields remain open."
   (:require [website.schema.common :as c]))
 
+(def return-state-keys
+  ;; These identify the cached feed and its completed pages. Pending requests
+  ;; belong to the old document and must be acquired again after restoration.
+  [:target :query :generation :pages-fetched :commits-fetched])
+(def return-form-field-keys [:github])
+
 (def result
   [:map
    [:status [:enum :loading :ready :error]]
