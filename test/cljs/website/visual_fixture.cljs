@@ -430,20 +430,27 @@
 
 (defn <shell-fixture> [component]
   (let [content' #(editor/section % false)
-        scroll? (= "shell-scroll" component)
+        scroll? (#{"shell-scroll" "shell-panels"} component)
         panels? (#{"shell-panels" "shell-account"} component)]
     [:<>
      (when (#{"header" "shell" "shell-scroll" "shell-panels" "shell-account"} component)
        [shell/<header> (content' :header)])
-     ;; Match components/page: User and conditional Settings are main siblings;
-     ;; the Contact presence host follows both footer copies. No extra wrapper.
+     ;; Match components/page: sticky controls and scrolling Search results are
+     ;; siblings of main; Contact follows both footer copies.
      (when panels?
        (let [open? @(r/subscribe [:user/ui-open?])]
          (m/<> {:module :user
                 :defer? (not open?)
                 :load-on (if open? :immediate :event)})))
-     (when (and panels? @(r/subscribe [:state [:settings :panel-open]]))
-       (m/<> {:module :settings, :load-on :immediate}))
+     (when panels?
+       [:<>
+        [:div.menu-panels
+         (let [open? @(r/subscribe [:state [:settings :panel-open]])]
+           (m/<> {:module :settings
+                  :defer? (not open?)
+                  :load-on (if open? :immediate :event)}))
+         (m/<> {:module :search, :defer? true})]
+        (m/<> {:module :search, :view :results, :defer? true})])
      [<main-fixture>
       [:section
        [:h1 "Shared shell"]
