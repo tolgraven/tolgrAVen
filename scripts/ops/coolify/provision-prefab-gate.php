@@ -12,6 +12,10 @@ try {
     $environment = $production->environment;
     $service = $environment->services()->where('name', 'tolgraven-prefab-gate')->first();
     if ($service && $service->description !== $marker) throw new RuntimeException('Unmanaged service');
+    if ($service && ($service->server_id !== $production->destination->server_id
+        || $service->destination_id !== $production->destination_id
+        || $service->destination_type !== $production->destination_type))
+        throw new RuntimeException('Gate belongs to a different destination');
     if ($input['action'] === 'prepare') {
         if (!preg_match('#^registry\.bux\.tolgraven\.se/tolgraven/prefab-gate:[a-f0-9]{16}$#D', $input['image']))
             throw new RuntimeException('Invalid gate image');
@@ -57,6 +61,9 @@ try {
         $health = Illuminate\Support\Facades\Http::timeout(10)->get('https://prefab.bux.tolgraven.se/health');
         if (!$health->successful()) throw new RuntimeException('Gate health check failed');
         $http = Illuminate\Support\Facades\Http::timeout(30)->withToken(generateGithubJwt($source))->acceptJson();
+        $installation = $http->get('https://api.github.com/app/installations/'.$source->installation_id);
+        if (!$installation->successful() || $installation->json('permissions.statuses') !== 'write')
+            throw new RuntimeException('Approve Commit statuses: Read and write for the Coolify GitHub App installation first');
         $before = $http->get('https://api.github.com/app/hook/config');
         if (!$before->successful()) throw new RuntimeException('Cannot inspect App webhook');
         // Private rollback record excludes credentials, and is never printed.
