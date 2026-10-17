@@ -32,6 +32,7 @@ WORKERS = []
 
 def event_target(event, payload):
     """Return an owned destination or relay other App events without building."""
+    event = event.lower()
     if not isinstance(payload, dict) or not isinstance(payload.get('repository', {}), dict):
         raise ValueError('Invalid webhook payload')
     if payload.get('repository', {}).get('full_name') != REPOSITORY:
@@ -57,7 +58,7 @@ def event_target(event, payload):
         target = {'key': 'pr-' + str(number), 'sha': pr.get('head', {}).get('sha', ''),
                   'pr': number, 'closed': payload['action'] == 'closed'}
     else:
-        return {'key': 'relay', 'relay': True}
+        return None
     if not SHA.fullmatch(target['sha']):
         raise ValueError('Invalid commit SHA')
     return target
@@ -320,7 +321,7 @@ class Handler(BaseHTTPRequestHandler):
             if not hmac.compare_digest(expected, self.headers.get('X-Hub-Signature-256', '')):
                 self.send_error(401)
                 return
-            event = self.headers.get('X-GitHub-Event', '')
+            event = self.headers.get('X-GitHub-Event', '').lower()
             target = event_target(event, json.loads(body))
             if target:
                 delivery = self.headers.get('X-GitHub-Delivery', '')

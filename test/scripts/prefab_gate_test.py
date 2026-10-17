@@ -45,6 +45,10 @@ class GateFlow(unittest.TestCase):
 
     def test_forks_untrusted_associations_and_other_branches_never_build(self):
         self.assertEqual(gate.event_target('pull_request', pull_request())['sha'], 'a' * 40)
+        self.assertEqual(gate.event_target('PuLl_ReQuEsT', pull_request())['key'], 'pr-201')
+        push = {'repository': {'full_name': gate.REPOSITORY}, 'ref': 'refs/heads/master', 'after': 'a' * 40}
+        self.assertEqual(gate.event_target('PUSH', push)['key'], 'master')
+        self.assertIsNone(gate.event_target('unsupported', push))
         for field, value in [('author_association', 'CONTRIBUTOR'), ('base', {'ref': 'other'}),
                              ('head', {'sha': 'a' * 40, 'repo': {'full_name': 'attacker/repo', 'fork': True}})]:
             payload = pull_request()
