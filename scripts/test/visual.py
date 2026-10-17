@@ -157,6 +157,101 @@ def geometry_changes(before, after, path=""):
     return [] if before == after else [{"path": path, "before": before, "after": after}]
 
 
+# Reserved-prefix assumption, NOT proof of React ownership. Only the observed
+# React19 client shape is recognized; SSR IDs and arbitrary prefixes stay exact.
+REACT_CLIENT_ID = re.compile(r'_r_[0-9a-v]+_\Z')
+RUNTIME_ID_POLICY = {
+    'name': 'react19-client-use-id-reserved-prefix-v1',
+    'assumption': 'Native IDs matching _r_[0-9a-v]+_ are reserved for React client useId; syntax is not provenance proof.',
+    'unmeasured': 'Current captures omit general IDREF attributes; this policy does not prove accessibility relationships.',
+}
+
+
+def compare_native_geometry(expected, actual, path="geometry", runtime_id_policy="exact"):
+    """Retain raw differences; classify only paired opaque-ID spelling changes.
+
+    Raw lists are never rewritten. DOM-order indices, native identities and all
+    other captured properties remain exact through public geometry_changes.
+    """
+    if runtime_id_policy not in ['exact', 'react19-client-use-id']:
+        raise ValueError('Unknown runtime ID policy: ' + str(runtime_id_policy))
+    raw = geometry_changes(expected, actual, path)
+    pairs = []
+    if runtime_id_policy == 'react19-client-use-id' and isinstance(expected, list) and isinstance(actual, list) and len(expected) == len(actual):
+        unique = True
+        for nodes in [expected, actual]:
+            if not all(isinstance(node, dict) and isinstance(node.get('id'), str) for node in nodes):
+                unique = False
+                break
+            ids = [node['id'] for node in nodes if node['id']]
+            if len(ids) != len(set(ids)):
+                unique = False
+                break
+        if unique:
+            for index, (before, after) in enumerate(zip(expected, actual)):
+                old_id, new_id = before['id'], after['id']
+                if old_id == new_id:
+                    continue
+                if not (REACT_CLIENT_ID.fullmatch(old_id) and REACT_CLIENT_ID.fullmatch(new_id)):
+                    continue
+                if not all(key in before and key in after and before[key] == after[key]
+                           for key in ['tag', 'class', 'role']):
+                    continue
+                if before.get('selector') != '#' + old_id or after.get('selector') != '#' + new_id:
+                    continue
+                pairs.append({'geometry_path': f'{path}[{index}]', 'node_index': index, 'tag': before['tag'], 'class': before['class'],
+                              'role': before['role'], 'before': old_id, 'after': new_id,
+                              'raw_paths': [f'{path}[{index}].id', f'{path}[{index}].selector']})
+    # Unique non-empty IDs in each complete list make the per-index pairing
+    # one-to-one, including when two valid runtime allocations exchange names.
+    allowed_paths = {path for pair in pairs for path in pair['raw_paths']}
+    return {'geometry': [change for change in raw if change['path'] not in allowed_paths],
+            'raw_geometry': raw, 'runtime_id_changes': pairs,
+            'runtime_id_policy': RUNTIME_ID_POLICY if runtime_id_policy != 'exact' else {'name': 'exact'}}
+
+
+def validate_child_motion(motion, label):
+    """Reuse the unchanged public coverage/gap check in every realm."""
+    if not isinstance(motion.get('triggered'), list):
+        raise ValueError(label + ': invalid native triggered observation list')
+    documents = motion.get('documents', [])
+    if not isinstance(documents, list):
+        raise ValueError(label + ': invalid child motion documents')
+    for index, document in enumerate(documents):
+        child_label = f'{label}.documents[{index}]'
+        if not isinstance(document, dict) or not isinstance(document.get('motion'), dict):
+            raise ValueError(child_label + ': missing child native CSS motion observation')
+        motion_changes({'motion': document['motion']}, {'motion': document['motion']}, child_label)
+        validate_child_motion(document['motion'], child_label)
+
+
+def motion_definitions(motion):
+    """Project only native triggered observations out, keeping all other fields.
+
+    Descend only through declared child-document motion. In particular a source
+    rule property coincidentally named triggered is never removed.
+    """
+    return {key: [{**document, 'motion': motion_definitions(document['motion'])}
+                   for document in value] if key == 'documents' else value
+            for key, value in motion.items() if key != 'triggered'}
+
+
+def compare_motion_contract(expected, actual, label, contract='instances'):
+    if contract not in ['instances', 'definitions']:
+        raise ValueError('Unknown motion contract: ' + str(contract))
+    # Always preserve unmodified full captured native differences, including shortened
+    # transitions and different observed instance cardinality. No rounding.
+    raw = motion_changes(expected, actual, label)
+    for state in [expected, actual]:
+        validate_child_motion(state['motion'], label + '.motion')
+    changes = raw if contract == 'instances' else geometry_changes(
+        motion_definitions(expected['motion']), motion_definitions(actual['motion']), label + '.motion')
+    return {'motion': changes, 'raw_motion': raw, 'motion_contract': contract,
+            'native_instance_comparison': 'different' if raw else 'exact',
+            'motion_contract_limit': ('Authored CSS definitions only; captured native instances may differ; raw_motion retains their differences.'
+                                      if contract == 'definitions' else 'Exact captured native CSS instances and definitions.')}
+
+
 class MCP:
     """Attach through the configured shared Development Chrome launcher."""
     def __init__(self, command, stderr):
@@ -517,6 +612,8 @@ def compare(args):
     suite = json.loads(args.suite.read_text())
     args.output.mkdir(parents=True, exist_ok=True)
     results = []
+    contract = getattr(args, "motion_contract", "instances")
+    id_policy = getattr(args, "runtime_id_policy", "exact")
     metadata = json.loads((args.baseline / "capture.json").read_text())
     approval = metadata.get("approval")
     if not isinstance(approval, dict) or not all(isinstance(approval.get(key), str) and approval[key].strip()
@@ -538,6 +635,8 @@ def compare(args):
         raise ValueError("Unsupported CSS motion capture contract")
     if getattr(args, "require_motion", False) and motion_version != MOTION:
         raise ValueError("Missing approved CSS motion coverage; settled layout is not a motion pass")
+    if contract == "definitions" and motion_version != MOTION:
+        raise ValueError("Definitions mode requires complete native CSS motion observations")
     for case in suite["cases"]:
         ident = case["id"]
         try:
@@ -547,8 +646,13 @@ def compare(args):
                                                 for state in (expected, actual)):
                 raise ValueError("Missing or changed native hover interaction evidence")
             environment = geometry_changes(expected["environment"], actual["environment"], "environment")
-            geometry = geometry_changes(expected["geometry"], actual["geometry"], "geometry")
-            motion = motion_changes(expected, actual, ident) if motion_version else []
+            native_geometry = compare_native_geometry(expected["geometry"], actual["geometry"], runtime_id_policy=id_policy)
+            geometry = native_geometry["geometry"]
+            raw_geometry = native_geometry["raw_geometry"]
+            runtime_ids = native_geometry["runtime_id_changes"]
+            native_motion = compare_motion_contract(expected, actual, ident, contract) if motion_version else None
+            motion = native_motion["motion"] if native_motion else []
+            raw_motion = native_motion["raw_motion"] if native_motion else []
             tiles = []
             if metadata.get("pixels", True):
                 if not expected.get("tiles") or expected["tiles"] != actual.get("tiles"):
@@ -563,9 +667,14 @@ def compare(args):
                     after = actual if not index else read_record(args.actual, stem)
                     if index:
                         environment.extend(geometry_changes(before["environment"], after["environment"], stem + ".environment"))
-                        geometry.extend(geometry_changes(before["geometry"], after["geometry"], stem + ".geometry"))
+                        tile_geometry = compare_native_geometry(before["geometry"], after["geometry"], stem + ".geometry", id_policy)
+                        geometry.extend(tile_geometry["geometry"])
+                        raw_geometry.extend(tile_geometry["raw_geometry"])
+                        runtime_ids.extend(tile_geometry["runtime_id_changes"])
                         if motion_version:
-                            motion.extend(motion_changes(before, after, stem))
+                            tile_motion = compare_motion_contract(before, after, stem, contract)
+                            motion.extend(tile_motion["motion"])
+                            raw_motion.extend(tile_motion["raw_motion"])
                     raster = compare_pixels(args.baseline / (stem + ".png"), args.actual / (stem + ".png"), args.output / (stem + ".diff.png"))
                     tiles.append({**tile, "pixels": raster})
                 pixels = {"passed": all(tile["pixels"]["passed"] for tile in tiles),
@@ -575,7 +684,12 @@ def compare(args):
                 pixels = {"passed": True, "mode": "geometry-only"}
             result = {"id": ident, "passed": pixels["passed"] and not geometry and not environment and not motion,
                       "pixels": pixels, "tiles": tiles, "geometry": geometry, "environment": environment,
-                      "motion": motion, "motion_coverage": motion_version or "unmeasured"}
+                      "motion": motion, "motion_coverage": motion_version or "unmeasured",
+                      "motion_contract": contract, "raw_motion": raw_motion,
+                      "native_instance_comparison": ("different" if raw_motion else "exact") if motion_version else "unmeasured",
+                      "motion_contract_limit": native_motion["motion_contract_limit"] if native_motion else "No native motion observation",
+                      "raw_geometry": raw_geometry, "runtime_id_changes": runtime_ids,
+                      "runtime_id_policy": native_geometry["runtime_id_policy"]}
         except (OSError, ValueError, KeyError) as error:
             result = {"id": ident, "passed": False, "error": str(error)}
         results.append(result)
@@ -585,9 +699,15 @@ def compare(args):
             detail = f"geometry-only; {len(result['geometry'])} geometry/style changes; {len(result['motion'])} motion changes"
         else:
             detail = f"{result['pixels'].get('changed_pixels', '?')} pixels; {len(result['geometry'])} geometry changes; {len(result['motion'])} motion changes"
+        if not result.get("error"):
+            detail += f"; {contract} gate; {len(result['raw_motion'])} raw native-instance differences; {len(result['runtime_id_changes'])} runtime ID spelling pairs"
         print(f"{'PASS' if result['passed'] else 'FAIL'} {ident}: {detail}")
     report = {"passed": all(result["passed"] for result in results),
-              "motion_coverage": motion_version or "unmeasured", "cases": results}
+              "motion_coverage": motion_version or "unmeasured", "motion_contract": contract,
+              "runtime_id_policy": id_policy,
+              "native_instance_comparison": ("unmeasured" if not motion_version or any(r.get("error") for r in results)
+                                             else "different" if any(r["raw_motion"] for r in results) else "exact"),
+              "cases": results}
     (args.output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     rows = []
     for result in results:
@@ -598,7 +718,8 @@ def compare(args):
                                                ("Actual", args.actual / (stem + ".png")),
                                                ("Changed pixels", args.output / (stem + ".diff.png"))] if path.exists())
         rows.append(f"<section><h2>{html.escape(ident)}: {'PASS' if result['passed'] else 'FAIL'}</h2><div class='images'>{pictures}</div><pre>{html.escape(json.dumps(result, indent=2))}</pre></section>")
-    (args.output / "index.html").write_text("<!doctype html><meta charset='utf-8'><title>Visual regression report</title><style>body{font:1rem system-ui;margin:2rem} .images{display:flex;gap:1rem;overflow:auto}figure{margin:0;flex:0 0 30%}img{width:100%}pre{white-space:pre-wrap}section{border-bottom:.0625rem solid #888}</style><h1>Pixel and geometry comparison</h1>" + "".join(rows))
+    summary = html.escape(f"Motion gate: {contract}; runtime ID policy: {id_policy}; captured native instance comparison: {report['native_instance_comparison']}. Definitions mode does not establish identical captured native instances.")
+    (args.output / "index.html").write_text("<!doctype html><meta charset='utf-8'><title>Visual regression report</title><style>body{font:1rem system-ui;margin:2rem} .images{display:flex;gap:1rem;overflow:auto}figure{margin:0;flex:0 0 30%}img{width:100%}pre{white-space:pre-wrap}section{border-bottom:.0625rem solid #888}</style><h1>Pixel and geometry comparison</h1><p>" + summary + "</p>" + "".join(rows))
     return 0 if report["passed"] else 1
 
 
@@ -614,6 +735,10 @@ def main():
     take.add_argument("--mcp-command", help="Optional configured MCP executable; default relays JSON-lines to the existing extension session")
     check = commands.add_parser("compare", help="Fail on any pixel/geometry/environment difference or missing case")
     check.add_argument("--require-motion", action="store_true", help="Reject layout-only baselines; require reviewed native CSS motion contracts")
+    check.add_argument("--motion-contract", choices=["instances", "definitions"], default="instances",
+                       help="Default exact native instances; definitions gates authored CSS while preserving raw captured-instance differences")
+    check.add_argument("--runtime-id-policy", choices=["exact", "react19-client-use-id"], default="exact",
+                       help="Default exact IDs; explicit reserved React client namespace policy retains raw spelling differences")
     check.add_argument("--baseline", type=Path, required=True)
     check.add_argument("--actual", type=Path, required=True)
     check.add_argument("--output", type=Path, required=True)

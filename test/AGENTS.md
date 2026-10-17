@@ -16,7 +16,10 @@
   before `modules`) in fixtures. React stylesheet preinitialization must append
   lazy feature styles after the shell, as on actual pages. Compare native CSS
   declarations and triggered keyframes/timing with
-  `--require-motion`; settled geometry is not a motion pass. Observe real external
+  `--require-motion`; settled geometry is not a motion pass. Exact captured instances
+  and IDs remain default. Explicit CSS-definition/React client-ID policies must
+  retain raw differences, retain authored CSS/IDs and reject child coverage gaps,
+  and label captured-instance differences; native motion/IDREF checks stay separate. Observe real external
   Back before interaction, including delayed and pseudo motion, without fabricated
   history/restore state. Missing motion baselines remain explicit gaps. Extend `test/visual/suite.json` for new rendered states.
 - CMS visual comparisons use `editor-visual.html` and the original commit's

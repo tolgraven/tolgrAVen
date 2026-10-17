@@ -1,6 +1,7 @@
 """The visual gate must reject a real one-pixel/padding/missing-element change."""
 import importlib.util
 import argparse
+import copy
 import base64
 import hashlib
 import gzip
@@ -835,6 +836,275 @@ class VisualTest(unittest.TestCase):
         changes = visual.geometry_changes(before, after)
         self.assertEqual({"elements[0].padding[1]", "elements[0].box[1]", "elements[1].class"}, {change["path"] for change in changes})
         self.assertTrue(visual.geometry_changes(before, {"elements": before["elements"][:1]}))
+
+
+def runtime_id_node(ident='_r_0_'):
+    return {'tag': 'DIV', 'class': 'activity-calendar__popup', 'role': 'tooltip',
+            'id': ident, 'selector': '#' + ident, 'text': '42 contributions',
+            'box': [0, 1, 2, 3], 'padding': ['1px'] * 4,
+            'appearance': {'opacity': '1'}, 'generated': {'before': None, 'after': None}}
+
+
+class RuntimeIDContracts(unittest.TestCase):
+    def compare(self, before, after):
+        saved = copy.deepcopy([before, after])
+        result = visual.compare_native_geometry(before, after, runtime_id_policy="react19-client-use-id")
+        self.assertEqual(saved, [before, after], 'Comparison must never rewrite raw capture records')
+        return result
+
+    def test_paired_runtime_ids_report_raw_changes_separately(self):
+        result = self.compare([runtime_id_node()], [runtime_id_node('_r_4_')])
+        self.assertEqual([], result['geometry'])
+        self.assertEqual({'geometry[0].id', 'geometry[0].selector'}, {r['path'] for r in result['raw_geometry']})
+        self.assertEqual(1, len(result['runtime_id_changes']))
+        self.assertIn('not provenance proof', result['runtime_id_policy']['assumption'])
+
+    def test_runtime_id_default_stays_exact(self):
+        result = visual.compare_native_geometry([runtime_id_node()], [runtime_id_node("_r_4_")])
+        self.assertEqual(2, len(result["geometry"]))
+        self.assertEqual([], result["runtime_id_changes"])
+        self.assertEqual({"name": "exact"}, result["runtime_id_policy"])
+
+    def test_authored_and_nonclient_id_changes_remain_exact(self):
+        for before, after in [('authored', 'renamed'), ('_R_0_', '_R_4_'), ('_prefixr_0_', '_prefixr_4_'),
+                              ('_r_w_', '_r_x_'), ('_r_0_', 'authored'), ('_r_0_suffix', '_r_4_suffix')]:
+            with self.subTest(before=before, after=after):
+                result = self.compare([runtime_id_node(before)], [runtime_id_node(after)])
+                self.assertEqual(2, len(result['geometry']))
+                self.assertEqual([], result['runtime_id_changes'])
+
+    def test_duplicate_ids_fail_closed_even_if_unrelated_authored_node(self):
+        for duplicate in ['_r_0_', 'authored']:
+            before = [runtime_id_node(), runtime_id_node(duplicate)]
+            after = [runtime_id_node('_r_4_'), runtime_id_node(duplicate)]
+            if duplicate == 'authored':
+                before.append(runtime_id_node('authored'))
+                after.append(runtime_id_node('authored'))
+            result = self.compare(before, after)
+            self.assertEqual([], result['runtime_id_changes'])
+            self.assertTrue(result['geometry'])
+
+    def test_broken_id_derived_selector_never_classifies(self):
+        after = runtime_id_node('_r_4_')
+        after['selector'] = '#stale'
+        result = self.compare([runtime_id_node()], [after])
+        self.assertEqual([], result['runtime_id_changes'])
+        self.assertEqual(2, len(result['geometry']))
+
+    def test_missing_id_or_native_identity_never_classifies(self):
+        for key in ['tag', 'class', 'role', 'id']:
+            after = runtime_id_node('_r_4_')
+            del after[key]
+            result = self.compare([runtime_id_node()], [after])
+            self.assertEqual([], result['runtime_id_changes'])
+            self.assertTrue(result['geometry'])
+
+    def test_changed_native_tag_class_role_never_classifies(self):
+        for key in ['tag', 'class', 'role']:
+            after = runtime_id_node('_r_4_')
+            after[key] = 'changed'
+            result = self.compare([runtime_id_node()], [after])
+            self.assertEqual([], result['runtime_id_changes'])
+            self.assertTrue(result['geometry'])
+
+    def test_layout_text_appearance_pseudo_and_order_stay_exact(self):
+        mutations = [lambda n: n['box'].__setitem__(0, .125),
+                     lambda n: n['padding'].__setitem__(0, '0px'),
+                     lambda n: n.__setitem__('text', '43 contributions'),
+                     lambda n: n['appearance'].__setitem__('opacity', '0'),
+                     lambda n: n['generated'].__setitem__('before', {'content': 'changed'})]
+        for change in mutations:
+            after = runtime_id_node('_r_4_')
+            change(after)
+            result = self.compare([runtime_id_node()], [after])
+            self.assertTrue(result['geometry'])
+            self.assertEqual(1, len(result['runtime_id_changes']))
+        self.assertTrue(self.compare([runtime_id_node(), runtime_id_node('authored')], [runtime_id_node('_r_4_')])['geometry'])
+        self.assertTrue(self.compare([runtime_id_node(), runtime_id_node('authored')], [runtime_id_node('authored'), runtime_id_node('_r_4_')])['geometry'])
+
+    def test_unique_multiple_runtime_pairing_remains_one_to_one(self):
+        result = self.compare([runtime_id_node('_r_0_'), runtime_id_node('_r_1_')], [runtime_id_node('_r_1_'), runtime_id_node('_r_0_')])
+        self.assertEqual([], result['geometry'])
+        self.assertEqual(2, len(result['runtime_id_changes']))
+        self.assertEqual(4, len(result['raw_geometry']))
+
+    def test_motion_comparator_remains_unchanged_and_exact(self):
+        motion = {'version': visual.MOTION, 'gaps': [], 'properties': [], 'styles': [],
+                  'declarations': [], 'sourceRules': [], 'triggered': []}
+        after = copy.deepcopy(motion)
+        after['triggered'] = [{'duration': 2}]
+        self.assertTrue(visual.motion_changes({'motion': motion}, {'motion': after}, 'control'))
+
+
+def native_motion_state():
+    return {'motion': {'version': visual.MOTION,
+                       'properties': ['animation-duration', 'animation-timing-function'],
+                       'styles': [['2s', 'ease-in']], 'declarations': [['article', '::before', 0]],
+                       'sourceRules': [{'keyframes': 'dormant', 'frames': [
+                           {'offset': '100%', 'properties': {'opacity': ['1', '']}}]}],
+                       'triggered': [{'kind': 'transition', 'name': 'height', 'phase': 'action',
+                                      'timing': {'duration': 300, 'easing': 'ease-in'},
+                                      'keyframes': [{'offset': 0, 'height': '0px'}, {'offset': 1, 'height': '100px'}]}],
+                       'gaps': []}}
+
+
+def child_motion_state():
+    result = native_motion_state()
+    result['motion']['documents'] = [{'frame': 'iframe:nth-child(1)', 'source': '/native.html', 'generation': 1,
+                                     'geometry': [{'tag': 'SECTION', 'id': 'authored', 'box': [0, 0, 10, 10]}],
+                                     'motion': native_motion_state()['motion']}]
+    return result
+
+
+class ExplicitMotionContracts(unittest.TestCase):
+    def compare(self, before, after, mode='definitions'):
+        saved = copy.deepcopy([before, after])
+        result = visual.compare_motion_contract(before, after, 'native', mode)
+        self.assertEqual(saved, [before, after])
+        return result
+
+    def test_default_remains_exact_native_instance_gate(self):
+        before, after = native_motion_state(), native_motion_state()
+        after['motion']['triggered'][0]['timing']['duration'] = 299.999
+        result = visual.compare_motion_contract(before, after, 'native')
+        self.assertEqual('instances', result['motion_contract'])
+        self.assertTrue(result['motion'])
+        self.assertEqual(result['motion'], result['raw_motion'])
+
+    def test_triggered_start_shortening_count_reported_without_definition_failure(self):
+        for mutate in [lambda m: m['triggered'].clear(),
+                       lambda m: m['triggered'].append(copy.deepcopy(m['triggered'][0])),
+                       lambda m: m['triggered'][0]['timing'].__setitem__('duration', 7.164824236375594),
+                       lambda m: m['triggered'][0]['keyframes'][0].__setitem__('height', '0.125px')]:
+            before, after = native_motion_state(), native_motion_state()
+            mutate(after['motion'])
+            result = self.compare(before, after)
+            self.assertEqual([], result['motion'])
+            self.assertEqual('different', result['native_instance_comparison'])
+            self.assertTrue(result['raw_motion'])
+
+    def test_authored_duration_easing_property_style_declaration_keyframes_fail(self):
+        for mutate in [lambda m: m['styles'][0].__setitem__(0, '3s'),
+                       lambda m: m['styles'][0].__setitem__(1, 'linear'),
+                       lambda m: m['properties'].__setitem__(0, 'transition-duration'),
+                       lambda m: m['declarations'][0].__setitem__(1, '::after'),
+                       lambda m: m['sourceRules'][0]['frames'][0]['properties']['opacity'].__setitem__(0, '0.5'),
+                       lambda m: m['sourceRules'].append({'property': '--new-property', 'syntax': '*'}),
+                       lambda m: m.__setitem__('futureStableField', {'value': 1})]:
+            before, after = native_motion_state(), native_motion_state()
+            mutate(after['motion'])
+            self.assertTrue(self.compare(before, after)['motion'])
+
+    def test_missing_observation_or_gaps_fail_both_modes(self):
+        bad_states = [{}, {'motion': {}}, native_motion_state(), native_motion_state()]
+        bad_states[2]['motion']['gaps'] = ['unobserved cross-origin motion']
+        del bad_states[3]['motion']['triggered']
+        for mode in ['instances', 'definitions']:
+            for bad in bad_states:
+                with self.subTest(mode=mode, bad=bad):
+                    with self.assertRaises(ValueError):
+                        self.compare(native_motion_state(), bad, mode)
+
+    def test_child_triggered_only_is_reported_and_parent_structure_retained(self):
+        before, after = child_motion_state(), child_motion_state()
+        after['motion']['documents'][0]['motion']['triggered'][0]['timing']['duration'] = .1
+        result = self.compare(before, after)
+        self.assertEqual([], result['motion'])
+        self.assertTrue(result['raw_motion'])
+        self.assertEqual('different', result['native_instance_comparison'])
+        self.assertTrue(self.compare(before, after, 'instances')['motion'])
+
+    def test_child_geometry_identity_source_and_authored_css_fail(self):
+        for mutate in [lambda d: d['geometry'][0]['box'].__setitem__(0, .125),
+                       lambda d: d['geometry'][0].__setitem__('id', 'renamed'),
+                       lambda d: d.__setitem__('frame', 'iframe:nth-child(2)'),
+                       lambda d: d.__setitem__('source', '/different.html'),
+                       lambda d: d.__setitem__('generation', 2),
+                       lambda d: d['motion']['styles'][0].__setitem__(0, '3s')]:
+            before, after = child_motion_state(), child_motion_state()
+            mutate(after['motion']['documents'][0])
+            self.assertTrue(self.compare(before, after)['motion'])
+
+    def test_missing_or_gapped_child_observation_fails_even_identical_both_sides(self):
+        for mutate in [lambda d: d.pop('motion'),
+                       lambda d: d['motion'].__setitem__('gaps', ['unobserved child']),
+                       lambda d: d['motion'].pop('styles')]:
+            bad = child_motion_state()
+            mutate(bad['motion']['documents'][0])
+            with self.assertRaises(ValueError):
+                self.compare(bad, copy.deepcopy(bad))
+
+    def test_projection_does_not_remove_source_property_named_triggered(self):
+        before, after = native_motion_state(), native_motion_state()
+        before['motion']['sourceRules'][0]['triggered'] = 'authored-before'
+        after['motion']['sourceRules'][0]['triggered'] = 'authored-after'
+        self.assertTrue(self.compare(before, after)['motion'])
+
+    def test_malformed_triggered_rejected_even_when_identical(self):
+        for value in [None, {}, "not-observed"]:
+            bad = native_motion_state()
+            bad['motion']['triggered'] = value
+            with self.assertRaises(ValueError):
+                self.compare(bad, copy.deepcopy(bad))
+            child = child_motion_state()
+            child['motion']['documents'][0]['motion']['triggered'] = value
+            with self.assertRaises(ValueError):
+                self.compare(child, copy.deepcopy(child))
+
+    def test_invalid_mode_rejected(self):
+        with self.assertRaises(ValueError):
+            self.compare(native_motion_state(), native_motion_state(), 'ignore')
+
+
+class ExplicitContractReports(unittest.TestCase):
+    def test_modes_keep_defaults_strict_raw_differences_and_visible_html_summary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suite = root / "suite.json"
+            suite.write_text(json.dumps({"cases": [{"id": "native"}]}))
+            baseline, actual = root / "baseline", root / "actual"
+            metadata = {"suite_sha256": hashlib.sha256(suite.read_bytes()).hexdigest(),
+                        "pixels": False, "motion": visual.MOTION,
+                        "approval": {"reviewer": "test", "reference": "synthetic", "reason": "test"}}
+            before, after = native_motion_state(), native_motion_state()
+            for state in [before, after]:
+                state.update({"environment": {}, "geometry": [runtime_id_node()]})
+            after["geometry"] = [runtime_id_node("_r_4_")]
+            after["motion"]["triggered"][0]["timing"]["duration"] = 7.164824236375594
+            for folder, state in [(baseline, before), (actual, after)]:
+                folder.mkdir()
+                (folder / "capture.json").write_text(json.dumps(metadata))
+                (folder / "native.json").write_text(json.dumps(state))
+            paths = [baseline / "native.json", actual / "native.json", baseline / "capture.json", actual / "capture.json"]
+            original = {path: path.read_bytes() for path in paths}
+            for label, options, expected_exit in [
+                    ("default", {}, 1),
+                    ("definitions-exact-id", {"motion_contract": "definitions"}, 1),
+                    ("explicit-definitions", {"motion_contract": "definitions",
+                                               "runtime_id_policy": "react19-client-use-id"}, 0)]:
+                args = argparse.Namespace(suite=suite, baseline=baseline, actual=actual,
+                                          output=root / label, require_motion=True, **options)
+                self.assertEqual(expected_exit, visual.compare(args))
+                report = json.loads((args.output / "report.json").read_text())
+                row = report["cases"][0]
+                self.assertEqual("different", report["native_instance_comparison"])
+                self.assertEqual(2, len(row["raw_geometry"]))
+                self.assertEqual(1, len(row["raw_motion"]))
+                html = (args.output / "index.html").read_text()
+                self.assertIn("captured native instance comparison: different", html)
+                if label == "default":
+                    self.assertEqual("instances", report["motion_contract"])
+                    self.assertEqual("exact", report["runtime_id_policy"])
+                    self.assertTrue(row["geometry"])
+                    self.assertTrue(row["motion"])
+                elif label == "explicit-definitions":
+                    self.assertEqual([], row["geometry"])
+                    self.assertEqual([], row["motion"])
+                    self.assertEqual(1, len(row["runtime_id_changes"]))
+                    self.assertIn("Motion gate: definitions", html)
+                    self.assertIn("runtime ID policy: react19-client-use-id", html)
+            for path, data in original.items():
+                self.assertEqual(data, path.read_bytes(), "Comparison must not rewrite capture or baseline")
 
 
 if __name__ == "__main__":

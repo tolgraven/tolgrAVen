@@ -11,7 +11,10 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   Capture creates candidates; strict pixel/geometry comparison never updates
   approved baselines. Per-case/tile records may use lossless `.json.gz`; reject
   ambiguous encodings and retain every field and plain approval metadata. Preserve
-  environment checks and missing-case failures. Decode fenced evaluation results
+  environment checks and missing-case failures. Default motion/ID comparison stays exact.
+  Explicit definitions and reserved React client-ID policies retain raw differences
+  and label captured native-instance status in JSON/HTML. They never refresh goldens
+  or establish identical runtime execution/accessibility relationships. Decode fenced evaluation results
   with the JSON parser before checking their closing fence: rendered Markdown can
   contain literal fences inside the payload. See `doc/visual-regressions.md`.
 

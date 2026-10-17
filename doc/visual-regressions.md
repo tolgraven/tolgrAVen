@@ -11,6 +11,30 @@ raster comparison verifies their actual painted pixels.
 There is no blanket tolerance, ignored region, automatic baseline update or
 animation-disabling stylesheet.
 
+Motion comparison defaults to `--motion-contract instances`, requiring exact
+captured native instances. Explicit `--motion-contract definitions` instead gates
+CSS properties, styles, declarations and source/keyframe rules exactly, including
+child-document geometry and identities. Only `triggered` observations leave that
+separate projection. Both modes reject missing coverage/gaps. Raw observations
+remain in `raw_motion`; reports name the mode and whether captured instances
+are different. A definitions pass does not prove identical animation execution;
+keep native navigation/history and progressive-motion checks alongside it.
+
+IDs remain exact by default. Separate `--runtime-id-policy react19-client-use-id`
+recognizes paired unique lowercase React client IDs with matching native
+identity and `#id` selectors. It assumes the `_r_[0-9a-v]+_` prefix is reserved;
+syntax is not provenance proof. Raw spelling differences stay visible. Captures
+omit general IDREF attributes, so native accessibility relationship tests remain
+necessary. Authored non-React IDs, duplicates, layout and motion definitions
+still compare exactly. Neither option changes captures or approved goldens.
+
+```
+bb test:visual compare --require-motion --motion-contract definitions \
+  --runtime-id-policy react19-client-use-id \
+  --baseline test/visual/baselines/chrome-macos-motion \
+  --actual <independent-candidate> --output <separate-report>
+```
+
 This supplements interaction, cold-load, hydration and motion checks. Settled
 images cannot prove an expansion animates. Fixed fixtures do not prove live
 provider behavior or protect module states absent from the suite.
