@@ -1,7 +1,7 @@
 # Fast staging Docker builds
 
-Run commands in the migration worktree (or any checkout containing this setup).
-Bux and the local Mac use ARM64; the default platform is `linux/arm64`.
+Run commands in a managed feature worktree. The default platform follows the
+local ARM64/AMD64 host; `DOCKER_PLATFORM` selects an explicit platform.
 
 ```sh
 make docker           # build locally, push changed layers to S3, deploy the normal staging app
@@ -57,10 +57,15 @@ The prefab includes the complete project `node_modules` directory, including
 Sass, PostCSS, and Shadow CLI tools. npm scripts use these local executables;
 no global CSS-tool installs or compatibility symlinks are needed.
 
-`make docker-prefab` publishes a dependency-hash tag and the compatibility alias
-`registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v1` (the server uses
-the same alias through its loopback endpoint). Refresh it when changing
-`project.clj`, either package manifest, or the builder Dockerfile. Local builds
+`make docker-prefab` publishes the current native dependency-hash tag; Coolify advances compatibility aliases
+`registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v2` and `java21-node22-v1`.
+The v2 image also contains `/opt/tolgraven-runtime`: the clean runtime filesystem
+with Java, Node, Babashka and the tested upload codecs. Application images copy
+only that root, then the application artifacts; compiler tools, npm packages and
+Maven artifacts remain outside the final image. All OS package installs and base
+image composition happen during prefab construction.
+Refresh it when changing `project.clj`, either package manifest, the builder
+Dockerfile, or the bundled `scripts/media/images.clj`. Local builds
 check the dependency hash automatically and pull an existing hash before
 considering a build. `make docker-prefab` skips rebuilding and pushing when the
 published image and alias already match. Do not refresh it for ordinary source
@@ -68,24 +73,41 @@ edits. This dependency-update rule is also recorded in `AGENTS.md`.
 A stale server prefab still supports
 changed dependencies, but needs to fetch them again during that build.
 
-Coolify staging has `BUILDER_IMAGE` set to the compatibility alias as a build-only
-variable in both normal and preview scopes. Existing AWS, Firebase, and OpenAI
-credential variables are runtime-only in staging; builds need no application
-credentials. The Dockerfile retains a self-contained
-fallback for other servers without this registry. Keep its `prefab` stage in sync
-with `Dockerfile.builder` when changing toolchain setup.
+The Dockerfile defaults to the exact published dependency hash in both production
+and staging. The reference resolves native ARM64/AMD64 images through one index.
+Every build host needs the existing private registry login (`docker login registry.bux.tolgraven.se`); Coolify mounts the host Docker credential store into
+its helper. Its build-secret mode cannot pass a variable into Docker `FROM`, so
+`BUILDER_IMAGE` environment records are no longer used. Ordinary Docker CLI
+builds can still override that ARG; `--build-arg BUILDER_IMAGE=prefab` explicitly
+builds the matching self-contained recipe when registry access is unavailable.
 
-Application builds reuse prefab npm/Maven dependencies and a BuildKit cache for
-Shadow release analysis. Application source changes no longer reinstall Node,
-Leiningen, or npm packages.
-BuildKit runs three independent branches concurrently: the frontend builds CSS,
-releases the Shadow targets (`app`, `ssr`, `return-worker`, and `document`) in one
-invocation, then prepares the Optimus inventory; the backend
-resolves Clojure dependencies and AOT-compiles; a third stage generates Codox
-documentation. The packaging stage waits for all three, copies the completed
-browser assets and prepared inventory, and
-creates the uberjar without repeating prep tasks or cleaning compiled classes.
-Separate stage filesystems prevent target-directory and Maven download races.
+Maven caching belongs to the Dockerfile, independently of Coolify or the Mac
+launcher. Both prefab construction and application dependency preparation mount
+`id=m2,target=/root/m2,sharing=locked`, retaining the original cache identity.
+An explicitly active user profile selects that repository. Both compiler and
+final packaging graphs are resolved: uberjar removes provided dependencies and
+can otherwise select additional runtime jar versions. Ephemeral prefab builders can
+seed it from the previous published native prefab (`MAVEN_SEED_IMAGE`); a cold
+builder uses an empty seed. Application preparation first
+seeds missing artifacts from the prefab, resolves the current manifests, then
+copies a repository snapshot into the compiler stages. A fresh host benefits
+from baked artifacts; a changed dependency downloads once into persistent cache.
+The mounted cache is an optimization, not a required build artifact. Private Maven
+settings and credentials are never copied from the host.
+
+Coolify provisioning reconciles new and existing Dockerfile apps: keep secret
+mode enabled for the explicit CMS mounts, disable automatic ARG injection and
+build-time source-commit metadata, remove the ineffective builder secret, and
+make AWS/Firebase/OpenAI keys runtime-only. Runtime source-commit identity remains
+available. Normal and preview environments use the same policy. Actual CMS
+capability/CSS acquisition still runs in the source stage with its existing secrets.
+
+BuildKit sequences the compiler stages to bound peak memory. Backend AOT runs
+first, then Codox reuses its classes. The frontend then builds CSS, releases the
+Shadow targets (`app`, `ssr`, `return-worker`, and `document`) sequentially, and
+prepares the Optimus inventory. Packaging copies the completed outputs and creates
+the uberjar without repeating prep tasks or cleaning compiled classes. Shadow
+retains its separate target and cache paths.
 The Docker compile and assembly tasks explicitly share `target/uberjar+provided/classes`;
 changing `:target-path` alone does not update Lein's already-resolved compile path.
 The ordinary `lein with-profile uberjar,provided uberjar` prep tasks also generate
@@ -112,15 +134,15 @@ BuildKit worker parallelism of one. Two slots allow up to three Docker CPUs
 combined. The launcher stops its owned BuildKit daemon
 when the command finishes; the reusable cache remains available.
 
-The independent `media-tools` runtime stage copies the pinned Babashka runtime and installs ImageMagick and `cwebp`, then
-encodes and decodes a tiny WebP/AVIF fixture during the image build. Check only
-these runtime codecs with `docker build --target media-tools .`; this does not
-compile the application or refresh the prefab. Uploads use the copied
-`/app/scripts/media/images.clj`. Persistent image objects live in Supabase's
-mounted Storage backend; see [upload storage](supabase-provisioning.md).
+The independent `media-tools` target exports the runtime root already in the
+prefab. `docker build --target media-tools .` performs no OS installation or
+application compilation. Codecs are smoke-tested when rebuilding the prefab;
+verify the exported image's actual Java/Node/Babashka and WebP/AVIF conversions
+when changing that recipe. Uploads keep `/app/scripts/media/images.clj` and their
+existing Supabase Storage transport; see [upload storage](supabase-provisioning.md).
 
-The Shadow JVM defaults to a 1536 MB heap (`BUILD_JAVA_OPTIONS`), while the
-concurrent backend JVM defaults to 768 MB (`BUILD_CLJ_JAVA_OPTIONS`) and Codox to
+The Shadow JVM defaults to a 1024 MB heap and two visible processors (`BUILD_JAVA_OPTIONS`), while the
+backend JVM defaults to 768 MB (`BUILD_CLJ_JAVA_OPTIONS`) and Codox to
 512 MB (`BUILD_DOCS_JAVA_OPTIONS`). These are
 build arguments; actual peak memory also includes Lein launchers, native memory
 and CSS tooling. Parallel compilation trades additional peak memory for elapsed
@@ -216,13 +238,132 @@ changes still compile normally.
 
 ## PR preview cleanup
 
-The GitHub deployment workflow forwards `pull_request.closed` to Coolify using
-the same signed webhook as preview creation. GitHub emits this event both when a
-PR is merged and when it is closed without merging. Cleanup bypasses CSS
-validation and shares the PR-specific concurrency group with deployment, so a
-close event supersedes an in-flight workflow for that PR. Coolify's native
-cleanup cancels that preview's deployments and removes its runtime and preview
-record. Once no staging web runtime or deployment remains for 60 seconds,
-the runtime policy also stops staging Supabase, preserving its volumes and data.
-Production remains running. Reopening the PR wakes Supabase and recreates its
-preview; the web app waits for Auth and REST readiness before serving requests.
+The Coolify prefab gate handles signed `pull_request.closed` events through
+Coolify's native preview lifecycle job. Cleanup has a separate control worker, so it
+never waits for a dependency build. GitHub emits this event for both merges and
+unmerged closes. Before deploying, the build worker rechecks the current PR head
+and open state; stale queued/building events cannot recreate a closed preview.
+The native handler removes the preview and cancels its deployments. Existing
+staging Supabase suspension preserves its volumes; production stays running.
+Cold resume reacquires missing configured images (for example after cache cleanup)
+without recreating existing containers or volumes.
+
+## Dependency cache verification
+
+Run the real offline regression after publishing a changed prefab:
+
+```sh
+tolgraven-cpu run --mode buildkit -- python3 scripts/test/docker_cache.py \
+  --image registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v2 \
+  --report .local-wip/docker-cache-check
+```
+
+It gives the real Dockerfile a fresh cache identity, builds with RUN networking
+unavailable, then removes baked Clojure from the second build. Both must succeed
+without repository downloads or OS installs; the second proves persistent cache
+reuse rather than reuse of an image layer. Reports retain the exact test recipes
+and logs. BuildKit may evict caches under its existing storage policy; fresh-cache
+seeding remains supported. The final `media-tools` image must contain functioning
+Java/Node/Babashka and codecs, with no JDK compiler, Lein, npm dependencies or Maven
+repository. Verify actual staging and production builds select the published image.
+
+## Automatic PR dependency gate
+
+The tracked pre-commit hook computes the prefab hash from staged dependency bytes
+and stages only Dockerfile's generated image default. It preserves unstaged
+manifest and Dockerfile changes. `bb docker pin` updates the working pin explicitly;
+`bb docker check-pin` rejects stale pins and mismatched fallback recipes.
+
+Coolify owns the build queue and deployment sequencing. Its existing GitHub App
+sends signed events to `https://prefab.bux.tolgraven.se/github`. The managed
+`tolgraven-prefab-gate` service persists deliveries in SQLite and deduplicates
+redelivery across restarts. Only same-repository PRs from owners, members and
+collaborators targeting master may build; fork events cannot acquire credentials
+or start a privileged builder. Other repositories' App events retain their native
+Coolify handler. PR closes have a separate control worker so cleanup is immediate.
+
+For the current commit, the gate validates the staged/generated image pin, reuses
+published native hashes or builds missing ARM64/AMD64 images sequentially, then
+executes the clean runtime's Java/Node/Babashka/codec smoke checks. BuildKit's
+bundled emulator handles a foreign architecture; no privileged binfmt installer
+is required. The persistent worker has 1.5 CPUs, 4 GiB RAM, one build step at a time,
+a 6 GB cache target and a 20 GB free-space target. Maven caches are seeded from the
+previous native prefab and remain locked during updates.
+
+After both runtimes pass, it publishes the multi-platform reference, reports
+`prefab-ready` through the Coolify GitHub App and invokes
+the existing native Coolify deployment handler. PRs go to staging; master pushes
+go to production and advance compatibility aliases. It rechecks the GitHub head
+before publication of aliases and dispatch, so obsolete events cannot release an
+old application revision. GitHub branch protection requires `prefab-ready` from
+this App. GitHub Actions performs source validation only (the preserved legacy
+CapRover job remains explicitly opt-in); it has no registry credentials or
+Coolify relay. Coolify's ordinary Deploy button remains a manual recovery path,
+and therefore requires the pinned image to exist already.
+
+`python3 scripts/ops/provision-prefab-gate.py prepare` builds the small trusted
+control image and creates/updates its Coolify service. `start` launches it; `wire`
+checks public health and changes the existing App webhook URL, retaining a private
+rollback copy in Coolify. Run these through the configured persistent SSH alias.
+The one-time control image's Alpine tools install is independent of application
+builds; application Docker builds perform no OS installations. Updating control
+source requires prepare/start again; it never executes updated control code from
+a PR checkout. The worker holds the Docker socket as trusted deployment
+infrastructure; recipe RUNs receive neither that socket nor the App identity.
+
+The existing App needs Repository permissions → Commit statuses: Read and write.
+Its private key and installation tokens remain inside Coolify; its encrypted
+webhook secret is copied only to the managed service's environment. Registry
+credentials remain in the server's existing Docker configuration, mounted read-only.
+The gate does not receive a personal GitHub token. Runtime control logs are in
+Coolify, and detailed build logs plus the queue live under
+`/data/coolify/prefab-gate/state` on the host. Failed jobs retry twice automatically;
+a GitHub webhook redelivery retries a final failure. To recover the event path,
+restore the saved App webhook URL and leave native Coolify deploys enabled.
+
+### Compiler reuse in ordinary deployments
+
+The frontend release step owns a locked BuildKit compiler cache. Its Node adapter
+hashes source and resource bytes and preserves source/text-resource timestamps
+only for identical inputs, so a fresh Git checkout does not invalidate Shadow's macro/resource
+analysis. Media/font timestamps stay with their existing asset freshness owners.
+Shadow still checks dependency/options changes, and every build emits
+fresh optimized release output. Closure's final optimization remains necessary.
+
+The backend has a separate locked AOT cache. Classes are restored only when all
+source/resource/build inputs, resolved classpath order and actual JAR bytes, prefab
+identity, JVM options and compile arguments
+match. Any changed input rebuilds the complete AOT graph, avoiding stale macro
+consumers and removed namespaces. A failed compile cannot publish a reusable
+entry. Extra classpath directories outside the captured source roots disable AOT
+reuse and compile fresh. Neither cache contains the final deployed image or replaces validation;
+BuildKit may evict them and the next build works cold.
+
+Run `node --test test/scripts/compiler_cache_test.mjs` for failure/invalidation
+checks. `scripts/test/docker_compiler_cache.py` verifies real release analysis
+reuse, source mutation and restoration across fresh Docker layers, and byte-identical
+optimized output between clean and incremental builds of matching code; run it through
+`tolgraven-cpu run --mode buildkit`, supplying the pinned prefab and a new report
+directory. Report compiler time separately from full deployment duration.
+
+`--no-cache` (Coolify’s forced rebuild) also resets matching BuildKit cache
+mounts. It is a cold-cache recovery operation, not a compiler-reuse benchmark.
+For a warm comparison, rerun ordinary build instructions with the same compiler
+inputs and existing mounts; distinguish whole-layer hits from compiler hits in
+the build log. The frontend/backend steps print their cache boundary explicitly.
+
+Compiler stages form a dependency chain: backend AOT → Codox → frontend releases.
+Only one compiler JVM runs at a time, and Codox inherits the completed AOT classes.
+This avoids swap exhaustion on an 8 GB host co-located with the database/CMS
+services; merely bounding each of three concurrent heaps was insufficient.
+
+Coolify provisioning sets **Disable build cache** off for both applications. Leaving
+it on adds `--no-cache` to every ordinary deployment and destroys Maven/compiler
+mount reuse. A same-source redeploy can reuse its existing CMS feature/CSS build
+snapshot; use Coolify’s forced rebuild when changing those build-time settings.
+Ordinary CMS content is still acquired at runtime. Source changes acquire a new
+snapshot through the normal Docker source-stage invalidation.
+
+The 1 GiB Shadow default is verified with a fresh compiler cache against all four
+release targets and prepared assets. Keep enough host memory for the co-located
+services and the compiler’s native/metaspace overhead; heap size is not total RSS.

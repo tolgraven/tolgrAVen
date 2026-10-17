@@ -131,8 +131,10 @@ Ordinary Docker builds bind the host `~/.m2/repository` at `/root/.m2/repository
 read/write, sharing downloaded artifacts across worktrees and subsequent builds.
 Maven settings and credentials outside that directory are not mounted. This mount
 hides the prefab's repository; dependencies absent on the host download once into
-the shared cache. BuildKit image creation still bakes dependencies into the prefab
-for remote/fresh hosts. Matching npm manifests use its locked
+the shared cache. BuildKit image creation also bakes dependencies into the prefab
+for remote/fresh hosts. Dockerfile deployment builds separately retain the
+portable `m2` BuildKit cache and snapshot it before parallel compilation; they
+do not depend on this Mac-specific bind mount. Matching npm manifests use its locked
 `node_modules`; a changed lock installs within the capped container. This does
 not refresh/publish a prefab or deploy anything. An explicit `--image` can select
 a current dependency-hash builder. No credentials or local dev config are copied.

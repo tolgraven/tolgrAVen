@@ -325,11 +325,37 @@ maintain a duplicate handwritten variable catalog.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
 
 ## Docker dependency updates
-- The prefab builder includes `node_modules` and Maven artifacts; reuse it for normal source changes.
-- When changing `package.json`, `package-lock.json`, `project.clj` dependencies, or `Dockerfile.builder`, run and verify `make docker-prefab` to publish the refreshed dependency-hash image and the staging compatibility tag.
+- Coolify provisioning keeps ordinary build caching enabled; forced rebuilds
+  clear BuildKit mounts. Force a same-source rebuild for CMS feature/CSS snapshot
+  changes. Sequence AOT, Codox and Shadow JVMs to bound shared-host memory.
+- Ordinary Docker releases retain locked Shadow analysis and exact-input AOT
+  caches through `scripts/build/compiler-cache.mjs`; fresh checkouts must retain
+  unchanged macro timestamps. Changed AOT inputs rebuild the full graph. Keep
+  cache invalidation and cold-build correctness; see `doc/docker-builds.md`.
+- The dependency prefab includes compiler tools, `node_modules`, Maven artifacts and
+  a clean runtime root with Java, Node, Babashka and upload codecs. Ordinary Docker
+  builds use the exact multi-platform dependency hash pinned in Dockerfile; registry hosts need one
+  existing Docker login, not per-deployment installation. `BUILDER_IMAGE=prefab`
+  explicitly builds the matching fallback on a host without registry access.
+- Keep the Dockerfile-owned `m2` BuildKit cache at `/root/m2`, with locked access.
+  Resolve and snapshot dependencies before compiler stages; seed fresh
+  caches from the prefab. Do not replace this with image-layer-only or host-only caching.
+- Dependency inputs are `Dockerfile.builder`, `project.clj`, both npm manifests
+  and the bundled `scripts/media/images.clj`. The commit hook updates Dockerfile's
+  prefab pin from staged bytes, preserving unstaged edits. `bb docker pin` updates
+  it explicitly; `bb docker check-pin` also verifies the fallback recipe matches.
+- Coolify owns `prefab-ready` and deployment sequencing through the managed
+  prefab gate. Signed GitHub App events enter its durable queue; trusted PRs reuse
+  or build exact ARM64/AMD64 hashes before native preview deployment. Master also
+  advances compatibility aliases before native production deployment. GitHub only
+  enforces the status; Actions must not build prefabs or relay Coolify deployments.
+  The gate executes recipes only inside its bounded BuildKit worker, never in its
+  Docker-socket-owning process. `make docker-prefab` remains the bounded manual path.
 - Keep the fallback `prefab` stage in `Dockerfile` aligned with `Dockerfile.builder`. Do not refresh the prefab for unrelated application-source edits.
-- `Dockerfile`'s independent `media-tools` runtime stage installs and smoke-tests
-  upload codecs; `docker build --target media-tools .` verifies it without a prefab refresh.
+- All OS package installation and codec checks belong to the prefab recipe.
+  `media-tools` exports its clean runtime root; ordinary app builds must not install
+  packages or pull separate Node/Java/Babashka base images. Keep Coolify build
+  credentials out of dependency stages; source commits remain runtime metadata.
 - See `doc/docker-builds.md` for registry setup and deployment recovery.
 
 ## Coding Style & Naming Conventions

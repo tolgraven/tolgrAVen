@@ -69,10 +69,10 @@ class StagingLifecycle(unittest.TestCase):
         with patch.object(m, 'ready', return_value=True), patch.object(m, 'compose') as compose:
             m.start_and_wait(); compose.assert_not_called()
 
-    def test_cold_start_preserves_existing_images_containers_and_volumes(self):
+    def test_cold_start_recovers_missing_images_without_recreating_containers_or_volumes(self):
         with patch.object(m, 'ready', side_effect=[False, False, True]), patch.object(m, 'compose') as compose, patch.object(m.time, 'sleep'):
             m.start_and_wait()
-            compose.assert_called_once_with('up', '-d', '--no-recreate', '--pull', 'never')
+            compose.assert_called_once_with('up', '-d', '--no-recreate', '--pull', 'missing')
 
 
 class Entrypoint(unittest.TestCase):

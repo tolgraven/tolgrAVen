@@ -10,9 +10,14 @@
            [java.time.format DateTimeFormatter]))
 
 (def registry (or (System/getenv "DOCKER_REGISTRY") "registry.bux.tolgraven.se"))
-(def platform (or (System/getenv "DOCKER_PLATFORM") "linux/arm64"))
+(def platform
+  (or (System/getenv "DOCKER_PLATFORM")
+      (case (System/getProperty "os.arch")
+        "aarch64" "linux/arm64"
+        ("amd64" "x86_64") "linux/amd64"
+        (throw (ex-info "Set DOCKER_PLATFORM for this host architecture" {})))))
 (def server-registry "127.0.0.1:5005")
-(def manifests ["Dockerfile.builder" "project.clj" "package.json" "package-lock.json"])
+(def manifests ["Dockerfile.builder" "project.clj" "package.json" "package-lock.json" "scripts/media/images.clj"])
 (defn run! [& args] (shell (vec args)))
 (defn output [& args] (str/trim (:out (shell {:out :string :err :string} (vec args)))))
 (defn shell-quote [value] (str "'" (str/replace (str value) "'" "'\"'\"'") "'"))
@@ -33,13 +38,63 @@
       (re-find #"(?i)manifest unknown|no such manifest" err) nil
       :else (throw (ex-info (str "Cannot inspect " image "; check docker login and registry connectivity. " err) {})))))
 
-(defn builder-tag []
+(defn dependency-hash [read-file]
   (let [digest (MessageDigest/getInstance "SHA-256")]
     (doseq [name manifests]
       (.update digest (.getBytes (str name "\u0000") "UTF-8"))
-      (.update digest (java.nio.file.Files/readAllBytes (fs/path name))))
-    (str registry "/tolgraven/builder:deps-" (subs (format "%064x" (java.math.BigInteger. 1 (.digest digest))) 0 16)
-         "-" (last (str/split platform #"/")))))
+      (.update digest (.getBytes (read-file name) "UTF-8")))
+    (subs (format "%064x" (java.math.BigInteger. 1 (.digest digest))) 0 16)))
+
+(defn prefab-reference [hash]
+  (str registry "/tolgraven/builder:deps-" hash))
+
+(defn builder-tag []
+  (str (prefab-reference (dependency-hash slurp)) "-" (last (str/split platform #"/"))))
+
+(defn pinned-dockerfile [source image]
+  (when-not (= 1 (count (re-seq #"(?m)^ARG BUILDER_IMAGE=.*$" source)))
+    (throw (ex-info "Dockerfile must declare exactly one prefab default" {})))
+  (str/replace source #"(?m)^ARG BUILDER_IMAGE=.*$" (str "ARG BUILDER_IMAGE=" image)))
+
+(defn pin! [staged?]
+  (let [read-file (if staged?
+                    (fn [path] (:out (shell {:out :string :err :string} ["git" "show" (str ":" path)])))
+                    slurp)
+        image (prefab-reference (dependency-hash read-file))
+        before (read-file "Dockerfile")
+        after (pinned-dockerfile before image)]
+    (when-not (= before after)
+      (if staged?
+        (let [blob (str/trim (:out (shell {:in after :out :string} ["git" "hash-object" "-w" "--stdin"])))]
+          (shell ["git" "update-index" "--cacheinfo" (str "100644," blob ",Dockerfile")])
+          ;; Preserve every unstaged edit; only the generated default is updated.
+          (spit "Dockerfile" (pinned-dockerfile (slurp "Dockerfile") image)))
+        (spit "Dockerfile" after))
+      (println "Pinned Dockerfile prefab:" image))
+    image))
+
+(defn pin-staged! []
+  (let [paths (set (str/split (:out (shell {:out :string} ["git" "diff" "--cached" "--name-only" "-z"])) #"\u0000"))]
+    (when (some paths (conj manifests "Dockerfile")) (pin! true))))
+
+(defn check-prefab-recipe! []
+  (let [normalize (fn [source]
+                    (-> source
+                        (str/split #"ARG MAVEN_SEED_IMAGE=" 2) second
+                        (str/split #"# Compile on the builder" 2) first
+                        (str/replace #"--platform=\$(?:BUILD|TARGET)PLATFORM " "")
+                        (str/replace #" AS prefab(?=\n)" "")
+                        str/trim))]
+    (when-not (= (normalize (slurp "Dockerfile.builder")) (normalize (slurp "Dockerfile")))
+      (throw (ex-info "The Dockerfile fallback must match Dockerfile.builder" {})))))
+
+(defn check-pin! []
+  (check-prefab-recipe!)
+  (let [image (prefab-reference (dependency-hash slurp))
+        source (slurp "Dockerfile")]
+    (when-not (= source (pinned-dockerfile source image))
+      (throw (ex-info "Dependency inputs changed: run bb docker pin and commit Dockerfile" {})))
+    image))
 
 (defn prefab! [publish?]
   (let [image (builder-tag)
@@ -48,16 +103,17 @@
     (when-not present?
       (if (remote-digest image)
         (run! "docker" "pull" image)
-        (run! "docker" "build" "--platform" platform "--progress=plain"
-              "-f" "Dockerfile.builder" "-t" image ".")))
+        (let [seed (str registry "/tolgraven/builder:java21-node22-v2-" (last (str/split platform #"/")))
+              seed' (if (remote-digest seed) seed "empty-maven-seed")]
+          (run! "docker" "build" "--platform" platform "--progress=plain"
+                "--build-arg" (str "MAVEN_SEED_IMAGE=" seed')
+                "--build-arg" (str "BUILDPLATFORM=" platform)
+                "-f" "Dockerfile.builder" "-t" image "."))))
     (when publish?
       (registry-check!)
-      (let [id (:Id (first (inspect image)))
-            alias (str registry "/tolgraven/builder:java21-node22-v1")]
-        (when-not (= id (remote-digest image)) (run! "docker" "push" image))
-        (when-not (= id (remote-digest alias))
-          (run! "docker" "tag" image alias)
-          (run! "docker" "push" alias))))
+      (let [id (:Id (first (inspect image)))]
+        (when-not (= id (remote-digest image)) (run! "docker" "push" image)))
+      (println "Published native prefab; the Coolify prefab gate publishes the shared multi-platform reference."))
     image))
 
 (defn image-kind [reference]
@@ -112,10 +168,15 @@
       (throw (ex-info "Docker deploy is scoped to tolgraven staging; use the site provisioner for another site" {})))))
 
 (defn -main [& [action]]
-  (when-not (#{"registry" "prefab" "build" "push" "deploy" "clean"} action)
-    (throw (ex-info "Use bb docker <registry|prefab|build|push|deploy|clean>" {})))
+  (when-not (#{"registry" "prefab" "build" "push" "deploy" "clean" "pin" "pin-staged" "check-pin" "metadata"} action)
+    (throw (ex-info "Use bb docker <registry|prefab|build|push|deploy|clean|pin|check-pin|metadata>" {})))
   (when (= "deploy" action) (require-checkout!))
   (case action
+    "pin" (pin! false)
+    "pin-staged" (pin-staged!)
+    "check-pin" (println (check-pin!))
+    "metadata" (println (json/generate-string {:image (prefab-reference (dependency-hash slurp))
+                                               :native-image (builder-tag)}))
     "registry" (registry-check!)
     "clean" (do (prune!) (run! "docker" "image" "prune" "--force")
                 (run! "docker" "buildx" "prune" "--force" "--max-used-space" "4GB"))

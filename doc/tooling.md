@@ -7,7 +7,7 @@ needed to run these tasks; they use Babashka's built-in libraries.
 
 | Owner | Commands / programs | Callers and runtime |
 | --- | --- | --- |
-| Build | `bb docker <action>`, `bb audit <label>`, `bb prod:build` | Make targets and developers; Docker/Lein/Node subprocesses |
+| Build | `bb docker <action>` (including `pin`, `check-pin`, `metadata`), `bb audit <label>`, `bb prod:build` | Make targets and developers; Docker/Lein/Node subprocesses |
 | Build | `scripts/build/sync-vendor.mjs`, `bundle-sizes.mjs` | npm vendor task and bundle audit; Node provides SDK resolution and Brotli |
 | Images | `bb images`, `bb images:verify`, `bb images:staged`, `bb images:responsive` | Manual assets, tracked pre-commit hook; cwebp/ImageMagick |
 | Uploads | `scripts/media/images.clj` | JVM upload adapter and Docker codec smoke test; standalone `bb` script |
@@ -179,7 +179,9 @@ Repeated edits never duplicate the footer. `--contributor UUID` is repeatable.
 The installed `prepare-commit-msg` hook adds a `Codex-Session` trailer when a
 Codex session commits, preserving previous session trailers on amendments. Ordinary
 commits outside Codex are unchanged. If you maintain a separate hook chain, include
-both tracked hooks. Never infer contributors from other active chats or repository
+the tracked hooks. Dependency commits also update the exact prefab pin from the
+Git index, preserving unstaged changes; PRs must pass `prefab-ready` before merge.
+Never infer contributors from other active chats or repository
 activity: for earlier commits without trailers, supply their known IDs explicitly.
 
 Creation collects trailers only from the current branch's commits beyond

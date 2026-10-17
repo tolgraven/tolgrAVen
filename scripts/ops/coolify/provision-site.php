@@ -63,6 +63,24 @@ function verifyWebSupabaseEnv($application, $values) {
     }
 }
 
+// Reconcile existing applications as well as freshly created ones.
+function configureDockerBuild($application) {
+    requireThat($application->build_pack === 'dockerfile', 'Expected a Dockerfile application');
+    $application->settings->disable_build_cache = false;
+    $application->settings->use_build_secrets = true;
+    $application->settings->inject_build_args_to_dockerfile = false;
+    $application->settings->include_source_commit_in_build = false;
+    $application->settings->save();
+    foreach ([false, true] as $preview) {
+        $relation = $preview ? $application->environment_variables_preview() : $application->environment_variables();
+        // FROM defaults are owned by Dockerfile. Secret-mode variables cannot set them.
+        $relation->where('key', 'BUILDER_IMAGE')->delete();
+        $runtimeRelation = $preview ? $application->environment_variables_preview() : $application->environment_variables();
+        $runtimeRelation->whereIn('key', ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'FIREBASE_API_KEY', 'OPENAI_API_KEY'])
+            ->update(['is_buildtime' => false, 'is_runtime' => true]);
+    }
+}
+
 if (defined('PROVISION_SITE_FUNCTIONS_ONLY')) return;
 
 try {
@@ -157,11 +175,11 @@ try {
                 $application->settings->is_preview_deployments_enabled = false;
                 $application->settings->is_force_https_enabled = true;
                 $application->settings->save();
-                if (isset($spec['builder_image'])) setEnv($application, 'BUILDER_IMAGE', $spec['builder_image'], false, true);
             }
         }
         requireThat($application !== null, 'Web application missing');
         if (!isset($config['application_uuid'])) requireThat($application->description === $resourceMarker, 'Refusing unrelated web application');
+        if ($action === 'prepare') configureDockerBuild($application);
         if ($action === 'start' && $service) App\Actions\Service\StartService::dispatch($service);
         if ($usesSupabase && in_array($action, ['wire', 'ready', 'verify'])) {
             // Check the new endpoint before replacing an existing app's runtime configuration.
