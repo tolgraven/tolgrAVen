@@ -21,6 +21,43 @@
   <script src="/fixtures/visual-clock.js"></script>
   <script>
     window.cvVisitCheck = {finished: false};
+    // Observe from the collapsed state; settled screenshots miss a sideways lurch.
+    const expansion = (async () => {
+      const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+      const selectors = {cv: '#cv', logo: '#cv .cv-intro .progressive-image',
+        timeline: '#cv .cv-boxes'};
+      const samples = [], deadline = performance.now() + 15000;
+      let expandedAt = null;
+      while (performance.now() < deadline) {
+        const cv = document.querySelector('#cv');
+        if (cv) {
+          const sample = {time: performance.now(), expanded: cv.classList.contains('fullscreen')};
+          for (const [name, selector] of Object.entries(selectors)) {
+            const element = document.querySelector(selector);
+            const rect = element?.getBoundingClientRect();
+            sample[name] = rect ? {center: rect.x + rect.width / 2, width: rect.width} : null;
+          }
+          samples.push(sample);
+          if (sample.expanded && expandedAt === null) expandedAt = sample.time;
+          if (expandedAt !== null && sample.time - expandedAt >= 1250) break;
+        }
+        await frame();
+      }
+      const collapsed = samples.find(sample => !sample.expanded), last = samples.at(-1);
+      if (!collapsed || !last?.expanded) throw new Error('CV expansion was not observed from its collapsed state');
+      const checks = Object.keys(selectors).map(name => {
+        if (!collapsed[name] || !last[name]) throw new Error('Missing expansion target: ' + name);
+        const lower = Math.min(collapsed[name].center, last[name].center);
+        const upper = Math.max(collapsed[name].center, last[name].center);
+        const values = samples.filter(sample => sample[name]).map(sample => sample[name]);
+        const excursion = Math.max(...values.map(value => Math.max(0, lower - value.center, value.center - upper)));
+        const intermediate = values.filter(value => value.width > collapsed[name].width && value.width < last[name].width).length;
+        // Native layout rounds fractional widths/margins to 1/64 of a CSS pixel.
+        return {name, excursion, intermediate,
+          passed: excursion <= 1 / 64 && intermediate > 1 && last[name].width > collapsed[name].width};
+      });
+      return {passed: checks.every(check => check.passed), checks, samples};
+    })().catch(error => ({passed: false, error: String(error)}));
     (async () => {
       const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
       const deadline = performance.now() + 15000;
@@ -35,7 +72,8 @@
       window.removeEventListener('scroll', record);
       window.cvVisitCheck = {finished: true, origin, end: scrollY,
         minimum: Math.min(...samples), maximum: Math.max(...samples),
-        events: samples.length - 1, focused: document.activeElement.id};
+        events: samples.length - 1, focused: document.activeElement.id,
+        expansion: await expansion};
     })();
   </script>
   <script src="/js/test.js"></script>
