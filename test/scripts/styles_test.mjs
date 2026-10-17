@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import {watch as watchDirectory} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawn, spawnSync} from 'node:child_process';
@@ -112,6 +113,28 @@ try {
   assert.equal(writers.filter(result => result.output.includes('Built ')).length, 1);
   assert.match(await read('resources/public/css/website/main.min.css'), /concurrent/);
   checks++;
+
+  // Overwrite the first published sheet while later entries are still building.
+  // Its generated hash, rather than the foreign bytes, must own the final stamp.
+  await fs.appendFile(path.join(fixture, 'resources/scss/main.scss'), '\n.publication { display: grid; }');
+  let overwritten = false, mutation;
+  const publicationObserver = watchDirectory(path.join(fixture, 'resources/public/css/website'),
+    (event, name) => {
+      if (!overwritten && event === 'rename' && String(name) === 'main.min.css') {
+        overwritten = true;
+        mutation = write('resources/public/css/website/main.min.css', '.foreign-publication { display: none; }');
+      }
+    });
+  try {
+    const result = await concurrent();
+    if (mutation) await mutation;
+    assert.equal(result.code, 0, result.error);
+    assert.ok(overwritten, 'The fixture must overwrite an actual publication');
+    assert.match(await read('resources/public/css/website/main.min.css'), /publication\{display:grid/);
+    assert.doesNotMatch(await read('resources/public/css/website/main.min.css'), /foreign-publication/);
+    assert.match(build(), /CSS is current/);
+    checks++;
+  } finally { publicationObserver.close(); }
 
   const watcher = spawn(process.execPath, ['scripts/build/styles.mjs', '--watch'], {cwd: fixture, stdio: 'ignore'});
   const waitFor = async predicate => {
