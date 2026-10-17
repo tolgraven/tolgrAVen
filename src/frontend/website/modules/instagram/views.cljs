@@ -38,9 +38,10 @@
         [:<>
          (doall
           (for [post (or @posts (range @amount)) ; empty seq triggers fallbacks
-                :let [url @(r/subscribe [:href-external-img
-                                          (:media_url post)
-                                          "fit-in" "800x800"])
+                :let [url (when (:media_url post)
+                            @(r/subscribe [:href-external-img
+                                           (:media_url post)
+                                           "fit-in" "800x800"]))
                       item [img/<picture> {:class (when (or (not (:media_url post))
                                                           @fallback)
                                                   "transparent-border")
