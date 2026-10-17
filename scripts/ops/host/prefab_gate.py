@@ -123,6 +123,9 @@ def read_blob(checkout, path):
 
 
 def checked_image(checkout):
+    for path in [*INPUTS, 'Dockerfile', '.dockerignore']:
+        if (Path(checkout) / path).is_symlink():
+            raise ValueError('Build control inputs must be regular checkout files')
     digest = hashlib.sha256()
     for path in INPUTS:
         digest.update((path + '\0').encode())

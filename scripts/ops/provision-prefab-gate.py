@@ -41,7 +41,8 @@ def main():
                 entry = tarfile.TarInfo(name)
                 entry.size, entry.mode = len(value), 0o644
                 tar.addfile(entry, io.BytesIO(value))
-        remote(['mkdir', '-p', '/data/coolify/prefab-gate/build', '/data/coolify/prefab-gate/state'])
+        remote(['install', '-d', '-m', '0700', '/data/coolify/prefab-gate',
+                '/data/coolify/prefab-gate/build', '/data/coolify/prefab-gate/state'])
         remote(['tar', '-x', '-C', '/data/coolify/prefab-gate/build'], archive.getvalue())
         # This builder is separate from application builds and retains its cache.
         remote(['sh', '-ec', 'docker buildx inspect tolgraven-prefab >/dev/null 2>&1 || '

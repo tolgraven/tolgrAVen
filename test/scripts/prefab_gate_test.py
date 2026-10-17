@@ -133,6 +133,9 @@ class GateFlow(unittest.TestCase):
             (path / 'project.clj').write_text('changed')
             # Working tree edits must not change the fetched commit's pin.
             self.assertEqual(gate.checked_image(directory), expected)
+            (path / '.dockerignore').symlink_to(ROOT / 'Dockerfile')
+            with self.assertRaisesRegex(ValueError, 'regular checkout files'):
+                gate.checked_image(directory)
 
 
 if __name__ == '__main__':
