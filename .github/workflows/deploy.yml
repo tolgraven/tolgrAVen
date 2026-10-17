@@ -30,6 +30,156 @@ jobs:
       - run: bb -cp scripts:src/cljc:resources test/scripts/neovim_workspace_test.clj
       - run: npm run build
 
+  prefab-inputs:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.inputs.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08
+        with:
+          bb: '1.13.225'
+      - id: inputs
+        name: Check the exact dependency-image pin
+        run: echo "image=$(bb docker check-pin)" >> "$GITHUB_OUTPUT"
+
+  prefab-platform:
+    needs: prefab-inputs
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+          - arch: amd64
+            runner: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    env:
+      PREFAB_IMAGE: ${{ needs.prefab-inputs.outputs.image }}
+      PREFAB_ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: docker/login-action@v3
+        with:
+          registry: registry.bux.tolgraven.se
+          username: ${{ secrets.PREFAB_REGISTRY_USERNAME }}
+          password: ${{ secrets.PREFAB_REGISTRY_PASSWORD }}
+      - uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            cpu-quota=150000
+            cpu-period=100000
+            memory=4g
+            memory-swap=4g
+          buildkitd-config-inline: |
+            [worker.oci]
+              max-parallelism = 1
+      - id: existing
+        name: Reuse a published dependency hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          inspect() {
+            if docker manifest inspect "$1" > /dev/null 2> /tmp/prefab-manifest-error; then
+              return 0
+            fi
+            if grep -Eqi 'manifest unknown|no such manifest' /tmp/prefab-manifest-error; then
+              return 1
+            fi
+            cat /tmp/prefab-manifest-error >&2
+            exit 1
+          }
+          if inspect "$PREFAB_IMAGE-$PREFAB_ARCH"; then
+            echo 'build=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'build=true' >> "$GITHUB_OUTPUT"
+          fi
+          seed="registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v2-$PREFAB_ARCH"
+          if inspect "$seed"; then
+            echo "seed=$seed" >> "$GITHUB_OUTPUT"
+          else
+            echo 'seed=empty-maven-seed' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build and publish only changed dependencies
+        if: steps.existing.outputs.build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.builder
+          platforms: linux/${{ matrix.arch }}
+          tags: ${{ needs.prefab-inputs.outputs.image }}-${{ matrix.arch }}
+          build-args: MAVEN_SEED_IMAGE=${{ steps.existing.outputs.seed }}
+          push: true
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=prefab-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=prefab-${{ matrix.arch }}
+      - name: Verify the exported clean runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx build --load --target media-tools --progress=plain \
+            --build-arg "BUILDER_IMAGE=$PREFAB_IMAGE-$PREFAB_ARCH" \
+            --tag "tolgraven-prefab-runtime-check:$PREFAB_ARCH" .
+          docker run --rm --cpus=1.5 --memory=512m \
+            "tolgraven-prefab-runtime-check:$PREFAB_ARCH" sh -ec '
+              java -version
+              node --version
+              bb --version
+              ! command -v javac
+              ! command -v lein
+              test ! -d /root/.m2/repository
+              test ! -d /usr/src/app/node_modules
+              mkdir /tmp/codec-check
+              convert -size 16x16 xc:red /tmp/codec-check/image.png
+              bb /app/scripts/media/images.clj /tmp/codec-check/image.png
+              identify /tmp/codec-check/image.webp /tmp/codec-check/image.avif
+            '
+
+  prefab-ready:
+    name: prefab-ready
+    needs: [prefab-inputs, prefab-platform]
+    if: always() && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PREFAB_IMAGE: ${{ needs.prefab-inputs.outputs.image }}
+    steps:
+      - name: Require both verified native images
+        env:
+          INPUTS_RESULT: ${{ needs.prefab-inputs.result }}
+          PLATFORM_RESULT: ${{ needs.prefab-platform.result }}
+        run: test "$INPUTS_RESULT" = success && test "$PLATFORM_RESULT" = success
+      - uses: docker/login-action@v3
+        with:
+          registry: registry.bux.tolgraven.se
+          username: ${{ secrets.PREFAB_REGISTRY_USERNAME }}
+          password: ${{ secrets.PREFAB_REGISTRY_PASSWORD }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Publish the exact multi-platform dependency image
+        run: |
+          docker buildx imagetools create --tag "$PREFAB_IMAGE" \
+            "$PREFAB_IMAGE-arm64" "$PREFAB_IMAGE-amd64"
+          docker buildx imagetools inspect "$PREFAB_IMAGE"
+      - name: Advance compatibility aliases only from master
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: |
+          registry='registry.bux.tolgraven.se/tolgraven/builder'
+          docker buildx imagetools create --tag "$registry:java21-node22-v2" "$PREFAB_IMAGE"
+          for arch in arm64 amd64; do
+            docker buildx imagetools create --prefer-index=false \
+              --tag "$registry:java21-node22-v2-$arch" "$PREFAB_IMAGE-$arch"
+          done
+          docker buildx imagetools create --prefer-index=false \
+            --tag "$registry:java21-node22-v1" "$PREFAB_IMAGE-arm64"
+
   build-and-deploy:
     needs: validate-css
     runs-on: ubuntu-latest
@@ -48,14 +198,15 @@ jobs:
           branch: master
 
   deploy-staging:
-    needs: validate-css
+    needs: [validate-css, prefab-ready]
     runs-on: ubuntu-latest
     # always() lets a close event clean up even though validate-css is skipped.
     # A merge is a closed event too; closing an unmerged PR also removes its preview.
     if: >-
       always() && github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      (github.event.action == 'closed' || needs.validate-css.result == 'success')
+      (github.event.action == 'closed' ||
+       (needs.validate-css.result == 'success' && needs.prefab-ready.result == 'success'))
     timeout-minutes: 5
     concurrency:
       group: coolify-preview-${{ github.event.pull_request.number }}

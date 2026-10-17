@@ -43,6 +43,15 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   assets into watched browser/SSR outputs. See `doc/testing.md`.
 - `build/`, `media/`, `dev/`, `test/`: local build, asset and verification tools.
   Prefer Babashka using its built-in libraries; Node owns SDK/zlib operations.
+- `build/docker.clj` hashes the dependency recipe/manifests and bundled runtime
+  converter, publishes the compiler/runtime prefab and retains the legacy alias. The staged
+  commit pin must use index bytes and preserve unstaged edits. PR readiness is
+  checked against that exact hash on native ARM64/AMD64 workers; missing/auth
+  failures must not be treated as a successful cache hit or bypass the merge gate.
+  Keep the fallback recipe identical after normalizing stage names/platform flags.
+  `provision-site.php` reconciles Docker build settings on existing applications:
+  explicit CMS secrets, no automatic ARG injection, runtime-only unrelated keys.
+  Dockerfile owns the prefab default and persistent Maven cache on every host.
 - `ops/`: isolated site provisioning and Coolify adapters. `ops/coolify/*.php`
   executes inside the existing Laravel container. Preserve persisted ownership
   markers even when their historical script names differ from current paths.

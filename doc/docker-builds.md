@@ -1,7 +1,7 @@
 # Fast staging Docker builds
 
-Run commands in the migration worktree (or any checkout containing this setup).
-Bux and the local Mac use ARM64; the default platform is `linux/arm64`.
+Run commands in a managed feature worktree. The default platform follows the
+local ARM64/AMD64 host; `DOCKER_PLATFORM` selects an explicit platform.
 
 ```sh
 make docker           # build locally, push changed layers to S3, deploy the normal staging app
@@ -57,10 +57,15 @@ The prefab includes the complete project `node_modules` directory, including
 Sass, PostCSS, and Shadow CLI tools. npm scripts use these local executables;
 no global CSS-tool installs or compatibility symlinks are needed.
 
-`make docker-prefab` publishes a dependency-hash tag and the compatibility alias
-`registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v1` (the server uses
-the same alias through its loopback endpoint). Refresh it when changing
-`project.clj`, either package manifest, or the builder Dockerfile. Local builds
+`make docker-prefab` publishes a dependency-hash tag and the compatibility aliases
+`registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v2` and `java21-node22-v1`.
+The v2 image also contains `/opt/tolgraven-runtime`: the clean runtime filesystem
+with Java, Node, Babashka and the tested upload codecs. Application images copy
+only that root, then the application artifacts; compiler tools, npm packages and
+Maven artifacts remain outside the final image. All OS package installs and base
+image composition happen during prefab construction.
+Refresh it when changing `project.clj`, either package manifest, the builder
+Dockerfile, or the bundled `scripts/media/images.clj`. Local builds
 check the dependency hash automatically and pull an existing hash before
 considering a build. `make docker-prefab` skips rebuilding and pushing when the
 published image and alias already match. Do not refresh it for ordinary source
@@ -68,16 +73,33 @@ edits. This dependency-update rule is also recorded in `AGENTS.md`.
 A stale server prefab still supports
 changed dependencies, but needs to fetch them again during that build.
 
-Coolify staging has `BUILDER_IMAGE` set to the compatibility alias as a build-only
-variable in both normal and preview scopes. Existing AWS, Firebase, and OpenAI
-credential variables are runtime-only in staging; builds need no application
-credentials. The Dockerfile retains a self-contained
-fallback for other servers without this registry. Keep its `prefab` stage in sync
-with `Dockerfile.builder` when changing toolchain setup.
+The Dockerfile defaults to the exact published dependency hash in both production
+and staging. The reference resolves native ARM64/AMD64 images through one index.
+Every build host needs the existing private registry login (`docker login registry.bux.tolgraven.se`); Coolify mounts the host Docker credential store into
+its helper. Its build-secret mode cannot pass a variable into Docker `FROM`, so
+`BUILDER_IMAGE` environment records are no longer used. Ordinary Docker CLI
+builds can still override that ARG; `--build-arg BUILDER_IMAGE=prefab` explicitly
+builds the matching self-contained recipe when registry access is unavailable.
 
-Application builds reuse prefab npm/Maven dependencies and a BuildKit cache for
-Shadow release analysis. Application source changes no longer reinstall Node,
-Leiningen, or npm packages.
+Maven caching belongs to the Dockerfile, independently of Coolify or the Mac
+launcher. Both prefab construction and application dependency preparation mount
+`id=m2,target=/root/m2,sharing=locked`, retaining the original cache identity.
+A temporary Lein profile selects that repository. Ephemeral prefab builders can
+seed it from the previous published native prefab (`MAVEN_SEED_IMAGE`); a cold
+builder uses an empty seed. Application preparation first
+seeds missing artifacts from the prefab, resolves the current manifests, then
+copies a repository snapshot into the compiler stages. A fresh host benefits
+from baked artifacts; a changed dependency downloads once into persistent cache.
+The mounted cache is an optimization, not a required build artifact. Private Maven
+settings and credentials are never copied from the host.
+
+Coolify provisioning reconciles new and existing Dockerfile apps: keep secret
+mode enabled for the explicit CMS mounts, disable automatic ARG injection and
+build-time source-commit metadata, remove the ineffective builder secret, and
+make AWS/Firebase/OpenAI keys runtime-only. Runtime source-commit identity remains
+available. Normal and preview environments use the same policy. Actual CMS
+capability/CSS acquisition still runs in the source stage with its existing secrets.
+
 BuildKit runs three independent branches concurrently: the frontend builds CSS,
 releases the Shadow targets (`app`, `ssr`, `return-worker`, and `document`) in one
 invocation, then prepares the Optimus inventory; the backend
@@ -112,12 +134,12 @@ BuildKit worker parallelism of one. Two slots allow up to three Docker CPUs
 combined. The launcher stops its owned BuildKit daemon
 when the command finishes; the reusable cache remains available.
 
-The independent `media-tools` runtime stage copies the pinned Babashka runtime and installs ImageMagick and `cwebp`, then
-encodes and decodes a tiny WebP/AVIF fixture during the image build. Check only
-these runtime codecs with `docker build --target media-tools .`; this does not
-compile the application or refresh the prefab. Uploads use the copied
-`/app/scripts/media/images.clj`. Persistent image objects live in Supabase's
-mounted Storage backend; see [upload storage](supabase-provisioning.md).
+The independent `media-tools` target exports the runtime root already in the
+prefab. `docker build --target media-tools .` performs no OS installation or
+application compilation. Codecs are smoke-tested when rebuilding the prefab;
+verify the exported image's actual Java/Node/Babashka and WebP/AVIF conversions
+when changing that recipe. Uploads keep `/app/scripts/media/images.clj` and their
+existing Supabase Storage transport; see [upload storage](supabase-provisioning.md).
 
 The Shadow JVM defaults to a 1536 MB heap (`BUILD_JAVA_OPTIONS`), while the
 concurrent backend JVM defaults to 768 MB (`BUILD_CLJ_JAVA_OPTIONS`) and Codox to
@@ -226,3 +248,48 @@ record. Once no staging web runtime or deployment remains for 60 seconds,
 the runtime policy also stops staging Supabase, preserving its volumes and data.
 Production remains running. Reopening the PR wakes Supabase and recreates its
 preview; the web app waits for Auth and REST readiness before serving requests.
+
+## Dependency cache verification
+
+Run the real offline regression after publishing a changed prefab:
+
+```sh
+tolgraven-cpu run --mode buildkit -- python3 scripts/test/docker_cache.py \
+  --image registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v2 \
+  --report .local-wip/docker-cache-check
+```
+
+It gives the real Dockerfile a fresh cache identity, builds with RUN networking
+unavailable, then removes baked Clojure from the second build. Both must succeed
+without repository downloads or OS installs; the second proves persistent cache
+reuse rather than reuse of an image layer. Reports retain the exact test recipes
+and logs. BuildKit may evict caches under its existing storage policy; fresh-cache
+seeding remains supported. The final `media-tools` image must contain functioning
+Java/Node/Babashka and codecs, with no JDK compiler, Lein, npm dependencies or Maven
+repository. Verify actual staging and production builds select the published image.
+
+## Automatic PR dependency gate
+
+The tracked pre-commit hook computes the prefab hash from staged dependency bytes
+and stages only Dockerfile's generated image default. It preserves unstaged
+manifest and Dockerfile changes. `bb docker pin` updates the working pin explicitly;
+`bb docker check-pin` rejects stale pins and mismatched fallback recipes.
+
+Every PR runs `prefab-inputs`, native `prefab-platform` jobs and the stable required
+`prefab-ready` check. A published hash skips rebuilding; missing images build with
+1.5 CPUs / 4 GiB per native worker. Existing Maven artifacts seed the new builder,
+and the complete runtime is exercised before publication of the multi-platform
+index. Preview deployment waits for readiness. Master protection requires the
+check and an up-to-date branch. Only a master push advances compatibility aliases;
+a different PR cannot alter an already pinned dependency reference.
+
+GitHub Actions uses encrypted `PREFAB_REGISTRY_USERNAME` and
+`PREFAB_REGISTRY_PASSWORD` secrets for the existing private registry login. Forks
+receive neither credential and do not get a successful readiness result; a
+maintainer must bring the reviewed change into a trusted repository branch.
+Never use `pull_request_target` to run untrusted prefab instructions with secrets.
+The workflow records actual image availability, not just a changed-path filter,
+so removed registry images are rebuilt even when the source inputs are unchanged.
+
+The native runner labels are documented by [GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners);
+manifest composition uses [Docker Buildx](https://docs.docker.com/reference/cli/docker/buildx/imagetools/create/).

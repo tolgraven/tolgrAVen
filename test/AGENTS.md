@@ -363,3 +363,12 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   and diagnostics keep their error portal. Experiments acquire their own styles;
   preserve unfinished model-viewer behavior. Pending SoundCloud geometry does not
   prove external player paint or running video behavior.
+
+- `scripts/test/docker_cache.py --image <fresh-prefab> --report <new-directory>`
+  runs real offline Docker dependency builds under the CPU launcher's BuildKit
+  mode. The cold case seeds a fresh cache from the prefab; the warm case removes
+  baked Clojure and must recover it from that same persisted mount. Retain logs
+  and fail on repository downloads or OS installs. Its temporary image tags are
+  removed; it does not deploy or touch watched application output.
+- `test/scripts/docker_build_wiring_test.php <helper>` checks the actual Coolify
+  models for idempotent normal/preview build settings and rolls back every write.

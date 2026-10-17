@@ -31,7 +31,9 @@
                   docker/remote-digest (constantly "same-image")
                   docker/run! #(swap! calls conj %&)]
       (is (= "registry/prefab:hash" (docker/prefab! true)))
-      (is (empty? @calls)))
+      (is (not-any? #(some #{"build" "push"} %) @calls))
+      (is (= ["docker" "buildx" "imagetools" "create"] (take 4 (first @calls)))))
+    (reset! calls [])
     (with-redefs [docker/builder-tag (constantly "registry/prefab:hash")
                   p/shell (fn [& _] {:exit 1})
                   docker/remote-digest (constantly "existing-image")

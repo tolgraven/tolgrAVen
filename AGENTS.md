@@ -325,11 +325,28 @@ maintain a duplicate handwritten variable catalog.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
 
 ## Docker dependency updates
-- The prefab builder includes `node_modules` and Maven artifacts; reuse it for normal source changes.
-- When changing `package.json`, `package-lock.json`, `project.clj` dependencies, or `Dockerfile.builder`, run and verify `make docker-prefab` to publish the refreshed dependency-hash image and the staging compatibility tag.
+- The dependency prefab includes compiler tools, `node_modules`, Maven artifacts and
+  a clean runtime root with Java, Node, Babashka and upload codecs. Ordinary Docker
+  builds use the exact multi-platform dependency hash pinned in Dockerfile; registry hosts need one
+  existing Docker login, not per-deployment installation. `BUILDER_IMAGE=prefab`
+  explicitly builds the matching fallback on a host without registry access.
+- Keep the Dockerfile-owned `m2` BuildKit cache at `/root/m2`, with locked access.
+  Resolve and snapshot dependencies before parallel compiler stages; seed fresh
+  caches from the prefab. Do not replace this with image-layer-only or host-only caching.
+- Dependency inputs are `Dockerfile.builder`, `project.clj`, both npm manifests
+  and the bundled `scripts/media/images.clj`. The commit hook updates Dockerfile's
+  prefab pin from staged bytes, preserving unstaged edits. `bb docker pin` updates
+  it explicitly; `bb docker check-pin` also verifies the fallback recipe matches.
+- Every PR runs required `prefab-ready`: reuse existing hash images or build and
+  publish missing native ARM64/AMD64 images, verify both clean runtimes, then
+  publish the pinned multi-platform manifest. Preview deployment waits for this
+  check; master must not merge while it is pending/failed. Compatibility aliases
+  advance from master. `make docker-prefab` remains the bounded manual path.
 - Keep the fallback `prefab` stage in `Dockerfile` aligned with `Dockerfile.builder`. Do not refresh the prefab for unrelated application-source edits.
-- `Dockerfile`'s independent `media-tools` runtime stage installs and smoke-tests
-  upload codecs; `docker build --target media-tools .` verifies it without a prefab refresh.
+- All OS package installation and codec checks belong to the prefab recipe.
+  `media-tools` exports its clean runtime root; ordinary app builds must not install
+  packages or pull separate Node/Java/Babashka base images. Keep Coolify build
+  credentials out of dependency stages; source commits remain runtime metadata.
 - See `doc/docker-builds.md` for registry setup and deployment recovery.
 
 ## Coding Style & Naming Conventions
