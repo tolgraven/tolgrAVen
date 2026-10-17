@@ -82,7 +82,7 @@
                     (-> source
                         (str/split #"ARG MAVEN_SEED_IMAGE=" 2) second
                         (str/split #"# Compile on the builder" 2) first
-                        (str/replace #"--platform=\$BUILDPLATFORM " "")
+                        (str/replace #"--platform=\$(?:BUILD|TARGET)PLATFORM " "")
                         (str/replace #" AS prefab(?=\n)" "")
                         str/trim))]
     (when-not (= (normalize (slurp "Dockerfile.builder")) (normalize (slurp "Dockerfile")))
@@ -107,6 +107,7 @@
               seed' (if (remote-digest seed) seed "empty-maven-seed")]
           (run! "docker" "build" "--platform" platform "--progress=plain"
                 "--build-arg" (str "MAVEN_SEED_IMAGE=" seed')
+                "--build-arg" (str "BUILDPLATFORM=" platform)
                 "-f" "Dockerfile.builder" "-t" image "."))))
     (when publish?
       (registry-check!)

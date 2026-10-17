@@ -22,6 +22,35 @@ try {
                 && $response->json('base.ref') === 'master'
             : $response->json('object.sha') === $sha;
         echo json_encode(['current' => $current]);
+    } elseif ($input['action'] === 'preview') {
+        $pr = $input['pr'] ?? 0;
+        if (!is_int($pr) || $pr <= 0) throw new RuntimeException('Invalid PR');
+        // Hold the lock through the native lifecycle job, not just its enqueue.
+        // A delayed close cannot remove a preview queued by a later reopen.
+        $result = Illuminate\Support\Facades\Cache::lock('tolgraven-prefab-preview-'.$pr, 180)
+            ->block(90, function () use ($http, $base, $pr, $sha, $input) {
+                $response = $http->get($base.'/pulls/'.$pr);
+                if (!$response->successful()) throw new RuntimeException('Cannot check preview lifecycle');
+                $pull = $response->json();
+                $closed = ($input['closed'] ?? false) === true;
+                if ($pull['state'] !== ($closed ? 'closed' : 'open')
+                    || (!$closed && $pull['head']['sha'] !== $sha)) return ['skipped' => true];
+                if ($pull['head']['repo']['full_name'] !== 'tolgraven/tolgrAVen'
+                    || $pull['base']['ref'] !== 'master'
+                    || !in_array($pull['author_association'], ['OWNER','MEMBER','COLLABORATOR'], true))
+                    throw new RuntimeException('Untrusted preview');
+                $application = App\Models\Application::where('uuid', 'o84wgo08wcs048ss8sokgkgw')->firstOrFail();
+                App\Jobs\ProcessGithubPullRequestWebhook::dispatchSync(
+                    applicationId: $application->id, githubAppId: null,
+                    action: $closed ? 'closed' : 'opened', pullRequestId: $pr,
+                    pullRequestHtmlUrl: $pull['html_url'], pullRequestTitle: $pull['title'],
+                    beforeSha: null, afterSha: $sha, commitSha: $sha,
+                    authorAssociation: $pull['author_association'], fullName: 'tolgraven/tolgrAVen',
+                    isForkPullRequest: false,
+                );
+                return ['accepted' => true];
+            });
+        echo json_encode($result);
     } elseif ($input['action'] === 'status') {
         if (!in_array($input['state'] ?? '', ['pending', 'success', 'failure'], true))
             throw new RuntimeException('Invalid status');

@@ -32,6 +32,8 @@ WORKERS = []
 
 def event_target(event, payload):
     """Return an owned destination or relay other App events without building."""
+    if not isinstance(payload, dict) or not isinstance(payload.get('repository', {}), dict):
+        raise ValueError('Invalid webhook payload')
     if payload.get('repository', {}).get('full_name') != REPOSITORY:
         return {'key': 'relay', 'relay': True}
     if event == 'push':
@@ -105,7 +107,7 @@ def bridge(action, **values):
     script = Path('/app/prefab-gate.php').read_bytes()
     request = json.dumps({'action': action, **values}).encode()
     prefix = b"<?php $input=json_decode(base64_decode('" + base64.b64encode(request) + b"'),true); ?>\n"
-    return json.loads(command(['docker', 'exec', '-i', 'coolify', 'php'], input=prefix + script, timeout=60))
+    return json.loads(command(['docker', 'exec', '-i', 'coolify', 'php'], input=prefix + script, timeout=240))
 
 
 def current(target):
@@ -131,7 +133,7 @@ def checked_image(checkout):
         raise ValueError('Stale Dockerfile prefab pin; run bb docker pin')
     def normalize(text):
         fragment = text.split('ARG MAVEN_SEED_IMAGE=', 1)[1].split('# Compile on the builder', 1)[0]
-        return re.sub(r' AS prefab(?=\n)', '', fragment.replace('--platform=$BUILDPLATFORM ', '')).strip()
+        return re.sub(r' AS prefab(?=\n)', '', re.sub(r'--platform=\$(?:BUILD|TARGET)PLATFORM ', '', fragment)).strip()
     if normalize(recipe) != normalize(read_blob(checkout, 'Dockerfile.builder').decode()):
         raise ValueError('Fallback prefab recipe differs from Dockerfile.builder')
     return image
@@ -179,16 +181,21 @@ def prefab(checkout, log):
     for arch in ('arm64', 'amd64'):
         native = image + '-' + arch
         if not image_exists(native):
-            seed = REGISTRY + ':java21-node22-v2-' + arch
-            seed = seed if image_exists(seed) else 'empty-maven-seed'
+            previous = ROOT / 'last-image'
+            prior = previous.read_text().strip() if previous.exists() else os.environ.get('PREFAB_SEED_IMAGE')
+            seeds = ([prior + '-' + arch] if prior else []) + [REGISTRY + ':java21-node22-v2-' + arch]
+            seed = next((candidate for candidate in seeds if image_exists(candidate)), 'empty-maven-seed')
             command(['docker', 'buildx', 'build', '--builder', BUILDER, '--platform', 'linux/' + arch,
                      '--build-arg', 'BUILDPLATFORM=linux/' + arch,
                      '--build-arg', 'MAVEN_SEED_IMAGE=' + seed, '-f', 'Dockerfile.builder',
                      '--push', '--provenance=false', '--sbom=false', '-t', native, '--progress=plain', '.'],
                     cwd=checkout, log=log, timeout=7200)
         verify_runtime(checkout, native, arch, log)
-    if not image_exists(image):
-        command(['docker', 'buildx', 'imagetools', 'create', '-t', image, image + '-arm64', image + '-amd64'], log=log)
+    # Also repair an incomplete index left by an interrupted/manual publication.
+    command(['docker', 'buildx', 'imagetools', 'create', '-t', image, image + '-arm64', image + '-amd64'], log=log)
+    previous = ROOT / 'last-image.new'
+    previous.write_text(image + '\n')
+    previous.replace(ROOT / 'last-image')
     return image
 
 
@@ -203,8 +210,13 @@ def promote(image, log):
 
 
 def forward(event, body, manual=False, require_accepted=True):
-    secret = os.environ['PREVIEW_SECRET' if manual else 'WEBHOOK_SECRET']
-    request = urllib.request.Request('http://coolify:8080/webhooks/source/github/events' + ('/manual' if manual else ''),
+    if manual:
+        payload = json.loads(body)
+        bridge('preview', sha=payload['pull_request']['head']['sha'], pr=payload['number'],
+               closed=payload['action'] == 'closed')
+        return
+    secret = os.environ['WEBHOOK_SECRET']
+    request = urllib.request.Request('http://coolify:8080/webhooks/source/github/events',
         data=body, method='POST', headers={'Content-Type': 'application/json', 'X-GitHub-Event': event,
             'X-GitHub-Delivery': str(uuid.uuid4()), 'X-GitHub-Hook-Installation-Target-Id': os.environ['GITHUB_APP_ID'],
             'X-Hub-Signature-256': 'sha256=' + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()})

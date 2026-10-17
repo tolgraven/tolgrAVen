@@ -17,8 +17,7 @@ try {
             throw new RuntimeException('Invalid gate image');
         $compose = ['services' => ['gate' => [
             'image' => $input['image'], 'restart' => 'unless-stopped', 'expose' => ['8080'],
-            'environment' => ['WEBHOOK_SECRET=${WEBHOOK_SECRET}', 'PREVIEW_SECRET=${PREVIEW_SECRET}',
-                              'GITHUB_APP_ID=2257592'],
+            'environment' => ['WEBHOOK_SECRET=${WEBHOOK_SECRET}', 'GITHUB_APP_ID=2257592'],
             'volumes' => ['/var/run/docker.sock:/var/run/docker.sock',
                           '/root/.docker/config.json:/root/.docker/config.json:ro',
                           '/data/coolify/prefab-gate/state:/state'],
@@ -42,8 +41,7 @@ try {
                 $service->docker_compose_raw = Symfony\Component\Yaml\Yaml::dump($compose, 20, 2);
                 $service->save();
             }
-            foreach (['WEBHOOK_SECRET' => $source->webhook_secret,
-                      'PREVIEW_SECRET' => $preview->manual_webhook_secret_github] as $key => $value) {
+            foreach (['WEBHOOK_SECRET' => $source->webhook_secret] as $key => $value) {
                 if (!is_string($value) || strlen($value) < 20) throw new RuntimeException('Missing webhook secret');
                 $service->environment_variables()->updateOrCreate(['key' => $key, 'is_preview' => false],
                     ['value' => $value, 'is_literal' => true, 'is_multiline' => false]);
