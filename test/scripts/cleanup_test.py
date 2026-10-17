@@ -79,6 +79,36 @@ class CleanupTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'open PR'):
                 cleanup.merged_task(self.root, 'codex/fixture', 'new')
 
+    def test_exact_merged_commit_is_eligible_after_local_branch_advance(self):
+        branch_prs = '[]'
+        merged_prs = '[{"number":3,"headRefOid":"source-head","mergeCommit":{"oid":"merge"}}]'
+        with mock.patch.object(cleanup.subprocess, 'check_output', side_effect=[branch_prs, merged_prs]) as check_output, \
+                mock.patch.object(cleanup.subprocess, 'run', return_value=mock.Mock(returncode=0)):
+            self.assertEqual(cleanup.merged_task(self.root, 'codex/fixture', 'merge'), 3)
+        self.assertIn('--state', check_output.call_args_list[1].args[0])
+        self.assertIn('merged', check_output.call_args_list[1].args[0])
+
+    def test_exact_merged_commit_missing_from_master_is_preserved(self):
+        branch_prs = '[]'
+        merged_prs = '[{"number":6,"headRefOid":"source-head","mergeCommit":{"oid":"merge"}}]'
+        with mock.patch.object(cleanup.subprocess, 'check_output', side_effect=[branch_prs, merged_prs]), \
+                mock.patch.object(cleanup.subprocess, 'run', return_value=mock.Mock(returncode=1)):
+            with self.assertRaisesRegex(RuntimeError, 'origin/master'):
+                cleanup.merged_task(self.root, 'codex/fixture', 'merge')
+
+    def test_exact_merged_head_remains_eligible(self):
+        prs = '[{"number":5,"state":"MERGED","headRefOid":"head","mergeCommit":{"oid":"merge"}}]'
+        with mock.patch.object(cleanup.subprocess, 'check_output', return_value=prs), \
+                mock.patch.object(cleanup.subprocess, 'run', return_value=mock.Mock(returncode=0)):
+            self.assertEqual(cleanup.merged_task(self.root, 'codex/fixture', 'head'), 5)
+
+    def test_open_branch_pr_blocks_exact_merge_commit_match(self):
+        opened = '[{"number":4,"state":"OPEN","headRefOid":"new","mergeCommit":null}]'
+        with mock.patch.object(cleanup.subprocess, 'check_output', return_value=opened) as check_output:
+            with self.assertRaisesRegex(RuntimeError, 'open PR'):
+                cleanup.merged_task(self.root, 'codex/fixture', 'merge')
+        self.assertEqual(check_output.call_count, 1)
+
     def test_foreign_cwd_launcher_is_protected_even_before_snapshot_reservation(self):
         proc = mock.Mock()
         proc.all.return_value = {123: {'path': '/fixture/Python'}}
