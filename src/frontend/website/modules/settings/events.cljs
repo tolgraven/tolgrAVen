@@ -7,6 +7,24 @@
    {:db (assoc-in db [:options :theme :dark-mode] on?)
     :dispatch [:html/set-attr! nil "data-theme" (if on? "dark" "light")]}))
 
+(r/reg-cofx :settings/dark-mode
+  (fn [cofx _]
+    (let [selected (.getAttribute (.-documentElement js/document) "data-theme")]
+      (assoc cofx :dark-mode
+             (if (#{"dark" "light"} selected)
+               (= "dark" selected)
+               (.-matches (.matchMedia js/window "(prefers-color-scheme: dark)")))))))
+
+(r/reg-event-fx :settings/read-theme
+  [(r/inject-cofx :settings/dark-mode)]
+  (fn [{:keys [db dark-mode]} _]
+    {:db (assoc-in db [:options :theme :dark-mode] dark-mode)}))
+
+(r/reg-event-fx :theme/toggle
+  [(r/inject-cofx :settings/dark-mode)]
+  (fn [{:keys [dark-mode]} _]
+    {:dispatch [:theme/dark-mode (not dark-mode)]}))
+
 (r/reg-event-fx :theme/colorscheme
  (fn [{:keys [db]} [_ colorscheme]]
    {:db (assoc-in db [:options :theme :colorscheme] (or colorscheme "default"))}))

@@ -1,5 +1,11 @@
 (ns website.settings-test
-  (:require [cljs.test :refer-macros [deftest is testing]]
+  (:require-macros [website.test-async :refer [go-promise await!]])
+  (:require [cljs.test :refer-macros [async deftest is testing]]
+            [website.react :as r]
+            [website.events]
+            [website.subs]
+            [website.modules.settings.views :as views]
+            [website.test-support :as support]
             [website.modules.settings.events :as settings]))
 
 (deftest appearance-values-retain-native-control-units
@@ -12,3 +18,47 @@
     (is (= "2rem" (settings/css-value "32px" 16)))
     (is (= "0.75rem" (settings/css-value "0.75rem" 11.52 "rem")))
     (is (= "5%" (settings/css-value "5%" 17.6)))))
+
+(deftest theme-toggle-follows-the-document-and-panel-retains-its-exit
+  (async done
+    (let [restore! (r/make-restore-fn)
+          document-root (.-documentElement js/document)
+          theme (.getAttribute document-root "data-theme")
+          element (.createElement js/document "div")
+          *root (atom nil)]
+      (.appendChild (.-body js/document) element)
+      (.setAttribute document-root "data-theme" "light")
+      (r/dispatch-sync [:state [:settings :panel-open] true])
+      (-> (go-promise
+            (let [root (await! (support/create-root! element))]
+              (reset! *root root)
+              (await! (support/render! root [views/<settings>]))
+              (await! (support/wait-for!
+                        #(= "false" (some-> (.querySelector element "[role=switch]")
+                                            (.getAttribute "aria-checked")))))
+              (doseq [expected ["dark" "light" "dark"]]
+                (.click (.querySelector element "[role=switch]"))
+                (await! (support/wait-for! #(= expected (.getAttribute document-root "data-theme"))))
+                (await! (support/wait-for!
+                          #(= (str (= expected "dark"))
+                              (.getAttribute (.querySelector element "[role=switch]") "aria-checked")))))
+              (let [panel (.querySelector element ".settings-panel")]
+                ;; Give the native root a finite clock even in the unstyled runner.
+                (set! (.-transition (.-style panel)) "opacity 0.35s linear")
+                (r/dispatch-sync [:state [:settings :panel-open] false])
+                (await! (support/settle!))
+                (when-not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))
+                  (is (identical? panel (.querySelector element ".settings-panel")))
+                  (is (.hasAttribute panel "inert"))))
+              (await! (support/wait-for! #(nil? (.querySelector element ".settings-panel"))))
+              (r/dispatch-sync [:state [:settings :panel-open] true])
+              (await! (support/wait-for! #(.querySelector element "[role=switch]")))
+              (is (= "true" (.getAttribute (.querySelector element "[role=switch]") "aria-checked")))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @*root (support/unmount! @*root))
+                      (.remove element)
+                      (if theme (.setAttribute document-root "data-theme" theme)
+                          (.removeAttribute document-root "data-theme"))
+                      (restore!)
+                      (done)))))))

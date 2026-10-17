@@ -723,3 +723,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   User request events update the query; the page owns lazy panel acquisition.
   Focusing the trigger must retain its node and focus without acquiring/replacing
   a fallback. Loaded account controls retain native Space/Enter activation too.
+
+- The shell's sticky `.menu-panels` owns Search controls and the persistent lazy
+  Settings host. Search's `:results` export stays outside that sticky area;
+  inline Search retains its combined controls/results. Settings owns keyed
+  `:presence`/`:exit` children so closing its query does not unmount the host.
