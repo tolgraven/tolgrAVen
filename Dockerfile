@@ -100,7 +100,8 @@ FROM source AS frontend
 RUN mkdir -p resources/public/css/website && npm run build
 ARG BUILD_JAVA_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m"
 RUN --mount=type=cache,id=tolgraven-shadow-release-v2,target=/compiler-cache,sharing=locked \
-    JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \
+    echo "Building optimized releases with persistent compiler analysis" \
+ && JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \
     SHADOW_CLJS='{:cache-root "/compiler-cache/shadow"}' \
     node scripts/build/compiler-cache.mjs shadow /compiler-cache \
     lein with-profile prod,provided run -m shadow.cljs.devtools.cli release app ssr return-worker document
@@ -112,7 +113,8 @@ FROM source AS backend
 ARG BUILD_CLJ_JAVA_OPTIONS="-Xms64m -Xmx768m -XX:ReservedCodeCacheSize=96m"
 ARG BUILDER_IMAGE
 RUN --mount=type=cache,id=tolgraven-aot-release-v1,target=/compiler-cache,sharing=locked \
-    COMPILER_IMAGE="${BUILDER_IMAGE}" JAVA_TOOL_OPTIONS="${BUILD_CLJ_JAVA_OPTIONS}" \
+    echo "Checking the complete AOT compiler input cache" \
+ && COMPILER_IMAGE="${BUILDER_IMAGE}" JAVA_TOOL_OPTIONS="${BUILD_CLJ_JAVA_OPTIONS}" \
     node scripts/build/compiler-cache.mjs aot /compiler-cache \
     lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :compile-path '"target/uberjar+provided/classes"' :prep-tasks '^:replace []' -- compile
 

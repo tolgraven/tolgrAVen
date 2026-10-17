@@ -174,3 +174,7 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   a different timestamp. AOT reuse requires the complete input/toolchain/options
   identity and publishes only successful output. Never share writable compiler
   output with live watches or let failed/removed sources leave reusable classes.
+
+  Warm deployment compiler measurements must not use Docker `--no-cache`: it
+  clears matching cache mounts. Rerun normal build instructions and verify actual
+  compiler counts/restored AOT classes separately from whole-layer hits.

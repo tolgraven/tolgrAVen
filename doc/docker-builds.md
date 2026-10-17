@@ -343,3 +343,9 @@ checks. `scripts/test/docker_compiler_cache.py` verifies real release analysis
 reuse, source mutation and restoration across fresh Docker layers; run it through
 `tolgraven-cpu run --mode buildkit`, supplying the pinned prefab and a new report
 directory. Report compiler time separately from full deployment duration.
+
+`--no-cache` (Coolify’s forced rebuild) also resets matching BuildKit cache
+mounts. It is a cold-cache recovery operation, not a compiler-reuse benchmark.
+For a warm comparison, rerun ordinary build instructions with the same compiler
+inputs and existing mounts; distinguish whole-layer hits from compiler hits in
+the build log. The frontend/backend steps print their cache boundary explicitly.
