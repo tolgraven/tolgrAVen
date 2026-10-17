@@ -339,4 +339,9 @@ if __name__ == '__main__':
         worker = threading.Thread(target=work, args=(control,), daemon=True)
         WORKERS.append(worker)
         worker.start()
-    ThreadingHTTPServer(('0.0.0.0', 8080), Handler).serve_forever()
+    with ThreadingHTTPServer(('0.0.0.0', 8080), Handler) as server:
+        server.timeout = 2
+        while all(worker.is_alive() for worker in WORKERS):
+            server.handle_request()
+    # Let the container restart policy recover a failed queue worker as well.
+    raise RuntimeError('Gate worker stopped')
