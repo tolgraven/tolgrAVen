@@ -351,8 +351,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   legacy flags, and verify SPA/remount/reload suppression plus stale-timer guards
   and exact scroll return. `cv-visit-motion.html?component=cv` measures real
   storage-backed motion from a nonzero origin; reload the same isolated context
-  to verify that the tour and focus no longer run. That page explicitly uses
-  `init-cv-visit!`; ordinary visual CV/CMS captures use an in-memory visit transport
+  to verify that the tour and focus no longer run. Its first-visit recording also
+  checks the CV, logo and timeline centers throughout width expansion; endpoint
+  geometry alone cannot detect a faster side-margin transition. That page explicitly
+  uses `init-cv-visit!`; ordinary visual CV/CMS captures use an in-memory visit transport
   while retaining the native mount, durable claim and delayed module events.
 
 - Messaging visual fixtures retain Home/module parents and managed query contracts;
