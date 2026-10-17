@@ -168,3 +168,9 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   and unused Docker cache; preserve rollback/container references and all volumes.
   Its timer must skip inactive Docker and missing mounts without activating either.
   See `doc/coolify-storage.md`.
+
+- `build/compiler-cache.mjs` runs only within a locked deployment BuildKit mount.
+  Preserve unchanged macro/resource timestamps by content; changed bytes must get
+  a different timestamp. AOT reuse requires the complete input/toolchain/options
+  identity and publishes only successful output. Never share writable compiler
+  output with live watches or let failed/removed sources leave reusable classes.

@@ -377,3 +377,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   branch/fork trust, stale jobs and verification failure. The actual Coolify
   adapter additionally checks preview state under a shared lock through the native
   lifecycle job; verify a stale close against an open task PR preserves its preview.
+
+- Deployment compiler-cache checks cover fresh checkout timestamps, macro/resource
+  edits, removed classes and failed compilation. Real release checks must prove
+  unchanged analysis reuse plus changed/restored emitted JavaScript; mocked
+  compiler checks alone do not establish incremental release behavior.

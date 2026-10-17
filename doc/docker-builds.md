@@ -322,3 +322,24 @@ Coolify, and detailed build logs plus the queue live under
 `/data/coolify/prefab-gate/state` on the host. Failed jobs retry twice automatically;
 a GitHub webhook redelivery retries a final failure. To recover the event path,
 restore the saved App webhook URL and leave native Coolify deploys enabled.
+
+### Compiler reuse in ordinary deployments
+
+The frontend release step owns a locked BuildKit compiler cache. Its Node adapter
+hashes source and resource bytes and preserves timestamps only for identical
+inputs, so a fresh Git checkout does not invalidate Shadow's macro/resource
+analysis. Shadow still checks dependency/options changes, and every build emits
+fresh optimized release output. Closure's final optimization remains necessary.
+
+The backend has a separate locked AOT cache. Classes are restored only when all
+source/resource/build inputs, prefab identity, JVM options and compile arguments
+match. Any changed input rebuilds the complete AOT graph, avoiding stale macro
+consumers and removed namespaces. A failed compile cannot publish a reusable
+entry. Neither cache contains the final deployed image or replaces validation;
+BuildKit may evict them and the next build works cold.
+
+Run `node --test test/scripts/compiler_cache_test.mjs` for failure/invalidation
+checks. `scripts/test/docker_compiler_cache.py` verifies real release analysis
+reuse, source mutation and restoration across fresh Docker layers; run it through
+`tolgraven-cpu run --mode buildkit`, supplying the pinned prefab and a new report
+directory. Report compiler time separately from full deployment duration.

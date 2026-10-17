@@ -325,6 +325,10 @@ maintain a duplicate handwritten variable catalog.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
 
 ## Docker dependency updates
+- Ordinary Docker releases retain locked Shadow analysis and exact-input AOT
+  caches through `scripts/build/compiler-cache.mjs`; fresh checkouts must retain
+  unchanged macro timestamps. Changed AOT inputs rebuild the full graph. Keep
+  cache invalidation and cold-build correctness; see `doc/docker-builds.md`.
 - The dependency prefab includes compiler tools, `node_modules`, Maven artifacts and
   a clean runtime root with Java, Node, Babashka and upload codecs. Ordinary Docker
   builds use the exact multi-platform dependency hash pinned in Dockerfile; registry hosts need one
