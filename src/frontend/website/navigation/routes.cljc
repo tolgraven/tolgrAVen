@@ -54,8 +54,7 @@
                                true (r/dispatch [:user/open-ui])
                                (false nil) (r/dispatch [:user/close-ui]))
                               (case (:settingsBox query)
-                                true (do (r/dispatch [:state [:settings :panel-open] true])
-                                           (r/dispatch [:scroll/to-top-and-arm-restore]))
+                                true (r/dispatch [:state [:settings :panel-open] true])
                                 (false nil) (r/dispatch [:state [:settings :panel-open] false]))) ; well this being on start it wouldn't be open anyways
                      :stop (fn [{:keys [query]}]    ; why is this being run without leaving page?
                              )}]}]

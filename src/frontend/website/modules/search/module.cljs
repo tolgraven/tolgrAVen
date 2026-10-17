@@ -12,6 +12,7 @@
             :start 'website.modules.search.index/start!}
    :storage storage/tables
    :view {:view #'view/<ui>
+          :results #'view/<results>
           :button #'view/<button>
           :inline #'view/<inline>}
    :init #(r/dispatch [:search/init])})

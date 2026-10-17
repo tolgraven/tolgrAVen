@@ -408,3 +408,13 @@ menu > nav > .nav-section:last-of-type > .nav-links {
     animation: none;
   }
 }
+
+// Results stay in normal flow below these persistent menu controls.
+.menu-panels {
+  position: sticky;
+  top: var(--header-height-current);
+  z-index: 99;
+  background: var(--bg-1);
+}
+
+header.hide ~ .menu-panels { top: 0; }

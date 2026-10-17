@@ -116,10 +116,14 @@
      (m/<> {:module :user
             :defer? (not open?)
             :load-on (if open? :immediate :event)})))
-   #?(:module/settings
-      (when @(r/subscribe [:state [:settings :panel-open]])
-        (m/<> {:module :settings :load-on :immediate})))
-   (m/<> {:module :search, :defer? true})
+   [:div.menu-panels
+    #?(:module/settings
+       (let [open? @(r/subscribe [:state [:settings :panel-open]])]
+         (m/<> {:module :settings
+                :defer? (not open?)
+                :load-on (if open? :immediate :event)})))
+    (m/<> {:module :search, :defer? true})]
+   (m/<> {:module :search, :view :results, :defer? true})
    (if-let [error-page @(r/subscribe [:state [:error-page]])] ; do it like this as to not affect url. though avoiding such redirects not likely actually useful for an SPA? otherwise good for archive.org check hehe
      [:main.main-content.perspective-top
       [error-page]]

@@ -171,8 +171,12 @@
   (let [open? @(r/subscribe [:search/open?])]
     [:section.search-ui {:class (when open? "search-ui-open")}
      [<box> {:id "search-input", :open? open?}]
-     [<suggestions> {:id "search-input", :open? open?}]
-     [<instant-results> open?]]))
+     [<suggestions> {:id "search-input", :open? open?}]]))
+
+(m/defc <results> "Header results remain outside the sticky controls."
+  {:features [:error-boundary]}
+  []
+  [<instant-results> @(r/subscribe [:search/open?])])
 
 (m/defc <inline> "Always-visible search using the same query and result state."
   {:features [:error-boundary]}

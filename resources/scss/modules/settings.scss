@@ -1,39 +1,26 @@
 .settings-panel {
   background: var(--gradient-bg-main);
-  width: calc(100vw - 2 * var(--space-sides));
-  left: calc(var(--space-sides));
-  top: calc(var(--header-height-current) + var(--line-width));
-  opacity: 80%;
-  height: 0;
-  overflow: hidden;
-  transition: height var(--header-expand-time) ease;
   font-size: 0.8em;
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.35s ease, opacity 0.25s ease;
 
-  &.opened {
-    height: auto;
+  &.appeared {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  &__content {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  &__body {
+    position: relative;
     padding: var(--space);
-
-    &:before {
-      content: "";
-      display: block;
-      position: absolute;
-      height: 100%;
-      width: var(--line-width-vert);
-      background: linear-gradient(180deg, var(--line-color), var(--purple) 70%, var(--purple) 100%);
-      top: 0;
-      right: 0;
-    }
-
-    &:after {
-      content: "";
-      display: block;
-      position: absolute;
-      height: var(--line-width);
-      width: 100%;
-      background: linear-gradient(90deg, transparent, var(--purple) 70%, var(--purple) 100%);
-      bottom: 0;
-      right: calc(0rem - var(--space));
-    }
+    border-right: var(--line-width-vert) solid var(--purple);
+    border-bottom: var(--line-width) solid var(--purple);
   }
 
   .settings-numbers {
@@ -55,3 +42,7 @@
   }
 }
 
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-panel { transition: none; }
+}
