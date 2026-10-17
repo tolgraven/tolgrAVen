@@ -6,6 +6,8 @@
   (:require [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.react.server :as server]
+            [cljs.reader :as edn]
+            [website.components.media :as media]
 
             [shadow.lazy :as lazy]
 
@@ -36,6 +38,37 @@
 (r/defc <check> [form committed!]
   (r/use-effect (fn [] (committed!) nil) [])
   form)
+
+(deftest local-pairs-retain-ready-native-gallery-content
+  (async done
+    (let [restore-db! (r/make-restore-fn)
+          form [media/<gallery> [{:src "img/tolgrav.png", :alt "Authored gallery image"}]]
+          sources (fn [db]
+                    (let [element (.createElement js/document "div")]
+                      (set! (.-innerHTML element)
+                            (render/html! db form {:restored? true :modules {}}))
+                      (mapv #(.getAttribute % "src")
+                            (array-seq (.querySelectorAll element "#gallery img")))))]
+      ;; This check owns the pair's view state, not persistence side effects.
+      (r/reg-fx :page-return/consume (fn [_]))
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            (is (empty? (sources (await! (support/state-at! []))))
+                "A fresh gallery still waits for its existing on-seen activation")
+            (r/dispatch-sync [:state [:gallery :loaded] true])
+            (let [ready-db (await! (support/state-at! []))
+                  ready-sources (sources ready-db)
+                  saved (-> ready-db contract/state-for pr-str edn/read-string)]
+              (is (= ["img/tolgrav.png"] ready-sources)
+                  "The actual ready gallery renders its authored image")
+              (is (= ready-sources (sources saved))
+                  "The same native gallery cannot disappear when rendered into a local pair")
+              (r/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:page-return/install saved])
+              (is (true? (await! (support/subscription-value! [:state [:gallery :loaded]])))
+                  "Installing the pair retains the gallery's ready presentation")))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore-db!) (done)))))))
 
 (deftest local-snapshot-policy-is-independent-of-the-mounted-document
   (let [mounted (r/atom {:page (restore/page-key)

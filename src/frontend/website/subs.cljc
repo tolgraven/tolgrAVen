@@ -26,7 +26,7 @@
         #(or (when (:scoped? opts)
                (get-in @db [:store :scoped (pr-str (query/normalize-query opts))]))
              (query/query-contract (get-in @db [:store :public]) opts)))
-      (supabase-client/ensure-query! opts))))
+      (r/without-tracking #(supabase-client/ensure-query! opts)))))
 
 (r/reg-sub-raw :store/plan
   (fn [_ [_ nodes context]]

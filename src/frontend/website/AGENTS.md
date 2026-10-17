@@ -69,6 +69,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   and rows while query/repository changes still invalidate stale responses.
   Later disk form restoration preserves installed owner-selected inputs while
   unrelated drafts restore normally.
+  Home's authored gallery retains its loaded display flag in local pairs so
+  already-present images survive the same native gallery renderer.
   GitHub search is debounced through events and queries the backend's complete
   Supabase archive; never filter only the browser's loaded subset.
 
@@ -307,6 +309,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - `:component-data/status` acquires the shared queue through its managed source
   factory without render tracking. Its derived reaction owns readiness dependencies;
   restoring unrelated resources must not invalidate an uncommitted view.
+  `:store/on-snapshot` likewise acquires SDK readers without render tracking;
+  the returned reader retains its own dependencies and disposal.
   Persistent scoped value subscriptions dispatch the idempotent `:component-state/load` event on acquisition;
   ordinary scoped reads stay pure. Declared defaults initialize after commit through
   `:component-state/initialize`, sharing the same effect with eager storage loads.
