@@ -247,6 +247,8 @@ unmerged closes. Before deploying, the build worker rechecks the current PR head
 and open state; stale queued/building events cannot recreate a closed preview.
 The native handler removes the preview and cancels its deployments. Existing
 staging Supabase suspension preserves its volumes; production stays running.
+Cold resume reacquires missing configured images (for example after cache cleanup)
+without recreating existing containers or volumes.
 
 ## Dependency cache verification
 

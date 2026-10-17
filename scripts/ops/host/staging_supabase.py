@@ -97,7 +97,9 @@ def start_and_wait():
     if ready():
         return
     print('Starting staging Supabase; retaining existing volumes.', flush=True)
-    compose('up', '-d', '--no-recreate', '--pull', 'never')
+    # Cache cleanup or a host migration can remove an idle stack's images.
+    # Fetch only missing pinned images; preserve existing containers and volumes.
+    compose('up', '-d', '--no-recreate', '--pull', 'missing')
     deadline = time.monotonic() + 240
     while time.monotonic() < deadline:
         if ready():
