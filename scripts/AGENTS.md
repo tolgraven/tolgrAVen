@@ -26,6 +26,9 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   across lazy sheets and preserve runtime selector families and attribute states.
   Development CSS/watch output and bundled editor SCSS remain complete;
   generated-output exclusions must not filter source files. See `doc/styles.md`.
+- `test/server.clj` decodes only the two pinned Docs HTML fixtures from
+  `test/fixtures/docs`; keep their reviewed decoded bytes stable across source
+  changes. Current Codox generation is a separate integration check.
 - `test/server.clj` accepts `--glass-output` for isolated glass fixture output;
   it serves current shared CSS and leaves ordinary browser-suite routing intact.
 - `test/ssr.clj` saves renderer export metadata with each HTML/state hydration

@@ -684,6 +684,9 @@
                                           (.then (fn [_] (loader/load! {:module :strava}))))
                              nil)))
                   (.then (fn [_]
+                           (when (#{"cv" "cms-cv"} component)
+                             (loader/load! {:module :carousel}))))
+                  (.then (fn [_]
                            (when (additional-fixture/component-names component)
                              (additional-fixture/prepare! component))))
                   (.then (fn [_]

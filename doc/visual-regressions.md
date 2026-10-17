@@ -64,6 +64,11 @@ Their dates determine position/size within the seed's shared timeline range;
 the case scrolls the native timeline to that historical entry before capture.
 Full CV category guards retain the reference glyphs, font metrics, gradient,
 label gaps and positions relative to their headings at both widths.
+Full CV reading, CMS layout and carousel cases resolve Carousel through the
+existing managed loader before mounting CV, after Content Editor for CMS cases.
+They compare the ready native surface and its visit, fullscreen and interaction
+clocks. Controlled loader and loading tests retain acquisition, fallback visibility
+and disposal coverage. Every observed native clock is still compared strictly.
 The open-menu cases also hit-test each visible native toolbar control; positive
 rectangles alone cannot detect a decorative cover intercepting the controls.
 The original editor comparison fixture remains unchanged.
@@ -128,13 +133,13 @@ incoming rows against the actual viewport: offscreen rows must settle without
 an entrance. These checks supplement screenshots and CSS timing comparisons;
 modeled comparator traces alone do not establish rendered behavior.
 
-Docs cases render the native Docs page directly under main and read the actual
-Codox index/topic generated in the served build. Run `lein docs` through the bounded
-worker when preparing that snapshot; `/fixtures/docs/index.html` and
-`/fixtures/docs/docs.html` expose only those generated files. The fixture applies
-the backend's body extraction before the existing Docs view rewrites links. Missing
-documents fail capture. Keep the generated input revision identical for repeat
-comparisons; these states do not freeze a copy of generated documentation.
+Docs cases render the native Docs page directly under main. Their reviewed Codox
+index/topic corpus is pinned losslessly in `test/fixtures/docs/*.html.gz`; the test
+server decodes those exact bytes at `/fixtures/docs/index.html` and
+`/fixtures/docs/docs.html`. The managed fixture retains the backend's body extraction
+and native Docs link rewriting. See the corpus README for provenance and hashes.
+Generating current documentation with `lein docs` remains a separate integration
+check; it does not replace this stable visual input or update approved baselines.
 Instagram cases keep the native gallery under its page container and the fullscreen
 zoom owner outside main, as in the application. Six keyed posts use local images
 through a managed URL dependency; native subscriptions, image decoding, click,

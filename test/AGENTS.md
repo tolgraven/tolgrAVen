@@ -145,8 +145,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Comment-composer visual states retain the real comment parent and lazy owner.
   Seed local form text through events; exercise native mode/Cancel controls and
   assert preview, owner disposal and zero provider I/O. Never Submit or upload.
-- Docs visual fixtures require the served snapshot's generated Codox index/topic
-  resources. Acquire each new public module's native sheets only in its own case;
+- Docs visual fixtures use the reviewed lossless HTML corpus in
+  `test/fixtures/docs`, decoded by the test server at the two fixed fixture URLs.
+  Keep decoded bytes stable; current-source Codox generation is a separate check.
+  Acquire each new public module's native sheets only in its own case;
   shared-head additions change every case's dormant motion declaration inventory.
 - Regenerate Node-rendered fixtures before the browser suite. Check final assertion
   results, running Shadow warnings and browser logs; successful compilation is not
