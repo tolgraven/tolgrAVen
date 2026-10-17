@@ -105,7 +105,9 @@
 
   :plugins [[lein-codox "0.10.8"]]
 
-  :aliases {"docs" ["update-in" ":" "assoc" ":prep-tasks" "^:replace []" "--"
+  :aliases {"repl" ["trampoline" "run" "-m" "website.dev.terminal"]
+            "repl-classic" ["update-in" ":aliases" "dissoc" "repl" "--" "repl"]
+            "docs" ["update-in" ":" "assoc" ":prep-tasks" "^:replace []" "--"
                     "do" ["run" "-m" "website.build.docs"] ["codox"]]}
 
   :codox

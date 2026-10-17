@@ -231,8 +231,11 @@ sessions' tabs and restore any borrowed tab when finished.
   `target/production`; local prod loads those resources before shared assets and
   preflights the release browser manifest and both document bootstrap scripts
   before initialization logging/asset loading. See `doc/testing.md`.
-- `lein repl`: check/rebuild stale CSS before opening HTTP and the Clojure REPL;
-  current SSR/browser markup must not paint against sheets from an older checkout.
+- `lein repl` trampolines through `website.dev.terminal` into a pinned Babashka
+  neorepl client; keep CIDER/Piggieback/Shadow middleware aligned with the original
+  `:repl-options`. `lein repl-classic` retains the original Lein task. Both call
+  the existing `user/start`: check/rebuild stale CSS before opening
+  HTTP and the Clojure REPL; current SSR/browser markup must not paint against sheets from an older checkout.
   Deferred Shadow watches compile
   sequentially without blocking REPL acknowledgement. The standalone `:document`
   target releases first (no HMR); document/bootstrap requests await only that

@@ -1,0 +1,5 @@
+;; Keep terminal/JLine dependencies outside the application JVM and prefab.
+{:deps {io.github.nrepl/neorepl
+        {:git/url "https://github.com/nrepl/neorepl"
+         :git/tag "v0.3.0"
+         :git/sha "c5089f902922d0826569d035dd2e60a55750815e"}}}
