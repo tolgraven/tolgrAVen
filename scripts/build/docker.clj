@@ -111,14 +111,8 @@
                 "-f" "Dockerfile.builder" "-t" image "."))))
     (when publish?
       (registry-check!)
-      (let [id (:Id (first (inspect image)))
-            aliases (map #(str registry "/tolgraven/builder:" %)
-                         ["java21-node22-v1" (str "java21-node22-v2-" (last (str/split platform #"/")))])]
-        (when-not (= id (remote-digest image)) (run! "docker" "push" image))
-        (doseq [alias aliases]
-          (when-not (= id (remote-digest alias))
-            (run! "docker" "tag" image alias)
-            (run! "docker" "push" alias))))
+      (let [id (:Id (first (inspect image)))]
+        (when-not (= id (remote-digest image)) (run! "docker" "push" image)))
       (println "Published native prefab; the Coolify prefab gate publishes the shared multi-platform reference."))
     image))
 

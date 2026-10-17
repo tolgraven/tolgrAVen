@@ -44,7 +44,7 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - `build/`, `media/`, `dev/`, `test/`: local build, asset and verification tools.
   Prefer Babashka using its built-in libraries; Node owns SDK/zlib operations.
 - `build/docker.clj` hashes the dependency recipe/manifests and bundled runtime
-  converter, publishes the compiler/runtime prefab and retains the legacy alias. The staged
+  converter and publishes the native compiler/runtime prefab. Coolify advances aliases from master. The staged
   commit pin must use index bytes and preserve unstaged edits. PR readiness is
   checked by the Coolify gate against that exact hash on ARM64/AMD64 runtimes; missing/auth
   failures must not be treated as a successful cache hit or bypass the merge gate.

@@ -291,6 +291,10 @@ def work(control=False):
 
 
 class Handler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        if self.path != '/health':
+            super().log_message(format, *args)
+
     def do_GET(self):
         self.send_response((200 if all(worker.is_alive() for worker in WORKERS) else 503)
                            if self.path == '/health' else 404)

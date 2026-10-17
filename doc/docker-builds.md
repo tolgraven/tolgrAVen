@@ -57,7 +57,7 @@ The prefab includes the complete project `node_modules` directory, including
 Sass, PostCSS, and Shadow CLI tools. npm scripts use these local executables;
 no global CSS-tool installs or compatibility symlinks are needed.
 
-`make docker-prefab` publishes a dependency-hash tag and the compatibility aliases
+`make docker-prefab` publishes the current native dependency-hash tag; Coolify advances compatibility aliases
 `registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v2` and `java21-node22-v1`.
 The v2 image also contains `/opt/tolgraven-runtime`: the clean runtime filesystem
 with Java, Node, Babashka and the tested upload codecs. Application images copy
@@ -84,7 +84,9 @@ builds the matching self-contained recipe when registry access is unavailable.
 Maven caching belongs to the Dockerfile, independently of Coolify or the Mac
 launcher. Both prefab construction and application dependency preparation mount
 `id=m2,target=/root/m2,sharing=locked`, retaining the original cache identity.
-A temporary Lein profile selects that repository. Ephemeral prefab builders can
+An explicitly active user profile selects that repository. Both compiler and
+final packaging graphs are resolved: uberjar removes provided dependencies and
+can otherwise select additional runtime jar versions. Ephemeral prefab builders can
 seed it from the previous published native prefab (`MAVEN_SEED_IMAGE`); a cold
 builder uses an empty seed. Application preparation first
 seeds missing artifacts from the prefab, resolves the current manifests, then
@@ -238,8 +240,8 @@ changes still compile normally.
 
 ## PR preview cleanup
 
-The Coolify prefab gate forwards signed `pull_request.closed` events directly to
-Coolify's native preview handler. Cleanup has a separate control worker, so it
+The Coolify prefab gate handles signed `pull_request.closed` events through
+Coolify's native preview lifecycle job. Cleanup has a separate control worker, so it
 never waits for a dependency build. GitHub emits this event for both merges and
 unmerged closes. Before deploying, the build worker rechecks the current PR head
 and open state; stale queued/building events cannot recreate a closed preview.
@@ -289,7 +291,7 @@ a 6 GB cache target and a 20 GB free-space target. Maven caches are seeded from 
 previous native prefab and remain locked during updates.
 
 After both runtimes pass, it publishes the multi-platform reference, reports
-`prefab-ready` through the Coolify GitHub App and forwards the original event to
+`prefab-ready` through the Coolify GitHub App and invokes
 the existing native Coolify deployment handler. PRs go to staging; master pushes
 go to production and advance compatibility aliases. It rechecks the GitHub head
 before publication of aliases and dispatch, so obsolete events cannot release an
@@ -311,7 +313,7 @@ infrastructure; recipe RUNs receive neither that socket nor the App identity.
 
 The existing App needs Repository permissions → Commit statuses: Read and write.
 Its private key and installation tokens remain inside Coolify; its encrypted
-webhook secrets are copied only to the managed service's environment. Registry
+webhook secret is copied only to the managed service's environment. Registry
 credentials remain in the server's existing Docker configuration, mounted read-only.
 The gate does not receive a personal GitHub token. Runtime control logs are in
 Coolify, and detailed build logs plus the queue live under

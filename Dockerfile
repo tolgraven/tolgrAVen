@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Ordinary builds pull one complete dependency image. BUILDER_IMAGE=prefab builds
 # the same recipe locally on a host without registry access.
-ARG BUILDER_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:deps-b9e036277ed76169
+ARG BUILDER_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:deps-3ec32b431e0fd9b2
 ARG MAVEN_SEED_IMAGE=empty-maven-seed
 FROM scratch AS empty-maven-seed
 COPY package.json /root/.m2/repository/.seed
@@ -55,7 +55,7 @@ RUN --mount=type=cache,id=m2,target=/root/m2,sharing=locked \
  && cp -an /opt/maven-seed/. /root/m2/ \
  && printf '%s\n' '{:user {:local-repo "/root/m2"}}' > /tmp/lein-cache/profiles.clj \
  && LEIN_HOME=/tmp/lein-cache JAVA_TOOL_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m" \
-    lein with-profile user,uberjar,provided,codox deps \
+    lein with-profile user,uberjar,provided,codox:user,uberjar deps \
  && cp -a /root/m2/. /root/.m2/repository/ \
  && rm -rf /tmp/lein-cache
 RUN cp package-lock.json /opt/prefab-package-lock.json \
@@ -84,7 +84,7 @@ RUN --mount=type=cache,id=m2,target=/root/m2,sharing=locked \
  && printf '%s\n' '{:user {:local-repo "/root/m2"}}' > /tmp/lein-cache/profiles.clj \
  && cp -an /root/.m2/repository/. /root/m2/ \
  && LEIN_HOME=/tmp/lein-cache JAVA_TOOL_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m" \
-    lein with-profile user,uberjar,provided,codox deps \
+    lein with-profile user,uberjar,provided,codox:user,uberjar deps \
  && cp -a /root/m2/. /root/.m2/repository/ \
  && rm -rf /tmp/lein-cache
 FROM dependency-cache AS source

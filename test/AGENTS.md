@@ -372,3 +372,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   removed; it does not deploy or touch watched application output.
 - `test/scripts/docker_build_wiring_test.php <helper>` checks the actual Coolify
   models for idempotent normal/preview build settings and rolls back every write.
+
+- `prefab_gate_test.py` exercises signed HTTP delivery, persistent deduplication,
+  branch/fork trust, stale jobs and verification failure. The actual Coolify
+  adapter additionally checks preview state under a shared lock through the native
+  lifecycle job; verify a stale close against an open task PR preserves its preview.
