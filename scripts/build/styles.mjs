@@ -60,6 +60,11 @@ async function outputHashes(buildEntries) {
       hashes[file] = digest(await fs.readFile(path.join(output, file)));
     }
   }
+  return {...hashes, ...await editorOutputHashes()};
+}
+
+async function editorOutputHashes() {
+  const hashes = {};
   // The same build owns the optional editor workspace/profile. A deleted or
   // overwritten generated asset must prevent the CSS fast path too.
   for (const file of ['resources/public/vendor/neovim/workspace.json',
@@ -92,23 +97,30 @@ async function build() {
   if (!postcssOnly) {
     execFileSync('bb', ['-cp', 'scripts:src/cljc:resources', '-m', 'build.neovim-workspace'], {stdio: 'inherit'});
   }
+  const generatedEditor = await editorOutputHashes();
+  const generatedOutputs = {};
   const [{compile}, {default: postcss}, {default: autoprefixer}, {editorStyles}] = await Promise.all([
     import('sass'), import('postcss'), import('autoprefixer'), import('./editor-styles.mjs'),
   ]);
   for (const entry of buildEntries) {
     const file = path.join(output, entry.replace(/\.scss$/, '.css'));
     await fs.mkdir(path.dirname(file), {recursive: true});
+    let sourceCss;
+    const name = entry.replace(/\.scss$/, '.css');
     if (!postcssOnly) {
       const result = compile(path.join(root, entry), {style: 'compressed', charset: false});
       const css = entry === 'modules/markdown-editor.scss'
         ? `${await editorStyles()}\n${result.css}` : entry === 'modules/maps.scss'
         ? result.css.replaceAll('url(images/', 'url(/vendor/leaflet/images/') : result.css;
-      await atomicWrite(file, entry === 'main.scss' && overrides ? `${css}\n${overrides}` : css);
+      sourceCss = entry === 'main.scss' && overrides ? `${css}\n${overrides}` : css;
+      await atomicWrite(file, sourceCss);
+      generatedOutputs[name] = digest(sourceCss);
     }
     if (!sassOnly) {
-      const result = await postcss([autoprefixer]).process(await fs.readFile(file, 'utf8'),
+      const result = await postcss([autoprefixer]).process(postcssOnly ? await fs.readFile(file, 'utf8') : sourceCss,
         {from: file, to: file.replace(/\.css$/, '.min.css'), map: false});
       await atomicWrite(file.replace(/\.css$/, '.min.css'), result.css);
+      generatedOutputs[name.replace(/\.css$/, '.min.css')] = digest(result.css);
     }
   }
   await fs.cp('node_modules/leaflet/dist/images', 'resources/public/vendor/leaflet/images', {recursive: true});
@@ -116,7 +128,9 @@ async function build() {
     if (inputRevision !== await revision(await entries(), checkedOverrides(await readOverrides()))) {
       return build();
     }
-    await atomicWrite(stamp, JSON.stringify({revision: inputRevision, outputs: await outputHashes(buildEntries)}));
+    const expectedOutputs = {...generatedOutputs, ...generatedEditor};
+    if (JSON.stringify(await outputHashes(buildEntries)) !== JSON.stringify(expectedOutputs)) return build();
+    await atomicWrite(stamp, JSON.stringify({revision: inputRevision, outputs: expectedOutputs}));
   } else {
     await fs.rm(stamp, {force: true});
   }
