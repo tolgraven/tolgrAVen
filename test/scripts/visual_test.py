@@ -700,6 +700,56 @@ class VisualTest(unittest.TestCase):
             self.assertEqual([(0, False), (289, False)], client.captured[1:],
                              'Later scrolling must keep the native dismissal behavior')
 
+    def test_raster_rejects_interaction_lost_during_screenshot_and_preserves_failed_png(self):
+        class Client(HoverClient):
+            def __init__(self, image, failure):
+                super().__init__()
+                self.image, self.failure = image, failure
+                self.hovered, self.surface, self.screenshots = True, True, 0
+
+            def evaluate(self, function, **arguments):
+                if 'Native hover was lost during capture' in function and not self.hovered:
+                    raise RuntimeError('Native hover was lost during capture')
+                if 'Missing native surface' in function and not self.surface:
+                    raise RuntimeError('Missing native surface')
+                if 'visualFixture.snapshot()' in function:
+                    state = self.state()
+                    state['document'] = [0, 0, 800]
+                    return state
+                return super().evaluate(function, **arguments)
+
+            def call(self, name, **arguments):
+                if name != 'take_screenshot':
+                    raise AssertionError('Unexpected capture transport call')
+                self.screenshots += 1
+                if self.failure == 'hover': self.hovered = False
+                if self.failure == 'surface': self.surface = False
+                return {'content': [{'type': 'image', 'data': self.image}]}
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            png = root / 'native.png'
+            visual.write_png(png, 1, 1, bytes([42, 23, 63, 255]))
+            image = base64.b64encode(png.read_bytes()).decode()
+            case = hover_case()
+            case['capture_assert'] = "if (!document.querySelector('.native-surface')) throw new Error('Missing native surface')"
+            for failure in (None, 'hover', 'surface'):
+                with self.subTest(failure=failure):
+                    output = root / str(failure); output.mkdir()
+                    client = Client(image, failure)
+                    if failure:
+                        message = 'Native hover was lost' if failure == 'hover' else 'Missing native surface'
+                        with self.assertRaisesRegex(RuntimeError, message):
+                            visual.capture_tiles(client, case, output)
+                        self.assertEqual([], list(output.glob('*.json')),
+                                         'A dismissed interaction must not acquire completion records')
+                    else:
+                        visual.capture_tiles(client, case, output)
+                        self.assertTrue((output / (case['id'] + '.json')).is_file())
+                    self.assertEqual(png.read_bytes(), (output / (case['id'] + '.png')).read_bytes(),
+                                     'Retain the actual PNG, including failed evidence')
+                    self.assertEqual(1, client.screenshots, 'Never rehover or reshoot a dismissed interaction')
+
     def test_below_fold_pixel_and_missing_tile_fail(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

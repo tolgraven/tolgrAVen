@@ -7,7 +7,8 @@
   encoding per record and unchanged approval metadata. Geometry mode verifies boxes and computed appearance; pixel
   parity requires matching raster captures. Raster interaction cases retain their
   actual open/hovered viewport before complete-document scrolling; assert the
-  transient surface again immediately before its PNG. Never tag later scrolled
+  transient surface immediately before and after its PNG; preserve failed images
+  without completion records when acquisition dismisses the interaction. Never tag later scrolled
   tiles with hover evidence from an earlier viewport. Genuine hover cases use the configured
   Chrome MCP, observed accessibility UIDs verified against native selectors, and
   an unhovered starting target; synthetic mouse events do not prove CSS hover.

@@ -340,11 +340,11 @@ def hover_contract(case):
 
 
 def assert_capture(client, case):
-    """Check the intended transient surface after readiness, before its PNG."""
+    """Check the intended transient surface on both sides of its PNG."""
     target = case.get("native_hover")
     if target:
         client.evaluate("() => { const element = document.querySelector(" + json.dumps(target["selector"]) +
-                        "); if (!element?.matches(':hover')) throw new Error('Native hover was lost before capture'); " +
+                        "); if (!element?.matches(':hover')) throw new Error('Native hover was lost during capture'); " +
                         target["assert"] + "; return true; }")
     if case.get("capture_assert"):
         client.evaluate("() => { " + case["capture_assert"] + "; return true; }")
@@ -378,6 +378,10 @@ def capture_tiles(client, case, output):
         image = client.call("take_screenshot", format="png")
         block = next(block for block in image.get("content", []) if block.get("type") == "image")
         (output / (stem + ".png")).write_bytes(base64.b64decode(block["data"]))
+        if index == 0:
+            # Screenshot acquisition can itself dismiss native hover. Retain
+            # that failed PNG, but never label it a completed interaction pair.
+            assert_capture(client, case)
         states.append(state)
         tiles.append({"stem": stem, "scroll": [x, y], "document_height": document_height})
         if target is None and y != 0:
