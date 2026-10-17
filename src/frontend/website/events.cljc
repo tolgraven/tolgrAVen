@@ -10,6 +10,7 @@
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
     [website.component.legacy-storage :as localstore]
     [website.component.storage :as storage]
+    [website.ssr.return-contract :as return-contract]
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
     [website.util :as util]
@@ -560,10 +561,14 @@
 
 (r/reg-event-fx :ls/get-path [(r/inject-cofx :ls) (r/inject-cofx :ls/restored)]
   (fn [{:keys [db ls] :ls/keys [restored]} [_ ls-path db-path]]
-    (let [value (if restored (:value restored) (get-in ls ls-path))]
+    (let [value (if restored (:value restored) (get-in ls ls-path))
+          ;; Exact paired inputs and new intent retain their owner-declared
+          ;; values; unrelated form fields still use ordinary disk restoration.
+          retained (when (= db-path [:state :form-field])
+                     (:form-field (return-contract/restored-view-state (:state db))))]
       (cond-> {:ls (remove-saved-path ls ls-path) :ls/track db-path}
         (some? value) (assoc :db (update-in db db-path
-                                  #(if (and (map? %) (map? value)) (merge % value) value)))))))
+                                  #(if (and (map? %) (map? value)) (merge % value retained) value)))))))
 
 (r/reg-event-fx :ls/get-path-as-event [(r/inject-cofx :ls)]
   (fn [{:keys [ls]} [_ ls-path event]]

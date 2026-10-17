@@ -67,6 +67,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   page/detail identities and owned search field together with the cached content.
   Exclude pending requests; initialization must preserve the restored heading
   and rows while query/repository changes still invalidate stale responses.
+  Later disk form restoration preserves installed owner-selected inputs while
+  unrelated drafts restore normally.
   GitHub search is debounced through events and queries the backend's complete
   Supabase archive; never filter only the browser's loaded subset.
 

@@ -248,6 +248,73 @@
           (.catch #(is false (str %)))
           (.finally (fn [] (restore!) (done)))))))
 
+
+(deftest late-disk-restoration-preserves-paired-repository-input
+  (async done
+    (let [restore! (r/make-restore-fn)
+          *requests (atom [])
+          *disk-source (atom nil)
+          *disk-fields (atom nil)
+          commits [{:sha "abcdef1234567"
+                    :message ["Preserved repository result" nil nil]}]]
+      ;; Keep the registered restoration/init events; replace only disk reads
+      ;; and persistence/network effects so no actual draft or provider is changed.
+      (r/reg-cofx :ls #(assoc % :ls {:form-field @*disk-fields}))
+      (r/reg-cofx :ls/restored
+        #(assoc % :ls/restored (when (= :envelope @*disk-source)
+                                {:value @*disk-fields})))
+      (r/reg-fx :ls (fn [_]))
+      (r/reg-fx :ls/track (fn [_]))
+      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (-> (go-promise
+            (doseq [query ["" "theme"]
+                    disk-source [:legacy :envelope]]
+              (reset! *requests [])
+              (reset! *disk-source disk-source)
+              (reset! *disk-fields {:github {:search (if (= query "theme") "" "stale-disk-query")}
+                                   :comment "Unrelated saved draft"})
+              (r/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:ls/get-path [:form-field] [:state :form-field]])
+              (let [fresh-fields (await! (support/state-at! [:state :form-field]))]
+                (is (= @*disk-fields fresh-fields)
+                    "A fresh page still restores its saved search and unrelated draft"))
+              (r/dispatch-sync [:set [:module :github :configuration]
+                                {:settings {:user "return-user", :repo "repo"}}])
+              (r/dispatch-sync [:set [:content :github]
+                                {:commits commits, :total 2235}])
+              (r/dispatch-sync [:set [:state :github]
+                                {:target ["return-user" "repo"]
+                                 :query query
+                                 :generation 7
+                                 :pages-fetched [1]}])
+              (r/dispatch-sync [:set [:state :form-field :github] {:search query}])
+              (let [saved (return-contract/state-for (await! (support/state-at! [])))]
+                (r/dispatch-sync [:init/app-db])
+                (r/dispatch-sync [:page-return/install saved])
+                ;; Native boot applies disk form fields between the exact pair
+                ;; and the optional module's first selective hydration.
+                (r/dispatch-sync [:ls/get-path [:form-field] [:state :form-field]])
+                (r/dispatch-sync [:github/init])
+                (let [{:keys [values unmount!]}
+                      (await! (support/mount-subscriptions!
+                                {:fields [:get :state :form-field]
+                                 :amount [:github/commit-count]
+                                 :commits [:github/commits]
+                                 :generation [:get :state :github :generation]}))]
+                  (try
+                    (let [current (values)]
+                      (is (= query (get-in current [:fields :github :search]))
+                          (str disk-source " must retain the exact paired input"))
+                      (is (= "Unrelated saved draft" (get-in current [:fields :comment]))
+                          "Unrelated drafts still restore")
+                      (is (= 2235 (:amount current)))
+                      (is (= commits (:commits current)))
+                      (is (= 7 (:generation current)))
+                      (is (empty? @*requests) "Completed paired content needs no page-one refetch"))
+                    (finally (unmount!)))))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
+
 (deftest failed-initial-repository-reads-can-retry
   (async done
     (let [restore! (r/make-restore-fn)
