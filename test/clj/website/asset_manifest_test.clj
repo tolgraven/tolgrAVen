@@ -142,3 +142,19 @@
 (deftest build-rejects-css-imports-instead-of-merging-independent-owners
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Build CSS imports"
                         (build/optimize [{:path "/css/fixture.css", :contents "@import 'other.css';"}] {}))))
+
+(deftest verified-css-revision-invalidates-the-development-snapshot-immediately
+  (let [*css (atom "old")
+        *loads (atom 0)
+        handler (delivery/serve-assets
+                  (constantly {:status 404})
+                  #(do (swap! *loads inc) [{:path "/sheet.css", :contents @*css}])
+                  (fn [assets _] assets)
+                  {:cache-live-assets 60000})
+        request {:request-method :get, :uri "/sheet.css", :styles/revision "before"}]
+    (is (= "old" (:body (handler request))))
+    (reset! *css "current")
+    (is (= "current" (:body (handler (assoc request :styles/revision "after")))))
+    (is (= 2 @*loads))
+    (is (= "current" (:body (handler (assoc request :styles/revision "after")))))
+    (is (= 2 @*loads) "Verified revisions still share one realized inventory")))
