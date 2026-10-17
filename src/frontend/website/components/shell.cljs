@@ -173,7 +173,7 @@
         :title "Settings"}
        [:i.settings-btn {:class "fa fa-cog"}]])
 
-      [<search-button>]
+      (when-enabled :search nil [<search-button>])
       (when-enabled :user nil
        (if @(r/subscribe [:user/active-user])
         (m/<> :user/btn)
