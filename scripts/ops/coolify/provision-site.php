@@ -66,6 +66,7 @@ function verifyWebSupabaseEnv($application, $values) {
 // Reconcile existing applications as well as freshly created ones.
 function configureDockerBuild($application) {
     requireThat($application->build_pack === 'dockerfile', 'Expected a Dockerfile application');
+    $application->settings->disable_build_cache = false;
     $application->settings->use_build_secrets = true;
     $application->settings->inject_build_args_to_dockerfile = false;
     $application->settings->include_source_commit_in_build = false;

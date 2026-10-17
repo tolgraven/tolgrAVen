@@ -10,9 +10,12 @@ try {
             setEnv($a, 'BUILDER_IMAGE', 'ineffective-secret', $preview, true);
             setEnv($a, 'AWS_ACCESS_KEY_ID', 'fixture-key', $preview, true);
         }
+        $a->settings->disable_build_cache = true;
+        $a->settings->save();
         configureDockerBuild($a);
         configureDockerBuild($a);
         $settings = $a->settings->fresh();
+        requireThat($settings->disable_build_cache === false, 'Ordinary deploys still clear persistent cache mounts');
         requireThat($settings->use_build_secrets === true, 'Explicit CMS secret transport was disabled');
         requireThat($settings->inject_build_args_to_dockerfile === false, 'ARG injection remains enabled');
         requireThat($settings->include_source_commit_in_build === false, 'Commit metadata still invalidates build layers');

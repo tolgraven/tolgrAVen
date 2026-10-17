@@ -50,7 +50,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   failures must not be treated as a successful cache hit or bypass the merge gate.
   Keep the fallback recipe identical after normalizing stage names/platform flags.
   `provision-site.php` reconciles Docker build settings on existing applications:
-  explicit CMS secrets, no automatic ARG injection, runtime-only unrelated keys.
+  normal build caching, explicit CMS secrets, no automatic ARG injection, and
+  runtime-only unrelated keys. Same-source CMS feature/CSS changes need a forced rebuild.
   Dockerfile owns the prefab default and persistent Maven cache on every host.
 - `ops/`: isolated site provisioning and Coolify adapters. `ops/coolify/*.php`
   executes inside the existing Laravel container. Preserve persisted ownership

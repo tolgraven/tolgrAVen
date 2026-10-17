@@ -325,6 +325,9 @@ maintain a duplicate handwritten variable catalog.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
 
 ## Docker dependency updates
+- Coolify provisioning keeps ordinary build caching enabled; forced rebuilds
+  clear BuildKit mounts. Force a same-source rebuild for CMS feature/CSS snapshot
+  changes. Sequence AOT, Codox and Shadow JVMs to bound shared-host memory.
 - Ordinary Docker releases retain locked Shadow analysis and exact-input AOT
   caches through `scripts/build/compiler-cache.mjs`; fresh checkouts must retain
   unchanged macro timestamps. Changed AOT inputs rebuild the full graph. Keep
@@ -335,7 +338,7 @@ maintain a duplicate handwritten variable catalog.
   existing Docker login, not per-deployment installation. `BUILDER_IMAGE=prefab`
   explicitly builds the matching fallback on a host without registry access.
 - Keep the Dockerfile-owned `m2` BuildKit cache at `/root/m2`, with locked access.
-  Resolve and snapshot dependencies before parallel compiler stages; seed fresh
+  Resolve and snapshot dependencies before compiler stages; seed fresh
   caches from the prefab. Do not replace this with image-layer-only or host-only caching.
 - Dependency inputs are `Dockerfile.builder`, `project.clj`, both npm manifests
   and the bundled `scripts/media/images.clj`. The commit hook updates Dockerfile's

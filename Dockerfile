@@ -90,13 +90,30 @@ RUN --mount=type=cache,id=m2,target=/root/m2,sharing=locked \
 FROM dependency-cache AS source
 COPY . .
 ARG STRAPI_URL
-# Snapshot capabilities and CSS once; same-source redeploys observe CMS edits.
+# Snapshot capabilities/CSS per source build. Force rebuild for same-source CMS changes.
 RUN --mount=type=secret,id=STRAPI_URL,env=STRAPI_URL \
     --mount=type=secret,id=STRAPI_READ_TOKEN,env=STRAPI_READ_TOKEN \
     bb -cp scripts:src/cljc:resources -m build.resolve-site
-# BuildKit runs these independent branches concurrently. Each has its own target
-# directory and Maven cache, so Lein's prep/cleanup cannot erase Shadow outputs.
-FROM source AS frontend
+# Sequence compiler JVMs on hosts that also run the database/CMS stack.
+# Codox reuses AOT classes; Shadow keeps its separate output and cache paths.
+FROM source AS backend
+# Keep AOT compilation bounded; later stages reuse these classes.
+ARG BUILD_CLJ_JAVA_OPTIONS="-Xms64m -Xmx768m -XX:ReservedCodeCacheSize=96m"
+ARG BUILDER_IMAGE
+RUN --mount=type=cache,id=tolgraven-aot-release-v1,target=/compiler-cache,sharing=locked \
+    echo "Checking the complete AOT compiler input cache" \
+ && COMPILER_IMAGE="${BUILDER_IMAGE}" JAVA_TOOL_OPTIONS="${BUILD_CLJ_JAVA_OPTIONS}" \
+    node scripts/build/compiler-cache.mjs aot /compiler-cache \
+    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :compile-path '"target/uberjar+provided/classes"' :prep-tasks '^:replace []' -- compile
+
+FROM backend AS docs
+ARG BUILD_DOCS_JAVA_OPTIONS="-Xms64m -Xmx512m -XX:ReservedCodeCacheSize=96m"
+RUN JAVA_TOOL_OPTIONS="${BUILD_DOCS_JAVA_OPTIONS}" \
+    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :compile-path '"target/uberjar+provided/classes"' :prep-tasks '^:replace []' -- docs > /tmp/codox.log 2>&1; \
+    result=$?; cat /tmp/codox.log; \
+    test "$result" -eq 0 && ! grep -q 'Could not generate' /tmp/codox.log
+
+FROM docs AS frontend
 RUN mkdir -p resources/public/css/website && npm run build
 ARG BUILD_JAVA_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m"
 RUN --mount=type=cache,id=tolgraven-shadow-release-v2,target=/compiler-cache,sharing=locked \
@@ -107,23 +124,6 @@ RUN --mount=type=cache,id=tolgraven-shadow-release-v2,target=/compiler-cache,sha
     lein with-profile prod,provided run -m shadow.cljs.devtools.cli release app ssr return-worker document
 RUN JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \
     lein with-profile prod,provided run -m website.build.assets
-
-FROM source AS backend
-# Keep the smaller backend JVM bounded while Shadow compiles concurrently.
-ARG BUILD_CLJ_JAVA_OPTIONS="-Xms64m -Xmx768m -XX:ReservedCodeCacheSize=96m"
-ARG BUILDER_IMAGE
-RUN --mount=type=cache,id=tolgraven-aot-release-v1,target=/compiler-cache,sharing=locked \
-    echo "Checking the complete AOT compiler input cache" \
- && COMPILER_IMAGE="${BUILDER_IMAGE}" JAVA_TOOL_OPTIONS="${BUILD_CLJ_JAVA_OPTIONS}" \
-    node scripts/build/compiler-cache.mjs aot /compiler-cache \
-    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :compile-path '"target/uberjar+provided/classes"' :prep-tasks '^:replace []' -- compile
-
-FROM source AS docs
-ARG BUILD_DOCS_JAVA_OPTIONS="-Xms64m -Xmx512m -XX:ReservedCodeCacheSize=96m"
-RUN JAVA_TOOL_OPTIONS="${BUILD_DOCS_JAVA_OPTIONS}" \
-    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :compile-path '"target/uberjar+provided/classes"' :prep-tasks '^:replace []' -- docs > /tmp/codox.log 2>&1; \
-    result=$?; cat /tmp/codox.log; \
-    test "$result" -eq 0 && ! grep -q 'Could not generate' /tmp/codox.log
 
 FROM backend AS build
 COPY --from=docs /usr/src/app/resources/docs/codox /usr/src/app/resources/docs/codox

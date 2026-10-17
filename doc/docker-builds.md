@@ -102,14 +102,12 @@ make AWS/Firebase/OpenAI keys runtime-only. Runtime source-commit identity remai
 available. Normal and preview environments use the same policy. Actual CMS
 capability/CSS acquisition still runs in the source stage with its existing secrets.
 
-BuildKit runs three independent branches concurrently: the frontend builds CSS,
-releases the Shadow targets (`app`, `ssr`, `return-worker`, and `document`) in one
-invocation, then prepares the Optimus inventory; the backend
-resolves Clojure dependencies and AOT-compiles; a third stage generates Codox
-documentation. The packaging stage waits for all three, copies the completed
-browser assets and prepared inventory, and
-creates the uberjar without repeating prep tasks or cleaning compiled classes.
-Separate stage filesystems prevent target-directory and Maven download races.
+BuildKit sequences the compiler stages to bound peak memory. Backend AOT runs
+first, then Codox reuses its classes. The frontend then builds CSS, releases the
+Shadow targets (`app`, `ssr`, `return-worker`, and `document`) sequentially, and
+prepares the Optimus inventory. Packaging copies the completed outputs and creates
+the uberjar without repeating prep tasks or cleaning compiled classes. Shadow
+retains its separate target and cache paths.
 The Docker compile and assembly tasks explicitly share `target/uberjar+provided/classes`;
 changing `:target-path` alone does not update Lein's already-resolved compile path.
 The ordinary `lein with-profile uberjar,provided uberjar` prep tasks also generate
@@ -144,7 +142,7 @@ when changing that recipe. Uploads keep `/app/scripts/media/images.clj` and thei
 existing Supabase Storage transport; see [upload storage](supabase-provisioning.md).
 
 The Shadow JVM defaults to a 1536 MB heap (`BUILD_JAVA_OPTIONS`), while the
-concurrent backend JVM defaults to 768 MB (`BUILD_CLJ_JAVA_OPTIONS`) and Codox to
+backend JVM defaults to 768 MB (`BUILD_CLJ_JAVA_OPTIONS`) and Codox to
 512 MB (`BUILD_DOCS_JAVA_OPTIONS`). These are
 build arguments; actual peak memory also includes Lein launchers, native memory
 and CSS tooling. Parallel compilation trades additional peak memory for elapsed
@@ -350,3 +348,15 @@ mounts. It is a cold-cache recovery operation, not a compiler-reuse benchmark.
 For a warm comparison, rerun ordinary build instructions with the same compiler
 inputs and existing mounts; distinguish whole-layer hits from compiler hits in
 the build log. The frontend/backend steps print their cache boundary explicitly.
+
+Compiler stages form a dependency chain: backend AOT → Codox → frontend releases.
+Only one compiler JVM runs at a time, and Codox inherits the completed AOT classes.
+This avoids swap exhaustion on an 8 GB host co-located with the database/CMS
+services; merely bounding each of three concurrent heaps was insufficient.
+
+Coolify provisioning sets **Disable build cache** off for both applications. Leaving
+it on adds `--no-cache` to every ordinary deployment and destroys Maven/compiler
+mount reuse. A same-source redeploy can reuse its existing CMS feature/CSS build
+snapshot; use Coolify’s forced rebuild when changing those build-time settings.
+Ordinary CMS content is still acquired at runtime. Source changes acquire a new
+snapshot through the normal Docker source-stage invalidation.
