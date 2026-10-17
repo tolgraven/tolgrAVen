@@ -118,10 +118,7 @@
           (when-not (= id (remote-digest alias))
             (run! "docker" "tag" image alias)
             (run! "docker" "push" alias))))
-      (let [index (prefab-reference (dependency-hash slurp))
-            sources (filter remote-digest (map #(str index "-" %) ["arm64" "amd64"]))]
-        (apply run! "docker" "buildx" "imagetools" "create" "--tag" index
-               "--tag" (str registry "/tolgraven/builder:java21-node22-v2") sources)))
+      (println "Published native prefab; the Coolify prefab gate publishes the shared multi-platform reference."))
     image))
 
 (defn image-kind [reference]

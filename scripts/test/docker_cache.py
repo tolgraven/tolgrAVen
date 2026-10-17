@@ -27,6 +27,9 @@ def main():
     source = (ROOT / 'Dockerfile').read_text()
     # Isolate this test's cache identity, retaining the real recipe and defaults.
     source = source.replace('id=m2,', 'id=m2-check-' + token + ',')
+    # Cache IDs do not invalidate an existing RUN result. Force this seed to run.
+    source = source.replace('FROM dependencies AS dependency-cache\n',
+        'FROM dependencies AS dependency-cache\nRUN echo ' + token + ' > /tmp/cache-check-run\n')
     version = re.search(r'\[org.clojure/clojure "([^"]+)"\]', (ROOT / 'project.clj').read_text()).group(1)
     rows = []
     images = []
@@ -42,7 +45,7 @@ def main():
             image = 'tolgraven-m2-check:' + token + '-' + name
             images.append(image)
             command = ['docker', 'buildx', 'build', '--load', '--network=none',
-                '--no-cache-filter', 'dependency-cache', '--target', 'dependency-cache',
+                '--target', 'dependency-cache',
                 '--build-arg', 'BUILDER_IMAGE=' + args.image, '--progress=plain',
                 '-f', str(file), '-t', image, str(ROOT)]
             start = time.monotonic()

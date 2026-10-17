@@ -238,16 +238,13 @@ changes still compile normally.
 
 ## PR preview cleanup
 
-The GitHub deployment workflow forwards `pull_request.closed` to Coolify using
-the same signed webhook as preview creation. GitHub emits this event both when a
-PR is merged and when it is closed without merging. Cleanup bypasses CSS
-validation and shares the PR-specific concurrency group with deployment, so a
-close event supersedes an in-flight workflow for that PR. Coolify's native
-cleanup cancels that preview's deployments and removes its runtime and preview
-record. Once no staging web runtime or deployment remains for 60 seconds,
-the runtime policy also stops staging Supabase, preserving its volumes and data.
-Production remains running. Reopening the PR wakes Supabase and recreates its
-preview; the web app waits for Auth and REST readiness before serving requests.
+The Coolify prefab gate forwards signed `pull_request.closed` events directly to
+Coolify's native preview handler. Cleanup has a separate control worker, so it
+never waits for a dependency build. GitHub emits this event for both merges and
+unmerged closes. Before deploying, the build worker rechecks the current PR head
+and open state; stale queued/building events cannot recreate a closed preview.
+The native handler removes the preview and cancels its deployments. Existing
+staging Supabase suspension preserves its volumes; production stays running.
 
 ## Dependency cache verification
 
@@ -275,21 +272,49 @@ and stages only Dockerfile's generated image default. It preserves unstaged
 manifest and Dockerfile changes. `bb docker pin` updates the working pin explicitly;
 `bb docker check-pin` rejects stale pins and mismatched fallback recipes.
 
-Every PR runs `prefab-inputs`, native `prefab-platform` jobs and the stable required
-`prefab-ready` check. A published hash skips rebuilding; missing images build with
-1.5 CPUs / 4 GiB per native worker. Existing Maven artifacts seed the new builder,
-and the complete runtime is exercised before publication of the multi-platform
-index. Preview deployment waits for readiness. Master protection requires the
-check and an up-to-date branch. Only a master push advances compatibility aliases;
-a different PR cannot alter an already pinned dependency reference.
+Coolify owns the build queue and deployment sequencing. Its existing GitHub App
+sends signed events to `https://prefab.bux.tolgraven.se/github`. The managed
+`tolgraven-prefab-gate` service persists deliveries in SQLite and deduplicates
+redelivery across restarts. Only same-repository PRs from owners, members and
+collaborators targeting master may build; fork events cannot acquire credentials
+or start a privileged builder. Other repositories' App events retain their native
+Coolify handler. PR closes have a separate control worker so cleanup is immediate.
 
-GitHub Actions uses encrypted `PREFAB_REGISTRY_USERNAME` and
-`PREFAB_REGISTRY_PASSWORD` secrets for the existing private registry login. Forks
-receive neither credential and do not get a successful readiness result; a
-maintainer must bring the reviewed change into a trusted repository branch.
-Never use `pull_request_target` to run untrusted prefab instructions with secrets.
-The workflow records actual image availability, not just a changed-path filter,
-so removed registry images are rebuilt even when the source inputs are unchanged.
+For the current commit, the gate validates the staged/generated image pin, reuses
+published native hashes or builds missing ARM64/AMD64 images sequentially, then
+executes the clean runtime's Java/Node/Babashka/codec smoke checks. BuildKit's
+bundled emulator handles a foreign architecture; no privileged binfmt installer
+is required. The persistent worker has 1.5 CPUs, 4 GiB RAM, one build step at a time,
+a 6 GB cache target and a 20 GB free-space target. Maven caches are seeded from the
+previous native prefab and remain locked during updates.
 
-The native runner labels are documented by [GitHub](https://docs.github.com/en/actions/reference/runners/github-hosted-runners);
-manifest composition uses [Docker Buildx](https://docs.docker.com/reference/cli/docker/buildx/imagetools/create/).
+After both runtimes pass, it publishes the multi-platform reference, reports
+`prefab-ready` through the Coolify GitHub App and forwards the original event to
+the existing native Coolify deployment handler. PRs go to staging; master pushes
+go to production and advance compatibility aliases. It rechecks the GitHub head
+before publication of aliases and dispatch, so obsolete events cannot release an
+old application revision. GitHub branch protection requires `prefab-ready` from
+this App. GitHub Actions performs source validation only (the preserved legacy
+CapRover job remains explicitly opt-in); it has no registry credentials or
+Coolify relay. Coolify's ordinary Deploy button remains a manual recovery path,
+and therefore requires the pinned image to exist already.
+
+`python3 scripts/ops/provision-prefab-gate.py prepare` builds the small trusted
+control image and creates/updates its Coolify service. `start` launches it; `wire`
+checks public health and changes the existing App webhook URL, retaining a private
+rollback copy in Coolify. Run these through the configured persistent SSH alias.
+The one-time control image's Alpine tools install is independent of application
+builds; application Docker builds perform no OS installations. Updating control
+source requires prepare/start again; it never executes updated control code from
+a PR checkout. The worker holds the Docker socket as trusted deployment
+infrastructure; recipe RUNs receive neither that socket nor the App identity.
+
+The existing App needs Repository permissions → Commit statuses: Read and write.
+Its private key and installation tokens remain inside Coolify; its encrypted
+webhook secrets are copied only to the managed service's environment. Registry
+credentials remain in the server's existing Docker configuration, mounted read-only.
+The gate does not receive a personal GitHub token. Runtime control logs are in
+Coolify, and detailed build logs plus the queue live under
+`/data/coolify/prefab-gate/state` on the host. Failed jobs retry twice automatically;
+a GitHub webhook redelivery retries a final failure. To recover the event path,
+restore the saved App webhook URL and leave native Coolify deploys enabled.

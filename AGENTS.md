@@ -337,11 +337,13 @@ maintain a duplicate handwritten variable catalog.
   and the bundled `scripts/media/images.clj`. The commit hook updates Dockerfile's
   prefab pin from staged bytes, preserving unstaged edits. `bb docker pin` updates
   it explicitly; `bb docker check-pin` also verifies the fallback recipe matches.
-- Every PR runs required `prefab-ready`: reuse existing hash images or build and
-  publish missing native ARM64/AMD64 images, verify both clean runtimes, then
-  publish the pinned multi-platform manifest. Preview deployment waits for this
-  check; master must not merge while it is pending/failed. Compatibility aliases
-  advance from master. `make docker-prefab` remains the bounded manual path.
+- Coolify owns `prefab-ready` and deployment sequencing through the managed
+  prefab gate. Signed GitHub App events enter its durable queue; trusted PRs reuse
+  or build exact ARM64/AMD64 hashes before native preview deployment. Master also
+  advances compatibility aliases before native production deployment. GitHub only
+  enforces the status; Actions must not build prefabs or relay Coolify deployments.
+  The gate executes recipes only inside its bounded BuildKit worker, never in its
+  Docker-socket-owning process. `make docker-prefab` remains the bounded manual path.
 - Keep the fallback `prefab` stage in `Dockerfile` aligned with `Dockerfile.builder`. Do not refresh the prefab for unrelated application-source edits.
 - All OS package installation and codec checks belong to the prefab recipe.
   `media-tools` exports its clean runtime root; ordinary app builds must not install

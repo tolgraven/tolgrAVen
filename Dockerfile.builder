@@ -50,7 +50,7 @@ RUN --mount=type=cache,id=m2,target=/root/m2,sharing=locked \
  && cp -an /opt/maven-seed/. /root/m2/ \
  && printf '%s\n' '{:user {:local-repo "/root/m2"}}' > /tmp/lein-cache/profiles.clj \
  && LEIN_HOME=/tmp/lein-cache JAVA_TOOL_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m" \
-    lein with-profile uberjar,provided,codox deps \
+    lein with-profile user,uberjar,provided,codox deps \
  && cp -a /root/m2/. /root/.m2/repository/ \
  && rm -rf /tmp/lein-cache
 RUN cp package-lock.json /opt/prefab-package-lock.json \

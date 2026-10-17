@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Ordinary builds pull one complete dependency image. BUILDER_IMAGE=prefab builds
 # the same recipe locally on a host without registry access.
-ARG BUILDER_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:deps-c4da2d42387bc1d2
+ARG BUILDER_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:deps-732c5726c45bb762
 ARG MAVEN_SEED_IMAGE=empty-maven-seed
 FROM scratch AS empty-maven-seed
 COPY package.json /root/.m2/repository/.seed
@@ -52,7 +52,7 @@ RUN --mount=type=cache,id=m2,target=/root/m2,sharing=locked \
  && cp -an /opt/maven-seed/. /root/m2/ \
  && printf '%s\n' '{:user {:local-repo "/root/m2"}}' > /tmp/lein-cache/profiles.clj \
  && LEIN_HOME=/tmp/lein-cache JAVA_TOOL_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m" \
-    lein with-profile uberjar,provided,codox deps \
+    lein with-profile user,uberjar,provided,codox deps \
  && cp -a /root/m2/. /root/.m2/repository/ \
  && rm -rf /tmp/lein-cache
 RUN cp package-lock.json /opt/prefab-package-lock.json \
@@ -81,7 +81,7 @@ RUN --mount=type=cache,id=m2,target=/root/m2,sharing=locked \
  && printf '%s\n' '{:user {:local-repo "/root/m2"}}' > /tmp/lein-cache/profiles.clj \
  && cp -an /root/.m2/repository/. /root/m2/ \
  && LEIN_HOME=/tmp/lein-cache JAVA_TOOL_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m" \
-    lein with-profile uberjar,provided,codox deps \
+    lein with-profile user,uberjar,provided,codox deps \
  && cp -a /root/m2/. /root/.m2/repository/ \
  && rm -rf /tmp/lein-cache
 FROM dependency-cache AS source
@@ -125,9 +125,10 @@ COPY --from=frontend /usr/src/app/target/ssr/site.js /usr/src/app/target/ssr/sit
 RUN JAVA_TOOL_OPTIONS="${BUILD_CLJ_JAVA_OPTIONS}" \
     lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :compile-path '"target/uberjar+provided/classes"' :prep-tasks '^:replace []' :auto-clean false -- uberjar
 
-# Export only the clean runtime root; compiler tools and caches stay in the prefab.
+# Compilation uses BUILDPLATFORM; executable runtime files must use TARGETPLATFORM.
+FROM --platform=$TARGETPLATFORM ${BUILDER_IMAGE} AS runtime-prefab
 FROM scratch AS media-tools
-COPY --from=dependencies /opt/tolgraven-runtime/ /
+COPY --from=runtime-prefab /opt/tolgraven-runtime/ /
 ENV JAVA_HOME=/opt/java/openjdk \
     PATH=/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     LANG=en_US.UTF-8 \

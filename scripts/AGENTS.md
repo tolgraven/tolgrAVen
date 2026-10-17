@@ -46,7 +46,7 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - `build/docker.clj` hashes the dependency recipe/manifests and bundled runtime
   converter, publishes the compiler/runtime prefab and retains the legacy alias. The staged
   commit pin must use index bytes and preserve unstaged edits. PR readiness is
-  checked against that exact hash on native ARM64/AMD64 workers; missing/auth
+  checked by the Coolify gate against that exact hash on ARM64/AMD64 runtimes; missing/auth
   failures must not be treated as a successful cache hit or bypass the merge gate.
   Keep the fallback recipe identical after normalizing stage names/platform flags.
   `provision-site.php` reconciles Docker build settings on existing applications:
@@ -57,6 +57,11 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   markers even when their historical script names differ from current paths.
   CMS upgrades reconcile the write-token Compose reference on existing services;
   storing a credential alone does not install it into a running container.
+- `ops/host/prefab_gate.py` is the trusted Coolify event gate. Preserve signed
+  delivery validation, same-repository trust checks, durable deduplication, stale
+  head checks and independent close-event handling. Only BuildKit may execute PR
+  recipes. The App identity stays in the Laravel adapter; no Actions deployment
+  relay or registry credential copy belongs in GitHub. See `doc/docker-builds.md`.
 - `ops/host/`: installed server programs. Keep each program's declared host/service scope, recovery
   metadata, locks, graceful suspension and rollback protections intact. Relocation
   does not authorize running provisioning, seeding, deployment or installation.
