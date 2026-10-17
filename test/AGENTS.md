@@ -381,4 +381,6 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Deployment compiler-cache checks cover fresh checkout timestamps, macro/resource
   edits, removed classes and failed compilation. Real release checks must prove
   unchanged analysis reuse plus changed/restored emitted JavaScript; mocked
-  compiler checks alone do not establish incremental release behavior.
+  compiler checks alone do not establish incremental release behavior. Compare
+  optimized output bytes for unchanged/restored source and a fresh-cache build
+  of the same edited source.

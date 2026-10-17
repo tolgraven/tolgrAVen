@@ -115,7 +115,7 @@ RUN JAVA_TOOL_OPTIONS="${BUILD_DOCS_JAVA_OPTIONS}" \
 
 FROM docs AS frontend
 RUN mkdir -p resources/public/css/website && npm run build
-ARG BUILD_JAVA_OPTIONS="-Xms64m -Xmx1536m -XX:ReservedCodeCacheSize=128m"
+ARG BUILD_JAVA_OPTIONS="-Xms64m -Xmx1024m -XX:ReservedCodeCacheSize=128m -XX:ActiveProcessorCount=2"
 RUN --mount=type=cache,id=tolgraven-shadow-release-v2,target=/compiler-cache,sharing=locked \
     echo "Building optimized releases with persistent compiler analysis" \
  && JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \

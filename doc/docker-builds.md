@@ -141,7 +141,7 @@ verify the exported image's actual Java/Node/Babashka and WebP/AVIF conversions
 when changing that recipe. Uploads keep `/app/scripts/media/images.clj` and their
 existing Supabase Storage transport; see [upload storage](supabase-provisioning.md).
 
-The Shadow JVM defaults to a 1536 MB heap (`BUILD_JAVA_OPTIONS`), while the
+The Shadow JVM defaults to a 1024 MB heap and two visible processors (`BUILD_JAVA_OPTIONS`), while the
 backend JVM defaults to 768 MB (`BUILD_CLJ_JAVA_OPTIONS`) and Codox to
 512 MB (`BUILD_DOCS_JAVA_OPTIONS`). These are
 build arguments; actual peak memory also includes Lein launchers, native memory
@@ -339,7 +339,8 @@ BuildKit may evict them and the next build works cold.
 
 Run `node --test test/scripts/compiler_cache_test.mjs` for failure/invalidation
 checks. `scripts/test/docker_compiler_cache.py` verifies real release analysis
-reuse, source mutation and restoration across fresh Docker layers; run it through
+reuse, source mutation and restoration across fresh Docker layers, and byte-identical
+optimized output between clean and incremental builds of matching code; run it through
 `tolgraven-cpu run --mode buildkit`, supplying the pinned prefab and a new report
 directory. Report compiler time separately from full deployment duration.
 
@@ -360,3 +361,7 @@ mount reuse. A same-source redeploy can reuse its existing CMS feature/CSS build
 snapshot; use Coolify’s forced rebuild when changing those build-time settings.
 Ordinary CMS content is still acquired at runtime. Source changes acquire a new
 snapshot through the normal Docker source-stage invalidation.
+
+The 1 GiB Shadow default is verified with a fresh compiler cache against all four
+release targets and prepared assets. Keep enough host memory for the co-located
+services and the compiler’s native/metaspace overhead; heap size is not total RSS.
