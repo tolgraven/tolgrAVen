@@ -9,6 +9,12 @@
 
             [website.component :as component]
             [website.component.data :as data]
+            [website.component.restore :as restore]
+            [website.render-context :as context]
+            [website.ssr.render :as ssr]
+            [clojure.string :as string]
+            [website.events]
+            [website.subs]
             [website.component.sources]
             [website.content.client :as content]
             [website.modules.supabase.client :as supabase]
@@ -239,3 +245,122 @@
               (.finally
                 (fn [] (support/unmount! root) (clean!) (reset! r/*app-db before) (done))))))
       (.catch (fn [error] (is false (str error)) (done))))))
+
+(defn- tracking-resource [id]
+  {:source :tracking-hydration, :id id, :into [:tracking-hydration id]})
+
+(defc <tracking-dependent>
+  {:depends (fn [id & _] [(tracking-resource id)])}
+  [id gate *released? *attempts *commits]
+  (swap! *attempts update id (fnil inc 0))
+  (r/use-layout-effect (fn [] (swap! *commits conj id) nil) [])
+  (when (and gate (not context/*server?*) (not @*released?)) (throw gate))
+  [:p {:data-tracking-resource (name id)} @(r/subscribe [:get :tracking-hydration id])])
+
+(r/defc <tracking-shell> [gate *released? *show-second? *attempts *commits *shell-committed?]
+  (r/use-layout-effect (fn [] (reset! *shell-committed? true) nil) [])
+  (let [pending-boundary (r/use-memo
+                           #(r/as-element
+                              [r/suspense {:fallback (r/as-element [:p {:data-tracking-fallback true} "Waiting"])}
+                               [<tracking-dependent> :first gate *released? *attempts *commits]])
+                           [gate *released? *attempts *commits])]
+    [:div
+     [:button {:on-click #(reset! *show-second? true)} "Acquire another ready resource"]
+     pending-boundary
+     (when @*show-second?
+       [<tracking-dependent> :second nil *released? *attempts *commits])]))
+
+(deftest restored-acquisition-does-not-track-an-uncommitted-hydration-owner
+  (async done
+    (let [restore-db! (r/make-restore-fn)
+          before-context @restore/*context
+          before-batching (r/batching-flush)
+          before-source (get @data/*sources :tracking-hydration)
+          before-error (.-error js/console)
+          before-warn (.-warn js/console)
+          element (.createElement js/document "div")
+          *root (atom nil)
+          *release (atom nil)
+          gate (js/Promise. (fn [resolve _] (reset! *release resolve)))
+          *released? (atom false)
+          *show-second? (r/atom false)
+          *attempts (atom {})
+          *commits (atom [])
+          *shell-committed? (atom false)
+          *loads (atom [])
+          *warnings (atom [])
+          *recoveries (atom [])
+          resources (mapv tracking-resource [:first :second])
+          owned? #(= :tracking-hydration (:source %))
+          form [<tracking-shell> gate *released? *show-second? *attempts *commits *shell-committed?]
+          capture! (fn [original args]
+                     (let [message (apply str (interpose " " args))]
+                       (when (or (string/includes? message "hasn't mounted yet")
+                                 (string/includes? message "hydrated")
+                                 (string/includes? message "Hydration failed"))
+                         (swap! *warnings conj message)))
+                     (.apply original js/console (to-array args)))]
+      (.appendChild (.-body js/document) element)
+      (set! (.-error js/console) (fn [& args] (capture! before-error args)))
+      (set! (.-warn js/console) (fn [& args] (capture! before-warn args)))
+      (data/register-source! :tracking-hydration
+        {:load! (fn [{:keys [id]}]
+                  (swap! *loads conj id)
+                  (js/Promise.resolve (name id)))})
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            (await! (data/ensure-all! resources))
+            ;; Real SSR has its own subscription cache. A new browser receives
+            ;; installed values, not the worker's private resource entries.
+            (let [db (await! (support/state-at! []))]
+              (set! (.-innerHTML element) (ssr/html! db form {:modules {}})))
+            (data/invalidate! owned?)
+            (doseq [resource resources]
+              (r/dispatch-sync [:component-data/install (:into resource) (name (:id resource))]))
+            (reset! *attempts {})
+            (reset! *commits [])
+            (restore/begin! {:hydrate? true})
+            (let [server-node (.querySelector element "[data-tracking-resource='first']")]
+              (is (= "first" (.-textContent server-node)))
+              (reset! *root (r/hydrate-root element (restore/document-form form)
+                             {:on-recoverable-error #(swap! *recoveries conj (str %))}))
+              (await! (support/wait-for! #(and @*shell-committed? (pos? (:first @*attempts 0)))
+                                        "The actual first resource owner did not begin pending hydration"))
+              (is (not (some #{:first} @*commits)) "The first owner has rendered but has not committed")
+              (is (identical? server-node (.querySelector element "[data-tracking-resource='first']")))
+              (.click (.querySelector element "button"))
+              (await! (support/wait-for! #(some #{:second} @*commits)
+                                        "The second already-installed resource did not commit"))
+              ;; Let real Reagent animation frames flush any incidental watch
+              ;; notification queued by the second synchronous restoration.
+              (await! (support/settle!))
+              (await! (support/settle!))
+              (is (empty? @*warnings) (str "Unexpected precommit/hydration warnings: " (pr-str @*warnings)))
+              (is (empty? @*recoveries))
+              (is (= :ready (data/state resources)))
+              (is (= [:first :second] @*loads) "Hydration reuses supplied values without new source acquisition")
+              (is (identical? server-node (.querySelector element "[data-tracking-resource='first']")))
+              (is (nil? (.querySelector element "[data-tracking-fallback]"))
+                  "An unrelated ready source must not replace retained SSR with loading UI")
+              (reset! *released? true)
+              (@*release nil)
+              (await! (support/wait-for! #(some #{:first} @*commits) "The original pending owner did not finish"))
+              (is (identical? server-node (.querySelector element "[data-tracking-resource='first']")))
+              (is (= "second" (.-textContent (.querySelector element "[data-tracking-resource='second']"))))
+              (is (empty? @*warnings))
+              (is (empty? @*recoveries))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @*root (r/unmount @*root))
+                      (reset! *released? true)
+                      (@*release nil)
+                      (data/invalidate! owned?)
+                      (if before-source (data/register-source! :tracking-hydration before-source)
+                        (swap! data/*sources dissoc :tracking-hydration))
+                      (reset! restore/*context before-context)
+                      (r/set-batching-flush! before-batching)
+                      (set! (.-error js/console) before-error)
+                      (set! (.-warn js/console) before-warn)
+                      (.remove element)
+                      (restore-db!)
+                      (done)))))))

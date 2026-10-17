@@ -299,8 +299,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Declare managed dependencies at the narrowest owning component/module/page.
   Preloads acquire those same sources; keep pending, empty, failed and cached distinct.
 - `:component-data/status` acquires the shared queue through its managed source
-  factory; the derived reaction only reads readiness. Persistent scoped value
-  subscriptions dispatch the idempotent `:component-state/load` event on acquisition;
+  factory without render tracking. Its derived reaction owns readiness dependencies;
+  restoring unrelated resources must not invalidate an uncommitted view.
+  Persistent scoped value subscriptions dispatch the idempotent `:component-state/load` event on acquisition;
   ordinary scoped reads stay pure. Declared defaults initialize after commit through
   `:component-state/initialize`, sharing the same effect with eager storage loads.
   Keep transport/initialization out of component bodies and derived computations.
@@ -341,8 +342,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   inspector uses that component directly. Module-owned implementations do not belong in
   `components/` or hidden shared UI forwarding entries.
   Home owns only its own styles; actual lazy consumers acquire Markdown and
-  monospace sheets. Anonymous account controls keep a native shell link until
-  intent; an open account query or authenticated avatar activates User. Closed
+  monospace sheets. Anonymous account controls keep a stable native shell
+  button. An open account query or authenticated avatar activates User. Closed
   account UI is absent from initial SSR exports and style ownership. Pending shell
   controls use stable component identities; render-local fallback functions leave
   discarded Reagent instances subscribed during concurrent navigation.
