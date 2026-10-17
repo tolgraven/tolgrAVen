@@ -98,7 +98,12 @@ Development startup runs `node scripts/build/styles.mjs --if-stale` before HTTP.
 Its output revision covers SCSS, tool/lock files, font inputs and native component/
 module declarations. Every raw and minified sheet must still match its recorded
 digest; missing or overwritten output is rebuilt. Fresh output does not import
-Sass/PostCSS. Keep `npm run dev` running for ongoing CSS edits.
+Sass compilation. `lein repl` owns one supervised watcher and stops it with
+`(stop)` or JVM exit. Shadow checks styles before each development browser compile;
+HTML, CSS and direct browser-chunk requests check them again before delivery.
+A failed check returns 503. The verified revision invalidates the development
+Optimus snapshot immediately. `npm run dev` remains an optional standalone watcher;
+all writers share the same kernel lock and publish sheets atomically.
 `node test/scripts/styles_test.mjs` exercises the guard in a disposable source tree.
 
 `bb audit <label>` writes isolated optimized chunks, compression sizes, the

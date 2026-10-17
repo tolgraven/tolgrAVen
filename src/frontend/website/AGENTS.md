@@ -728,3 +728,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Settings host. Search's `:results` export stays outside that sticky area;
   inline Search retains its combined controls/results. Settings owns keyed
   `:presence`/`:exit` children so closing its query does not unmount the host.
+
+- SPA history keeps the page opacity crossfade while restoring component state;
+  only document returns suppress all initial clocks. Explicitly opened User and
+  Settings panels opt out of restoration via `:appear {:restore? false}` and parent
+  viewport ownership. The shell owns a stable Search button; its eager events
+  activate lazy Search code without replacing/replaying the first intent.

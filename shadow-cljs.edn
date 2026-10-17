@@ -136,7 +136,8 @@
    :jvm-opts ["-Ddev=true"]
    ; :dev-http {4001 "resources/public"}
    :target website.build.browser/process
-             :build-hooks [(website.build.modules/configure-site)
+             :build-hooks [(website.dev.styles/before-compile)
+                           (website.build.modules/configure-site)
                            (website.modules.markdown-editor.build/configure)
                            (website.modules.markdown-editor.build/verify-entry)
                            (website.build.modules/clean-site-output)

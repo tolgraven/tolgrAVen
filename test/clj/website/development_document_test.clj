@@ -78,3 +78,26 @@
                 (is (re-find #"HTTP 503" (:body response)))
                 (is (false? @*served?) "Neither timeout nor release failure serves old markup"))))))
       (finally (reset! startup/*startup previous)))))
+
+(deftest styles-are-current-before-html-css-and-browser-chunks
+  (let [*calls (atom [])]
+    (with-redefs [environment/defaults {:styles-ready! #(do (swap! *calls conj :styles) "revision")}]
+      (let [handler (middleware/wrap-style-readiness
+                      (fn [request] (swap! *calls conj (:styles/revision request)) {:status 200}))]
+        (doseq [uri ["/" "/css/website/main.min.css" "/css/website/modules/settings.min.css"
+                     "/js/compiled/out/main.js" "/js/compiled/out/search.js"]]
+          (reset! *calls [])
+          (handler (-> (mock/request :get uri) (mock/header "accept" "text/html")))
+          (is (= [:styles "revision"] @*calls)))
+        (doseq [uri ["/api/content" "/img/hero.avif" "/js/compiled/out/cljs-runtime/cljs.core.js"]]
+          (reset! *calls [])
+          (handler (mock/request :get uri))
+          (is (= [nil] @*calls)))))))
+
+(deftest broken-styles-never-reach-asset-delivery
+  (let [*served? (atom false)]
+    (with-redefs [environment/defaults {:styles-ready! #(throw (ex-info "Sass failure" {:status 503}))}]
+      (let [handler (middleware/wrap-style-readiness (fn [_] (reset! *served? true)))]
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (handler (mock/request :get "/css/website/modules/settings.min.css"))))
+        (is (false? @*served?))))))

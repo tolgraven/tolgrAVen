@@ -228,6 +228,19 @@
         (handler request)))
     handler))
 
+(defn wrap-style-readiness [handler]
+  (if-let [ready! (:styles-ready! defaults)]
+    (fn [request]
+      (let [uri (:uri request "")
+            asset? (or (string/ends-with? uri ".css")
+                       (re-matches #"/js/compiled/out/[^/]+\.js" uri))
+            document? (and (not (string/starts-with? uri "/api/"))
+                           (string/includes? (get-in request [:headers "accept"] "") "text/html"))]
+        (handler (if (and (#{:get :head} (:request-method request)) (or asset? document?))
+                   (assoc request :styles/revision (ready!))
+                   request))))
+    handler))
+
 (defn wrap-base [handler]
   (let [options (if (or (env :dev) (env :test) (env :stage)
                         (false? (env :https-required)))
@@ -268,6 +281,7 @@
         ;; API routes own Muuntaja; HTML and return-template JSON are already encoded.
         ; wrap-with-logger
         wrap-document-readiness
+        wrap-style-readiness
         wrap-internal-error
         ;; Proxy/HTTPS and security response headers also cover early failures.
         ((or (when-enabled :neovim nil

@@ -20,7 +20,9 @@
           db' (-> db (assoc :search search) (assoc-in (into [:state :search] path) value))]
       (if (= path [:open?])
         (if value
-          {:db db', :dispatch [:search/query (:query search)]}
+          {:db db'
+           :dispatch-n [[:loader/activate {:module :search}]
+                        [:search/query (:query search)]]}
           {:db (-> db'
                    (update-in [:search :generation] (fnil inc 0))
                    (assoc-in [:search :pending?] false)
