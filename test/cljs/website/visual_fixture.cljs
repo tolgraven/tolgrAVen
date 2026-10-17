@@ -355,8 +355,11 @@
    [:main#main.main-content.perspective-top [<instagram-page>]]])
 
 (defn <docs-fixture> []
-  ;; Docs already owns a defpage container; do not nest another page surface.
-  [:main#main.main-content.perspective-top [docs/<page>]])
+  ;; The sticky banner offset follows the real header, as on the Docs route.
+  ;; Docs owns its defpage container; do not nest another page surface.
+  [:<>
+   [shell/<header> (editor/section :header false)]
+   [:main#main.main-content.perspective-top [docs/<page>]]])
 
 (defn <home-fixture> [component]
   (let [content' #(editor/section % false)]

@@ -377,7 +377,9 @@
         tab (r/atom #_:graphs :summary)
         cutoff 80
         size (max 0.85 (/ (:kilojoules activity) 1000))
-        anim-size (r/atom (rand 0.2))]
+        ;; Keep the tiny, varied starting dots identical in SSR and hydration.
+        ;; Keep the existing grow deadline and final activity-sized dimensions.
+        anim-size (r/atom (/ (mod (hash (str (:id activity))) 2000) 10000))]
     (fn [activity i num-total watts-high]
       (when-not (:private activity)
        [:<>

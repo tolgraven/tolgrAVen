@@ -470,3 +470,77 @@
                 (finally (support/unmount! root) (.remove container)))))
           (.catch #(is false (str %)))
           (.finally done)))))
+
+(deftest native-calendar-tracks-focus-and-pointer-without-lazy-reactive-reads
+  (async done
+    (let [container (.createElement js/document "div")
+          days [{:date "2026-10-11", :count 0, :level 0}
+                {:date "2026-10-12", :count 42, :level 4}]
+          before-warn (.-warn js/console)
+          before-error (.-error js/console)
+          before-focus (.-activeElement js/document)
+          *warnings (atom [])
+          capture! (fn [original args]
+                     (let [message (apply str (interpose " " args))]
+                       (when (string/includes? message "Reactive deref not supported in lazy seq")
+                         (swap! *warnings conj message)))
+                     (.apply original js/console (to-array args)))]
+      (.appendChild (.-body js/document) container)
+      (set! (.-warn js/console) (fn [& args] (capture! before-warn args)))
+      (set! (.-error js/console) (fn [& args] (capture! before-error args)))
+      (-> (go-promise
+            (await! (styles/acquire! :github))
+            (let [root (await! (support/create-root! container))]
+              (try
+                (await! (support/render! root
+                          [:div {:style {:position "fixed", :top "1rem", :left "1rem", :width "18rem"}}
+                           [activity/<calendar> days]]))
+                ;; End reporter-owned scrolling before opening the real tooltip;
+                ;; scrolling correctly closes that portal, even during a test.
+                (.scrollTo js/window #js {:top (.-scrollY js/window), :behavior "instant"})
+                (await! (support/settle!))
+                (let [first-day (.querySelector container "[data-date='2026-10-11']")
+                      second-day (.querySelector container "[data-date='2026-10-12']")
+                      popup (fn []
+                              (when-let [id (.getAttribute second-day "aria-describedby")]
+                                (.getElementById js/document id)))]
+                  (.focus second-day #js {:preventScroll true})
+                  (await! (support/wait-for! popup "Focused calendar day did not open its native tooltip"))
+                  (let [tooltip (popup)
+                        id (.-id tooltip)
+                        text (.-textContent tooltip)
+                        focused? (identical? second-day (.-activeElement js/document))
+                        indexes [(.getAttribute first-day "tabindex") (.getAttribute second-day "tabindex")]]
+                    (is focused?)
+                    (is (= ["-1" "0"] indexes))
+                    (is (= id (.getAttribute second-day "aria-describedby")))
+                    (is (string/includes? text "2026-10-12"))
+                    (is (string/includes? text "42 contributions")))
+                  (.dispatchEvent second-day (js/KeyboardEvent. "keydown" #js {:key "Escape", :bubbles true}))
+                  (await! (support/wait-for! #(nil? (popup)) "Escape did not retire the calendar tooltip"))
+                  (is (nil? (.getAttribute second-day "aria-describedby")))
+                  ;; Reagent's pointer-enter adapter receives native pointerover;
+                  ;; this verifies event/state wiring, not a genuine CSS hover.
+                  (.dispatchEvent first-day (js/PointerEvent. "pointerover" #js {:bubbles true, :pointerType "mouse"}))
+                  (await! (support/wait-for!
+                            #(when-let [id (.getAttribute first-day "aria-describedby")]
+                               (.getElementById js/document id))
+                            "Pointer intent did not open the calendar tooltip"))
+                  (let [id (.getAttribute first-day "aria-describedby")
+                        tooltip (.getElementById js/document id)
+                        text (.-textContent tooltip)
+                        indexes [(.getAttribute first-day "tabindex") (.getAttribute second-day "tabindex")]]
+                    (is (= ["0" "-1"] indexes))
+                    (is (nil? (.getAttribute second-day "aria-describedby")))
+                    (is (string/includes? text "0 contributions"))))
+                (is (empty? @*warnings)
+                    (str "Calendar must read reactive state inside its render: " (pr-str @*warnings)))
+                (finally (support/unmount! root)))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (set! (.-warn js/console) before-warn)
+                      (set! (.-error js/console) before-error)
+                      (.remove container)
+                      (when (and before-focus (.-isConnected before-focus))
+                        (.focus before-focus #js {:preventScroll true}))
+                      (done)))))))

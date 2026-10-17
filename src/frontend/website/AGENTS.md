@@ -54,7 +54,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   arbitrary field changes in Strapi admin.
 
 - Activity calendar tooltips mount only during hover/focus and release their
-  portal, managed day dependency and scoped listeners immediately on exit.
+  portal, managed day dependency and scoped listeners immediately on exit. Read
+  active selection during render before constructing lazy day children so aria
+  state and the popup share tracked input. Strava's tiny initial dot sizes vary
+  by activity identity and must match between SSR and hydration; retain their
+  authored grow deadline, final activity sizes and CSS motion.
   GitHub configuration uses its module's managed `/api/github/settings` URL
   dependency, installed at `[:module :github :configuration]` before init.
   An absent settings result is pending (including SSR); only a completed empty
