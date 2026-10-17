@@ -331,10 +331,12 @@ Shadow still checks dependency/options changes, and every build emits
 fresh optimized release output. Closure's final optimization remains necessary.
 
 The backend has a separate locked AOT cache. Classes are restored only when all
-source/resource/build inputs, prefab identity, JVM options and compile arguments
+source/resource/build inputs, resolved classpath order and actual JAR bytes, prefab
+identity, JVM options and compile arguments
 match. Any changed input rebuilds the complete AOT graph, avoiding stale macro
 consumers and removed namespaces. A failed compile cannot publish a reusable
-entry. Neither cache contains the final deployed image or replaces validation;
+entry. Extra classpath directories outside the captured source roots disable AOT
+reuse and compile fresh. Neither cache contains the final deployed image or replaces validation;
 BuildKit may evict them and the next build works cold.
 
 Run `node --test test/scripts/compiler_cache_test.mjs` for failure/invalidation

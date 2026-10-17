@@ -102,9 +102,10 @@ ARG BUILD_CLJ_JAVA_OPTIONS="-Xms64m -Xmx768m -XX:ReservedCodeCacheSize=96m"
 ARG BUILDER_IMAGE
 RUN --mount=type=cache,id=tolgraven-aot-release-v1,target=/compiler-cache,sharing=locked \
     echo "Checking the complete AOT compiler input cache" \
+ && set -- lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :compile-path '"target/uberjar+provided/classes"' :prep-tasks '^:replace []' -- \
+ && JAVA_TOOL_OPTIONS="${BUILD_CLJ_JAVA_OPTIONS}" "$@" classpath > /tmp/aot-classpath \
  && COMPILER_IMAGE="${BUILDER_IMAGE}" JAVA_TOOL_OPTIONS="${BUILD_CLJ_JAVA_OPTIONS}" \
-    node scripts/build/compiler-cache.mjs aot /compiler-cache \
-    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :compile-path '"target/uberjar+provided/classes"' :prep-tasks '^:replace []' -- compile
+    node scripts/build/compiler-cache.mjs aot /compiler-cache /tmp/aot-classpath "$@" compile
 
 FROM backend AS docs
 ARG BUILD_DOCS_JAVA_OPTIONS="-Xms64m -Xmx512m -XX:ReservedCodeCacheSize=96m"

@@ -4,9 +4,13 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 
-const [mode, cache, ...command] = process.argv.slice(2);
+const [mode, cache, ...arguments_] = process.argv.slice(2);
+const classpathFile = mode === 'aot' ? arguments_.shift() : null;
+const command = arguments_;
+const sourceRoots = ['src', 'env/prod', 'resources', 'scripts/build'];
+const classes = 'target/uberjar+provided/classes';
 if (!['shadow', 'aot'].includes(mode) || !cache || !command.length) {
-  throw new Error('Usage: compiler-cache.mjs <shadow|aot> <locked-cache-directory> <command...>');
+  throw new Error('Usage: compiler-cache.mjs shadow <cache> <command...> OR aot <cache> <classpath-file> <command...>');
 }
 async function files(directory) {
   let entries;
@@ -28,7 +32,7 @@ async function readManifest(file) {
 await fs.mkdir(cache, {recursive: true});
 const manifestFile = path.join(cache, 'inputs.json');
 const previous = await readManifest(manifestFile);
-const inputs = [...await files('src'), ...await files('env/prod'), ...await files('resources'), ...await files('scripts/build'),
+const inputs = [...(await Promise.all(sourceRoots.map(files))).flat(),
   'project.clj', 'package.json', 'package-lock.json', 'shadow-cljs.edn'].sort();
 const manifest = {};
 for (const file of inputs) {
@@ -45,14 +49,32 @@ for (const file of inputs) {
 }
 await fs.writeFile(manifestFile + '.new', JSON.stringify(manifest));
 await fs.rename(manifestFile + '.new', manifestFile);
+const classpath = classpathFile ? (await fs.readFile(classpathFile, 'utf8')).trim() : '';
+const dependencies = {};
+let reusable = true;
+for (const file of classpath.split(path.delimiter).filter(Boolean)) {
+  if (file.endsWith('.jar')) {
+    dependencies[file] = crypto.createHash('sha256').update(await fs.readFile(file)).digest('hex');
+  } else {
+    let stat;
+    try { stat = await fs.stat(file); }
+    catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    const absolute = path.resolve(file);
+    const captured = sourceRoots.some(root => absolute === path.resolve(root)
+      || absolute.startsWith(path.resolve(root) + path.sep));
+    if (stat.isDirectory() && absolute !== path.resolve(classes) && !captured) reusable = false;
+  }
+}
+if (!reusable) console.log('AOT cache: classpath directory outside captured inputs; compiling fresh.');
+const javaRelease = mode === 'aot' && process.env.JAVA_HOME
+  ? await fs.readFile(path.join(process.env.JAVA_HOME, 'release'), 'utf8') : null;
 const identity = crypto.createHash('sha256').update(JSON.stringify({
   inputs: Object.fromEntries(Object.entries(manifest).map(([file, value]) => [file, value.hash])),
-  command, builder: process.env.COMPILER_IMAGE, java: process.env.JAVA_TOOL_OPTIONS,
+  classpath, dependencies, javaRelease, command, builder: process.env.COMPILER_IMAGE, java: process.env.JAVA_TOOL_OPTIONS,
 })).digest('hex');
-const classes = 'target/uberjar+provided/classes';
 const saved = path.join(cache, 'classes');
 const stamp = path.join(cache, 'aot.json');
-const hit = mode === 'aot' && (await readManifest(stamp)).identity === identity;
+const hit = mode === 'aot' && reusable && (await readManifest(stamp)).identity === identity;
 if (hit) {
   await fs.rm(classes, {recursive: true, force: true});
   await fs.cp(saved, classes, {recursive: true, preserveTimestamps: true});
@@ -65,7 +87,7 @@ if (hit) {
   const result = spawnSync(command[0], command.slice(1), {stdio: 'inherit'});
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status || 1);
-  if (mode === 'aot') {
+  if (mode === 'aot' && reusable) {
     await fs.rm(saved, {recursive: true, force: true});
     await fs.cp(classes, saved, {recursive: true, preserveTimestamps: true});
     await fs.writeFile(stamp, JSON.stringify({identity}));
