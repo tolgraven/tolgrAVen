@@ -368,6 +368,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Keep Reagent batching unchanged: pending offscreen code must not hold shell
   visibility or other reactive controls. Loader marker removal remains a local
   transition so nested SSR activation can mount without replacing native nodes.
+  Completed SSR module readiness follows its inner commit; speculative outer
+  boundaries do not subscribe to code status. Failed lazy acquisitions publish
+  their error synchronously at the Promise boundary before rendering local Retry.
   Check overlapping pending boundaries, cached completion, changed props,
   discarded renders, StrictMode and navigation/unmount independently.
   Capture their initial restoration decision without subscribing to completion.

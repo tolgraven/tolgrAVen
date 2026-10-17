@@ -1,0 +1,2662 @@
+{
+  "schema": 1,
+  "suite_sha256": "b0f1890b9eb13a77ca8170bc07f78c8ac72df1236b8bb731b182da825394387c",
+  "cases": [
+    "header-wide",
+    "header-narrow",
+    "footer-wide",
+    "footer-narrow",
+    "post-footer-wide",
+    "post-footer-narrow",
+    "services-wide",
+    "services-narrow",
+    "cv-regular-wide",
+    "cv-regular-narrow",
+    "cv-regular-open-wide",
+    "cv-regular-open-narrow",
+    "cv-container-open-wide",
+    "cv-container-open-narrow",
+    "comments-folded-wide",
+    "comments-folded-narrow",
+    "thread-wide",
+    "thread-narrow",
+    "shell-wide",
+    "shell-narrow",
+    "cv-categories-wide",
+    "cv-categories-narrow",
+    "search-mixed-wide",
+    "search-mixed-narrow",
+    "comments-expanded-wide",
+    "comments-expanded-narrow",
+    "comments-expanded-short",
+    "post-header-wide",
+    "post-header-narrow",
+    "search-mixed-bottom-wide",
+    "search-mixed-bottom-short",
+    "comments-standalone-wide",
+    "comments-thread-deep-wide",
+    "comments-thread-deep-narrow",
+    "comments-owner-controls-wide",
+    "comments-owner-controls-narrow",
+    "comments-standalone-narrow",
+    "comments-two-roots-wide",
+    "comments-two-roots-narrow",
+    "comments-reader-controls-wide",
+    "comments-reader-controls-narrow",
+    "comments-label-above-short",
+    "home-intro-wide",
+    "home-intro-narrow",
+    "home-story-wide",
+    "home-story-narrow",
+    "home-image-media-wide",
+    "home-image-media-narrow",
+    "home-story-expanded-wide",
+    "home-story-expanded-narrow",
+    "home-gallery-end-narrow",
+    "home-gallery-end-wide",
+    "github-feed-wide",
+    "github-feed-narrow",
+    "github-calendar-popup-wide",
+    "github-calendar-popup-narrow",
+    "github-sha-filtered-wide",
+    "github-sha-filtered-narrow",
+    "header-menu-open-wide",
+    "header-menu-open-narrow",
+    "shell-minimized-wide",
+    "shell-minimized-narrow",
+    "shell-restored-wide",
+    "shell-restored-narrow",
+    "shell-bottom-wide",
+    "shell-bottom-narrow",
+    "page-layout-wide",
+    "page-layout-narrow",
+    "page-layout-vertical-wide",
+    "page-layout-vertical-narrow",
+    "docs-index-wide",
+    "docs-index-narrow",
+    "docs-topic-wide",
+    "docs-topic-narrow",
+    "instagram-grid-wide",
+    "instagram-grid-narrow",
+    "instagram-modal-open-wide",
+    "instagram-modal-open-narrow",
+    "instagram-modal-closed-wide",
+    "instagram-modal-closed-narrow",
+    "docs-sidebar-hover-wide",
+    "instagram-caption-hover-wide",
+    "comments-owner-hover-wide",
+    "docs-sidebar-hover-narrow",
+    "instagram-caption-hover-narrow",
+    "comments-owner-hover-narrow",
+    "shell-panels-closed-wide",
+    "user-login-wide",
+    "user-register-wide",
+    "settings-open-wide",
+    "contact-open-wide",
+    "shell-panels-closed-narrow",
+    "user-login-narrow",
+    "user-register-narrow",
+    "settings-open-narrow",
+    "contact-open-narrow",
+    "cv-skills-carousel-next-wide",
+    "cv-skills-carousel-previous-wrap-wide",
+    "cv-skills-carousel-next-narrow",
+    "cv-skills-carousel-previous-wrap-narrow",
+    "comments-composer-rich-wide",
+    "comments-composer-plain-wide",
+    "comments-composer-rich-narrow",
+    "comments-composer-plain-narrow",
+    "neovim-readonly-patch-wide",
+    "neovim-readonly-patch-narrow",
+    "neovim-readonly-diff-wide",
+    "neovim-readonly-diff-narrow",
+    "neovim-readonly-unsupported-wide",
+    "neovim-readonly-unsupported-narrow",
+    "strava-totals-wide",
+    "strava-activity-summary-wide",
+    "strava-activity-graphs-wide",
+    "strava-activity-map-wide",
+    "strava-kudos-hover-wide",
+    "strava-totals-narrow",
+    "strava-activity-summary-narrow",
+    "strava-activity-graphs-narrow",
+    "strava-activity-map-narrow",
+    "strava-kudos-hover-narrow",
+    "post-editor-rich-wide",
+    "post-editor-plain-wide",
+    "post-editor-library-wide",
+    "post-editor-components-wide",
+    "post-editor-draft-wide",
+    "post-editor-rich-narrow",
+    "post-editor-plain-narrow",
+    "post-editor-library-narrow",
+    "post-editor-components-narrow",
+    "post-editor-draft-narrow",
+    "search-extensions-bottom-wide",
+    "search-extensions-bottom-narrow",
+    "link-preview-ready-wide",
+    "link-preview-ready-narrow",
+    "link-preview-metadata-wide",
+    "link-preview-metadata-narrow",
+    "link-preview-unavailable-wide",
+    "link-preview-unavailable-narrow",
+    "cms-services-dirty-wide",
+    "cms-services-discard-wide",
+    "cms-cv-regular-wide",
+    "cms-cv-container-wide",
+    "cms-cv-cancel-wide",
+    "cms-services-dirty-narrow",
+    "cms-services-discard-narrow",
+    "cms-cv-regular-narrow",
+    "cms-cv-container-narrow",
+    "cms-cv-cancel-narrow",
+    "strava-activity-splits-wide",
+    "strava-splits-hover-wide",
+    "strava-activity-laps-wide",
+    "strava-activity-segments-wide",
+    "strava-segments-hover-wide",
+    "strava-activity-splits-narrow",
+    "strava-splits-hover-narrow",
+    "strava-activity-laps-narrow",
+    "strava-activity-segments-narrow",
+    "strava-segments-hover-narrow",
+    "user-account-admin-wide",
+    "user-account-username-wide",
+    "user-account-password-wide",
+    "user-account-avatar-wide",
+    "user-account-closed-wide",
+    "user-account-admin-narrow",
+    "user-account-username-narrow",
+    "user-account-password-narrow",
+    "user-account-avatar-narrow",
+    "user-account-closed-narrow",
+    "comments-reply-progression-wide",
+    "comments-reply-progression-narrow",
+    "blog-archive-wide",
+    "blog-archive-narrow",
+    "services-expanded-wide",
+    "services-expanded-narrow",
+    "cms-gallery-wide",
+    "cms-gallery-narrow",
+    "home-cta-hover-wide",
+    "home-cta-hover-narrow",
+    "shell-framing-expanded-wide",
+    "shell-framing-expanded-narrow",
+    "chat-populated-wide",
+    "chat-populated-narrow",
+    "chat-empty-wide",
+    "chat-empty-narrow",
+    "gpt-collapsed-wide",
+    "gpt-collapsed-narrow",
+    "gpt-open-wide",
+    "gpt-open-narrow",
+    "codex-unavailable-wide",
+    "codex-unavailable-narrow",
+    "codex-populated-wide",
+    "codex-populated-narrow",
+    "chat-timestamp-hover-wide",
+    "chat-timestamp-hover-narrow",
+    "gpt-timestamp-hover-wide",
+    "gpt-timestamp-hover-narrow",
+    "neovim-workspace-wide",
+    "neovim-workspace-narrow",
+    "neovim-workspace-menu-wide",
+    "neovim-workspace-menu-narrow",
+    "authored-highlight-config-wide",
+    "authored-highlight-config-narrow",
+    "authored-inline-search-wide",
+    "authored-inline-search-narrow",
+    "authored-comment-quote-wide",
+    "authored-comment-quote-narrow",
+    "authored-frame-wide",
+    "authored-frame-narrow",
+    "home-soundcloud-placeholder-wide",
+    "home-soundcloud-placeholder-narrow",
+    "experiments-parallax-wide",
+    "experiments-parallax-narrow",
+    "experiments-liquid-glass-wide",
+    "experiments-liquid-glass-narrow",
+    "experiments-model-viewer-wide",
+    "experiments-model-viewer-narrow",
+    "inspector-data-wide",
+    "inspector-data-narrow",
+    "inspector-error-wide",
+    "inspector-error-narrow",
+    "inspector-error-open-wide",
+    "inspector-error-open-narrow"
+  ],
+  "git_head": "c9dbda221a9141f58b8f00f8766d371bb88db2e9",
+  "pixels": false,
+  "raster": null,
+  "motion": "native-css-motion-v2",
+  "approval": {
+    "reviewer": "Codex root; direct rendered inspection and recorded source comparison",
+    "reference": "tolgraven.se, earlier Git design evidence, 124 indexed historical painted states, 98 c9 original-viewport screenshots, 9 supplemental scrolled views and the corrected visible above-label control",
+    "reason": "Approve the reviewed geometry/computed-appearance and native CSS motion reference only. Original first-A records remain fixed for221 unchanged definitions; the sole repaired offscreen-label definition uses its first standard capture. Actual paint inspection and strict native assertions found no new preservation defect in this bounded scope. No independent B inputs, tolerances, field normalization, raw pixel approval, external-provider paint or user design approval are implied."
+  },
+  "composite": {
+    "strategy": "predetermined first A221 unchanged definitions plus first corrected focus case",
+    "original_suite_sha256": "07a4c1d188ffa0c3635393de34fd440afb14b6164ec9d930e9c6854fcb7fead7",
+    "original_capture_sha256": "8b92c2f789813df40b0725b3a13cdf8b23d7950c2bfacad49dc7b3128250fe51",
+    "corrected_capture_sha256": "c4ca3cb9d7774c2815b71efad187e4b3af89fc86f0271c009d2c330ad07dc22e",
+    "original_capture_provenance": {
+      "strategy": "sequential-public-cli-case-batches",
+      "batch_size": 12,
+      "ordering": "Original suite grouping; each unchanged public CLI retains its native iframe/standalone ordering",
+      "pins": {
+        "git_head": "c9dbda221a9141f58b8f00f8766d371bb88db2e9",
+        "suite_sha256": "07a4c1d188ffa0c3635393de34fd440afb14b6164ec9d930e9c6854fcb7fead7",
+        "helper_sha256": "8e1f31cf1ae3c80f0ce5114ddeabe0a69b5ebe2e2909ec85d3a39f11a27cd10b",
+        "external_capture_inputs": {
+          "test/scripts/visual_test.py": "712d6df266876dfa34d37214f155ce0f517a89426dff485cbdb86b533b0053bb",
+          "scripts/test/visual.py": "7c91aa0955948c6297b382a37737fa5573fcf83f381394591baeb7ee22d56448"
+        },
+        "receipts": {
+          "final-source-proof-c9dbda22-6382804f3395.json": "5be00a46917aaa78f41bd1224dd2e00efc60bc63b7854efc62a47b39b4965cc2",
+          "final-fixture-http-proof-c9dbda22-6382804f3395.json": "04be09a7392062759996b762a6e2e4ad6465ccaee8a2e419312988792a928ee0"
+        }
+      },
+      "batches": [
+        {
+          "cases": [
+            "header-wide",
+            "header-narrow",
+            "footer-wide",
+            "footer-narrow",
+            "post-footer-wide",
+            "post-footer-narrow",
+            "services-wide",
+            "services-narrow",
+            "cv-regular-wide",
+            "cv-regular-narrow",
+            "cv-regular-open-wide",
+            "cv-regular-open-narrow"
+          ],
+          "manifest": ".batches/batch01-attempt01/capture.json",
+          "manifest_sha256": "baa3698afa8a2a4b445a32b897f835a7c6217d75a614477b33180586b4be2402",
+          "records_sha256": {
+            "header-wide": "9710ff2f27b5841a091e62a83dd0f51118942eb0286b16ce5efaba860d521bc6",
+            "header-narrow": "2f6eb56778117c26d0aaa2d4e32300b865ed8f27ad9cc7a9cc02498387f9240d",
+            "footer-wide": "f525f7893ee8c8c7db7c81452f0ec9115abd740f2092f7e5b881b1c2c1656fa2",
+            "footer-narrow": "a61d1eec2e20a11f6530cac01afbd809eba7d4c2344336b0fce035843e2edac4",
+            "post-footer-wide": "f525f7893ee8c8c7db7c81452f0ec9115abd740f2092f7e5b881b1c2c1656fa2",
+            "post-footer-narrow": "a61d1eec2e20a11f6530cac01afbd809eba7d4c2344336b0fce035843e2edac4",
+            "services-wide": "4d1597b1001c2a364c3714fca1303a6874cf671c95bf6d26c17eefb709d5a974",
+            "services-narrow": "74450280bacd14fbbd4b1e4cd3426889d45da10e0b758ff4517210fee517f5e8",
+            "cv-regular-wide": "88905df6d5df14084f1cd4f7ff7653e17e76c9605dd079b97860ca4ce14dce16",
+            "cv-regular-narrow": "cf6658e2e6fb69d30ddf4872090c1e088a402e7a3a369621f00d453648aa6246",
+            "cv-regular-open-wide": "d426e1bff249045bf2c2560623bbe991447422307747244505fb5251dc11470f",
+            "cv-regular-open-narrow": "20edccc9c4de7eb0899607880c76d3f805364e50494f0cda18b64d0b51b0ef3f"
+          }
+        },
+        {
+          "cases": [
+            "cv-container-open-wide",
+            "cv-container-open-narrow",
+            "comments-folded-wide",
+            "comments-folded-narrow",
+            "thread-wide",
+            "thread-narrow",
+            "shell-wide",
+            "shell-narrow",
+            "cv-categories-wide",
+            "cv-categories-narrow",
+            "search-mixed-wide",
+            "search-mixed-narrow"
+          ],
+          "manifest": ".batches/batch02-attempt01/capture.json",
+          "manifest_sha256": "36ed24b82a69804f389e3a0a833a49ec0f19a8de967ee6fc8b31ac960a4f4713",
+          "records_sha256": {
+            "cv-container-open-wide": "b17c75e2bda37039d09087b469946a9446fac61c294fe0a1d722968bbb15a7f6",
+            "cv-container-open-narrow": "990ef6d6cf5c2838003f4dde8a4c066c03d38ec08b7bcf6a09484a67ee89946b",
+            "comments-folded-wide": "7643ae74d3ff2856f935a34bf5d3eb0c5a8ae76726836c0b6197c5594753d4b5",
+            "comments-folded-narrow": "3086cf1b95e53523cb119cb9f288761c1f29ed9862489ef3c9fd828d7057cd55",
+            "thread-wide": "d916299ddd74f04372ecc2da9a3c45240876ace15866d88d554866b0118dcda4",
+            "thread-narrow": "4808477edc4d226c5a18934f6921056cac7e36755c72c81cc5c008b0e9a08f2d",
+            "shell-wide": "7dd03829b70957f0ff0979987de4e6d3fb2a1f9f216daa8ee84c959ce4067223",
+            "shell-narrow": "b5172586b675b58bb743e05ad5f479c4649449d1bf5acc5803cc3691008b0a75",
+            "cv-categories-wide": "b8a8ea69943d8d9f6c1a70934557e96e2fc16569bfc6bcca9fb95345abdccb39",
+            "cv-categories-narrow": "4d651e00d53185a57ea97ef3a7b4ef168589a91a6a6884a7727f5c049a0cf7a4",
+            "search-mixed-wide": "f4c3000a3baafe2c34f232a7968efa66e919a3663200300e2b8d9c9f784a5fcf",
+            "search-mixed-narrow": "05189d9be6cd92187dda6c318bf5480b56312d6be548bc467102498635945f5e"
+          }
+        },
+        {
+          "cases": [
+            "comments-expanded-wide",
+            "comments-expanded-narrow",
+            "comments-expanded-short",
+            "post-header-wide",
+            "post-header-narrow",
+            "search-mixed-bottom-wide",
+            "search-mixed-bottom-short",
+            "comments-standalone-wide",
+            "comments-thread-deep-wide",
+            "comments-thread-deep-narrow",
+            "comments-owner-controls-wide",
+            "comments-owner-controls-narrow"
+          ],
+          "manifest": ".batches/batch03-attempt01/capture.json",
+          "manifest_sha256": "1d7dfff4c44bc2feda349f2bcf908a030d876bc5296d89fb8aa335f6cec17cf2",
+          "records_sha256": {
+            "comments-expanded-wide": "ba70cbb6f922a82effd731114863e993068fa62849c14624c3b46502789112b7",
+            "comments-expanded-narrow": "4a1a49a59aac402e76fdb74519ce1a954ffb5aa2ccccea9ebaa42305b8b1577d",
+            "comments-expanded-short": "3d7455ed5ed956ea28c74241780e89ab3a0a6b41af09de115a2038e1f8f14d23",
+            "post-header-wide": "40d3f6d4310f145099271c540ca1e09c6076561796e4f090529587b47e131be5",
+            "post-header-narrow": "9981acc03d95914009c0da7ffe8a93d7a8d59ff883cf154110f11be7de94d7cc",
+            "search-mixed-bottom-wide": "abc71b8183465509b4ce8f3117a44d641b97b6b87b6281d872a30a345df33714",
+            "search-mixed-bottom-short": "c82a51d57f379e0a052071bc01fb4814f4a415bcb44306107cf4643e71faa453",
+            "comments-standalone-wide": "f247e43ef71002fb34e14130fc99bea93c0ac4077cec91ae34c04f15cd5fa908",
+            "comments-thread-deep-wide": "9af9d5c2a8081b0a787f063c27f9670e436c8df395d2a738d923a1260b90fc38",
+            "comments-thread-deep-narrow": "63d679d23a32f57b5da2c669fb6baa6d770642d0d4620b4a7c362673c386910c",
+            "comments-owner-controls-wide": "4a86cecd2d053c0cec5325401c50b2d010d9acff2a339b3ab74606bd369858dd",
+            "comments-owner-controls-narrow": "fd6ca6139d8868e7647d50783dcb050d6b1b39e754f805bb51d131342cfe9306"
+          }
+        },
+        {
+          "cases": [
+            "comments-standalone-narrow",
+            "comments-two-roots-wide",
+            "comments-two-roots-narrow",
+            "comments-reader-controls-wide",
+            "comments-reader-controls-narrow",
+            "comments-label-above-short",
+            "home-intro-wide",
+            "home-intro-narrow",
+            "home-story-wide",
+            "home-story-narrow",
+            "home-image-media-wide",
+            "home-image-media-narrow"
+          ],
+          "manifest": ".batches/batch04-attempt01/capture.json",
+          "manifest_sha256": "d2c76a6f7d28439da02371315a7241f6145e0296a2975e1114f2314e55b8f1b3",
+          "records_sha256": {
+            "comments-standalone-narrow": "110bd2d34bcd11ddf168631ecb003bd08b8c47bbe16bca7c86d643913b966f69",
+            "comments-two-roots-wide": "2b838ff1ac8bd5940f209e98fa552bdefdbd1824ccb62188f3d310c084cfd17f",
+            "comments-two-roots-narrow": "dda8b6665c918211ebeacf000422759828dc29176aecbfd334af33904c5528bf",
+            "comments-reader-controls-wide": "8f1241384aad4aa8f892e28d730950c41423c074f3d2b43ca41a9d0c1043b137",
+            "comments-reader-controls-narrow": "a391286d4eefa7159819509b39c637aa91072806091600275448a94e5f2aa029",
+            "comments-label-above-short": "ce1bb154faca7d8e529badefab53f1949e588f316baf970dceb4d656a7d7310e",
+            "home-intro-wide": "263fcbd99320147172cf4f86a6be10380f1e8926744c244bc00dfed5e024a443",
+            "home-intro-narrow": "c8f4e48c92de2ce03146df7f4b6665944f43202f2104004a779b8233e9683e51",
+            "home-story-wide": "1921c13b84ec17e8c92d66dceda394dd5139430a1da71c4d2789477d2af5bd3b",
+            "home-story-narrow": "861c1f7c5ffc661059e5530cbfdb00d820fd55e9c8a5fb60ac22c2e35985de0c",
+            "home-image-media-wide": "628d1dbaa411deb615cc24da7160e2e75c2e662bd1923642f77b9a7c08dd8d19",
+            "home-image-media-narrow": "97bbdef6c2b224adee1db90ed535b2336af1f3da8658076472805e2f7572bc33"
+          }
+        },
+        {
+          "cases": [
+            "home-story-expanded-wide",
+            "home-story-expanded-narrow",
+            "home-gallery-end-narrow",
+            "home-gallery-end-wide",
+            "github-feed-wide",
+            "github-feed-narrow",
+            "github-calendar-popup-wide",
+            "github-calendar-popup-narrow",
+            "github-sha-filtered-wide",
+            "github-sha-filtered-narrow",
+            "header-menu-open-wide",
+            "header-menu-open-narrow"
+          ],
+          "manifest": ".batches/batch05-attempt01/capture.json",
+          "manifest_sha256": "f0400b39bfbc239728335255baa4f21a03fbfd65e7a6484717307ccfc94debad",
+          "records_sha256": {
+            "home-story-expanded-wide": "a4e4262ef6ced85360397c6f8c710e55152778f3bf890bad231c6ec856898a08",
+            "home-story-expanded-narrow": "034870ba9a8cd1b4d12e9d47f0b68e1c1f16371137717471fab654135d8937a2",
+            "home-gallery-end-narrow": "9ce575597338a9aecd82f4495eaf0c7381368905e5eed7ee80e261e18068a795",
+            "home-gallery-end-wide": "132ccb814fd9979da423c0952a552ce34bdb3d6966221274a43a19130994d0ed",
+            "github-feed-wide": "43c54cc952ae8a99e3e828d441c90b8928c2f17cfdb5f25d307a1f2b9cae7be3",
+            "github-feed-narrow": "dfd763124177d79065c0f52c32816a217a2f4e0732db4b29fa3e951b3cec2a68",
+            "github-calendar-popup-wide": "8b8ab02e21af2e6d48c0cbcdcb48f4b98619cffca6cc9371b47020c7401cc6f1",
+            "github-calendar-popup-narrow": "b7eb7cc065b62319f94a692271b6e72d840fa486646482d11b14e333d29beb10",
+            "github-sha-filtered-wide": "774ed86ae8245682e257629b4b3cfbdf929c9c902c81b1bb89eb1c66f5d1bcc7",
+            "github-sha-filtered-narrow": "6f9b31129cfe54522c9dcf0798535e23ae4135dd8a5dcdc05610617159cfe732",
+            "header-menu-open-wide": "814b5d27a6873d4e791aabc3bb9a11e05a9d6b35caf427b818a9e41dc5b272d3",
+            "header-menu-open-narrow": "f23953899c56cb7730399e3fc81764ebba3e941c15b1766aa1f1c0f4c1182308"
+          }
+        },
+        {
+          "cases": [
+            "shell-minimized-wide",
+            "shell-minimized-narrow",
+            "shell-restored-wide",
+            "shell-restored-narrow",
+            "shell-bottom-wide",
+            "shell-bottom-narrow",
+            "page-layout-wide",
+            "page-layout-narrow",
+            "page-layout-vertical-wide",
+            "page-layout-vertical-narrow",
+            "docs-index-wide",
+            "docs-index-narrow"
+          ],
+          "manifest": ".batches/batch06-attempt01/capture.json",
+          "manifest_sha256": "2a2147c0f51c8af3d478b31b505e147ac38f1a84659d660753e5f30236d058bb",
+          "records_sha256": {
+            "shell-minimized-wide": "0279a760ce00a998b4f38e26df553dc4613825dde8090762fefc5123b9140625",
+            "shell-minimized-narrow": "c6807a6ebddbb53d7b86c721ed4db9c0a8d7203653800ae8121205ff5f040b65",
+            "shell-restored-wide": "bf1e9832a2a16313b06f674c8792afac2b9bef99f39cb49114cf72a6ec02fe1b",
+            "shell-restored-narrow": "f909c4d87f022ce3b680fadb1df95d5ebcf5e708aa6dc78fd04a6e6ae7ccf0cd",
+            "shell-bottom-wide": "5f6373c8e98c6c64d99cc99640bbaa923ce8aff0f456d13fe0ba86a3e25e249e",
+            "shell-bottom-narrow": "b0f35227128524d59447ed8cc60c903cf206cb9d48fca676375afbe5a63828bb",
+            "page-layout-wide": "bb5c081dbb23443f9809f009ba2e102bcb6c6c1517918917f808b5b386e19563",
+            "page-layout-narrow": "7376d9c8c277dbaa985f8cb6da2c068a61991bf1966788a994802e94d9e40976",
+            "page-layout-vertical-wide": "a3edd1f353c970c40d3fa1bc094c098d9b779e9bf18cde95360e89f640a30111",
+            "page-layout-vertical-narrow": "8ed9cf4f5743eb8d8ed839f36feacc19ddbb1268bb16ec85f778707a0d7de53b",
+            "docs-index-wide": "2509e47978214e9b5200107b24cc44a7523592162a9554fa0b7929c4a7707aa7",
+            "docs-index-narrow": "51d82eacc962a2f7941305b90524cc220e1a0920dba65165b199dd5f5e374518"
+          }
+        },
+        {
+          "cases": [
+            "docs-topic-wide",
+            "docs-topic-narrow",
+            "instagram-grid-wide",
+            "instagram-grid-narrow",
+            "instagram-modal-open-wide",
+            "instagram-modal-open-narrow",
+            "instagram-modal-closed-wide",
+            "instagram-modal-closed-narrow",
+            "docs-sidebar-hover-wide",
+            "instagram-caption-hover-wide",
+            "comments-owner-hover-wide",
+            "docs-sidebar-hover-narrow"
+          ],
+          "manifest": ".batches/batch07-attempt01/capture.json",
+          "manifest_sha256": "4b9993e5beadca920a37545e2794d83fd8181932e51ca758779291f6c6dc8b5d",
+          "records_sha256": {
+            "docs-topic-wide": "a5884ab8d34938a52df0090d7a348f756a75e7fee12e1e6470d197758e31841e",
+            "docs-topic-narrow": "bb6502eadb8cff1ecdf36da47a8b6cadef3f0740d2b5a0fbf824984409b68256",
+            "instagram-grid-wide": "f0e38be36acd608ca06a3fbe255fe03847008c57e4b1ffe7bc5ca920573cfeaa",
+            "instagram-grid-narrow": "36e24707a0a71509e48887f5a981ebb7613b7c29171d4089a0da5d8626d855e9",
+            "instagram-modal-open-wide": "b8abf06f95ec32a80ff203ceae68c518acac6b7fbe78232c05f034461de701c1",
+            "instagram-modal-open-narrow": "bb4c2adc2f77e6c5d61eab24346144376f1d91b6ed38e38999f71819cff85a15",
+            "instagram-modal-closed-wide": "aacf4774720516280916f4bbfdbb080ee92d2fc824722cd9a56bd79e489c7e55",
+            "instagram-modal-closed-narrow": "83d5b38b808ea5d4f6ce59f12fcf1d7396fa31a651ca0e6f7cfee1989c6ef343",
+            "docs-sidebar-hover-wide": "ccf59078b4d1e4a9d311ca0961584a97635a183279be94116eed04e406c79905",
+            "instagram-caption-hover-wide": "90fabdc943879c7a5ea69edf360ec4e8a410f298e5d8c9bcc740fa64b8098c91",
+            "comments-owner-hover-wide": "d5178cb0d6a79030be785f9bbfc9423c07658f940d7e3c5e4f0d0aefa64efe65",
+            "docs-sidebar-hover-narrow": "6d162e4e6786b6b9701015e89273eca5d9f81e2a43dd9b6842dc9de9e99641c0"
+          }
+        },
+        {
+          "cases": [
+            "instagram-caption-hover-narrow",
+            "comments-owner-hover-narrow",
+            "shell-panels-closed-wide",
+            "user-login-wide",
+            "user-register-wide",
+            "settings-open-wide",
+            "contact-open-wide",
+            "shell-panels-closed-narrow",
+            "user-login-narrow",
+            "user-register-narrow",
+            "settings-open-narrow",
+            "contact-open-narrow"
+          ],
+          "manifest": ".batches/batch08-attempt01/capture.json",
+          "manifest_sha256": "4e9896c54dba7cb243124ab024d3892c7650c28eb6007e98ff15266755aa282d",
+          "records_sha256": {
+            "instagram-caption-hover-narrow": "fad6e2b5a73dfaa74a14e40b7e71ae9c7cc5ff50a185763a6fdc022a0bdd1655",
+            "comments-owner-hover-narrow": "09f2ed7ba8eb431a8bad75994d4878f6a7116a6c319c4f8f1d491cfd69ddfe42",
+            "shell-panels-closed-wide": "c9338c3c53735143a45f10502c204fcc0ff1957d20bd75c468bc82248071cb60",
+            "user-login-wide": "a652759674f353a4050a662fb92a1784de469487ba5bc3f060446f520cddd56c",
+            "user-register-wide": "fbb4b4d20f810ab19277a941cc70e4a63b5a82115a7dfbe833b34f1a0a11b231",
+            "settings-open-wide": "6aa4d1b620f488c2c6b6022f9124e35362da3b2d2b63ee1a2c1229ed26f727f6",
+            "contact-open-wide": "e9d3bbd485447d27f8aea74ee79488be14b6987d45f09cec0756fdd95e5db193",
+            "shell-panels-closed-narrow": "a464470ded6f766a1224fc067866424d4f0438bf5a027487132a0d1d98be6007",
+            "user-login-narrow": "aabfdc5b3cccbdea301211006e33bd297b4970bb37074b92ad9021262fa2877f",
+            "user-register-narrow": "2d470428496376d6171723d4c66c4b89115d2a6d0483495610fdbdbd42972086",
+            "settings-open-narrow": "39702701b9cadff3bd3c687c6fcb16fbb8e22b45878870481743362613a42d22",
+            "contact-open-narrow": "247a3dfa86d58ecf5c9870d6d518fc344c9ea97792ef736f3bbe709d78341c18"
+          }
+        },
+        {
+          "cases": [
+            "cv-skills-carousel-next-wide",
+            "cv-skills-carousel-previous-wrap-wide",
+            "cv-skills-carousel-next-narrow",
+            "cv-skills-carousel-previous-wrap-narrow",
+            "comments-composer-rich-wide",
+            "comments-composer-plain-wide",
+            "comments-composer-rich-narrow",
+            "comments-composer-plain-narrow",
+            "neovim-readonly-patch-wide",
+            "neovim-readonly-patch-narrow",
+            "neovim-readonly-diff-wide",
+            "neovim-readonly-diff-narrow"
+          ],
+          "manifest": ".batches/batch09-attempt01/capture.json",
+          "manifest_sha256": "c706c4d541441082750ce88c7ecd7306b820073fcf5daa19884ce58d38b65859",
+          "records_sha256": {
+            "cv-skills-carousel-next-wide": "52b0b78c046800d7891215e7d49ba77399fb5de2a395da44b6d70287c3baf58f",
+            "cv-skills-carousel-previous-wrap-wide": "33bf42d1c8422c1b5091e21dc6518519620377872be20931c72c11d0a541e62f",
+            "cv-skills-carousel-next-narrow": "81fa4eda192ea2fa694293a6cc76054af6f0c8ae13648f77abe5496d706de236",
+            "cv-skills-carousel-previous-wrap-narrow": "38183a0e2186d4fefd8b2323afb760f6aa99faf9a2d81fd8c011e7e549d249ae",
+            "comments-composer-rich-wide": "0c7661d782d2be2e6171992e14f9b8797272d096b2372dc3527bfdd20bedbaaa",
+            "comments-composer-plain-wide": "9c6833d546da5f9cb84981f5b76a3856cda5f70c42b348ca659dc40864bbc281",
+            "comments-composer-rich-narrow": "f3f74298aa938dacafc94a653241bb8e01b35d127da40c93d364e5366dd2fca0",
+            "comments-composer-plain-narrow": "2c08c6a21e22ab9ffc79211497f1fadcd9eacf65bf42c55bd4bbc3d133602eb9",
+            "neovim-readonly-patch-wide": "0c8a10446b9724f5471666c75db2debf8a745eeb30f0150294fbca3c7c44c2f4",
+            "neovim-readonly-patch-narrow": "98cce2fce65611beedc04e04f8bf54a23038e822b93a39421ff24c55b7d16364",
+            "neovim-readonly-diff-wide": "4df100d7bf0361c7994337544e32282c092eff15ffeb67cf2f9ebea54a288fe7",
+            "neovim-readonly-diff-narrow": "c3800f7086e280cc3b259d3842e1ff73b7de751ad19ac3ccf5ef4d15e679f02a"
+          }
+        },
+        {
+          "cases": [
+            "neovim-readonly-unsupported-wide",
+            "neovim-readonly-unsupported-narrow",
+            "strava-totals-wide",
+            "strava-activity-summary-wide",
+            "strava-activity-graphs-wide",
+            "strava-activity-map-wide",
+            "strava-kudos-hover-wide",
+            "strava-totals-narrow",
+            "strava-activity-summary-narrow",
+            "strava-activity-graphs-narrow",
+            "strava-activity-map-narrow",
+            "strava-kudos-hover-narrow"
+          ],
+          "manifest": ".batches/batch10-attempt01/capture.json",
+          "manifest_sha256": "668436427e6ebf930e5d943acab5cda88823ca77e72a3b2322cf49a53031be33",
+          "records_sha256": {
+            "neovim-readonly-unsupported-wide": "48f2f42e985360c84dad417ebec5a69076ecde1dd45c429b759bcb232d4e439b",
+            "neovim-readonly-unsupported-narrow": "1f83d8159975a4a5b35422e99e26110aae45805111faa3c70cc008e7f46d2db2",
+            "strava-totals-wide": "52d725a836a27345544f224655591a536f0c429b1ffc63d297b8ceaa142c8fca",
+            "strava-activity-summary-wide": "7383f0bdd28d27a0f03c77953b5fd42aba904d20fd9aafc2b1c27612c0a3cd57",
+            "strava-activity-graphs-wide": "2ef7b4f16a0d5c2574b10587cbe286ea187072d39a2e3e96057f67141292068c",
+            "strava-activity-map-wide": "59372f18c4d8d9304d2830a32a58d7b8112ab8a0ac74fab91a9c230a965a4fde",
+            "strava-kudos-hover-wide": "ab9ef08e98f241b64e3fc9e39734035ab53da5c870a63cf070657e9d3422315c",
+            "strava-totals-narrow": "33b47e685ab96814a38c7b3e8ac47ae6a8e934504ed2a9635f962d2626561ce0",
+            "strava-activity-summary-narrow": "89f00c8de24d9fabde0ee81c07469e4f18df08ce9917f622bcfcf8c0d22a8a15",
+            "strava-activity-graphs-narrow": "7252415614e5f470730489fbbd0f368e727d2822b92093d6a204482caa47dfc2",
+            "strava-activity-map-narrow": "f265f9a35d13a382bfb86058ea5d3c1c667dccc0a8f36a504549fada3a3f5ff0",
+            "strava-kudos-hover-narrow": "7de7817aff867c2bf276cc61ab3a5f8747acc9a4cfabfcd1b25f283cf8f82575"
+          }
+        },
+        {
+          "cases": [
+            "post-editor-rich-wide",
+            "post-editor-plain-wide",
+            "post-editor-library-wide",
+            "post-editor-components-wide",
+            "post-editor-draft-wide",
+            "post-editor-rich-narrow",
+            "post-editor-plain-narrow",
+            "post-editor-library-narrow",
+            "post-editor-components-narrow",
+            "post-editor-draft-narrow",
+            "search-extensions-bottom-wide",
+            "search-extensions-bottom-narrow"
+          ],
+          "manifest": ".batches/batch11-attempt01/capture.json",
+          "manifest_sha256": "bdc7b52f2b6b50ea90b0c23d2c9470398313532bbb6eb6a2db5e725b0d1511ea",
+          "records_sha256": {
+            "post-editor-rich-wide": "52a74736d388543a9f82cfc98d63177a11d15c311af3e3f6566b2f03b43ddd3c",
+            "post-editor-plain-wide": "0d5b5f3edd20fc6a7d2bc8c349367c2facf84f93987206e90fedea364ace7b52",
+            "post-editor-library-wide": "0412afc569e2efaa745d016a52cd9bfc7685abd2596b91919965661312557636",
+            "post-editor-components-wide": "077cd1d387fdf157d50e9d7a237b75f74b9cde3a544d5119c9feb907d73fc956",
+            "post-editor-draft-wide": "d9a9c5e5696eed16050bcdd5f749074d89bd670c5ff37c8a65deeb7c1054a98b",
+            "post-editor-rich-narrow": "c558c789080f3a6dd79ee81a998f3612a2002496d99d629d5e8883303e8330f9",
+            "post-editor-plain-narrow": "25e03f2748c7c52b49789d5aa794c6341ace04628b8b72e017217c37ab1c3345",
+            "post-editor-library-narrow": "4bb9a07426de72fd42fb8236461ca85073376f0843a7203507555feb76bd0ddb",
+            "post-editor-components-narrow": "196b228ef9af29b6845c6e60c8a21f72839ed64338e9ffc4c4b8d88ef2145265",
+            "post-editor-draft-narrow": "e954c8c5b684f533af6ff6839828af424dae34d2cea305b5846540bb00832448",
+            "search-extensions-bottom-wide": "f08fe02e60e71b75b19df23832b7103a122e50a6afde0ed8157080f1fc04a568",
+            "search-extensions-bottom-narrow": "ada6278c33a6698f8fd4fd104622243cf0b529b737af9d65a0f8fc54437815db"
+          }
+        },
+        {
+          "cases": [
+            "link-preview-ready-wide",
+            "link-preview-ready-narrow",
+            "link-preview-metadata-wide",
+            "link-preview-metadata-narrow",
+            "link-preview-unavailable-wide",
+            "link-preview-unavailable-narrow",
+            "cms-services-dirty-wide",
+            "cms-services-discard-wide",
+            "cms-cv-regular-wide",
+            "cms-cv-container-wide",
+            "cms-cv-cancel-wide",
+            "cms-services-dirty-narrow"
+          ],
+          "manifest": ".batches/batch12-attempt01/capture.json",
+          "manifest_sha256": "38906ae6d696e0e287a6a7dd5c0a7fc7a2b84c4759f101e82cbf68c71fa30a9b",
+          "records_sha256": {
+            "link-preview-ready-wide": "d926692a7c0df7e961f678a4031d8f257177ecd2c4337b21a40571eab53ae883",
+            "link-preview-ready-narrow": "df2ae817becc2b5de664a489285ab48776adba70036bd50c6fa3651c719c6e94",
+            "link-preview-metadata-wide": "b58524cc49f35df9262a09269977a1fbbc12994165f8379f9d964a010f4ddab7",
+            "link-preview-metadata-narrow": "26c5b4826bc97abc4e640bc45d5aac4baba8e8c31e58348a457cffbcf1b981fa",
+            "link-preview-unavailable-wide": "0f06cff4d94496a5e8113ce5ca5303b0b189f475c4ce0316b13ac325327d2c8c",
+            "link-preview-unavailable-narrow": "ed667b52c5d3a5cce61e4f1723bbcae749a18139144390fc35c75cb2b26ebd0d",
+            "cms-services-dirty-wide": "a32ce10fcbb7d6d5b43f83f8bb95b056ef425d56ce55117cbbaf2971dfaf5e0f",
+            "cms-services-discard-wide": "630b84cccd9bb01d5327576e4455bedcff04f990a01e179e38e90142cf1c97e8",
+            "cms-cv-regular-wide": "dc360e42e698fad5e740bba0180b7a9bb71ffa2434e241af71a9331ab1b21ac6",
+            "cms-cv-container-wide": "ec6d9c595d486f744f0226e099dfe0eab2971ddce0b76780066b33dc0d09030e",
+            "cms-cv-cancel-wide": "4ede009ddf70ab534e9f6b03f19f1b87c0f45fb61e13591519825b3f0d69aeba",
+            "cms-services-dirty-narrow": "0e133efec0bae1e8733be3301d8158a5daf203bec058650d1301de690bc71701"
+          }
+        },
+        {
+          "cases": [
+            "cms-services-discard-narrow",
+            "cms-cv-regular-narrow",
+            "cms-cv-container-narrow",
+            "cms-cv-cancel-narrow",
+            "strava-activity-splits-wide",
+            "strava-splits-hover-wide",
+            "strava-activity-laps-wide",
+            "strava-activity-segments-wide",
+            "strava-segments-hover-wide",
+            "strava-activity-splits-narrow",
+            "strava-splits-hover-narrow",
+            "strava-activity-laps-narrow"
+          ],
+          "manifest": ".batches/batch13-attempt01/capture.json",
+          "manifest_sha256": "40dfb4d25cf43408664ec3eeeacf8419d4ca60de33b15934f1a5d94c1dae0df6",
+          "records_sha256": {
+            "cms-services-discard-narrow": "4a35f95393c292759028eed3dc4b8751baeab556674fd6768dad1df383f6a67f",
+            "cms-cv-regular-narrow": "606c3dff87b7de753cef45603fb2a0188d0421ee89d1486b339e1f0932cedff0",
+            "cms-cv-container-narrow": "05806b2b01d6686cc61329fff90de6c25f7409d7a04f1c815603085ee087c470",
+            "cms-cv-cancel-narrow": "ce1627581db47f5bf20b6ceb42aed5c919b92787843d4ce13034a145dbd8d057",
+            "strava-activity-splits-wide": "7c00eb2065ffc5b92b1401f7dd3bc2ac72458d36b1a0b01c08f42c81c32650d8",
+            "strava-splits-hover-wide": "181cfc929c12cae5b6f80f49f99e9c445c1ad22900591312a208db73be7a4002",
+            "strava-activity-laps-wide": "7666dd795196bebe02367771063e27bb61e12c0e52eb9a2790493983fde811b6",
+            "strava-activity-segments-wide": "e3e79cb87fe90caaf4b51d332fb74aa27c6c005386514c4a644c1f370ff471d9",
+            "strava-segments-hover-wide": "80f748f396dc47922ad512add12655945affc45987079aeccb5ab9e794760b60",
+            "strava-activity-splits-narrow": "09f4894b1ab8318054826cc617d558b93f33d8100a509928bbae4f0cdfca3657",
+            "strava-splits-hover-narrow": "d2884ed685aa14ad5d76b1d5958c318d6b41e61bcd4bb363d62aa3d0da3b0e8a",
+            "strava-activity-laps-narrow": "2ab1529936249eaa688e2e0f27b7670a1092ee4f2df412d89007dd0e41a683f6"
+          }
+        },
+        {
+          "cases": [
+            "strava-activity-segments-narrow",
+            "strava-segments-hover-narrow",
+            "user-account-admin-wide",
+            "user-account-username-wide",
+            "user-account-password-wide",
+            "user-account-avatar-wide",
+            "user-account-closed-wide",
+            "user-account-admin-narrow",
+            "user-account-username-narrow",
+            "user-account-password-narrow",
+            "user-account-avatar-narrow",
+            "user-account-closed-narrow"
+          ],
+          "manifest": ".batches/batch14-attempt01/capture.json",
+          "manifest_sha256": "1aa8dc40348a2db86896a78759131ec0e98c1ebd0c6b0a97137e36198026bf7d",
+          "records_sha256": {
+            "strava-activity-segments-narrow": "ecfcba00c747e6369c788c6de0c2e97d931403dfc7577aeb5911848664c71e45",
+            "strava-segments-hover-narrow": "19b46380347ad5e1b73edfc1d6ef43c76edeea059cd73a3e95fe84cd6d856c8c",
+            "user-account-admin-wide": "11a92027b7a46a31972376d5c33200bef5ed71e64e285ef615a37d4a9079ce44",
+            "user-account-username-wide": "6f491ddb161f683263bfb4d4ef56572b921bc02be0e265dd4f2801723e8d52f2",
+            "user-account-password-wide": "de7f8fba2836ac696b55f91ad8e27f26e00df406399715d881876146924288a1",
+            "user-account-avatar-wide": "e3cf08102c04f1c1c24254e829055ebce7305a69ffcc3a67e9ff3d98e638745d",
+            "user-account-closed-wide": "578507b18dbe3da344d658939d947814d6948e15a89e81c87766bc322e860a95",
+            "user-account-admin-narrow": "99bdb8a1b2b29cd3e42a6f09e04906e3d49c548557b94f12c94e178e29b9a787",
+            "user-account-username-narrow": "cfe8027a11edb90f7a4bd10c4fc5c492c225d282072f3954ef4402a9fa6ecc34",
+            "user-account-password-narrow": "4925ad371a80905b424350a602b8f609c45237da6a718fbddc77326fa59a8902",
+            "user-account-avatar-narrow": "27b96c5e7dc81caaef76882bffe27162502b4c299507b500a43001fa02b8186a",
+            "user-account-closed-narrow": "01228c1cbbd3695ddb72e84f3df43563b1a2cfb736a1445599d7d63e9ed25815"
+          }
+        },
+        {
+          "cases": [
+            "comments-reply-progression-wide",
+            "comments-reply-progression-narrow",
+            "blog-archive-wide",
+            "blog-archive-narrow",
+            "services-expanded-wide",
+            "services-expanded-narrow",
+            "cms-gallery-wide",
+            "cms-gallery-narrow",
+            "home-cta-hover-wide",
+            "home-cta-hover-narrow",
+            "shell-framing-expanded-wide",
+            "shell-framing-expanded-narrow"
+          ],
+          "manifest": ".batches/batch15-attempt01/capture.json",
+          "manifest_sha256": "e7f52b1d221e380a2af4d0aab2c4a40a277a12437ced5a3603be18ecbe433501",
+          "records_sha256": {
+            "comments-reply-progression-wide": "b6bb27b08b15412c5f751d928f3a749ce88d3f31479654f8c17636053f15c4f4",
+            "comments-reply-progression-narrow": "f818994fa0360c681480b83d50e1d63eaf2926f5fe6f8c07e496ed123dc7470e",
+            "blog-archive-wide": "fd4c1751f4bcebae1d6a05e42d700db0fe7ac8ef1fe263d3e921255c312a6462",
+            "blog-archive-narrow": "a7968817daa6631820784f0a4d22dd65ec630e7defa59be7c796a1b48d509797",
+            "services-expanded-wide": "f1ca11a47e8b0e3ffb2ee3269dd7fc2a88271dd09da6f91c67e8abb9b15ffddd",
+            "services-expanded-narrow": "af716c83c234da53a50df86b9b53bb0fd8bddc596798c5691ea43ce7e96dc94d",
+            "cms-gallery-wide": "9f5bc7a9754819a4e23a0f96cd9f9025a0826a29f78193e5af1883007634efb6",
+            "cms-gallery-narrow": "fcffa2c121dff773c0816458853f634237c647dfd54eb90b048ffaf80deed8cf",
+            "home-cta-hover-wide": "60be6c4780732888f2f698aa7f88173b11e9e4ddd1d868bdd2a8101cb5f04dab",
+            "home-cta-hover-narrow": "e4643784bd0023a9f9f9fdb93609609235e0e98abcab1971116e5cc6249a10f1",
+            "shell-framing-expanded-wide": "1a784ccaaa9c83dd5f1d6b40f2f1e4dfd81125baa584e89295af3f40e6bf3a53",
+            "shell-framing-expanded-narrow": "27061884072196bd86d5f04b2a8e9355a89862158db809615d8970a65d887371"
+          }
+        },
+        {
+          "cases": [
+            "chat-populated-wide",
+            "chat-populated-narrow",
+            "chat-empty-wide",
+            "chat-empty-narrow",
+            "gpt-collapsed-wide",
+            "gpt-collapsed-narrow",
+            "gpt-open-wide",
+            "gpt-open-narrow",
+            "codex-unavailable-wide",
+            "codex-unavailable-narrow",
+            "codex-populated-wide",
+            "codex-populated-narrow"
+          ],
+          "manifest": ".batches/batch16-attempt01/capture.json",
+          "manifest_sha256": "6c7a39c8c6547651df53e6cfd77c3ce8052689e07dc787d5b8f9dd714a137382",
+          "records_sha256": {
+            "chat-populated-wide": "426b873a5fb6ec1087d190dc607f4d31cf8f91c666c8cbb123cbdb04ce6f4b32",
+            "chat-populated-narrow": "fa291584309c0a676357ed5536f13b3315cdc85865ade8078177a228823ebdef",
+            "chat-empty-wide": "cb1e5154c8c7ffafeae174b46cb75ed68a316784d1ae379d4f819601bd9fc535",
+            "chat-empty-narrow": "ce286c40a34754c44a656c76275d3398e585fbfb1de15f579cb3d91a0f26cf7e",
+            "gpt-collapsed-wide": "6846cf83e6eae0b0ae6ae1ced2a2fdec8d65565644a5237e3980d32542c66b06",
+            "gpt-collapsed-narrow": "c7d3b9d7d73a69480407c62bb023c99b0c8887cc6130c90c8133861700d01a51",
+            "gpt-open-wide": "4dbd9554ed82131317c8ed8cabf5716230698bc6eda23a1189cececb137a513a",
+            "gpt-open-narrow": "1da08e631c435123f063c49dd49de309c591427572edc577de07b8a2853f5580",
+            "codex-unavailable-wide": "65ac6693cf6cca016726b6e4c1688c82b627b69c74a94083d2b08c4658bf84d5",
+            "codex-unavailable-narrow": "d0cb2ae28cbfe8f010a0620a25902b78f49a6cbefc371039d9e85baa4260a5d2",
+            "codex-populated-wide": "41e156cf6e218e6e71cdb5cbfd3638d478765a1b29788bbd03a43d24be2c4975",
+            "codex-populated-narrow": "a2d6424bbe6277b9baa989193f0022d0bf6885d292bf887c80c05a69e24f456e"
+          }
+        },
+        {
+          "cases": [
+            "chat-timestamp-hover-wide",
+            "chat-timestamp-hover-narrow",
+            "gpt-timestamp-hover-wide",
+            "gpt-timestamp-hover-narrow",
+            "neovim-workspace-wide",
+            "neovim-workspace-narrow",
+            "neovim-workspace-menu-wide",
+            "neovim-workspace-menu-narrow",
+            "authored-highlight-config-wide",
+            "authored-highlight-config-narrow",
+            "authored-inline-search-wide",
+            "authored-inline-search-narrow"
+          ],
+          "manifest": ".batches/batch17-attempt01/capture.json",
+          "manifest_sha256": "aa6ecb25b11d9474dadcaad69507e100f67ef6d3c4f1b4f4105221e217dc1c38",
+          "records_sha256": {
+            "chat-timestamp-hover-wide": "8f69a39f6311a3849f7f0c943aaed0c1a845a60122f5cf0dbb9ff976d30776f1",
+            "chat-timestamp-hover-narrow": "e148552d3f4b4441e1ce3f461085ae106dd74a910667efab52da05507af34940",
+            "gpt-timestamp-hover-wide": "8a121513522e9f0a2c2e077789f711ae5e6c2537cd4162461e39a88e839a3608",
+            "gpt-timestamp-hover-narrow": "a6507dc316d3dbb92edac42075623736feb5acc54d4de1366c1309afa2c1e87b",
+            "neovim-workspace-wide": "10c3a8bdbded1c7d8238723282b62fcd19c674479297b0f8500dd42bbf88458b",
+            "neovim-workspace-narrow": "fe86810efe0a3d6588dbe4eef17c864c3381dcb2d854c6a5acddd0ffa4d55a30",
+            "neovim-workspace-menu-wide": "82c33693b66d6f0e4652fc15378cc4cb88d622b1a248bb4ec37134f46f4c59de",
+            "neovim-workspace-menu-narrow": "e9b637cb7bcc8dab13804e8b4f3ed6aeec0fc901b871da0a0c4838e13cf6df21",
+            "authored-highlight-config-wide": "7a48cc0fe52d3ff22055122604d3e68c11c922a5931484109839d5767f726341",
+            "authored-highlight-config-narrow": "16a88f5e6e37c3b482f7216018a9b53f9d9a2faf974c4ad9f04ee1504d7be35e",
+            "authored-inline-search-wide": "9ae1b5254b61a858daa6bbf9488111ea7efdd16a9b50f4f5090889ebafc2ae00",
+            "authored-inline-search-narrow": "b9415da56f4ffdcd0effba395a6fd79d402e1d650890b3c2a7aa59fb65b855f6"
+          }
+        },
+        {
+          "cases": [
+            "authored-comment-quote-wide",
+            "authored-comment-quote-narrow",
+            "authored-frame-wide",
+            "authored-frame-narrow",
+            "home-soundcloud-placeholder-wide",
+            "home-soundcloud-placeholder-narrow",
+            "experiments-parallax-wide",
+            "experiments-parallax-narrow",
+            "experiments-liquid-glass-wide",
+            "experiments-liquid-glass-narrow",
+            "experiments-model-viewer-wide",
+            "experiments-model-viewer-narrow"
+          ],
+          "manifest": ".batches/batch18-attempt01/capture.json",
+          "manifest_sha256": "7599b4ac669d8199a95a00ad6330ca58d6ff182912e828eb4108426e8709c91b",
+          "records_sha256": {
+            "authored-comment-quote-wide": "c057b50854892c8075b5b07876986ce95982be30dd85df3cc5947527678aa296",
+            "authored-comment-quote-narrow": "ce197911e6414726bad0f2abd912eee426dcf8a7c9e01423cead9c2eac175d30",
+            "authored-frame-wide": "2ee2d90a8645e5301da4aeedeac6aa3ecf505267026ad9adb80f6d8252360c42",
+            "authored-frame-narrow": "c773eaeff97c4c7c763d1fc59f70e951490f61530415e5587a5ee1ec7c2d2f88",
+            "home-soundcloud-placeholder-wide": "3a8e15f62535a259a142c4a110679b2be35b24dc1c1454873bedbe9262c1c523",
+            "home-soundcloud-placeholder-narrow": "7e9a9aca3725bae402b3032e9a7a51218c1eab628a710085fa56c9ca719997d0",
+            "experiments-parallax-wide": "6a155d05f130b7dec1f065607241be14aed3943f5c6e10f5feea3eeba739402f",
+            "experiments-parallax-narrow": "da947450890a816348fa6a77497aced713120bbf5f8e1a28edb9447c2cda362a",
+            "experiments-liquid-glass-wide": "a26211eeb0ad17d8ab85055e551213d44d66ec6a4be99e78b369e9d0b1fa1785",
+            "experiments-liquid-glass-narrow": "6544436b095e9c9a44c8b6e1a6c93ca1005e7ce5079df51a105a2be209d379bf",
+            "experiments-model-viewer-wide": "e9412e7d146df8c10d9d07a2525e85f448020fc58988201a2481f85c34a654bc",
+            "experiments-model-viewer-narrow": "8fe24d5a43cf6725919128076b417e94f43e9d26f42efcd84c54002ce980e351"
+          }
+        },
+        {
+          "cases": [
+            "inspector-data-wide",
+            "inspector-data-narrow",
+            "inspector-error-wide",
+            "inspector-error-narrow",
+            "inspector-error-open-wide",
+            "inspector-error-open-narrow"
+          ],
+          "manifest": ".batches/batch19-attempt01/capture.json",
+          "manifest_sha256": "d85ecabdad02c819566ca34001851d474488bc319be2895958de2ee424777158",
+          "records_sha256": {
+            "inspector-data-wide": "6ceaf14eef4d409cc666fed7ac81cbf05be71b90a945828f6cf77e3719a01097",
+            "inspector-data-narrow": "c6c39aa02f3121e4fd41dee8ba88a909d960310b12f760d1ff98900b5354665f",
+            "inspector-error-wide": "e58ef8c4817d629edcb4acf38f5440522d13aaa069ca0635a0829d948c96b957",
+            "inspector-error-narrow": "5529ce69f51f59be02e3e38ce64fb50f0f2fe552bc9bb23002642dde419b9714",
+            "inspector-error-open-wide": "411fbb2d1f22f77ee806b399aff3fc476a54f5f3db528449a389efaa5eb6c355",
+            "inspector-error-open-narrow": "b994a13bdefb012fb3a0ac992c1e04c1dcc1565790897ad599b3867f84f51cbe"
+          }
+        }
+      ],
+      "limits": "Independent bounded standard captures; not one continuous run, pixel parity, or approved design"
+    },
+    "case_provenance": [
+      {
+        "case": "header-wide",
+        "case_object_sha256": "f58fa2f065e4f44223b6cd6bc17fae637559122f1f593dc77ff888bb0288212e",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/header-wide.json.gz",
+        "stored_sha256": "91badbd3dea167aea9644b200360f638665bde90e2bb7b53c012ebf45677edf1",
+        "decoded_sha256": "9710ff2f27b5841a091e62a83dd0f51118942eb0286b16ce5efaba860d521bc6",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "header-narrow",
+        "case_object_sha256": "11f71c329b061f74c5484e833f6b3cd561d55d7bc531e5dca0ee888583c48f33",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/header-narrow.json.gz",
+        "stored_sha256": "5d541ed4eeaa467d893a9b94b5b4f10bd3b5d754436e7a6298f77461df1bd4b7",
+        "decoded_sha256": "2f6eb56778117c26d0aaa2d4e32300b865ed8f27ad9cc7a9cc02498387f9240d",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "footer-wide",
+        "case_object_sha256": "9d1daaa0fffedc7d4906883752d97fc098efd17542afca1e7f2f1db3c77b09b0",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/footer-wide.json.gz",
+        "stored_sha256": "afbb785b664b9f6e6af972bc1f7c0e86743207a3ca4cb3c872ceea25338330e8",
+        "decoded_sha256": "f525f7893ee8c8c7db7c81452f0ec9115abd740f2092f7e5b881b1c2c1656fa2",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "footer-narrow",
+        "case_object_sha256": "7f274526c6b78543c78ddf19f60bcecc5fca3d03d427f03bbb74951a08d9271c",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/footer-narrow.json.gz",
+        "stored_sha256": "d770004aec826bdef8cbb3aa6a959f32a7bf73ded8be416fc3af71a1b8a6e371",
+        "decoded_sha256": "a61d1eec2e20a11f6530cac01afbd809eba7d4c2344336b0fce035843e2edac4",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-footer-wide",
+        "case_object_sha256": "943ef612a70267cc5782b64ae4cf8a820542efc1b241f7d4589a4ebb5b954ef0",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-footer-wide.json.gz",
+        "stored_sha256": "afbb785b664b9f6e6af972bc1f7c0e86743207a3ca4cb3c872ceea25338330e8",
+        "decoded_sha256": "f525f7893ee8c8c7db7c81452f0ec9115abd740f2092f7e5b881b1c2c1656fa2",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-footer-narrow",
+        "case_object_sha256": "bc610871c743aec47ecb794cec35afb58ed9318238cfdfbca07902ba49baf2a6",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-footer-narrow.json.gz",
+        "stored_sha256": "d770004aec826bdef8cbb3aa6a959f32a7bf73ded8be416fc3af71a1b8a6e371",
+        "decoded_sha256": "a61d1eec2e20a11f6530cac01afbd809eba7d4c2344336b0fce035843e2edac4",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "services-wide",
+        "case_object_sha256": "405d5322b8aa18cadacb2b7373dad27b200c28b7cd3a1b33dcf00bdfff79f769",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/services-wide.json.gz",
+        "stored_sha256": "b00f1e3daf7e92b382b60072a86eb96e6ec15dbaccfe03e518a2dc42198d23ca",
+        "decoded_sha256": "4d1597b1001c2a364c3714fca1303a6874cf671c95bf6d26c17eefb709d5a974",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "services-narrow",
+        "case_object_sha256": "a798ed8a16898d8aa0d6ffe21800c8fff2e0dcfcf7066485e3b937ecdda01e69",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/services-narrow.json.gz",
+        "stored_sha256": "24ed8ce3e3d85e9cb453f7485bb51e4356caa44ac6e20121ea1e1677c0099c66",
+        "decoded_sha256": "74450280bacd14fbbd4b1e4cd3426889d45da10e0b758ff4517210fee517f5e8",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cv-regular-wide",
+        "case_object_sha256": "d14250bce91ab3f0d7b1875ba9a1118253adcee40ee141ce1dae1ca7ae023318",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cv-regular-wide.json.gz",
+        "stored_sha256": "0123481701799490861b7907afef3164d036c54fb0a575e2d877789bb105843a",
+        "decoded_sha256": "88905df6d5df14084f1cd4f7ff7653e17e76c9605dd079b97860ca4ce14dce16",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cv-regular-narrow",
+        "case_object_sha256": "e50e692a08df61da4c783d32ee769030c15fca72426a621eeaa9920592ee9f05",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cv-regular-narrow.json.gz",
+        "stored_sha256": "f8e9444a2397e03084654eda51756014a754371e0c2dde9d870451e3c28ce8b0",
+        "decoded_sha256": "cf6658e2e6fb69d30ddf4872090c1e088a402e7a3a369621f00d453648aa6246",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cv-regular-open-wide",
+        "case_object_sha256": "c963742a6b65dcadcf77be6f29181d8d61aa73a50bca356adf267016f7e4b169",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cv-regular-open-wide.json.gz",
+        "stored_sha256": "9a5c453c5567354c0886f2a82e73b87bacd85bcb090495f20c5edf5ec84d03b4",
+        "decoded_sha256": "d426e1bff249045bf2c2560623bbe991447422307747244505fb5251dc11470f",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cv-regular-open-narrow",
+        "case_object_sha256": "84b4d67efc6611fbcb99d40679c0af49e7a2bfb8e30c91d67f4013b88e5e767a",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cv-regular-open-narrow.json.gz",
+        "stored_sha256": "622bcd6f3860eddfa98b6ea1ff1c8287c78edb162f0964000d2d04b2a1986972",
+        "decoded_sha256": "20edccc9c4de7eb0899607880c76d3f805364e50494f0cda18b64d0b51b0ef3f",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cv-container-open-wide",
+        "case_object_sha256": "02542387d22a5262a8e3c2032f18fdc0939a870423adb6459bb5cbc56b789eed",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cv-container-open-wide.json.gz",
+        "stored_sha256": "6103fca14d747e9e0dc710c06954e0ee280ca0781a0b597872615d10c32e11f4",
+        "decoded_sha256": "b17c75e2bda37039d09087b469946a9446fac61c294fe0a1d722968bbb15a7f6",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cv-container-open-narrow",
+        "case_object_sha256": "fad6907c1b90cde262185207e01864c67eeb0eb50f741715493d2b33ce348003",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cv-container-open-narrow.json.gz",
+        "stored_sha256": "9881b8dee6bad790593f43169d4000ec2bbe7e28dda607569848a42f8699dfa1",
+        "decoded_sha256": "990ef6d6cf5c2838003f4dde8a4c066c03d38ec08b7bcf6a09484a67ee89946b",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-folded-wide",
+        "case_object_sha256": "8d1d8d13c1ce8056ebba3a1748fb8e2f6d9c5209b9098e0f95b8aafdd53bef05",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-folded-wide.json.gz",
+        "stored_sha256": "d59cbbf5109678514bbf16a08ad154d75e78000059b7f80c10951ccad2608e4a",
+        "decoded_sha256": "7643ae74d3ff2856f935a34bf5d3eb0c5a8ae76726836c0b6197c5594753d4b5",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-folded-narrow",
+        "case_object_sha256": "a0a987b051f2bafbe25b7b1c9f5898b72e5d82edfe498d4e3f869d2325a50621",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-folded-narrow.json.gz",
+        "stored_sha256": "b539504b141016b14f6157572c66e0e1d5ad4ecc364fd07b97c038dd16232bb4",
+        "decoded_sha256": "3086cf1b95e53523cb119cb9f288761c1f29ed9862489ef3c9fd828d7057cd55",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "thread-wide",
+        "case_object_sha256": "b15fdcfcc413b7a3f49d2ed48e527e2d84dbc959515fcf7043012d95d55c8693",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/thread-wide.json.gz",
+        "stored_sha256": "d495442cb130a52bd42bb3f33292bccb0cdf17b733d8e1bd7c2ecc762d93aa37",
+        "decoded_sha256": "d916299ddd74f04372ecc2da9a3c45240876ace15866d88d554866b0118dcda4",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "thread-narrow",
+        "case_object_sha256": "db86e4bd8fd0d5eef5a0db792a8a83b0b038547195ad3d756e4f78b1fc04d6a3",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/thread-narrow.json.gz",
+        "stored_sha256": "5ffb97c942e855940c7e3dbce8dbafc97755faba6280ed9d55d460b1af0b750a",
+        "decoded_sha256": "4808477edc4d226c5a18934f6921056cac7e36755c72c81cc5c008b0e9a08f2d",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "shell-wide",
+        "case_object_sha256": "3f048fd5e8b65712d4d8b529ed593236273d98a6feb59e32bfb41457b38bd897",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/shell-wide.json.gz",
+        "stored_sha256": "99dc3dd46a0258ccad3b7a09eb44c4407d1a33a86bce2f810223a543f4778f84",
+        "decoded_sha256": "7dd03829b70957f0ff0979987de4e6d3fb2a1f9f216daa8ee84c959ce4067223",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "shell-narrow",
+        "case_object_sha256": "c36f732fabe83bde7decacab12783eb0214fbd0f007b759169e30af8145a76a1",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/shell-narrow.json.gz",
+        "stored_sha256": "5c1db629daa6f7f9e734f5298bf4ed937362c03c74a2f1f8a0ada8c7562ee76c",
+        "decoded_sha256": "b5172586b675b58bb743e05ad5f479c4649449d1bf5acc5803cc3691008b0a75",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cv-categories-wide",
+        "case_object_sha256": "220264c329f4b3600af5931c735ccbe194206521e48bed3f1a8b1db66ad35a49",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cv-categories-wide.json.gz",
+        "stored_sha256": "0129eb31cb8270c3ed4c0a8fc39f32e927d67bf63cf6929e01f344d12d985ca7",
+        "decoded_sha256": "b8a8ea69943d8d9f6c1a70934557e96e2fc16569bfc6bcca9fb95345abdccb39",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cv-categories-narrow",
+        "case_object_sha256": "aa643e818e0654822d4b619937a7d2694dc4af5ba502490fa5ad2a45315b64db",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cv-categories-narrow.json.gz",
+        "stored_sha256": "77e0f75a9ee49983e852d0ef3a677d3a1d2a986cb04b46aa8b358826ca7624af",
+        "decoded_sha256": "4d651e00d53185a57ea97ef3a7b4ef168589a91a6a6884a7727f5c049a0cf7a4",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "search-mixed-wide",
+        "case_object_sha256": "cd21dcfc81c46893a75465f708d115019b74470d40539ca9ac2e2cc0a63cf10d",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/search-mixed-wide.json.gz",
+        "stored_sha256": "bfb32d6917bc7d7e8c28173aba68ecb7cd54b463f4ddcfc41e907233c7cb283d",
+        "decoded_sha256": "f4c3000a3baafe2c34f232a7968efa66e919a3663200300e2b8d9c9f784a5fcf",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "search-mixed-narrow",
+        "case_object_sha256": "0ab90d51d1f285ce688535cf60838f75576d3c570d98a94605f2bedaca0547e4",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/search-mixed-narrow.json.gz",
+        "stored_sha256": "86e2a3cdd7cfb889eb2aa70e819d69bed3224e2c6aabdeee54d6ee7246a1dad8",
+        "decoded_sha256": "05189d9be6cd92187dda6c318bf5480b56312d6be548bc467102498635945f5e",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-expanded-wide",
+        "case_object_sha256": "c447bbb1f5e73d4e6cfbf934d6ae15d0c1c311c54c1a17e578ad62aa81ef126c",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-expanded-wide.json.gz",
+        "stored_sha256": "8facfe43d1b8d5ac1a4317d777cf43598afc9ebbdb415918239452728912f220",
+        "decoded_sha256": "ba70cbb6f922a82effd731114863e993068fa62849c14624c3b46502789112b7",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-expanded-narrow",
+        "case_object_sha256": "a9172b3378568446755b1d79456d6a4b03b252905844c56817b6d07349e1ada8",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-expanded-narrow.json.gz",
+        "stored_sha256": "3fa94d852c5a8d8967c72eba483c27b298bc9ea5cc5678fb924e678263e08b2f",
+        "decoded_sha256": "4a1a49a59aac402e76fdb74519ce1a954ffb5aa2ccccea9ebaa42305b8b1577d",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-expanded-short",
+        "case_object_sha256": "b442e27220010d9b15b56c4486c4c6309d07a7211c9e041b46dbb327b55b7026",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-expanded-short.json.gz",
+        "stored_sha256": "9107c20dce19e0f903a62bcd97ccb41e07309c9174cdabac53abb64dd50a3b37",
+        "decoded_sha256": "3d7455ed5ed956ea28c74241780e89ab3a0a6b41af09de115a2038e1f8f14d23",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-header-wide",
+        "case_object_sha256": "6474bc4621209760eb0fd01b4debacb5305ab33614c3d3b950833b408d57c8be",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-header-wide.json.gz",
+        "stored_sha256": "eb28682457a92cc10d6ac49769c6920fe5bace866f641637f24a788acae34ea3",
+        "decoded_sha256": "40d3f6d4310f145099271c540ca1e09c6076561796e4f090529587b47e131be5",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-header-narrow",
+        "case_object_sha256": "c90f11913118e804cc8d929f952e7282a8f9e7344845c5b5f8229f9bb1150680",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-header-narrow.json.gz",
+        "stored_sha256": "96f83883bacbb0aed732238ce4b6fe57fd6a652162d52ba2916f79758567db4d",
+        "decoded_sha256": "9981acc03d95914009c0da7ffe8a93d7a8d59ff883cf154110f11be7de94d7cc",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "search-mixed-bottom-wide",
+        "case_object_sha256": "1b71ec7c0e769a3bbbe348728eda9b6820faba3da921bfdb4380d316a89083a7",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/search-mixed-bottom-wide.json.gz",
+        "stored_sha256": "0fd5ea19b56fd7eef7ac574ea10179520e09ddb43a2140bbb67ec5c1334bd2a0",
+        "decoded_sha256": "abc71b8183465509b4ce8f3117a44d641b97b6b87b6281d872a30a345df33714",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "search-mixed-bottom-short",
+        "case_object_sha256": "ca56172402bbcc6b083b68d017a645705841536a6a2455abb50dff5ac9ea1850",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/search-mixed-bottom-short.json.gz",
+        "stored_sha256": "d339364774c5e5d065f64bd9ddac77cb136bb445082b47de77cba9d4da2ed92f",
+        "decoded_sha256": "c82a51d57f379e0a052071bc01fb4814f4a415bcb44306107cf4643e71faa453",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-standalone-wide",
+        "case_object_sha256": "678125441a783816d0e29204e670e5100e949445fffa673bdf6664b40564b446",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-standalone-wide.json.gz",
+        "stored_sha256": "55b860baac78dd54ff9ee89af58f657f05dd3f7a4e88ce17027df80d319cedd4",
+        "decoded_sha256": "f247e43ef71002fb34e14130fc99bea93c0ac4077cec91ae34c04f15cd5fa908",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-thread-deep-wide",
+        "case_object_sha256": "92ce0b65d4cb2f393c9e7137cc4ab4dbe8d67a84f23cdc330671bcc519dd7add",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-thread-deep-wide.json.gz",
+        "stored_sha256": "ed019df09008d0b69e07b6fad06bada91929bab33158c1b29a32105391ef8fe8",
+        "decoded_sha256": "9af9d5c2a8081b0a787f063c27f9670e436c8df395d2a738d923a1260b90fc38",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-thread-deep-narrow",
+        "case_object_sha256": "8a4cce5f7d1295190c35b1efb3fc334d9ac4e9bf02f0b94d47f3ec8eb62b69e6",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-thread-deep-narrow.json.gz",
+        "stored_sha256": "c0db22f505133af0e4bf596aff57fa691809f60e0f25b17d83342c3e00d3832b",
+        "decoded_sha256": "63d679d23a32f57b5da2c669fb6baa6d770642d0d4620b4a7c362673c386910c",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-owner-controls-wide",
+        "case_object_sha256": "48db294153112b4db45aa4803203987319899b74611c72c01de866fa9ba79273",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-owner-controls-wide.json.gz",
+        "stored_sha256": "317308e6b43268556f5acbfda73500d56f6a8003df749ac2210c611701487659",
+        "decoded_sha256": "4a86cecd2d053c0cec5325401c50b2d010d9acff2a339b3ab74606bd369858dd",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-owner-controls-narrow",
+        "case_object_sha256": "f0f8d05cd022c21cc418825bc9ea83f22009abac8d189a432822fa773e61b68e",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-owner-controls-narrow.json.gz",
+        "stored_sha256": "ba3fa6c95a73eae0322a080108f8a68f3e5d3de3ad774ad36839d88c719cc91b",
+        "decoded_sha256": "fd6ca6139d8868e7647d50783dcb050d6b1b39e754f805bb51d131342cfe9306",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-standalone-narrow",
+        "case_object_sha256": "efe793d1153a07d5af038d6ce41fb7700ae030c11870bf3ec0069032ecc5b8bb",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-standalone-narrow.json.gz",
+        "stored_sha256": "8fd22733b809cb37dff68df878ad5c6eaa14e3efb8b033dc41d5771752b913d6",
+        "decoded_sha256": "110bd2d34bcd11ddf168631ecb003bd08b8c47bbe16bca7c86d643913b966f69",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-two-roots-wide",
+        "case_object_sha256": "35eea1eb9b2bcdabbb154222dddf38875b1a24aed9f43462732b8a2d669a0d79",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-two-roots-wide.json.gz",
+        "stored_sha256": "a58e7cbd524042b21163a6c9822f28df57a7044ee5e58f09f4fdbdf942087ab6",
+        "decoded_sha256": "2b838ff1ac8bd5940f209e98fa552bdefdbd1824ccb62188f3d310c084cfd17f",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-two-roots-narrow",
+        "case_object_sha256": "93f90d865729bc3e9580bdf65d3e29dd2eae96132481dffd7a6cb1ec1cd5244c",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-two-roots-narrow.json.gz",
+        "stored_sha256": "1fea63d784d11bb01bf4a3069e9d9a33ae5bf91aab12637280f2930da70e4c44",
+        "decoded_sha256": "dda8b6665c918211ebeacf000422759828dc29176aecbfd334af33904c5528bf",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-reader-controls-wide",
+        "case_object_sha256": "b428337be17ea21afcf6d712b2fe4117321756f8e909dcfb1610a712a821ec47",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-reader-controls-wide.json.gz",
+        "stored_sha256": "8196c6d0dbf334dc4e8ff9d21f9be1143e4fb2af57e5dbd1c190514c0f8f6b85",
+        "decoded_sha256": "8f1241384aad4aa8f892e28d730950c41423c074f3d2b43ca41a9d0c1043b137",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-reader-controls-narrow",
+        "case_object_sha256": "b5ebd0896da62df33726a92a6bdf2e35ecbe97c86aef074f71b78d58737dab6f",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-reader-controls-narrow.json.gz",
+        "stored_sha256": "a48ea18262e973b3e39cacffa5aa7678106063a441ea02d2222c901a5a52f6c6",
+        "decoded_sha256": "a391286d4eefa7159819509b39c637aa91072806091600275448a94e5f2aa029",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-label-above-short",
+        "case_object_sha256": "f8284a9a8181d3e0ae5aa4f272b6132314882d1c93df92e0369385850f7e4668",
+        "source_record": ".local-wip/ui-preservation-audit/current-source-verification/comments-label-above-case-repair-c9dbda22/corrected-first-standard-GREEN/comments-label-above-short.json",
+        "stored_sha256": "c8177b36bd13964bbfad01b2e835a6c7b9be09091c965e1bd5a917de3d540ec7",
+        "decoded_sha256": "c8177b36bd13964bbfad01b2e835a6c7b9be09091c965e1bd5a917de3d540ec7",
+        "definition": "reviewed visible above-label repair"
+      },
+      {
+        "case": "home-intro-wide",
+        "case_object_sha256": "a1706a3a1372dfab89fd8a72c4c48194453f88f163446104556c77b6d0a28508",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-intro-wide.json.gz",
+        "stored_sha256": "613762602fcda872bd71821ec142d47722a55c6b428e28ab274f333426112ab9",
+        "decoded_sha256": "263fcbd99320147172cf4f86a6be10380f1e8926744c244bc00dfed5e024a443",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "home-intro-narrow",
+        "case_object_sha256": "d3792887374f2d4fe2edb6b1e2d12cc4f465c79142b8aad2924bd508cfe0b622",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-intro-narrow.json.gz",
+        "stored_sha256": "5068003a42208af6ef49e59022638cbcc596811a8666623ba5c29fd2a99bf3d8",
+        "decoded_sha256": "c8f4e48c92de2ce03146df7f4b6665944f43202f2104004a779b8233e9683e51",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "home-story-wide",
+        "case_object_sha256": "3f7585d63c1acfd892bf8e01dec913fb3c89f725c76b1dbff2a1a48222fd47e2",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-story-wide.json.gz",
+        "stored_sha256": "f9ce25cd4999c3fe8f496d6f2346c3b7708c41e995ef63a20faba255fc9893b0",
+        "decoded_sha256": "1921c13b84ec17e8c92d66dceda394dd5139430a1da71c4d2789477d2af5bd3b",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "home-story-narrow",
+        "case_object_sha256": "8fd3723440a6d403c44a8347f6729ad9a00a21c92a067306767d2e7289db175d",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-story-narrow.json.gz",
+        "stored_sha256": "3acc254abdd6bf8238e916b6be1d6ef346502d4ef3106bda7fc468f3654c4869",
+        "decoded_sha256": "861c1f7c5ffc661059e5530cbfdb00d820fd55e9c8a5fb60ac22c2e35985de0c",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "home-image-media-wide",
+        "case_object_sha256": "6fbed63ef0e1deb39c2968ca76c5a064b311add68944c5d5387388d2d0471c40",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-image-media-wide.json.gz",
+        "stored_sha256": "ccdb54e4e5b6cde670a0163529d96173fdbcbbb984df06fdc7aad443d6032383",
+        "decoded_sha256": "628d1dbaa411deb615cc24da7160e2e75c2e662bd1923642f77b9a7c08dd8d19",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "home-image-media-narrow",
+        "case_object_sha256": "36c2c35ea292e2f00582af9ed314299af66a87656a86715eda800257911984c4",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-image-media-narrow.json.gz",
+        "stored_sha256": "c03c7706acbb9d520a0e29d33f3b88e72d15e88020f36a22c2d1ae8fac7fd38d",
+        "decoded_sha256": "97bbdef6c2b224adee1db90ed535b2336af1f3da8658076472805e2f7572bc33",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "home-story-expanded-wide",
+        "case_object_sha256": "e260e32e469ba7da75dba97fa3a7e90ea61eddb1dfd59b1ed6210d680da8c1f9",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-story-expanded-wide.json.gz",
+        "stored_sha256": "13efcaaeeba3e1c69fd13181e8188018f89069dfd133cbd82a411f5aa7a8da3d",
+        "decoded_sha256": "a4e4262ef6ced85360397c6f8c710e55152778f3bf890bad231c6ec856898a08",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "home-story-expanded-narrow",
+        "case_object_sha256": "83861115b8d48b14e2a58279198443706529c823a98fcd7b81c7fa36ed41e17a",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-story-expanded-narrow.json.gz",
+        "stored_sha256": "6609cae2ebe6eb1c52e4c619be63b02d0679f3785eb66af747a161ce1f249027",
+        "decoded_sha256": "034870ba9a8cd1b4d12e9d47f0b68e1c1f16371137717471fab654135d8937a2",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "home-gallery-end-narrow",
+        "case_object_sha256": "494d451008933960db3ae816740a26b2ed0890a10725911a08e45b09f2d94e0b",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-gallery-end-narrow.json.gz",
+        "stored_sha256": "d8e839c15d3e21344dcda69b2980d2b0bae7753ed8d2857784d9a5a6839716b1",
+        "decoded_sha256": "9ce575597338a9aecd82f4495eaf0c7381368905e5eed7ee80e261e18068a795",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "home-gallery-end-wide",
+        "case_object_sha256": "7ad0752e833779efaf2cb9ca9d14863fa847d662eb2832a6fb20f5f3116782f8",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-gallery-end-wide.json.gz",
+        "stored_sha256": "806d27b2b177e43bb9868858cc23f03342cb3e20c0f3c0bf7a16916459d3f9d3",
+        "decoded_sha256": "132ccb814fd9979da423c0952a552ce34bdb3d6966221274a43a19130994d0ed",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "github-feed-wide",
+        "case_object_sha256": "a9c7de6604ee3e39efe0b57148c76006f7441cb33d8103b115cc83403671f31b",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/github-feed-wide.json.gz",
+        "stored_sha256": "7b12e3485ba22ecab39f555b61686eb1eb6c0bb5f0562aaf6d2a8157a040d610",
+        "decoded_sha256": "43c54cc952ae8a99e3e828d441c90b8928c2f17cfdb5f25d307a1f2b9cae7be3",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "github-feed-narrow",
+        "case_object_sha256": "2ad1d4d2991b042183d1856a4c9e62a428088825dab0ff4b3e5f138b58a03121",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/github-feed-narrow.json.gz",
+        "stored_sha256": "26685b833ff0b70dad5e14180ca0d73cdc419eefc1bb9e5324ee56e03df8b686",
+        "decoded_sha256": "dfd763124177d79065c0f52c32816a217a2f4e0732db4b29fa3e951b3cec2a68",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "github-calendar-popup-wide",
+        "case_object_sha256": "8bacfe8610b7328755317d748922b84cff3e5898cdbd3cd7bf54ab9b9d61ad4d",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/github-calendar-popup-wide.json.gz",
+        "stored_sha256": "ed1c1cbfc44813a142cd58b079c4e877e1ebdd2b14c7d7504c4f5bf265301a85",
+        "decoded_sha256": "8b8ab02e21af2e6d48c0cbcdcb48f4b98619cffca6cc9371b47020c7401cc6f1",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "github-calendar-popup-narrow",
+        "case_object_sha256": "dbe2184ab566d8d89475fa2331b4a758e7d658e7c32b0a0e84e0ae4f28df151b",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/github-calendar-popup-narrow.json.gz",
+        "stored_sha256": "de3013ec06d9e442b962e64336e0458df3f093e245a9382256d29a311fdc5922",
+        "decoded_sha256": "b7eb7cc065b62319f94a692271b6e72d840fa486646482d11b14e333d29beb10",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "github-sha-filtered-wide",
+        "case_object_sha256": "1c070d7f77503c00f15eda0f0bf9be41602753606fec4ec38c86d90e3e4814e4",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/github-sha-filtered-wide.json.gz",
+        "stored_sha256": "0ff5490bb3aa800678b8e9b08aade0961341ba3fa3f65c346c324c0b48fffb4a",
+        "decoded_sha256": "774ed86ae8245682e257629b4b3cfbdf929c9c902c81b1bb89eb1c66f5d1bcc7",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "github-sha-filtered-narrow",
+        "case_object_sha256": "76b7a335fcff8d967af4e921b95fb4f48d6b87db94964fb593521a766d3d0dfc",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/github-sha-filtered-narrow.json.gz",
+        "stored_sha256": "9c7709229426de9032a4dbfc53e3d8d7a3806142709f8cdcf2feaea4d58d9bc0",
+        "decoded_sha256": "6f9b31129cfe54522c9dcf0798535e23ae4135dd8a5dcdc05610617159cfe732",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "header-menu-open-wide",
+        "case_object_sha256": "a249ee6bbcf3e4a50709eec101386998a40d1e32e67c4e695c9ec5b668f77e78",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/header-menu-open-wide.json.gz",
+        "stored_sha256": "fbe7e45865beac38f94f65e9252289e469afbb7d9e0fd30d9110067999aa7754",
+        "decoded_sha256": "814b5d27a6873d4e791aabc3bb9a11e05a9d6b35caf427b818a9e41dc5b272d3",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "header-menu-open-narrow",
+        "case_object_sha256": "1f3c8d0e5df8ed8a0f9253ab70e71c52ee7a1d4e3196dfe2b86d0f7a530af090",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/header-menu-open-narrow.json.gz",
+        "stored_sha256": "dd7db8c888710b77a6a31aaef65290efe5de05ba1dcb87895ad66d6370b3a7ff",
+        "decoded_sha256": "f23953899c56cb7730399e3fc81764ebba3e941c15b1766aa1f1c0f4c1182308",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "shell-minimized-wide",
+        "case_object_sha256": "daa36cbd87e8594c6c67a42ed9978156b4eb44360af97fbdf63291f9002a92dd",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/shell-minimized-wide.json.gz",
+        "stored_sha256": "1df8b5dd918645003b55dc68c0b21830999de59365cf5d8dae9b965372f2b75c",
+        "decoded_sha256": "0279a760ce00a998b4f38e26df553dc4613825dde8090762fefc5123b9140625",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "shell-minimized-narrow",
+        "case_object_sha256": "c58bf2bf0918e7022258b57b94f6a7599dc28a651b169f80139b611ecc5dde11",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/shell-minimized-narrow.json.gz",
+        "stored_sha256": "d8f9522d2d6dcb96a68ba9074f92af0c11583349811d33e7813510a6283d40e2",
+        "decoded_sha256": "c6807a6ebddbb53d7b86c721ed4db9c0a8d7203653800ae8121205ff5f040b65",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "shell-restored-wide",
+        "case_object_sha256": "b659c0abe7570846eafe9811b185d034f50473dbcb257655961d0f20325a2c22",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/shell-restored-wide.json.gz",
+        "stored_sha256": "2cd8106fc53f25c36a6a56b75a29257aa1d08a04a1554655c1f91b6419a73bae",
+        "decoded_sha256": "bf1e9832a2a16313b06f674c8792afac2b9bef99f39cb49114cf72a6ec02fe1b",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "shell-restored-narrow",
+        "case_object_sha256": "090f5db82243d1e312716e86b2889920c7647b026b00a486ceea4f55fc7d3d83",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/shell-restored-narrow.json.gz",
+        "stored_sha256": "650de38cfa685bbb65b23e870e9ff3aab95732617c80a917b286785ea98bf3e0",
+        "decoded_sha256": "f909c4d87f022ce3b680fadb1df95d5ebcf5e708aa6dc78fd04a6e6ae7ccf0cd",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "shell-bottom-wide",
+        "case_object_sha256": "9a7a952abab0f3e47cfaab9a63f51f4d46ea3bd47b0e6fca84de891f2d63dcd5",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/shell-bottom-wide.json.gz",
+        "stored_sha256": "b3debf4f4182b114ff71792eb75659ff87ef1c624dbbce3fc8fee2ac5f2cebf7",
+        "decoded_sha256": "5f6373c8e98c6c64d99cc99640bbaa923ce8aff0f456d13fe0ba86a3e25e249e",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "shell-bottom-narrow",
+        "case_object_sha256": "38149b984629817690dbe8295891cd50c1e0eb40d01bb70f76b52b4dc7c2f121",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/shell-bottom-narrow.json.gz",
+        "stored_sha256": "047025e34ef1f4641cf293f72244bed99cac64efaafa1229742dd23041e9b3ec",
+        "decoded_sha256": "b0f35227128524d59447ed8cc60c903cf206cb9d48fca676375afbe5a63828bb",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "page-layout-wide",
+        "case_object_sha256": "ea7fe8435973204fbee6455cda55bcbd26b253b23ab4de2ca667bbfc7cf65075",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/page-layout-wide.json.gz",
+        "stored_sha256": "3cefab3f488b99b12d46f723a90c135026c12808c132bd41a5ef3d02905b0285",
+        "decoded_sha256": "bb5c081dbb23443f9809f009ba2e102bcb6c6c1517918917f808b5b386e19563",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "page-layout-narrow",
+        "case_object_sha256": "60473af8a67e1ec337e36f4252ec1bbe3f40ec773b542a95bf0846e260cfafa6",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/page-layout-narrow.json.gz",
+        "stored_sha256": "7c8fd73971a9a49641b86b9a4a3ae0c638f4773161cc1d8eceb228b40a314899",
+        "decoded_sha256": "7376d9c8c277dbaa985f8cb6da2c068a61991bf1966788a994802e94d9e40976",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "page-layout-vertical-wide",
+        "case_object_sha256": "42ba51d4dd4c523b52c0fca661f5ee6782b8b861295f66c9fc3c432bdafae9b6",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/page-layout-vertical-wide.json.gz",
+        "stored_sha256": "b66d249e6296c0c8e3d1c06b4baf795ca93d5bc0afe12c243fb0f872eb71fb8e",
+        "decoded_sha256": "a3edd1f353c970c40d3fa1bc094c098d9b779e9bf18cde95360e89f640a30111",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "page-layout-vertical-narrow",
+        "case_object_sha256": "83861cbb4946c6eb35f325225085457dcf055f0471981a22b3df8fd181ae9fde",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/page-layout-vertical-narrow.json.gz",
+        "stored_sha256": "5040ea1ea30b00c5c90e87fb46b4670ad9cc00d7fcfcda334160485e49c5fbac",
+        "decoded_sha256": "8ed9cf4f5743eb8d8ed839f36feacc19ddbb1268bb16ec85f778707a0d7de53b",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "docs-index-wide",
+        "case_object_sha256": "7257edc08833e8884d91cca3687304176d50e970d1640f5aae7dcf968070097b",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/docs-index-wide.json.gz",
+        "stored_sha256": "9a88600b745d7d1044dba89ff1cb730cb4466a1c85af3944f070bb769a3ef84a",
+        "decoded_sha256": "2509e47978214e9b5200107b24cc44a7523592162a9554fa0b7929c4a7707aa7",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "docs-index-narrow",
+        "case_object_sha256": "46abed883a41e0b365836be8582cd38e9a870004c0f46f4f3e3a0736801cc582",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/docs-index-narrow.json.gz",
+        "stored_sha256": "c84b10e20826b456b247687f66aed973d1a67c059a6f1e20cccff5c407fa6a3a",
+        "decoded_sha256": "51d82eacc962a2f7941305b90524cc220e1a0920dba65165b199dd5f5e374518",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "docs-topic-wide",
+        "case_object_sha256": "559d8e21911ef08e86bc25035ee0fab4a9698090ed78f79c8b79d1714a9e8dca",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/docs-topic-wide.json.gz",
+        "stored_sha256": "3abce969fcc1a4041f543849be48e5241570c34b5b73402aa0b416111a311119",
+        "decoded_sha256": "a5884ab8d34938a52df0090d7a348f756a75e7fee12e1e6470d197758e31841e",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "docs-topic-narrow",
+        "case_object_sha256": "0ea6550cc640c22b02a7c7a112cc9b2cb144bb37e08e52911aef8cd64b68a418",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/docs-topic-narrow.json.gz",
+        "stored_sha256": "a97b24ca1f87e717fbb8a6e812ca76c0f9577c01db89f60e31a4a6c00df2509a",
+        "decoded_sha256": "bb6502eadb8cff1ecdf36da47a8b6cadef3f0740d2b5a0fbf824984409b68256",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "instagram-grid-wide",
+        "case_object_sha256": "ad7191e3279ee89918f68e7a325a35b188f2adbd82732464508bed276740263c",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/instagram-grid-wide.json.gz",
+        "stored_sha256": "695e94745b28f1fc68e2acd4a35338759a5fedb85280e44f586280e776f57778",
+        "decoded_sha256": "f0e38be36acd608ca06a3fbe255fe03847008c57e4b1ffe7bc5ca920573cfeaa",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "instagram-grid-narrow",
+        "case_object_sha256": "bc741b7094e0b922b19cb4cd19116873e49c3192ffec6c9f1ed627b66819fc32",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/instagram-grid-narrow.json.gz",
+        "stored_sha256": "0139fb541463b77f71d46aa5aea34196543a0ac208bcdb7a63f52f85340d94cd",
+        "decoded_sha256": "36e24707a0a71509e48887f5a981ebb7613b7c29171d4089a0da5d8626d855e9",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "instagram-modal-open-wide",
+        "case_object_sha256": "3346fda39846f678b70ee02e061e13cdb771c762b16523add7af37c4e78a82cb",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/instagram-modal-open-wide.json.gz",
+        "stored_sha256": "2d4f57df9bdf817ecd68a97b05aad84228e231ef9b29e72202e99e06b3105537",
+        "decoded_sha256": "b8abf06f95ec32a80ff203ceae68c518acac6b7fbe78232c05f034461de701c1",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "instagram-modal-open-narrow",
+        "case_object_sha256": "c4cbdfe52638516b319c2116a67ad8897aa46ad1003aaabb98874e6aea9d1ef3",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/instagram-modal-open-narrow.json.gz",
+        "stored_sha256": "1bec3ea73c8cb6fdd8b5852fbd0b6e0b5423d55678a97daa3adf70a4c54b8291",
+        "decoded_sha256": "bb4c2adc2f77e6c5d61eab24346144376f1d91b6ed38e38999f71819cff85a15",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "instagram-modal-closed-wide",
+        "case_object_sha256": "85468f1340a9f660739fbe3c7388f4ab2a59ef5225ca5cf1459b89d8b053f9b1",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/instagram-modal-closed-wide.json.gz",
+        "stored_sha256": "ba3a5cdca2d58aaf6536f93cbed213c65ee1987b0b26abc85a4a00b1c54cec50",
+        "decoded_sha256": "aacf4774720516280916f4bbfdbb080ee92d2fc824722cd9a56bd79e489c7e55",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "instagram-modal-closed-narrow",
+        "case_object_sha256": "c0698adfce619a45ed693bf73ed2d4f896b17ba061fa3d828473e0123a30767e",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/instagram-modal-closed-narrow.json.gz",
+        "stored_sha256": "c0c668d0567e367f52842d2a797ec469ec0a7a27f384a462ab2a538950b94cd6",
+        "decoded_sha256": "83d5b38b808ea5d4f6ce59f12fcf1d7396fa31a651ca0e6f7cfee1989c6ef343",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "docs-sidebar-hover-wide",
+        "case_object_sha256": "78aa70cd684979a8dd9dd56614f40774fbae9f32520f3a40137da422960c6560",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/docs-sidebar-hover-wide.json.gz",
+        "stored_sha256": "b518a4e1a0b377af960b65c8086be3fc963e742e882970aae702bfda8e600892",
+        "decoded_sha256": "ccf59078b4d1e4a9d311ca0961584a97635a183279be94116eed04e406c79905",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "instagram-caption-hover-wide",
+        "case_object_sha256": "82a23c929b9df36ae83f6c30bf3ab0d7c6e9d3791ba4e3fbec53902c72e7034d",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/instagram-caption-hover-wide.json.gz",
+        "stored_sha256": "7afd2079b8b865102a0f797fe5a1ea0f071d479fd2675d76083588f4de85ae53",
+        "decoded_sha256": "90fabdc943879c7a5ea69edf360ec4e8a410f298e5d8c9bcc740fa64b8098c91",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-owner-hover-wide",
+        "case_object_sha256": "966f98f92f84a50834e5cdc2e71ecc76b2d63dc2e5cf031441e19a790d3109fc",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-owner-hover-wide.json.gz",
+        "stored_sha256": "db28d12408ae4b5c96348cd659eec74317bbe40b78ee363962a43ba5294f33f1",
+        "decoded_sha256": "d5178cb0d6a79030be785f9bbfc9423c07658f940d7e3c5e4f0d0aefa64efe65",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "docs-sidebar-hover-narrow",
+        "case_object_sha256": "1f3179cfad6732e7c18cb067de339684103d8a252722b075fe50cc36ccc193a7",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/docs-sidebar-hover-narrow.json.gz",
+        "stored_sha256": "eeb3991e157d7ae7b56c1f14daf959ab330f436c0b1e47ce4f7c4078451c93e7",
+        "decoded_sha256": "6d162e4e6786b6b9701015e89273eca5d9f81e2a43dd9b6842dc9de9e99641c0",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "instagram-caption-hover-narrow",
+        "case_object_sha256": "9a015637122a0716ad579ec7e02356b3745ff703e605c768562e540a0fff49ac",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/instagram-caption-hover-narrow.json.gz",
+        "stored_sha256": "3e168cd65b54e48e81a4932ec71455e3a5ca8f55d1460895ba211b14dd652e30",
+        "decoded_sha256": "fad6e2b5a73dfaa74a14e40b7e71ae9c7cc5ff50a185763a6fdc022a0bdd1655",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-owner-hover-narrow",
+        "case_object_sha256": "019146cc4e279be0c404e4c0a2b47b0d423fde81a72b93fcd9ce5aaa78542175",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-owner-hover-narrow.json.gz",
+        "stored_sha256": "392f2d2e5d7f18419ca7c216d388d9782e6934287d23c72a9f474acd50cc548a",
+        "decoded_sha256": "09f2ed7ba8eb431a8bad75994d4878f6a7116a6c319c4f8f1d491cfd69ddfe42",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "shell-panels-closed-wide",
+        "case_object_sha256": "a139515d456c674597bc708f6b56047c3e15e7ab500bfc0837387ed7ef00c219",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/shell-panels-closed-wide.json.gz",
+        "stored_sha256": "91d3e75f0aee6444a18693252abfa63975deab98ea784d4ce73a43006d4fa340",
+        "decoded_sha256": "c9338c3c53735143a45f10502c204fcc0ff1957d20bd75c468bc82248071cb60",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-login-wide",
+        "case_object_sha256": "348d7d079fae74649373ab69eae19779d1c08e86113c7ef31e1414b8105ccdb6",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-login-wide.json.gz",
+        "stored_sha256": "de00abb31765583f2205db51722b76fa9e9d4826e05c85fe99dfe4678f7569e3",
+        "decoded_sha256": "a652759674f353a4050a662fb92a1784de469487ba5bc3f060446f520cddd56c",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-register-wide",
+        "case_object_sha256": "13f829eef0dd9218f2a1731fee7f4cf0de27c004bda06ef1318081e349e06f11",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-register-wide.json.gz",
+        "stored_sha256": "9020296109be956d6ccd0812d24694d3eb66d31f4af1da1e732cc790bed8511a",
+        "decoded_sha256": "fbb4b4d20f810ab19277a941cc70e4a63b5a82115a7dfbe833b34f1a0a11b231",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "settings-open-wide",
+        "case_object_sha256": "08d9152cf11c0fda2bdee885e447ae5d1f2609d0ac274406e396da6cc40ee66d",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/settings-open-wide.json.gz",
+        "stored_sha256": "bb8d92400bb51a5757f5c1d29d6836f639f1b1165dbadc37828d98315ce18044",
+        "decoded_sha256": "6aa4d1b620f488c2c6b6022f9124e35362da3b2d2b63ee1a2c1229ed26f727f6",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "contact-open-wide",
+        "case_object_sha256": "325fd31ff4792a2da4e8056eabcda6e73cff2693662000df176b22dfcaf8ec01",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/contact-open-wide.json.gz",
+        "stored_sha256": "7189e8347d0270f7cc10925065a30b9eafde87b294d107622362539df3035fd6",
+        "decoded_sha256": "e9d3bbd485447d27f8aea74ee79488be14b6987d45f09cec0756fdd95e5db193",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "shell-panels-closed-narrow",
+        "case_object_sha256": "e47b27be1d06835b546776bf17f78a7f7b9ea43a1c6bb6fc41a5cd88ed6d4ae2",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/shell-panels-closed-narrow.json.gz",
+        "stored_sha256": "6191fa1cd1c14d4cf990a057c6b4145a143382b6eb84b29212fc19e6996575c6",
+        "decoded_sha256": "a464470ded6f766a1224fc067866424d4f0438bf5a027487132a0d1d98be6007",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-login-narrow",
+        "case_object_sha256": "3d070f88a40038fb7969b05489898b805d9545297dcc251054464ca41b4336e7",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-login-narrow.json.gz",
+        "stored_sha256": "7352965c4e1252042b9614ebb7945438bb63afebed578496b754b55ba65b7db9",
+        "decoded_sha256": "aabfdc5b3cccbdea301211006e33bd297b4970bb37074b92ad9021262fa2877f",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-register-narrow",
+        "case_object_sha256": "556792c3068916117b70e4280686de13980d1c06742ec48e1ca0ec9fc453e1af",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-register-narrow.json.gz",
+        "stored_sha256": "c7ed75cd67dafa2642297b467f4287caf24c663b6db7e4476f4383c70961781b",
+        "decoded_sha256": "2d470428496376d6171723d4c66c4b89115d2a6d0483495610fdbdbd42972086",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "settings-open-narrow",
+        "case_object_sha256": "c259d34fa1e4cd7e7390d4443c82d7106d378487cf4de0f06ae7338ac8f9e467",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/settings-open-narrow.json.gz",
+        "stored_sha256": "acd7135278f803f8bfb6b071510d6e6c39c38070dd2d77b2de9c6ac59153a1c9",
+        "decoded_sha256": "39702701b9cadff3bd3c687c6fcb16fbb8e22b45878870481743362613a42d22",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "contact-open-narrow",
+        "case_object_sha256": "9a7010b10a87cb91daf9f2a5e364854f98591a6cf3ca108774e83c30262464e1",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/contact-open-narrow.json.gz",
+        "stored_sha256": "5a89f1595d4ac60f9c8aaa56e85a5a3183cc11b2db2050b82e775f83cd15d3d1",
+        "decoded_sha256": "247a3dfa86d58ecf5c9870d6d518fc344c9ea97792ef736f3bbe709d78341c18",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cv-skills-carousel-next-wide",
+        "case_object_sha256": "f842244c9ca5a9973cf7d2191181b47d99021f40a86ce57e5dae54d86febbcb0",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cv-skills-carousel-next-wide.json.gz",
+        "stored_sha256": "04682ddcbd63b00ed33b452620dba5b8f6e96a0bb8e0f7813b7a8d5b385c8dbf",
+        "decoded_sha256": "52b0b78c046800d7891215e7d49ba77399fb5de2a395da44b6d70287c3baf58f",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cv-skills-carousel-previous-wrap-wide",
+        "case_object_sha256": "fa073a3d8929888ad5d07601b6ef03af0a773638bbf52422310bddaa4c7cc6f7",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cv-skills-carousel-previous-wrap-wide.json.gz",
+        "stored_sha256": "ebadc79178da4abf5abf8daab8e6a4b5ba42697817c308369d9be7311ae678bf",
+        "decoded_sha256": "33bf42d1c8422c1b5091e21dc6518519620377872be20931c72c11d0a541e62f",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cv-skills-carousel-next-narrow",
+        "case_object_sha256": "9acffd0b12dd2f5aca1a08e1203ed81ad69b9f0ff7d5401536ed3e60b700774b",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cv-skills-carousel-next-narrow.json.gz",
+        "stored_sha256": "53013c0ed27e8d8856a5550e952fd3fdf4a2ec9e38deda90a28ac248e43b484a",
+        "decoded_sha256": "81fa4eda192ea2fa694293a6cc76054af6f0c8ae13648f77abe5496d706de236",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cv-skills-carousel-previous-wrap-narrow",
+        "case_object_sha256": "1f72ec6453e675cd2a01a67deb26a7dc37e283597468b505d79b45172357a8e1",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cv-skills-carousel-previous-wrap-narrow.json.gz",
+        "stored_sha256": "193cc7920765e2e08535cac11e0971b11e5ca2fd2003db844b85a6dd2c217b7b",
+        "decoded_sha256": "38183a0e2186d4fefd8b2323afb760f6aa99faf9a2d81fd8c011e7e549d249ae",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-composer-rich-wide",
+        "case_object_sha256": "4fd54d00114ec7d73cc143f0b7c41eeaa32256c2d0b98366fca6e8b81d5a0224",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-composer-rich-wide.json.gz",
+        "stored_sha256": "68aff3094c9dc84b3b61e09bf3d95bc34c06c3b181d6a9f6c1e392146ca14d3f",
+        "decoded_sha256": "0c7661d782d2be2e6171992e14f9b8797272d096b2372dc3527bfdd20bedbaaa",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-composer-plain-wide",
+        "case_object_sha256": "714d2daf8421b82a3f5772fff583e1818ef0e2cce2a6d61d567034f81435038d",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-composer-plain-wide.json.gz",
+        "stored_sha256": "176c3ff46d15f52495aac50118afbad5545834334edc805015c2e09b28fe36b1",
+        "decoded_sha256": "9c6833d546da5f9cb84981f5b76a3856cda5f70c42b348ca659dc40864bbc281",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-composer-rich-narrow",
+        "case_object_sha256": "fbab62c2ba2f8004e4a172b6260054b193d51a0e905e4355256603391c3f6337",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-composer-rich-narrow.json.gz",
+        "stored_sha256": "1cebc7f453f229199b42898a99a46d41178e45244dffa781659fee447971b9e8",
+        "decoded_sha256": "f3f74298aa938dacafc94a653241bb8e01b35d127da40c93d364e5366dd2fca0",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-composer-plain-narrow",
+        "case_object_sha256": "e188a8f68e3c3191880978497a2816809d3d3426e6a062db3e2007d1087a3553",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-composer-plain-narrow.json.gz",
+        "stored_sha256": "7d537e7282dda03cf07d2d5ddc599383cc2dd2ef264282b51a1131bf51e06926",
+        "decoded_sha256": "2c08c6a21e22ab9ffc79211497f1fadcd9eacf65bf42c55bd4bbc3d133602eb9",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "neovim-readonly-patch-wide",
+        "case_object_sha256": "7d3785b0fd089fc3ec09944a1d7e04e4b9cafe67eb09396ee7fb4eef2c87745b",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/neovim-readonly-patch-wide.json.gz",
+        "stored_sha256": "d297a94a758157e38506ec6f26e88d8b5333ffeb54ac731113a40b9ad2f24366",
+        "decoded_sha256": "0c8a10446b9724f5471666c75db2debf8a745eeb30f0150294fbca3c7c44c2f4",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "neovim-readonly-patch-narrow",
+        "case_object_sha256": "ff00ddd755c97b20e26e5c4b964830de6f2bac078746c09caa1c03b0be5d469d",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/neovim-readonly-patch-narrow.json.gz",
+        "stored_sha256": "98c390a302a4a1cb61f481e5411b4ee4d67bc7600e59c6421f442c6206171f37",
+        "decoded_sha256": "98cce2fce65611beedc04e04f8bf54a23038e822b93a39421ff24c55b7d16364",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "neovim-readonly-diff-wide",
+        "case_object_sha256": "d40833cff63ef8ab0791c7402ef2d9aceecada9e5f9a196c6721fe7152ec10d5",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/neovim-readonly-diff-wide.json.gz",
+        "stored_sha256": "723c2274c878a99ab413e127fa19cb659d2acb863e89bab5192bd9973db863b3",
+        "decoded_sha256": "4df100d7bf0361c7994337544e32282c092eff15ffeb67cf2f9ebea54a288fe7",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "neovim-readonly-diff-narrow",
+        "case_object_sha256": "9251de6b16e7eb1c057fba7826ff02e96601c31a2780d7ec36c5b99919f9ab9b",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/neovim-readonly-diff-narrow.json.gz",
+        "stored_sha256": "0411445682c549216812616e896339c2d06e943244e674655c17149e496c7d59",
+        "decoded_sha256": "c3800f7086e280cc3b259d3842e1ff73b7de751ad19ac3ccf5ef4d15e679f02a",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "neovim-readonly-unsupported-wide",
+        "case_object_sha256": "377b8328451a354fa0c4eb61e0c7d527633e71d29a7cf3b671c4467f007562f6",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/neovim-readonly-unsupported-wide.json.gz",
+        "stored_sha256": "943dfb46f2e4eddd689455e304fb46c71fc67688343aeb457ba27f8d6cc75e00",
+        "decoded_sha256": "48f2f42e985360c84dad417ebec5a69076ecde1dd45c429b759bcb232d4e439b",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "neovim-readonly-unsupported-narrow",
+        "case_object_sha256": "159f52e698ea4c953f2e6730caa03ded31913371f2991c4d0c4bbe49e501e52a",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/neovim-readonly-unsupported-narrow.json.gz",
+        "stored_sha256": "e26b8af238fa18407270ba1dee4542e99bf95a70618e07f99b24905e97d0af5d",
+        "decoded_sha256": "1f83d8159975a4a5b35422e99e26110aae45805111faa3c70cc008e7f46d2db2",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-totals-wide",
+        "case_object_sha256": "64926683fbb05fa2377ed8274f771f1a9f57ca19cb95986f8f6f918e911c67db",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-totals-wide.json.gz",
+        "stored_sha256": "8d9bb8952fe4eac89d03fe6d32347c051b2cab598dba88539e0c1f157d400c65",
+        "decoded_sha256": "52d725a836a27345544f224655591a536f0c429b1ffc63d297b8ceaa142c8fca",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-activity-summary-wide",
+        "case_object_sha256": "d3e21b377bde6173b73d8e3938adb5b92dd18e60ba94d2a4ffc432ba41fec617",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-activity-summary-wide.json.gz",
+        "stored_sha256": "b8624dc8ad05ab66f55b371c8a7cf877a0bd648542404d0dc7eefd977d0b0123",
+        "decoded_sha256": "7383f0bdd28d27a0f03c77953b5fd42aba904d20fd9aafc2b1c27612c0a3cd57",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-activity-graphs-wide",
+        "case_object_sha256": "f690d6f666949e0ace35ab19c59bc40f036b20eac8108cf52d5a90e87b907303",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-activity-graphs-wide.json.gz",
+        "stored_sha256": "03d2c769ce4d97f420db1c3149b74d5ab98a699591b9685239879a9769a9b4b9",
+        "decoded_sha256": "2ef7b4f16a0d5c2574b10587cbe286ea187072d39a2e3e96057f67141292068c",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-activity-map-wide",
+        "case_object_sha256": "acd1481d70c734c5f4d9833c479988b8ab4b720681da4884fb2ef9d37d9885ab",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-activity-map-wide.json.gz",
+        "stored_sha256": "afcddb5d2d03c95c83fa4c090c37608f4e1ff061bc3e5e6d0b90ae0a869c10e4",
+        "decoded_sha256": "59372f18c4d8d9304d2830a32a58d7b8112ab8a0ac74fab91a9c230a965a4fde",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-kudos-hover-wide",
+        "case_object_sha256": "0652abeb74e5076fadf06166eea9565bc28808bdfc0aac30a1e37a84f009186b",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-kudos-hover-wide.json.gz",
+        "stored_sha256": "ae72fc8d77cba86f84e09e4dbf7904af79fff8d592e0b2c6b8d832d2b476b85b",
+        "decoded_sha256": "ab9ef08e98f241b64e3fc9e39734035ab53da5c870a63cf070657e9d3422315c",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-totals-narrow",
+        "case_object_sha256": "97316e1d691ae329ae9f64948a3f803e1f86dfebbd29f70899f9cb2e0add3afc",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-totals-narrow.json.gz",
+        "stored_sha256": "b30002d0c13ea2458cd7a4f860a8bc894e6b33b75f9b8aecd7c0a54fa61c67ae",
+        "decoded_sha256": "33b47e685ab96814a38c7b3e8ac47ae6a8e934504ed2a9635f962d2626561ce0",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-activity-summary-narrow",
+        "case_object_sha256": "b310739bbc43832c3aa0d9cc2ec22f175b67e53bca890f4a2e79b4bcdb6e1858",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-activity-summary-narrow.json.gz",
+        "stored_sha256": "3e6bde0201f524de177da8bf53c0e223acb31a7c3dec04a2f51df7bf678af658",
+        "decoded_sha256": "89f00c8de24d9fabde0ee81c07469e4f18df08ce9917f622bcfcf8c0d22a8a15",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-activity-graphs-narrow",
+        "case_object_sha256": "018c600fe8435d62e4247a8d35e686ba3ba022531881bb13643bc72a9c8de34a",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-activity-graphs-narrow.json.gz",
+        "stored_sha256": "a2feec4c5a482a2497491fb4c3eb50a312b1a2d5b8d6cc1ddf821d83a8f11e36",
+        "decoded_sha256": "7252415614e5f470730489fbbd0f368e727d2822b92093d6a204482caa47dfc2",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-activity-map-narrow",
+        "case_object_sha256": "4fbba4ff9e055068e9d66aa0f95f296fe5a4777622c74c1df57815f689a092e8",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-activity-map-narrow.json.gz",
+        "stored_sha256": "8547bb1ed38e3edba34a409baba5cf1909930b0287f9d5002aa25c4973e23f0f",
+        "decoded_sha256": "f265f9a35d13a382bfb86058ea5d3c1c667dccc0a8f36a504549fada3a3f5ff0",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-kudos-hover-narrow",
+        "case_object_sha256": "5bafeb0c5a59cbaf0d24c54b2ac9c7c24376c80daad9b5ee1a7852925b3bbf9d",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-kudos-hover-narrow.json.gz",
+        "stored_sha256": "65d083dcc1c2c2fc6c0206dac8b025e0d63b82bbb7d6334b2ada5a0d878edabc",
+        "decoded_sha256": "7de7817aff867c2bf276cc61ab3a5f8747acc9a4cfabfcd1b25f283cf8f82575",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-editor-rich-wide",
+        "case_object_sha256": "02b9e283fccb7096d20c1ee1165d64e3f29560da701d63dbca09d0ce04bda4f2",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-editor-rich-wide.json.gz",
+        "stored_sha256": "f9453a34c71e4a43400ba1aef3a012d00fae70c97d35c391a49393ce731c7e1f",
+        "decoded_sha256": "52a74736d388543a9f82cfc98d63177a11d15c311af3e3f6566b2f03b43ddd3c",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-editor-plain-wide",
+        "case_object_sha256": "85849d6ab19bfc6f0f87516fc912f576904276dc8a43505213aab7a6ad985bcd",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-editor-plain-wide.json.gz",
+        "stored_sha256": "69b57428d36e7ce8477b0320f0d406fddf90ac40720251a7381d211f8baf690d",
+        "decoded_sha256": "0d5b5f3edd20fc6a7d2bc8c349367c2facf84f93987206e90fedea364ace7b52",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-editor-library-wide",
+        "case_object_sha256": "814c65c9ce0b4266e3b715803a3c84af43300f01053565a347f83786527a7d5e",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-editor-library-wide.json.gz",
+        "stored_sha256": "f47f2fe466238ecb131019fa7b4149b7a07688571af9bcc98d005850d6da4d36",
+        "decoded_sha256": "0412afc569e2efaa745d016a52cd9bfc7685abd2596b91919965661312557636",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-editor-components-wide",
+        "case_object_sha256": "85297c1b20b3ae49f2e1ff7243d513c115b2b992f7ed030cd408d91d1f7a721f",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-editor-components-wide.json.gz",
+        "stored_sha256": "586ae5dfcb43a5a4de00556ad95e86bdd333a2d5fcf65bec61a379ab15f5852e",
+        "decoded_sha256": "077cd1d387fdf157d50e9d7a237b75f74b9cde3a544d5119c9feb907d73fc956",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-editor-draft-wide",
+        "case_object_sha256": "15c795e548d9303333dfe633657e38efe2320969c32670b258d5cae14b60f9a4",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-editor-draft-wide.json.gz",
+        "stored_sha256": "dfcc1f58cd2c7dbb88d42a32366aef2bd2ac8c6fb8d9473fe35858ee18206785",
+        "decoded_sha256": "d9a9c5e5696eed16050bcdd5f749074d89bd670c5ff37c8a65deeb7c1054a98b",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-editor-rich-narrow",
+        "case_object_sha256": "9e9966ecaa60550278895e6713274a52b68703b355db7ba02447c5a7c95044be",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-editor-rich-narrow.json.gz",
+        "stored_sha256": "2c9317cf72aa433af6e7b4caced0324467af36724b56720cc527b9ba997c8f4d",
+        "decoded_sha256": "c558c789080f3a6dd79ee81a998f3612a2002496d99d629d5e8883303e8330f9",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-editor-plain-narrow",
+        "case_object_sha256": "44cbdae2c04f1ee751973e1570fdfb3cae77d6fb2e0f1bb266fe0de92f2a3189",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-editor-plain-narrow.json.gz",
+        "stored_sha256": "df565d53fcdd0d97ecd027f1b4586272a655e6f4bb755f08a4fd88432ded64b8",
+        "decoded_sha256": "25e03f2748c7c52b49789d5aa794c6341ace04628b8b72e017217c37ab1c3345",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-editor-library-narrow",
+        "case_object_sha256": "97fadbe0be264d4b41a06ede1b0fa5b55e8dd16db907c4ce3882f8ab2e6456e3",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-editor-library-narrow.json.gz",
+        "stored_sha256": "a97ad94c54c43e9f64a18982c7df363947fcfa8d776365b3fcee50c9995d08d0",
+        "decoded_sha256": "4bb9a07426de72fd42fb8236461ca85073376f0843a7203507555feb76bd0ddb",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-editor-components-narrow",
+        "case_object_sha256": "c9cbb69c4d95b91783a93789e26939124193e6ab9e38f12982ebdce0ec60adf4",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-editor-components-narrow.json.gz",
+        "stored_sha256": "4345c4f3d9256c2d310a9eb820b4e01812263e70060cc683331d86abde30c72b",
+        "decoded_sha256": "196b228ef9af29b6845c6e60c8a21f72839ed64338e9ffc4c4b8d88ef2145265",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "post-editor-draft-narrow",
+        "case_object_sha256": "033e7495929bda34cdcbc746d7b1cde32427d32ec7e5c3b8ce32b766ad180cdc",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/post-editor-draft-narrow.json.gz",
+        "stored_sha256": "b18f92cc1252e6caa3811aa0191bfd5718146ea9dac0bd60f554d8443ee3d7dd",
+        "decoded_sha256": "e954c8c5b684f533af6ff6839828af424dae34d2cea305b5846540bb00832448",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "search-extensions-bottom-wide",
+        "case_object_sha256": "eaffc5f8eefbc4ed7fd33552ad7cc5e9fb153ebe6387e22ac406238ced81b2ae",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/search-extensions-bottom-wide.json.gz",
+        "stored_sha256": "d389295d38e4b12b622fe0050e480a7d4c1829632d4167d8d1df50167e6693bf",
+        "decoded_sha256": "f08fe02e60e71b75b19df23832b7103a122e50a6afde0ed8157080f1fc04a568",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "search-extensions-bottom-narrow",
+        "case_object_sha256": "0b672080ede665fc132ec77280138528e4861588b17a4fb7f50b37ffa716136d",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/search-extensions-bottom-narrow.json.gz",
+        "stored_sha256": "04322cb4aa2835593d44c577179dcfa9dc0133607c06b25d6d95a8e47fcb05c0",
+        "decoded_sha256": "ada6278c33a6698f8fd4fd104622243cf0b529b737af9d65a0f8fc54437815db",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "link-preview-ready-wide",
+        "case_object_sha256": "193fcd924861732e097a3049e7d3854b16294071e6e585df52c0f15249bd55ac",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/link-preview-ready-wide.json.gz",
+        "stored_sha256": "31ac3e39e5c196d229ae047cfd886e6aae40c34eacfb725142a8b8e69460628d",
+        "decoded_sha256": "d926692a7c0df7e961f678a4031d8f257177ecd2c4337b21a40571eab53ae883",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "link-preview-ready-narrow",
+        "case_object_sha256": "eecd768c277a44b5b01446dd5d43f66ceab2c89616ca8f8945fa543a71e5260b",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/link-preview-ready-narrow.json.gz",
+        "stored_sha256": "f05a25d869db0b8638ab7178b58e568338d9696315b2a1e8086dd05d988b102e",
+        "decoded_sha256": "df2ae817becc2b5de664a489285ab48776adba70036bd50c6fa3651c719c6e94",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "link-preview-metadata-wide",
+        "case_object_sha256": "03856e4e5b995857e0847101690fcddcf4e117e8f3305714eeeafefe1532e1df",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/link-preview-metadata-wide.json.gz",
+        "stored_sha256": "86ca7971026ff46550147cb297a695e117c48841bdd6f0729f684c987e4019ae",
+        "decoded_sha256": "b58524cc49f35df9262a09269977a1fbbc12994165f8379f9d964a010f4ddab7",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "link-preview-metadata-narrow",
+        "case_object_sha256": "dd2e0c4a3cc4aba12a9de44f625279bb4ad64761d9d51e3fda0b5807ef38a963",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/link-preview-metadata-narrow.json.gz",
+        "stored_sha256": "712b66736431782c2ddaf7711854a379f959617fa4f30164d319cdd63428dcc2",
+        "decoded_sha256": "26c5b4826bc97abc4e640bc45d5aac4baba8e8c31e58348a457cffbcf1b981fa",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "link-preview-unavailable-wide",
+        "case_object_sha256": "0b2756298e794564fc26977a0a572ea257a6dd2e5155e645402cf26f76b909a8",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/link-preview-unavailable-wide.json.gz",
+        "stored_sha256": "c2a5b059fdebf341baa15df671bc2b2754349fbf1139b4f462f7900130a87d28",
+        "decoded_sha256": "0f06cff4d94496a5e8113ce5ca5303b0b189f475c4ce0316b13ac325327d2c8c",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "link-preview-unavailable-narrow",
+        "case_object_sha256": "1ab2bceea82624b4cf4cba4c1c5742578dc5e0d6061c79e6bd24247b3bc68cea",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/link-preview-unavailable-narrow.json.gz",
+        "stored_sha256": "051e65ae6c49c5f2f9d91f8ebda817e6ffbdfcc294b2f89a2c59f34f431e2eeb",
+        "decoded_sha256": "ed667b52c5d3a5cce61e4f1723bbcae749a18139144390fc35c75cb2b26ebd0d",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cms-services-dirty-wide",
+        "case_object_sha256": "c1d2e4ed8f674f3f035a2f6c41208eab56a3f4d0cb250872eb5e3fe39febefcc",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cms-services-dirty-wide.json.gz",
+        "stored_sha256": "a91317302855112b6425aac9376ce2525c9261d20020da6d1821255cbf796bd6",
+        "decoded_sha256": "a32ce10fcbb7d6d5b43f83f8bb95b056ef425d56ce55117cbbaf2971dfaf5e0f",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cms-services-discard-wide",
+        "case_object_sha256": "12df12e8e40c2064c3d22f2de1aa9380550dc3042df840247bdad9a84d2c97b8",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cms-services-discard-wide.json.gz",
+        "stored_sha256": "fdc2bd361e12b31dd16bb9a30943b89c7bd73ee2339250721823b7244c1a12e3",
+        "decoded_sha256": "630b84cccd9bb01d5327576e4455bedcff04f990a01e179e38e90142cf1c97e8",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cms-cv-regular-wide",
+        "case_object_sha256": "05c7ce404a0361e7deb2075e736f28bfc0b25b900d81207152980df6395ab377",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cms-cv-regular-wide.json.gz",
+        "stored_sha256": "b86de665c1ef7c7ce00914c62309e795e5a1ab0aa313d1e51e05279b98a7f1ff",
+        "decoded_sha256": "dc360e42e698fad5e740bba0180b7a9bb71ffa2434e241af71a9331ab1b21ac6",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cms-cv-container-wide",
+        "case_object_sha256": "e48e60be4472e05adea451c6e53f64182421716e8d90013ebd668a2e17ca77f0",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cms-cv-container-wide.json.gz",
+        "stored_sha256": "3c54e73a6b06da687834d195c0649927bc498fe07e73ba69005aec553a7b7bce",
+        "decoded_sha256": "ec6d9c595d486f744f0226e099dfe0eab2971ddce0b76780066b33dc0d09030e",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cms-cv-cancel-wide",
+        "case_object_sha256": "ba0fe6f55cde8333837f116c6985ae7d3090b59bcb18d823c2c9e318fc8ca595",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cms-cv-cancel-wide.json.gz",
+        "stored_sha256": "63d5b2a7e9de2ba39e97294c1b997d2bb82cb16ac3e975b466b54b37354480a7",
+        "decoded_sha256": "4ede009ddf70ab534e9f6b03f19f1b87c0f45fb61e13591519825b3f0d69aeba",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cms-services-dirty-narrow",
+        "case_object_sha256": "0fba48bd70dc5fc47970bb58e0452fccdaa2289a042453776ada64ec679113ad",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cms-services-dirty-narrow.json.gz",
+        "stored_sha256": "83ff0e8f75894fc7eaf7d5419cc1b47eed419c258bf1d40f7fc9ed5940d046ce",
+        "decoded_sha256": "0e133efec0bae1e8733be3301d8158a5daf203bec058650d1301de690bc71701",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cms-services-discard-narrow",
+        "case_object_sha256": "51ecddc36d0c9294a87a2b0050b30b68621dda072191513eceb976bbd9995634",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cms-services-discard-narrow.json.gz",
+        "stored_sha256": "7477dc970a1c4fb9b984cbb126fadef1a7fb867d293e74ab3170a48ff576f4e9",
+        "decoded_sha256": "4a35f95393c292759028eed3dc4b8751baeab556674fd6768dad1df383f6a67f",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cms-cv-regular-narrow",
+        "case_object_sha256": "822048c1783a1c3b72b01934e346cbfcdc725cd3d1cebd229772c08f6c8b0d4d",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cms-cv-regular-narrow.json.gz",
+        "stored_sha256": "2d7032540bd7a80024a2d5c6c7407efa536214ab2b393e404b8756dc595a692e",
+        "decoded_sha256": "606c3dff87b7de753cef45603fb2a0188d0421ee89d1486b339e1f0932cedff0",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cms-cv-container-narrow",
+        "case_object_sha256": "c06b7b1a72637d00520c5233e3496d8c91d60eb64c072f8bb02d8c2f0e7438bc",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cms-cv-container-narrow.json.gz",
+        "stored_sha256": "d3a8c1963c90e94e338f69f7d4844bd70f9567491b500d614632df3983097389",
+        "decoded_sha256": "05806b2b01d6686cc61329fff90de6c25f7409d7a04f1c815603085ee087c470",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cms-cv-cancel-narrow",
+        "case_object_sha256": "79afbaf741a100b95424ab72ce7459338d7f8933a6e389aecb6d083d900d24e8",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cms-cv-cancel-narrow.json.gz",
+        "stored_sha256": "97a36c32b297dd99f15f5e166d9c96d48ca908a4c0d885e9a8188cf9f779eeda",
+        "decoded_sha256": "ce1627581db47f5bf20b6ceb42aed5c919b92787843d4ce13034a145dbd8d057",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-activity-splits-wide",
+        "case_object_sha256": "722b125ba44412277fee99738f0894d26055ad1f7af068cd50df0369df090683",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-activity-splits-wide.json.gz",
+        "stored_sha256": "1c9780e3073975e89c1dfd5c4057c10554f23ecf24c8aad33d70f1ed5e477d25",
+        "decoded_sha256": "7c00eb2065ffc5b92b1401f7dd3bc2ac72458d36b1a0b01c08f42c81c32650d8",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-splits-hover-wide",
+        "case_object_sha256": "f25029d0d9ea937440dbb0efa4de78d8f32e3e0796e47a2b333eaf002bb64cc8",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-splits-hover-wide.json.gz",
+        "stored_sha256": "7884c653b0278852e34e7c050a45ad65418b300a14b491060ab45d423f89f153",
+        "decoded_sha256": "181cfc929c12cae5b6f80f49f99e9c445c1ad22900591312a208db73be7a4002",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-activity-laps-wide",
+        "case_object_sha256": "ff6fe5eaf1cef7230dbcde7089819bad7db35fbbd92bc7468f8a9c4f716b2c9c",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-activity-laps-wide.json.gz",
+        "stored_sha256": "f15c5b13cf89a1d5e03f1bc3a245e7c998e9b0ee3eba4df30c7d486b5fc0aa2a",
+        "decoded_sha256": "7666dd795196bebe02367771063e27bb61e12c0e52eb9a2790493983fde811b6",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-activity-segments-wide",
+        "case_object_sha256": "f4786e80df38ac025abd9a20c38c57ad70792725f7c820e8f9c17d0aeb5e7022",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-activity-segments-wide.json.gz",
+        "stored_sha256": "ea57f3706754d18c19fc5d80247fa07ad7fabaa7b98370b7740600d760dbfd7a",
+        "decoded_sha256": "e3e79cb87fe90caaf4b51d332fb74aa27c6c005386514c4a644c1f370ff471d9",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-segments-hover-wide",
+        "case_object_sha256": "da8b4de9f961a94046606c09546c406c5e691dadb7a507e2b0f59b2a7aacaaf5",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-segments-hover-wide.json.gz",
+        "stored_sha256": "68ad67169c5ff4ab98463ad0efb2dd807a7ef7ad29f79dcfd25fdb664801d1f6",
+        "decoded_sha256": "80f748f396dc47922ad512add12655945affc45987079aeccb5ab9e794760b60",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-activity-splits-narrow",
+        "case_object_sha256": "37de7155f8850ee03cc48ec6f95040fc4fad252cc2a41921d9a06f1b51978380",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-activity-splits-narrow.json.gz",
+        "stored_sha256": "16f6a56fd70a29ba7a2a1e7d0d629ab59fddf4058da65152c8a6efb0b59e1049",
+        "decoded_sha256": "09f4894b1ab8318054826cc617d558b93f33d8100a509928bbae4f0cdfca3657",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-splits-hover-narrow",
+        "case_object_sha256": "e49e56e41f63fd989364e749990c3b520a8dd4093f65281d12d0b83beff3955e",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-splits-hover-narrow.json.gz",
+        "stored_sha256": "522734038940662157461e9df09401a82065981c1364c065f7010f822995c9fb",
+        "decoded_sha256": "d2884ed685aa14ad5d76b1d5958c318d6b41e61bcd4bb363d62aa3d0da3b0e8a",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-activity-laps-narrow",
+        "case_object_sha256": "3df5d00102910e2ec0e7cb9991561e0fd73f1dc75ab5a051792429f0012d0178",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-activity-laps-narrow.json.gz",
+        "stored_sha256": "1995dc19afe601893890ea0ab188b94fb96a457eb220544cd5d3b5f091ead761",
+        "decoded_sha256": "2ab1529936249eaa688e2e0f27b7670a1092ee4f2df412d89007dd0e41a683f6",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-activity-segments-narrow",
+        "case_object_sha256": "ef888fbf4085b19600e5ec81f9aa66f57a1c15c03795a857b6fd08efefc32789",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-activity-segments-narrow.json.gz",
+        "stored_sha256": "27838d2e201030ae2400d9834f9debc8c5ead22732c5a84d152e6a66604bb94f",
+        "decoded_sha256": "ecfcba00c747e6369c788c6de0c2e97d931403dfc7577aeb5911848664c71e45",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "strava-segments-hover-narrow",
+        "case_object_sha256": "971a54b7b8d47f4550c0150c52d717b0cb8b88cb319a78782e82b330e4a992f5",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/strava-segments-hover-narrow.json.gz",
+        "stored_sha256": "4dcf132765fc95fbec66e1911c5ab101aeaa63ecc1a7903b6ce6d95095b2179c",
+        "decoded_sha256": "19b46380347ad5e1b73edfc1d6ef43c76edeea059cd73a3e95fe84cd6d856c8c",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-account-admin-wide",
+        "case_object_sha256": "61e84bcaa2b14c7dd18ec0f437b03434e2273f0d8c178f4cd01c18bb9f716872",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-account-admin-wide.json.gz",
+        "stored_sha256": "e1d0655a76b55219ade22ab482e912a3be1a10262faad3dfcf650cf62ca58bf4",
+        "decoded_sha256": "11a92027b7a46a31972376d5c33200bef5ed71e64e285ef615a37d4a9079ce44",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-account-username-wide",
+        "case_object_sha256": "9c8d3308c63d4dcd63e3de9150b3a0275fb5a6eb7dfc1234661a87ef77a9841d",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-account-username-wide.json.gz",
+        "stored_sha256": "2c05dda8bc5cb3497edc2bb4a674be981e2f98c55212ff99396f1464b536a9f1",
+        "decoded_sha256": "6f491ddb161f683263bfb4d4ef56572b921bc02be0e265dd4f2801723e8d52f2",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-account-password-wide",
+        "case_object_sha256": "11943c1d3c31126e5289492b8bab524ed5d98547fd4993cf0155367efb831c33",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-account-password-wide.json.gz",
+        "stored_sha256": "9ae447b54a3a7a3b36fb40ae805f412a968a4aa627c0b3e276390611ded2727e",
+        "decoded_sha256": "de7f8fba2836ac696b55f91ad8e27f26e00df406399715d881876146924288a1",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-account-avatar-wide",
+        "case_object_sha256": "64893309be530a8d5c3ae7489102030c989345c54d0811410b0707e339bb7fef",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-account-avatar-wide.json.gz",
+        "stored_sha256": "36f86bb197b934e99971ffb44f9b9e136658d625e6a99f1b61bf174af8eb2641",
+        "decoded_sha256": "e3cf08102c04f1c1c24254e829055ebce7305a69ffcc3a67e9ff3d98e638745d",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-account-closed-wide",
+        "case_object_sha256": "b127e023eb40da44294240d2ff2b2371a0d5d348e05cb5f1defaba00820fe41b",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-account-closed-wide.json.gz",
+        "stored_sha256": "2515d1eabb352a2f2c6d8065fd144dae834c65fc4c66a0b63d7d0c3d6cd5f1e5",
+        "decoded_sha256": "578507b18dbe3da344d658939d947814d6948e15a89e81c87766bc322e860a95",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-account-admin-narrow",
+        "case_object_sha256": "5877af968f5d634f5f763e1711c920ac51e741bb0cbc362b0d1155dfde21f760",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-account-admin-narrow.json.gz",
+        "stored_sha256": "3e8f0f8bfc4c7e9e5166563ee11afce86aea2276929002bc616b0a679feeff22",
+        "decoded_sha256": "99bdb8a1b2b29cd3e42a6f09e04906e3d49c548557b94f12c94e178e29b9a787",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-account-username-narrow",
+        "case_object_sha256": "12055ed9130bed13a07537b7ffbfabe5503bf11db749ba5f4e5cfdaee7e7ad96",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-account-username-narrow.json.gz",
+        "stored_sha256": "13c2eb1ef7474109b34e0359b5d97cc16cf137860e16d4d99e1521c98ae7bf17",
+        "decoded_sha256": "cfe8027a11edb90f7a4bd10c4fc5c492c225d282072f3954ef4402a9fa6ecc34",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-account-password-narrow",
+        "case_object_sha256": "a9520b1cc3b3460063c44c9931fce794a69e80adaf15eb846777cf151f41adad",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-account-password-narrow.json.gz",
+        "stored_sha256": "dd16611424e035926d36d1cfa85163947697fa47d2d3e93f60d9d6d32f73ff89",
+        "decoded_sha256": "4925ad371a80905b424350a602b8f609c45237da6a718fbddc77326fa59a8902",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-account-avatar-narrow",
+        "case_object_sha256": "772295ab5289d20899235914af70f0db8138b12aa7110c2df5b8f82f054d4c6d",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-account-avatar-narrow.json.gz",
+        "stored_sha256": "8af63b352d7592d1b7e27e9031abb1d063662ddc978f34a92dbf9d92f42514e7",
+        "decoded_sha256": "27b96c5e7dc81caaef76882bffe27162502b4c299507b500a43001fa02b8186a",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "user-account-closed-narrow",
+        "case_object_sha256": "99c8861b4417be23c8e79f0f734eb2285b38fde1321beb7556cf2a82938faa3e",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/user-account-closed-narrow.json.gz",
+        "stored_sha256": "52ff3b3e5e2cfe918260894d0d0ece0da6c20bb4dc1e29f3882404431d1df3bb",
+        "decoded_sha256": "01228c1cbbd3695ddb72e84f3df43563b1a2cfb736a1445599d7d63e9ed25815",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-reply-progression-wide",
+        "case_object_sha256": "6d7049e3e3eb46197c762590d19794c8252cab0b81bc1cd7d4f757ddd482d6ad",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-reply-progression-wide.json.gz",
+        "stored_sha256": "62d9221267ca489c96d7edfcacc2f92c9d3a091d67425fd3a12da0e66e8ccb9e",
+        "decoded_sha256": "b6bb27b08b15412c5f751d928f3a749ce88d3f31479654f8c17636053f15c4f4",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "comments-reply-progression-narrow",
+        "case_object_sha256": "3f5b2ca638d7a72dd551253c967827631ad21ae6536901d912f19f04b096d8a5",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/comments-reply-progression-narrow.json.gz",
+        "stored_sha256": "727d60dd7de657d9292111ce1581689357810ecddf6a4c247b0f921b877679c3",
+        "decoded_sha256": "f818994fa0360c681480b83d50e1d63eaf2926f5fe6f8c07e496ed123dc7470e",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "blog-archive-wide",
+        "case_object_sha256": "8829d008e788bf7a05aff85d9503677b1e0433992168eb77e57db1138c7578a6",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/blog-archive-wide.json.gz",
+        "stored_sha256": "fe1adb66903ff86f6cd2e6c495ed939e14fc46e816ed41a7bc317d709c27a59f",
+        "decoded_sha256": "fd4c1751f4bcebae1d6a05e42d700db0fe7ac8ef1fe263d3e921255c312a6462",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "blog-archive-narrow",
+        "case_object_sha256": "8289832ce118217cf45f44c608c31e3e5ac38dd16ba17617437a6bfef165b25e",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/blog-archive-narrow.json.gz",
+        "stored_sha256": "10ac78f01177d4990ea37e1507acacc926b043bf13f7891d7f8c37d5c5b8f8dd",
+        "decoded_sha256": "a7968817daa6631820784f0a4d22dd65ec630e7defa59be7c796a1b48d509797",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "services-expanded-wide",
+        "case_object_sha256": "12523b7b07c62d5130e8ab03d525aa6366a0a6f5d421288d63b2672c787522e6",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/services-expanded-wide.json.gz",
+        "stored_sha256": "99faeb0b1cdf5593f8df87ef23e8553a6def8dc33452839bf00ec288c7515ecd",
+        "decoded_sha256": "f1ca11a47e8b0e3ffb2ee3269dd7fc2a88271dd09da6f91c67e8abb9b15ffddd",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "services-expanded-narrow",
+        "case_object_sha256": "dfdcdd171f0a70644ed0341381f2c7c51219c36605eda85939f40559c7ab24dd",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/services-expanded-narrow.json.gz",
+        "stored_sha256": "e302735e3abc2d2fc5acce949d38fae1f806c0cc5a44ca95e827fcf1063f3692",
+        "decoded_sha256": "af716c83c234da53a50df86b9b53bb0fd8bddc596798c5691ea43ce7e96dc94d",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cms-gallery-wide",
+        "case_object_sha256": "9523c7f1cddfc6d640cce0d6fc7bed05423699c6bf96b107eb0d71c1608ae4fa",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cms-gallery-wide.json.gz",
+        "stored_sha256": "1d68352ba1e7daea83b56483818b1fd75ccab7227b6c46251517032fe843a27d",
+        "decoded_sha256": "9f5bc7a9754819a4e23a0f96cd9f9025a0826a29f78193e5af1883007634efb6",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "cms-gallery-narrow",
+        "case_object_sha256": "a073df91cacac2e221e887cbda0c32d02f2938930fbad6e4f78a95b22ceeec20",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/cms-gallery-narrow.json.gz",
+        "stored_sha256": "b0ede27753a999672625b130d9b9103fbc3e6df547ef80623613f990e12d956c",
+        "decoded_sha256": "fcffa2c121dff773c0816458853f634237c647dfd54eb90b048ffaf80deed8cf",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "home-cta-hover-wide",
+        "case_object_sha256": "997ac7eaa9370c6d60d67184878101c8509ed231b66f8df7e44689cbaa73abfa",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-cta-hover-wide.json.gz",
+        "stored_sha256": "412c49fe8a96e0bfde025aed72afdac5c356d83c52e0ed7eb1c3e0ed556a5d5d",
+        "decoded_sha256": "60be6c4780732888f2f698aa7f88173b11e9e4ddd1d868bdd2a8101cb5f04dab",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "home-cta-hover-narrow",
+        "case_object_sha256": "5101e5e0cbb717db2c0cb34e5de37f286c4c7cbc62e3513053b9fb1c147122f2",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-cta-hover-narrow.json.gz",
+        "stored_sha256": "d5d95d0dc7ae2ad8caf08c7d60058188a0e348bf840483b1acfb42cc81321f53",
+        "decoded_sha256": "e4643784bd0023a9f9f9fdb93609609235e0e98abcab1971116e5cc6249a10f1",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "shell-framing-expanded-wide",
+        "case_object_sha256": "36dc22a24a227f95ee38f26709964e75d4b15d73e4bfc51f126f110c6bfd897f",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/shell-framing-expanded-wide.json.gz",
+        "stored_sha256": "9760df42224cecb25a4a1bde3e17ac642d50d1aed07db9ba858fb94feff7cb7b",
+        "decoded_sha256": "1a784ccaaa9c83dd5f1d6b40f2f1e4dfd81125baa584e89295af3f40e6bf3a53",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "shell-framing-expanded-narrow",
+        "case_object_sha256": "2315964c9ff9d4ebe45192a3f934deed8a5186e553810e8c47310d6c07127558",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/shell-framing-expanded-narrow.json.gz",
+        "stored_sha256": "5f1d42174c0d7c7ccacb34a7f7467d28e974dce2890a886552e8e63e846d7d6d",
+        "decoded_sha256": "27061884072196bd86d5f04b2a8e9355a89862158db809615d8970a65d887371",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "chat-populated-wide",
+        "case_object_sha256": "94d031dbd2768ac43b4b35e30c83e5326dad89d231a276ca5e64f906a70ae578",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/chat-populated-wide.json.gz",
+        "stored_sha256": "16f86c41d7f1a1618871065e98427162ae4447fe7c87a0ba18aaff607fd67839",
+        "decoded_sha256": "426b873a5fb6ec1087d190dc607f4d31cf8f91c666c8cbb123cbdb04ce6f4b32",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "chat-populated-narrow",
+        "case_object_sha256": "292540fdb79babd28650e4d0990e2b06b6899be7f099ccfc3af9d25a955df0e7",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/chat-populated-narrow.json.gz",
+        "stored_sha256": "5ee6eb7a496bafe019757403cd9709c09168da48ad140fd30be293b6c20bc302",
+        "decoded_sha256": "fa291584309c0a676357ed5536f13b3315cdc85865ade8078177a228823ebdef",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "chat-empty-wide",
+        "case_object_sha256": "1a98d88a252a247dcd02858259cf499ce03b87791a11a698147572015615a9de",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/chat-empty-wide.json.gz",
+        "stored_sha256": "8337b8256fba39f2d8fa227498e24614c245b0a07beb8b97236596b3f808580f",
+        "decoded_sha256": "cb1e5154c8c7ffafeae174b46cb75ed68a316784d1ae379d4f819601bd9fc535",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "chat-empty-narrow",
+        "case_object_sha256": "1fb88e798f7725953af03542de4a8c96ad464ee37aebde6353d5e5bcd601fe02",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/chat-empty-narrow.json.gz",
+        "stored_sha256": "9746b18a93caded10e546dd16ca8aba9cbff9858e90b33cb19836dc1802d45c7",
+        "decoded_sha256": "ce286c40a34754c44a656c76275d3398e585fbfb1de15f579cb3d91a0f26cf7e",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "gpt-collapsed-wide",
+        "case_object_sha256": "7e6d0f06ab603f8cf704056148b3ccb1af838292cd39e6d71d0aaf01d52afb92",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/gpt-collapsed-wide.json.gz",
+        "stored_sha256": "36cb0962b54acfc58baebd3368ed8c5d2116a04e9ccf6e43bfe7cd2c74610df0",
+        "decoded_sha256": "6846cf83e6eae0b0ae6ae1ced2a2fdec8d65565644a5237e3980d32542c66b06",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "gpt-collapsed-narrow",
+        "case_object_sha256": "7097ec62cc2fb366b9374aef3b70c8bc6d114bd42112cd6da0e7186bd7879ff4",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/gpt-collapsed-narrow.json.gz",
+        "stored_sha256": "5c499e30a8d76dca920ffa50fbd25455ca90801de9a70b38bafadf2409a09aee",
+        "decoded_sha256": "c7d3b9d7d73a69480407c62bb023c99b0c8887cc6130c90c8133861700d01a51",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "gpt-open-wide",
+        "case_object_sha256": "9c5ca14b12a90b3069be5e3eca120951cc085c4054547d6d7a033940f6d4d18a",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/gpt-open-wide.json.gz",
+        "stored_sha256": "51753ad9ef6612797c18ac03da132014fa939591300e8003429cb93c57ae3b00",
+        "decoded_sha256": "4dbd9554ed82131317c8ed8cabf5716230698bc6eda23a1189cececb137a513a",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "gpt-open-narrow",
+        "case_object_sha256": "1cbe9fd06305b7ce7c02690b63d58f9b71ad9892e83e931ad6e2b93ef88a04d8",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/gpt-open-narrow.json.gz",
+        "stored_sha256": "d9a5da3d0aed031ea1326b70a3f02b4716d25785771b96131beb9e7976d00903",
+        "decoded_sha256": "1da08e631c435123f063c49dd49de309c591427572edc577de07b8a2853f5580",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "codex-unavailable-wide",
+        "case_object_sha256": "f78e89c4f5dc99c9489f646393cbe3dd286d840c9e56d88484b6d895826aedb7",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/codex-unavailable-wide.json.gz",
+        "stored_sha256": "7faaecf5ec206949fdb349010b0cc8697263adab36b7d3618870833ebb7a2658",
+        "decoded_sha256": "65ac6693cf6cca016726b6e4c1688c82b627b69c74a94083d2b08c4658bf84d5",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "codex-unavailable-narrow",
+        "case_object_sha256": "da3a54e58abae0348610f8e53b75c9f806f15ba3af86866acd6c4560d981ec68",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/codex-unavailable-narrow.json.gz",
+        "stored_sha256": "0287a0e1a02290d48c20540e361778f3ccf7f73c918cf681732cc2d9749e6c06",
+        "decoded_sha256": "d0cb2ae28cbfe8f010a0620a25902b78f49a6cbefc371039d9e85baa4260a5d2",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "codex-populated-wide",
+        "case_object_sha256": "d821e829b2e95bd403c7bba56ff7b381a0c8c79f4e6c65a5c64042b2ce90c3da",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/codex-populated-wide.json.gz",
+        "stored_sha256": "2f19aedac2a278db7ed0dff38432367a31b056ca3458db0faf6d9783039c56af",
+        "decoded_sha256": "41e156cf6e218e6e71cdb5cbfd3638d478765a1b29788bbd03a43d24be2c4975",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "codex-populated-narrow",
+        "case_object_sha256": "cccd5e17985582e8cc45fe5ea98e45dea28ab5b360423895d015e71e882af7c1",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/codex-populated-narrow.json.gz",
+        "stored_sha256": "4724053d79e1cf31d087c7a6eb03d85be2faf4a2cb7f1887f819277f7aec2e9e",
+        "decoded_sha256": "a2d6424bbe6277b9baa989193f0022d0bf6885d292bf887c80c05a69e24f456e",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "chat-timestamp-hover-wide",
+        "case_object_sha256": "112e6252a7c4c91123b788df277e385e193c95ef568182c809135439472034d4",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/chat-timestamp-hover-wide.json.gz",
+        "stored_sha256": "18010da8bfc678958dd5a1dc628ecdd140cdcb3f102ea3f31faa5b8581832fa4",
+        "decoded_sha256": "8f69a39f6311a3849f7f0c943aaed0c1a845a60122f5cf0dbb9ff976d30776f1",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "chat-timestamp-hover-narrow",
+        "case_object_sha256": "c1948de09a0eef221b9ca70ae539595c6d252f1dd421b5c4f0d20d92fdd899d9",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/chat-timestamp-hover-narrow.json.gz",
+        "stored_sha256": "8598ea8f5e8e9672af1c36fcc006f2c45ac254a848a94fef352171076df3ff0a",
+        "decoded_sha256": "e148552d3f4b4441e1ce3f461085ae106dd74a910667efab52da05507af34940",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "gpt-timestamp-hover-wide",
+        "case_object_sha256": "1c7754b25923900cec6d5e12b603fc024126e0e108926d5906fe1dac1fe7708d",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/gpt-timestamp-hover-wide.json.gz",
+        "stored_sha256": "d619a29f211b11e99b9e8affbc6160e8e8ef42350385346874e842aa7930842b",
+        "decoded_sha256": "8a121513522e9f0a2c2e077789f711ae5e6c2537cd4162461e39a88e839a3608",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "gpt-timestamp-hover-narrow",
+        "case_object_sha256": "ed31b7d9fd44e48d0d8febc28ca58f1c80e2663cec0579d4f0cc36e07de37e90",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/gpt-timestamp-hover-narrow.json.gz",
+        "stored_sha256": "c0093a5bf22ea2a1cb095c0384eabf93b6c6051d81115e24873051b016aabe4e",
+        "decoded_sha256": "a6507dc316d3dbb92edac42075623736feb5acc54d4de1366c1309afa2c1e87b",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "neovim-workspace-wide",
+        "case_object_sha256": "919f9a3ce36908d4484a55768aaedd9e319e89267be2ec3370db32860eb46eb6",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/neovim-workspace-wide.json.gz",
+        "stored_sha256": "f55febcc524ae825c148f3781bcf89dec4e08f9980e5be8b2dbba2f428de0274",
+        "decoded_sha256": "10c3a8bdbded1c7d8238723282b62fcd19c674479297b0f8500dd42bbf88458b",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "neovim-workspace-narrow",
+        "case_object_sha256": "08771549c068d874c910cca919004c1bb9661945f49818f3c396fcf28a8e93e5",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/neovim-workspace-narrow.json.gz",
+        "stored_sha256": "19c19183332c8164ea3fd051c34ed3237d74f2484cf20f59fc4150d658d506af",
+        "decoded_sha256": "fe86810efe0a3d6588dbe4eef17c864c3381dcb2d854c6a5acddd0ffa4d55a30",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "neovim-workspace-menu-wide",
+        "case_object_sha256": "f1fc76959750f0af10601d85c72ec1869357266e8988f683d8771b9364e6a819",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/neovim-workspace-menu-wide.json.gz",
+        "stored_sha256": "28f6fa0ed413cab0999e0d634330f6067feb0789ca95582ff256b13577bce600",
+        "decoded_sha256": "82c33693b66d6f0e4652fc15378cc4cb88d622b1a248bb4ec37134f46f4c59de",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "neovim-workspace-menu-narrow",
+        "case_object_sha256": "1d231956f765b7036affc6a6f2e95fab66024738b387b30c187bb112975d2d2f",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/neovim-workspace-menu-narrow.json.gz",
+        "stored_sha256": "12d38e89dab5d83268ab1b39fa87320d7222fe1cb1be75081b841bed9aa571e2",
+        "decoded_sha256": "e9b637cb7bcc8dab13804e8b4f3ed6aeec0fc901b871da0a0c4838e13cf6df21",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "authored-highlight-config-wide",
+        "case_object_sha256": "0912b09136ca15f58c04313a9e4a4e2952fb70380b490f2855e0528342926423",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/authored-highlight-config-wide.json.gz",
+        "stored_sha256": "d4b770c59b30b8380824c05afe82aa46485f8c8f566e1049849779b62991ad2a",
+        "decoded_sha256": "7a48cc0fe52d3ff22055122604d3e68c11c922a5931484109839d5767f726341",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "authored-highlight-config-narrow",
+        "case_object_sha256": "b80ba5f66eb453e89a612b09153629dfd550e22ceb73de9a1bfed9d3fc2194e2",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/authored-highlight-config-narrow.json.gz",
+        "stored_sha256": "6a037b24edad03bc8851820f9a3a89277acaa03d3a9a8c45e56ba63508b26209",
+        "decoded_sha256": "16a88f5e6e37c3b482f7216018a9b53f9d9a2faf974c4ad9f04ee1504d7be35e",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "authored-inline-search-wide",
+        "case_object_sha256": "13585e939ec4110bf75c461b2790625af11e660b8bfbb7d8b5d9b1053a22a8bb",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/authored-inline-search-wide.json.gz",
+        "stored_sha256": "a3edf6e56a50da049bdb1c0585fd77adc711cde20d84f81ccb4a49bd6b1deaf5",
+        "decoded_sha256": "9ae1b5254b61a858daa6bbf9488111ea7efdd16a9b50f4f5090889ebafc2ae00",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "authored-inline-search-narrow",
+        "case_object_sha256": "0cc8eb7279bb5cb16d53b5eb6432b5a5459c51ed9f7f83786a4ea4106830e36f",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/authored-inline-search-narrow.json.gz",
+        "stored_sha256": "e9b96771b91de3864843cec7f6657d7f8f03b190cb82a76562af3b0a55343842",
+        "decoded_sha256": "b9415da56f4ffdcd0effba395a6fd79d402e1d650890b3c2a7aa59fb65b855f6",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "authored-comment-quote-wide",
+        "case_object_sha256": "cfe8d7e41c93765ce06478725fdaa51bd65178aee8096cad438f91e7bab2cf34",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/authored-comment-quote-wide.json.gz",
+        "stored_sha256": "f40a341d5cdb8802031f4d50aaa9d80ad0725caa9ab6711908b5fd9347ad6e40",
+        "decoded_sha256": "c057b50854892c8075b5b07876986ce95982be30dd85df3cc5947527678aa296",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "authored-comment-quote-narrow",
+        "case_object_sha256": "fcd6cc39156dcfef77d8cf0828adca485515fb9a2d2f073801b517caf7f77490",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/authored-comment-quote-narrow.json.gz",
+        "stored_sha256": "4fad084fa7a93bcc0362f5ae756a25019874140faa0cbdadb02fa2a85204256d",
+        "decoded_sha256": "ce197911e6414726bad0f2abd912eee426dcf8a7c9e01423cead9c2eac175d30",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "authored-frame-wide",
+        "case_object_sha256": "7deae626de18fc8a571ee7c6f86495277ad1276235551d691508fcc506d5e8c7",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/authored-frame-wide.json.gz",
+        "stored_sha256": "edcec3727edf3fb87c706841bba6a2f9206472ad1e235b0e27e315084e83a8c8",
+        "decoded_sha256": "2ee2d90a8645e5301da4aeedeac6aa3ecf505267026ad9adb80f6d8252360c42",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "authored-frame-narrow",
+        "case_object_sha256": "e6042f6d016cf890dcb83c5f5ee8b582196dd9d4efa8277bc254400bfb3ca11b",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/authored-frame-narrow.json.gz",
+        "stored_sha256": "f41fe555b4c482ce2b783e5fd6b735e901bc508627fc239edee9dfd76b9f32db",
+        "decoded_sha256": "c773eaeff97c4c7c763d1fc59f70e951490f61530415e5587a5ee1ec7c2d2f88",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "home-soundcloud-placeholder-wide",
+        "case_object_sha256": "cc3a8920eac26f485c1c0a574340dfb73b9d5ff958a6081bd4e25742a1aad88a",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-soundcloud-placeholder-wide.json.gz",
+        "stored_sha256": "018d1b778cb0d17efe13699caebe06435f75a7d4305ab766be0d63dcf40bf0f0",
+        "decoded_sha256": "3a8e15f62535a259a142c4a110679b2be35b24dc1c1454873bedbe9262c1c523",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "home-soundcloud-placeholder-narrow",
+        "case_object_sha256": "e595061758d1761758ae529afff4146a492216ced0b190d410ade93fa9377eaf",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/home-soundcloud-placeholder-narrow.json.gz",
+        "stored_sha256": "4d6c4838ff5a32e12cace12cd31b6e0b3bcd185b205db42d53f14439aaafde64",
+        "decoded_sha256": "7e9a9aca3725bae402b3032e9a7a51218c1eab628a710085fa56c9ca719997d0",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "experiments-parallax-wide",
+        "case_object_sha256": "b634115b5fef7205b8b9bb06bcc8c22c3c45a4ebd0a1ca020cc4cf62b0bf15e7",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/experiments-parallax-wide.json.gz",
+        "stored_sha256": "b8249078912eeb2d6e8c78485e2355c18b3db168db9c32f1e9dea1b4d62d59f9",
+        "decoded_sha256": "6a155d05f130b7dec1f065607241be14aed3943f5c6e10f5feea3eeba739402f",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "experiments-parallax-narrow",
+        "case_object_sha256": "7daf444106d3e2aa4a01c26cc5bf4b6457332462cc245ce4450154ff27d27a3f",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/experiments-parallax-narrow.json.gz",
+        "stored_sha256": "9065d6a728158908d6477038160d6398e30d2ada1e4aac02d7094655b3252790",
+        "decoded_sha256": "da947450890a816348fa6a77497aced713120bbf5f8e1a28edb9447c2cda362a",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "experiments-liquid-glass-wide",
+        "case_object_sha256": "91200153dc3e9dabf59be0cd9e541f3aa864343def46235ffa6b741cdc597573",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/experiments-liquid-glass-wide.json.gz",
+        "stored_sha256": "124631f63b56f131a2bac0737ba418984f4bd67322c89e9a7c63bad248e004f0",
+        "decoded_sha256": "a26211eeb0ad17d8ab85055e551213d44d66ec6a4be99e78b369e9d0b1fa1785",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "experiments-liquid-glass-narrow",
+        "case_object_sha256": "0ec2ad2bab331781380d320af27f98dfbb9a5ea76c9528959a77af991e19ccea",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/experiments-liquid-glass-narrow.json.gz",
+        "stored_sha256": "927a74391538addee63fea926b7d90cd1654fa25d3d9408b87afe1b4340631e5",
+        "decoded_sha256": "6544436b095e9c9a44c8b6e1a6c93ca1005e7ce5079df51a105a2be209d379bf",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "experiments-model-viewer-wide",
+        "case_object_sha256": "6b493d82b2f8a0fae2fe4f9332f63e88fa90566a64d887763993f8c380fca3ab",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/experiments-model-viewer-wide.json.gz",
+        "stored_sha256": "8c3f78a2a041d4ccee8981ba281089a2b7c9bfac0bc9805cd57f6310c4f4594b",
+        "decoded_sha256": "e9412e7d146df8c10d9d07a2525e85f448020fc58988201a2481f85c34a654bc",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "experiments-model-viewer-narrow",
+        "case_object_sha256": "b79b8f39b194f22d38b93b707d6275b44e36c4362b46a5590c1a537a0a683f88",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/experiments-model-viewer-narrow.json.gz",
+        "stored_sha256": "13d9a21ac887ad8b5e01521bf15804681f0abc4d1b656c7e882cb75cb9db950d",
+        "decoded_sha256": "8fe24d5a43cf6725919128076b417e94f43e9d26f42efcd84c54002ce980e351",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "inspector-data-wide",
+        "case_object_sha256": "e9afa35cb54d5ae25f67c9c0b5637c58c16cdf9a6ae3cbd4a1e6bcaf435ef0f8",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/inspector-data-wide.json.gz",
+        "stored_sha256": "49bc2316c2a9c078a7ec5f82e679d6826cd0b5519e20f1e1f863101c465a5106",
+        "decoded_sha256": "6ceaf14eef4d409cc666fed7ac81cbf05be71b90a945828f6cf77e3719a01097",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "inspector-data-narrow",
+        "case_object_sha256": "9a939e0d7896ac44bb2c5b3c32cbe467bd2564a51924ba9d1adb6345c970f3fd",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/inspector-data-narrow.json.gz",
+        "stored_sha256": "1f828920f034521eff060bd10e3c13b7c35cd409459c835d38e6471a00f24c71",
+        "decoded_sha256": "c6c39aa02f3121e4fd41dee8ba88a909d960310b12f760d1ff98900b5354665f",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "inspector-error-wide",
+        "case_object_sha256": "acd2abde7a3ee142b8d485e70d8a55f98eff370d4283197b82dbb10b55d5cee2",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/inspector-error-wide.json.gz",
+        "stored_sha256": "02f8941d445e828a5917e473fa992f966d828efc8a525744201156062e5a257b",
+        "decoded_sha256": "e58ef8c4817d629edcb4acf38f5440522d13aaa069ca0635a0829d948c96b957",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "inspector-error-narrow",
+        "case_object_sha256": "44673da205d4d5f6f41fdb17e3a4838051afb66329abe593d00f74ad6bd64321",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/inspector-error-narrow.json.gz",
+        "stored_sha256": "05d7c73602bfecec87e5dbe584536b07364f4ffa4be48b818dadc28be1b88e1f",
+        "decoded_sha256": "5529ce69f51f59be02e3e38ce64fb50f0f2fe552bc9bb23002642dde419b9714",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "inspector-error-open-wide",
+        "case_object_sha256": "0205de8e990b890f03a22509cb76f37f6a6e6bd606b4a3869654da86a25f2ad0",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/inspector-error-open-wide.json.gz",
+        "stored_sha256": "7e653a7846b8c46b2d7c996eaea96cc0201a879469458869814824d993ff66b3",
+        "decoded_sha256": "411fbb2d1f22f77ee806b399aff3fc476a54f5f3db528449a389efaa5eb6c355",
+        "definition": "unchanged original first A"
+      },
+      {
+        "case": "inspector-error-open-narrow",
+        "case_object_sha256": "cd16a0f4f88afb7b5e328fd2c3d89e81e33cfc1d0dfaee5b3878719167ba5c46",
+        "source_record": "/Users/tol/CODE/WEB/tolgrAVen/.local-wip/ui-preservation-audit/current-source-verification/native-222-c9dbda22-batched-A/inspector-error-open-narrow.json.gz",
+        "stored_sha256": "915008f8a24cd9600c493ee935800b4faa53d8ff80b56b527cdd9d76da8f7ccc",
+        "decoded_sha256": "b994a13bdefb012fb3a0ac992c1e04c1dcc1565790897ad599b3867f84f51cbe",
+        "definition": "unchanged original first A"
+      }
+    ],
+    "limits": "No independent B input, tolerances, record normalization, pixel approval or automatic design approval."
+  },
+  "review_evidence": [
+    {
+      "path": "paint-c9dbda22-gaps-root-viewed.json",
+      "sha256": "4778c860829c181d12f207ced904df0522981e1b4af2052412d9ed04fa518e64"
+    },
+    {
+      "path": "paint-c9dbda22-supplemental/root-painted-review-part1.json",
+      "sha256": "a2fdfda27e3fa1c27818e68dd9072dbd96f2ec4f853f9012c47b0a11c20a33b3"
+    },
+    {
+      "path": "paint-c9dbda22-supplemental/root-painted-review-part2.json",
+      "sha256": "407a4ce1534ca3fd21df2bbeccf26008136b60bbdbffd02482f94bc44eced48a"
+    },
+    {
+      "path": "comments-label-above-case-repair-c9dbda22/root-painted-review.json",
+      "sha256": "6018e601ca716e0ac841cd2c1dd0b41f947e7bffeee88c7e97dc15fb204416ea"
+    },
+    {
+      "path": "native-222-c9dbda22-review-inventory-complete-A.json",
+      "sha256": "6068e90f67e6d86becff9768f7bed683990fea2d088bc58017de0889154f6585"
+    }
+  ],
+  "unapproved_candidate_sha256": "b4331694c60713acadcd10ff48b6db77ed08656f6477ad5f579ee497e363f7ed"
+}

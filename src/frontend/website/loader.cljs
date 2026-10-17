@@ -303,7 +303,8 @@
                    (.catch (fn [error]
                              ;; A failed module owns its Retry view; never reject
                              ;; through the entire page's error boundary.
-                             (r/dispatch [:loader/code-failed module error])
+                             ;; Publish that state before the lazy reader renders Retry.
+                             (r/dispatch-sync [:loader/code-failed module error])
                              content)))))}))
 
 (m/defc ^:private <module-boundary>
@@ -334,8 +335,12 @@
                         (set-committed! true)))
                     [initial? set-committed!])
         boundary (r/use-memo #(make-boundary module) [module])
-        ready? (or context/*server?* (boolean @(r/subscribe [:loader/code-ready module])))
-        failure (when-not context/*server?* @(r/subscribe [:loader/code-error module]))
+        ;; Completed SSR already has a lazy code gate and an inner readiness owner.
+        ;; Its speculative outer boundary must wait for that actual commit.
+        ready? (or context/*server?*
+                   (if ssr? committed? (boolean @(r/subscribe [:loader/code-ready module]))))
+        failure (when (and (not context/*server?*) (not ssr?))
+                  @(r/subscribe [:loader/code-error module]))
         modes (activation/triggers options)
         requested? (and (not hidden?) active?)
         content (hydration/use-boundary

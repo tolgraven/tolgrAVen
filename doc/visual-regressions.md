@@ -26,7 +26,7 @@ tolgraven-cpu run --memory 6g --java-heap 3g -- sh -c 'npm run build && lein wit
 The explicit `--config-merge` namespace expression above is required: the default
 `app-test` expression discovers test namespaces and excludes `website.visual-fixture`.
 The full module graph needs the demonstrated 3 GiB heap. From the printed
-**isolated output directory**, run `bb test:browser --port 4098`. The fixture at
+**isolated output directory**, run `bb test:browser --port 4149`. The fixture at
 `/fixtures/visual.html` reuses the CMS seed and production components, fixes only
 provider data, and retains native handlers, Markdown, measurement and
 module loading. `test/visual/suite.json` declares exact states and viewports.
@@ -227,7 +227,7 @@ required before claiming these states work or match a baseline.
 Keep the installed Chrome running with its configured DevTools connection:
 
 ```sh
-bb test:visual capture --origin http://127.0.0.1:4098 \
+bb test:visual capture --origin http://127.0.0.1:4149 \
   --geometry-only --output .local-wip/visual/candidate
 ```
 
@@ -507,27 +507,29 @@ unchanged. Capture still writes plain JSON. Use gzip without timestamps or origi
 filenames (`gzip -n -6`) for reproducible storage; compression changes no fields,
 comparison rules, review scope, or approval. Corrupt, missing, or duplicate records fail.
 
-Store reviewed PNG/JSON files and `capture.json` in a versioned directory such as
-`test/visual/baselines/chrome-macos-geometry/`. Record explicit review evidence in its
-`capture.json` `approval` field:
+Store reviewed PNG/JSON files and `capture.json` in a versioned directory.
+Record explicit evidence in its `approval` field; capture and compare never
+populate it. Review changed baselines as UI changes in the PR. Suite/content or
+environment changes require inspected references; never refresh goldens to hide
+a technical regression.
 
-```json
-{"reviewer":"reviewer name","reference":"tolgraven.se and reviewed repair PR",
- "reason":"Original design verified in every declared state"}
-```
+`test/visual/baselines/chrome-macos-motion/` contains the reviewed 222-case
+geometry/computed-appearance and `native-css-motion-v2` reference. Its README and
+metadata retain the environment, actual inspection scope and bounded first-capture
+provenance. The corrected above-label case scrolls the native action into view
+and requires its visible tooltip above it; focusing an offscreen action is not
+a tooltip-layout check. No independent repeat selects reference records.
 
-Approval is an explicit review step; capture and compare never populate it.
-Review baseline changes as UI changes in the PR. Do not refresh goldens during
-a technical refactor. Suite/content changes need reviewed baseline changes too.
-Chrome, OS/font and rasterization changes require reviewed captures in a separate
-environment. The versioned `chrome-macos-geometry` baseline covers the reviewed
-suite in explicit geometry mode. Its approval records the review scope; it does not claim pixel or
-motion parity. Capture it with `--geometry-only` at exactly
-`http://127.0.0.1:4098`: computed asset URLs retain their real origin, so a changed
-origin correctly fails the exact comparison. Keep raster approvals separate.
+Use `--geometry-only` at exactly `http://127.0.0.1:4149`. Computed asset URLs retain
+their actual origin, so changing that origin fails the exact gate. The historical
+42-case `chrome-macos-geometry` directory remains unchanged; its old suite,
+environment/schema and missing motion are incompatible with the current gate.
+Raster approval is separate: this reference does not establish raw pixel parity
+or full coverage of offscreen/provider content.
 
 ```sh
-bb test:visual compare --baseline test/visual/baselines/chrome-macos-geometry \
+bb test:visual compare --require-motion \
+  --baseline test/visual/baselines/chrome-macos-motion \
   --actual .local-wip/visual/candidate --output .local-wip/visual/report
 ```
 
