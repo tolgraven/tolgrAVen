@@ -9,15 +9,18 @@ const wrapper = path.resolve('scripts/build/compiler-cache.mjs');
 test('compiler cache survives fresh checkouts and invalidates changes, deletion and failures', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'compiler-cache-'));
   try {
-    for (const directory of ['src', 'resources', 'scripts/build']) await fs.mkdir(path.join(root, directory), {recursive: true});
+    for (const directory of ['src', 'resources/public', 'scripts/build']) await fs.mkdir(path.join(root, directory), {recursive: true});
     for (const file of ['project.clj', 'package.json', 'package-lock.json', 'shadow-cljs.edn', 'scripts/build/compiler-cache.mjs']) {
       await fs.writeFile(path.join(root, file), '{}');
     }
+    await fs.writeFile(path.join(root, 'resources/public/image.png'), 'binary fixture');
+    await fs.utimes(path.join(root, 'resources/public/image.png'), 1, 1);
     await fs.writeFile(path.join(root, 'src/macro.clj'), '(defmacro example [] 1)');
     await fs.writeFile(path.join(root, 'src/removed.clj'), '(ns removed)');
     const compile = `const f=require('fs'); f.mkdirSync('target/uberjar+provided/classes',{recursive:true}); f.writeFileSync('target/uberjar+provided/classes/output',f.readFileSync('src/macro.clj')); f.appendFileSync('runs','x'); if(f.existsSync('fail')) process.exit(1);`;
     const run = () => spawnSync(process.execPath, [wrapper, 'aot', path.join(root, 'cache'), process.execPath, '-e', compile], {cwd: root, encoding: 'utf8'});
     assert.equal(run().status, 0);
+    assert.equal((await fs.stat(path.join(root, 'resources/public/image.png'))).mtimeMs, 1000);
     const originalTime = (await fs.stat(path.join(root, 'src/macro.clj'))).mtimeMs;
     await fs.utimes(path.join(root, 'src/macro.clj'), 1, 1);
     await fs.rm(path.join(root, 'target'), {recursive: true});

@@ -37,7 +37,10 @@ for (const file of inputs) {
   // Fresh git clones reset macro/resource timestamps, which Shadow validates.
   // Changed bytes always get a distinct millisecond, even across quick rebuilds.
   const mtime = old?.hash === hash ? old.mtime : Math.max(Date.now(), (old?.mtime || 0) + 1000);
-  await fs.utimes(file, mtime / 1000, mtime / 1000);
+  // Keep media/font freshness and Last-Modified metadata under their own owners.
+  if (/\.(?:clj[cs]?|edn|json|m?js|css|html)$/.test(file)) {
+    await fs.utimes(file, mtime / 1000, mtime / 1000);
+  }
   manifest[file] = {hash, mtime};
 }
 await fs.writeFile(manifestFile + '.new', JSON.stringify(manifest));

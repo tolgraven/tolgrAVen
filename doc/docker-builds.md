@@ -326,9 +326,10 @@ restore the saved App webhook URL and leave native Coolify deploys enabled.
 ### Compiler reuse in ordinary deployments
 
 The frontend release step owns a locked BuildKit compiler cache. Its Node adapter
-hashes source and resource bytes and preserves timestamps only for identical
-inputs, so a fresh Git checkout does not invalidate Shadow's macro/resource
-analysis. Shadow still checks dependency/options changes, and every build emits
+hashes source and resource bytes and preserves source/text-resource timestamps
+only for identical inputs, so a fresh Git checkout does not invalidate Shadow's macro/resource
+analysis. Media/font timestamps stay with their existing asset freshness owners.
+Shadow still checks dependency/options changes, and every build emits
 fresh optimized release output. Closure's final optimization remains necessary.
 
 The backend has a separate locked AOT cache. Classes are restored only when all
