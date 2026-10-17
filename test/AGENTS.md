@@ -27,6 +27,8 @@
   bounded nesting, changed-parent/count conflicts, retained drafts and account
   isolation. Inspect measured opening/closing frames and viewport centering at
   narrow/wide widths; settled screenshots alone do not prove continuous motion.
+  Ready CMS CV fixtures use an existing visit through registered state; verify the
+  first-visit scroll tour separately from editor layout/motion baselines.
 
 - Editor build checks validate the pinned public-entry selection and reject
   unknown/private SDK exports. Production audits reject CodeMirror, Lezer and

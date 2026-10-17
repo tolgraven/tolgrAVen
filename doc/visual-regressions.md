@@ -66,9 +66,10 @@ Full CV category guards retain the reference glyphs, font metrics, gradient,
 label gaps and positions relative to their headings at both widths.
 Full CV reading, CMS layout and carousel cases resolve Carousel through the
 existing managed loader before mounting CV, after Content Editor for CMS cases.
-They compare the ready native surface and its visit, fullscreen and interaction
-clocks. Controlled loader and loading tests retain acquisition, fallback visibility
-and disposal coverage. Every observed native clock is still compared strictly.
+They compare the ready native surface and fullscreen/interaction clocks. CMS
+editing uses an existing visit; dedicated visit checks retain the first-visit tour.
+Controlled loader and loading tests retain acquisition, fallback visibility and
+disposal coverage. Every observed native clock is still compared strictly.
 The open-menu cases also hit-test each visible native toolbar control; positive
 rectangles alone cannot detect a decorative cover intercepting the controls.
 The original editor comparison fixture remains unchanged.
@@ -106,7 +107,8 @@ validated records and rejects provider acquisition and writes. Capture requires
 formatted excerpts, metadata, tags, truncation links, paragraph margins of one em
 and nonoverlapping native row geometry at both widths. Count updates must show
 correct singular/plural labels, remove zero/absent labels, and retain their native
-metadata placement. These cases do not verify live count acquisition, cold
+metadata placement, including its original one-em metadata gap and same-row
+alignment. These cases do not verify live count acquisition, cold
 hydration or navigation; those need separate checks.
 
 Chat, GPT and public-profile fixtures retain their Home section/module parents.

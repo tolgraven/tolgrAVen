@@ -552,6 +552,9 @@
                 (editor/install-cv-visit!))
               (when (#{"cms-services" "cms-cv" "cms-gallery"} component)
                 (editor/install-cms! component))
+              (when (= component "cms-cv")
+                ;; Ready editing layout: keep native fullscreen, omit the first-visit tour.
+                (r/dispatch-sync [:state [:cv :visited] true]))
               (when composer?
                 ;; Only these cases deny provider I/O. The real comment owner
                 ;; supplies :library? false and never needs a post draft or Auth.
