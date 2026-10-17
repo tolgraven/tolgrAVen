@@ -177,7 +177,54 @@
   (is (nil? (server/route-file "/%2e%2e/private")))
   (is (= 400 (:status (server/handler {:uri "/%2e%2e/private"}))))
   (is (= 200 (:status (server/handler {:uri "/fixtures/live.html"}))))
+  (is (= "test/fixtures/docs/index.html.gz" (str (server/route-file "/fixtures/docs/index.html"))))
+  (is (= "test/fixtures/docs/docs.html.gz" (str (server/route-file "/fixtures/docs/docs.html"))))
+  (is (= "test/browser/docs/private.html" (str (server/route-file "/fixtures/docs/private.html"))))
   (is (= "resources/public/js/tests/js/test.js" (str (server/route-file "/js/test.js")))))
+
+(deftest static-docs-fixtures-retain-the-reviewed-generated-bytes
+  (doseq [[page size digest]
+          [["index" 379373 "0274b19eccfd0cf20da50f54d4c3e9056a214f44a0ecafc7866373effbebf757"]
+           ["docs" 92834 "619f164b2dde82aaf464af42e475177c91e36926cc08cece2431f20660865ce2"]]]
+    (let [response (server/handler {:uri (str "/fixtures/docs/" page ".html")})
+          body (:body response)
+          actual (format "%064x" (java.math.BigInteger.
+                                   1 (.digest (java.security.MessageDigest/getInstance "SHA-256") body)))]
+      (is (= 200 (:status response)))
+      (is (= "text/html; charset=utf-8" (get-in response [:headers "content-type"])))
+      (is (= "no-store" (get-in response [:headers "cache-control"])))
+      (is (nil? (get-in response [:headers "content-encoding"])) "The response is already decoded HTML")
+      (is (= size (alength body)))
+      (is (= digest actual)))))
+
+(deftest pinned-docs-do-not-fall-back-to-generated-or-unrelated-files
+  (with-redefs [fs/regular-file? (constantly false)]
+    (is (= 404 (:status (server/handler {:uri "/fixtures/docs/index.html"}))))
+    (is (= 404 (:status (server/handler {:uri "/fixtures/docs/docs.html"})))))
+  (is (= 400 (:status (server/handler {:uri "/fixtures/docs/%2e%2e/private"}))))
+  (is (= 404 (:status (server/handler {:uri "/fixtures/docs/index.html.gz"}))))
+  (let [response (server/handler {:uri "/fixtures/live.html"})]
+    (is (= 200 (:status response)))
+    (is (= "text/html; charset=utf-8" (get-in response [:headers "content-type"])))
+    (is (= (fs/file "test/browser/live.html") (:body response))
+        "Ordinary assets remain native files, rather than entering Docs decoding")))
+
+(deftest native-neovim-fixtures-scope-isolation-and-bundle-routing
+  (doseq [uri ["/fixtures/neovim.html" "/fixtures/neovim-visual.html"
+               "/vendor/neovim/nvim-profile-worker.js" "/vendor/neovim/nvim.wasm"]]
+    (let [response (server/handler {:uri uri})]
+      (is (= 200 (:status response)))
+      (is (= "same-origin" (get-in response [:headers "Cross-Origin-Opener-Policy"])))
+      (is (= "require-corp" (get-in response [:headers "Cross-Origin-Embedder-Policy"])))))
+  (doseq [uri ["/fixtures/neovim-unsupported.html" "/fixtures/visual.html"]]
+    (let [response (server/handler {:uri uri})]
+      (is (= 200 (:status response)))
+      (is (nil? (get-in response [:headers "Cross-Origin-Opener-Policy"])))
+      (is (nil? (get-in response [:headers "Cross-Origin-Embedder-Policy"])))))
+  (is (= "application/wasm" (get-in (server/handler {:uri "/vendor/neovim/nvim.wasm"}) [:headers "content-type"])))
+  (is (= "resources/public/js/neovim-check/main.js" (str (server/route-file "/js/neovim-check/main.js"))))
+  (is (= "resources/public/js/neovim-check/cljs-runtime/website.neovim_fixture.js"
+         (str (server/route-file "/js/neovim-check/cljs-runtime/website.neovim_fixture.js")))))
 
 (deftest child-timeout-is-enforced
   (let [start (System/nanoTime)]

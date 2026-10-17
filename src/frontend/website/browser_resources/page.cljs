@@ -19,7 +19,9 @@
                            (not (:hydrate? @restore/*context))
                            (or (not layout?) (restore/layout-ready?))
                            (or (nil? deadline) (not (.-timeRemaining deadline))
-                               (>= (.timeRemaining deadline) 8)))
+                               ;; A native idle slice can be small; positive budget is enough
+                               ;; to initiate deferred acquisition after the painted-page gates.
+                               (pos? (.timeRemaining deadline))))
                     (let [now (.now js/performance)
                           since (or @*ready-since now)]
                       (reset! *ready-since since)

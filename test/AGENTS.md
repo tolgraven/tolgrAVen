@@ -1,9 +1,27 @@
 # Verification workflows
-- Technical UI changes require the native pixel and geometry comparison gate in
+- Technical UI changes require the exact native layout comparison gate in
   `doc/visual-regressions.md` alongside interaction/motion checks. Capture matching
   narrow/wide states and inspect differences; never refresh approved goldens to
   conceal a regression. Missing/unapproved baselines are verification gaps, not
-  passing results. Extend `test/visual/suite.json` for new rendered states.
+  passing results. Baseline case/tile JSON may use lossless gzip, with exactly one
+  encoding per record and unchanged approval metadata. Geometry mode verifies boxes and computed appearance; pixel
+  parity requires matching raster captures. Raster interaction cases retain their
+  actual open/hovered viewport before complete-document scrolling; assert the
+  transient surface immediately before and after its PNG; preserve failed images
+  without completion records when acquisition dismisses the interaction. Never tag later scrolled
+  tiles with hover evidence from an earlier viewport. Genuine hover cases use the configured
+  Chrome MCP, observed accessibility UIDs verified against native selectors, and
+  an unhovered starting target; synthetic mouse events do not prove CSS hover.
+  Keep native page/component parents and stylesheet precedence groups (`shell`
+  before `modules`) in fixtures. React stylesheet preinitialization must append
+  lazy feature styles after the shell, as on actual pages. Compare native CSS
+  declarations and triggered keyframes/timing with
+  `--require-motion`; settled geometry is not a motion pass. Exact captured instances
+  and IDs remain default. Explicit CSS-definition/React client-ID policies must
+  retain raw differences, retain authored CSS/IDs and reject child coverage gaps,
+  and label captured-instance differences; native motion/IDREF checks stay separate. Observe real external
+  Back before interaction, including delayed and pseudo motion, without fabricated
+  history/restore state. Missing motion baselines remain explicit gaps. Extend `test/visual/suite.json` for new rendered states.
 - CMS visual comparisons use `editor-visual.html` and the original commit's
   components, identical seed data/assets and viewport dimensions. Capture actual
   viewports and separate scrolled sections; full-page capture can repaint filtered
@@ -13,6 +31,8 @@
   bounded nesting, changed-parent/count conflicts, retained drafts and account
   isolation. Inspect measured opening/closing frames and viewport centering at
   narrow/wide widths; settled screenshots alone do not prove continuous motion.
+  Ready CMS CV fixtures use an existing visit through registered state; verify the
+  first-visit scroll tour separately from editor layout/motion baselines.
 
 - Editor build checks validate the pinned public-entry selection and reject
   unknown/private SDK exports. Production audits reject CodeMirror, Lezer and
@@ -41,17 +61,30 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   app-db mutation, dangling subscriptions and forced React flushes.
   Render frames do not establish asynchronous source completion; wait for the
   mounted result or result event before asserting loaded/error state.
+  Collect related native geometry before reporting assertions: the browser test
+  display can reflow the document and move fixtures mounted below its progress.
 - Native ref tests cover forwarded React 19 cleanup, legacy nil callbacks,
   replacement/unmount and plain atom/object refs. Keyed state tests
   protect the isolated Reagent 2.0.1 Hiccup metadata compatibility boundary.
-- Deferred hydration tests cover cached child-before-parent commit, overlapping
-  ownership, discarded renders, StrictMode cleanup and stale document completion.
-  Preserve the original batching adapter after every test/unmount.
+- Deferred hydration tests cover cached completion, independently pending
+  boundaries, changed props, discarded renders, StrictMode and stale completion
+  after navigation/unmount. Require ordinary shell controls to commit before
+  unrelated lazy gates release, retaining native SSR nodes and Reagent batching.
+  Exercise the real controlled Search input while code is held: check immediate
+  DOM value, subscribed query and rendered styled text together. Observe original
+  SSR-node removal/hiding continuously; zero raw-fallback count does not prove
+  retention. Repeat trusted native typing alongside fixture input events, and use
+  `/fixtures/shell-hydration-tests.html` in a fresh document for React lifecycle
+  diagnostics that React deduplicates.
+  Drain acquisitions queued by released Promise gates before restoring transports.
   Scoped-state tests use native subscription handles and event writes; persistence
   checks cover pure nonpersistent reads, idempotent eager/subscription acquisition,
   late restoration versus edits, accepted/rejected transactions and explicit deletions.
 - `bb test:scripts` includes bounded Node document-image adapter fixtures. They
   verify phase/gate ownership and cleanup; real-browser checks verify painted motion.
+- Live motion/history checks require the complete app frame inside the outer
+  viewport; keep growing diagnostics in their own bounded scroll area below it. Reject clipped scenes before
+  making assertions about visible motion. See `doc/testing.md`.
 - Unit/component tests may replace transport boundaries. Live integration must use
   real routes, module loaders and service bindings; do not inject fixture app state.
 - Boot checks dispatch the real startup/stop events and mount/unmount the common
@@ -92,6 +125,39 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   SPA Back and external Back, looking for flashes, jumps and replayed animations.
   SSR query variants retain separate HTML/state, reuse only matching fresh public
   data, and never extend freshness without a successful provider read.
+- Infinite-clock alignment acknowledges only its own exact delayed backwards seek.
+  Native animationend from that seek retains captured timing/keyframes; unexplained
+  ends, changed definitions, another object and later missed resumes still fail.
+- Visual captures return one complete geometry fixture per MCP request. Pin suite
+  bytes/hash and Git head before browser work; changed suite bytes invalidate
+  completion metadata while preserving partial evidence and owned-page cleanup.
+  Foreground the owned capture tab explicitly before measurement; MCP focus/visibility
+  emulation does not establish physical tab activation. Geometry-only capture parks
+  the native pointer outside all iframe bounds and verifies separation plus exact
+  child viewport/DPR before and after actions.
+- Same-origin frame captures include their own native geometry and CSS motion.
+  Preserve sandbox permissions. Late attachment passes only for fully inspected,
+  script-disabled documents with no authored/dormant/active motion; otherwise report
+  the observation gap. Cross-origin and shadow roots still require their own proof.
+- Hover visual states use observed accessibility snapshot UIDs through configured
+  Chrome MCP, verify their native selector/`:hover` result, and park the pointer
+  on task-owned driver markup before navigation. Keep real keyboard traversal
+  distinct from programmatic focus. Dormant motion rules omit ordinary endpoint
+  declarations unless an actual captured state exercises them.
+- Shell-panel visual fixtures retain native page-sibling placement and module
+  presence. Use already-ready service state/public display options for UI-only
+  login/register checks; never submit Auth/contact or mutate Settings. Query-link
+  controllers and actual provider results need separate live verification.
+- Comment-composer visual states retain the real comment parent and lazy owner.
+  Seed local form text through events; exercise native mode/Cancel controls and
+  assert preview, owner disposal and zero provider I/O. Never Submit or upload.
+- Docs visual fixtures retain the native header sibling before the Docs-owned
+  page so sticky banner offsets match the real route. They use the reviewed
+  lossless HTML corpus in `test/fixtures/docs`, decoded by the test server at the
+  two fixed fixture URLs.
+  Keep decoded bytes stable; current-source Codox generation is a separate check.
+  Acquire each new public module's native sheets only in its own case;
+  shared-head additions change every case's dormant motion declaration inventory.
 - Regenerate Node-rendered fixtures before the browser suite. Check final assertion
   results, running Shadow warnings and browser logs; successful compilation is not
   a passing browser test or proof of live CMS integration.
@@ -131,7 +197,7 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   Linked snippets must retain navigation without nested controls. Test raw-pre
   provenance collisions and option forwarding through the normal Markdown wrapper;
   copying folded/numbered blocks must preserve the full original source.
-  Verify temporary transition batching is released on unmount and early navigation.
+  Verify deferred boundaries leave global batching unchanged through unmount and navigation.
   Formatter acquisition waits for
   hydration, load, page readiness and painted idle frames. Plain pages never
   acquire it; new SPA code uses the normal loader immediately.
@@ -144,8 +210,11 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   failure/stale completion, disabled intent, reduced motion and local returns.
 - Live drivers share the test-origin reset adapter: close the outgoing frame,
   then clear saved documents through the worker's serialized protocol before
-  clearing browser storage. Network SSR runs one original site/hero entrance across hydration; paired
-  restoration stays settled without replay; ordinary SPA motion remains enabled.
+  deleting only IndexedDB `tolgraven-component-cache` and clearing small browser
+  stores. A blocked/failed/timed-out deletion fails the cold check; reset is
+  restricted to the dedicated loopback test driver. Network SSR runs one original
+  site/hero entrance across hydration; paired restoration stays settled without
+  replay; ordinary SPA motion remains enabled.
 - Live motion checks assert hero decode before network reveal, one document
   animation clock across hydration for cold/cached SSR, settled paired returns,
   and simultaneous 250ms linear fades and an opaque sticky
@@ -161,8 +230,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   `bb test:scripts`.
 
 - Icon SVG checks cover literal/reader-safe declarations, shared/module ownership,
-  original glyph geometry/baseline and font-free masks. Every exported outline
-  must fit its viewport, including overhangs; expanded masks retain layout metrics.
+  original glyph geometry/baseline and native font-glyph rules. Every exported outline
+  must fit its viewport, including overhangs. Native glyph checks preserve fractional
+  control dimensions and the original alignment inherited by relocated panels.
   Python checks require the
   optional authoring fontTools environment described in `doc/styles.md`.
   Icon font checks preserve selected glyph outlines/metrics, verify disjoint core
@@ -270,9 +340,24 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   worktrees, unavailable stores and exclusion of prompts/unrelated sessions.
   It runs with `bb test:scripts`; no browser or
   Java build is involved.
+- Readonly Neovim visual states are standalone top-level cases even in geometry
+  mode. Keep the native grid/worker and scoped COOP/COEP policy; the unsupported
+  document omits isolation. Its native defpage owner needs the target's ordinary
+  site-reader hooks, eager development validation and registered route
+  subscriptions. Await the fixture's owned disposal hook after capture and on
+  failure, asserting worker termination before starting the next session.
 
 - CV visit tests mount the real CV, await persisted snapshot restoration, retain
   legacy flags, and verify SPA/remount/reload suppression plus stale-timer guards
   and exact scroll return. `cv-visit-motion.html?component=cv` measures real
   storage-backed motion from a nonzero origin; reload the same isolated context
-  to verify that the tour and focus no longer run.
+  to verify that the tour and focus no longer run. That page explicitly uses
+  `init-cv-visit!`; ordinary visual CV/CMS captures use an in-memory visit transport
+  while retaining the native mount, durable claim and delayed module events.
+
+- Messaging visual fixtures retain Home/module parents and managed query contracts;
+  local drafts use form events and all provider writes fail closed. Include multiple
+  GPT prompt/reply pairs. Published widget fixtures use the native Markdown catalog,
+  and diagnostics keep their error portal. Experiments acquire their own styles;
+  preserve unfinished model-viewer behavior. Pending SoundCloud geometry does not
+  prove external player paint or running video behavior.

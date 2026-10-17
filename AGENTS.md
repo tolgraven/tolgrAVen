@@ -274,8 +274,9 @@ sessions' tabs and restore any borrowed tab when finished.
   budget. Popup-only modules may declare `:ssr-styles :deferred`; Optimus
   fingerprints each bundle separately. Production packaging prepares its inventory
   once; runtime imports the validated artifact without minification or image conversion.
-  Literal component/module `:icons` export SVG masks into the same style inventory;
-  `bb fonts:icons` regenerates committed glyph assets without browser font swaps.
+  Literal component/module `:icons` export native font-glyph rules into the same
+  style inventory; small font faces live in the shell. `bb fonts:icons` also retains
+  committed SVG exports. Preserve original glyph metrics and rasterization.
   Text faces stay consumer-scoped; `defc`'s `:font` feature owns controlled late
   upgrades independently of stylesheet/module readiness.
   Production asset preparation prunes unused selectors, custom properties,

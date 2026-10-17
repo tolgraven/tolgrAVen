@@ -6,6 +6,8 @@
 
 (def spec
   {:bundle/depends-on #{:main :carousel}
+   :icons ["solid/graduation-cap" "solid/briefcase" "solid/heart"
+           "solid/code" "solid/calculator" "solid/globe"]
    :content [:cv]
    :pages pages/spec
    :view {:page #'view/<page>}})

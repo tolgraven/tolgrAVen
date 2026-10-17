@@ -332,49 +332,114 @@
 
 (deftest managed-content-waits-for-delayed-section-recovery
   (async done
-    (-> (go-promise
-          (let [before @r/*app-db
-                failures @status/*failures
-                original-request content/request!
-                original-timeout data/default-timeout-ms
-                adapter (get @data/*sources :strapi)
-                resource {:source :strapi, :keys [:story]}]
-            (reset! r/*app-db {:content {}})
-            (reset! content/*pending {})
-            (reset! status/*failures {})
-            ;; Scale the same two-attempt/default-deadline relationship down.
-            ;; Recovery (70ms) outlives the ordinary dependency budget (50ms).
-            (set! data/default-timeout-ms 50)
-            (data/register-source! :strapi (assoc adapter :timeout-ms 150))
-            (set! content/request!
-                  (fn [ks]
-                    (js/Promise.
-                      (fn [resolve reject]
-                        (js/setTimeout
-                          (fn []
-                            (if (= ks [:story])
-                              (do (r/dispatch-sync [:content/install
-                                                    {:version contract/version
-                                                     :content {:story {:title "Recovered"}}}])
-                                  (resolve nil))
-                              (reject (js/Error. "Unavailable module config"))))
-                          35)))))
-            (let [healthy (data/ensure! resource)
-                  unavailable (-> (content/ensure! [:docs]) (.catch (fn [_] nil)))]
-              (-> (js/Promise.all #js [healthy unavailable])
-                  (.then (fn [values]
-                           (is (= "Recovered" (get-in (aget values 0) [:story :title])))
-                           (is (= :ready (:status (data/snapshot resource))))
-                           (is (= #{[:strapi [:docs]]} (set (keys @status/*failures))))))
-                  (.finally (fn []
-                              (data/invalidate! #{resource})
-                              (data/register-source! :strapi adapter)
-                              (set! data/default-timeout-ms original-timeout)
-                              (set! content/request! original-request)
-                              (reset! r/*app-db before)
-                              (reset! status/*failures failures)))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+    (let [before @r/*app-db
+          failures @status/*failures
+          original-request content/request!
+          original-timeout data/default-timeout-ms
+          original-set-timeout js/setTimeout
+          original-clear-timeout js/clearTimeout
+          adapter (get @data/*sources :strapi)
+          resource {:source :strapi, :keys [:story]}
+          *now (atom 0)
+          *timers (atom {})
+          *timer-ids (atom #{})
+          *deadline? (atom false)
+          *requests (atom [])
+          *rejects (atom [])
+          *closed? (atom false)
+          *consumers (atom [])
+          settled! (fn [promise] (.catch (js/Promise.resolve promise) (fn [_] nil)))
+          schedule! (fn [callback milliseconds]
+                      (let [id (js-obj)]
+                        (swap! *timer-ids conj id)
+                        (swap! *timers assoc id {:at (+ @*now milliseconds), :callback callback})
+                        id))
+          advance! (fn [time]
+                     (loop []
+                       (when-let [[id {:keys [at callback]}]
+                                  (first (sort-by (comp :at val)
+                                           (filter #(<= (:at (val %)) time) @*timers)))]
+                         (reset! *now at)
+                         (swap! *timers dissoc id)
+                         (callback)
+                         (recur)))
+                     (reset! *now time))]
+      ;; Capture only this acquisition's deadline. Transport gates share its
+      ;; clock; unrelated timers and native queue ticks keep their own scheduler.
+      (set! js/setTimeout
+        (fn [callback milliseconds & args]
+          (if (and @*deadline? (#{50 150} milliseconds))
+            (schedule! callback milliseconds)
+            (.apply original-set-timeout js/window (to-array (into [callback milliseconds] args))))))
+      (set! js/clearTimeout
+        (fn [id]
+          (if (contains? @*timer-ids id)
+            (swap! *timers dissoc id)
+            (original-clear-timeout id))))
+      (reset! r/*app-db {:content {}})
+      (reset! content/*pending {})
+      (reset! status/*failures {})
+      (set! data/default-timeout-ms 50)
+      (data/register-source! :strapi (assoc adapter :timeout-ms 150))
+      (set! content/request!
+        (fn [ks]
+          (swap! *requests conj ks)
+          (if @*closed?
+            (js/Promise.reject (js/Error. "Fixture closed"))
+            (js/Promise.
+              (fn [resolve reject]
+                (swap! *rejects conj reject)
+                (schedule!
+                  (fn []
+                    (if (= ks [:story])
+                      (do (r/dispatch-sync [:content/install
+                                            {:version contract/version
+                                             :content {:story {:title "Recovered"}}}])
+                          (resolve nil))
+                      (reject (js/Error. "Unavailable module config"))))
+                  35))))))
+      (-> (go-promise
+            (let [healthy (try
+                            (reset! *deadline? true)
+                            (data/ensure! resource)
+                            (finally (reset! *deadline? false)))
+                  unavailable (settled! (content/ensure! [:docs]))]
+              ;; Attach rejection handlers before advancing the deadline clock.
+              (reset! *consumers [(settled! healthy) unavailable])
+              (await! (support/wait-for! #(= [[:docs :story]] @*requests)))
+              (advance! 35)
+              (await! (support/wait-for! #(= [[:docs :story] [:docs] [:story]] @*requests)))
+              (advance! 50)
+              (await! (js/Promise.resolve nil))
+              (is (= :loading (:status (data/snapshot resource)))
+                  "Recovery remains pending beyond the ordinary 50ms budget")
+              (is (not (contains? (:content @r/*app-db) :story)))
+              (advance! 70)
+              (let [values (await! (js/Promise.all #js [healthy unavailable]))]
+                (is (= "Recovered" (get-in (aget values 0) [:story :title])))
+                (is (= :ready (:status (data/snapshot resource))))
+                (is (= #{[:strapi [:docs]]} (set (keys @status/*failures)))))))
+          (.catch (fn [error] (is false (str error))))
+          (.finally
+            (fn []
+              ;; A failed assertion/wait must not leave a transport callback that
+              ;; installs content after this fixture restores the application's db.
+              (reset! *closed? true)
+              (let [pending (concat @*consumers (vals @content/*pending))]
+                (data/invalidate! #{resource})
+                (doseq [reject @*rejects] (reject (js/Error. "Fixture closed")))
+                (reset! *timers {})
+                (js/Promise.all (into-array (map settled! pending))))))
+          (.finally
+            (fn []
+              (set! js/setTimeout original-set-timeout)
+              (set! js/clearTimeout original-clear-timeout)
+              (data/register-source! :strapi adapter)
+              (set! data/default-timeout-ms original-timeout)
+              (set! content/request! original-request)
+              (reset! r/*app-db before)
+              (reset! status/*failures failures)
+              (done)))))))
 
 (deftest cms-managed-deadline-includes-both-transport-attempts
   (is (> (:timeout-ms (get @data/*sources :strapi)) (* 2 content/request-timeout-ms))))

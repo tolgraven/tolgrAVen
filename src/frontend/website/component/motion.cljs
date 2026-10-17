@@ -73,6 +73,12 @@
     (reduce max 0 (map-indexed (fn [i duration]
                                 (+ duration (nth delays (mod i (count delays))))) durations))))
 
+(def exit-options-schema
+  [:map
+   [:?class [:or :string :keyword [:sequential [:or :string :keyword]]]]
+   [:?timeout-ms [:and number? [:>= 0]]]
+   [:?retain-layout? :boolean]])
+
 (defn finish-animation!
   "Wait for root animations/transitions, bounded even for paused/infinite CSS.
    Cleanup cancels completion, not the browser's styles, so re-entry can reverse."
@@ -90,17 +96,23 @@
                          animations (when (.-getAnimations element) (array-seq (.getAnimations element)))
                          ;; Computed animation timing includes iterations/delays;
                          ;; CSS duration alone can cut finite keyframes short.
-                         duration (reduce max duration
+                         duration' (reduce max duration
                                           (keep (fn [animation]
                                                   (when-let [effect (.-effect animation)]
                                                     (let [end (.-endTime (.getComputedTiming effect))]
                                                       (when (js/isFinite end) end)))) animations))
-                         timeout (or (:timeout-ms options) (max 50 (+ duration 100)))]
+                         timeout (or (:timeout-ms options) (max 50 (+ duration' 100)))]
                      (reset! *timer (js/setTimeout done! (min 10000 timeout)))
-                     (if (seq animations)
+                     (cond
+                       (zero? duration') (done!)
+                       ;; A reversed entrance can finish before an arriving
+                       ;; sibling paints. Layout placeholders keep the existing
+                       ;; bounded CSS exit window, even if its clock shortens.
+                       (:retain-layout? options) nil
+                       (seq animations)
                        (-> (js/Promise.allSettled (into-array (map #(.-finished %) animations)))
                            (.then (fn [_] (done!))))
-                       (when (or (.-getAnimations element) (zero? duration)) (done!)))))))]
+                       (.-getAnimations element) (done!))))))]
     #(do (reset! *active? false)
          (js/cancelAnimationFrame frame)
          (when @*timer (js/clearTimeout @*timer)))))
@@ -158,6 +170,7 @@
           settled? (and offscreen? (:settle-offscreen? appearance))
           defer? (and (not= false (:viewport? appearance))
                      (not (:force appearance)) offscreen? (not settled?)
+                     (not (and (:skip-enter? state) (restore/document-return?)))
                      (or (not (:skip-enter? state)) (:document-enter? state)))]
       ;; Layout entrances must retain their natural offscreen height. Waiting
       ;; for a zero-height row to intersect would also hide the rows below it.
@@ -186,6 +199,7 @@
         ;; Ready first-screen SSR remains visible. Offscreen :seen owners still
         ;; observe the viewport after hydration and enter when scrolled into view.
         skip? (or @(:settled-offscreen? state)
+                  (and (:skip-enter? state) (restore/document-return?))
                   (and (:skip-enter? state) (not (:observe-document? state)) (not automatic?)))
         signature [element (boolean seen) (boolean (:appear options)) thresholds once? margin reduced? skip? (:force appearance)]]
     (when (not= signature @(:signature state))
@@ -220,25 +234,42 @@
                (not (:remembered? options)))
       (r/dispatch [:component-motion/seen (:remember-key appearance)]))
     (let [presence (:presence options)
-          signature [presence (:exit options) reduced? element]]
+          document-phase @(:document-phase state)
+          signature [presence (:exit options) reduced? element document-phase]]
       (when (not= signature @(:presence state))
         (stop! state :exit)
         (reset! (:presence state) signature)
-        (when (and (= :exiting (:phase presence)) (:finish! presence))
-          (let [cleanup! (if (or reduced? (nil? element) (not (:exit options)))
+        (if (and (= :exiting (:phase presence)) (:finish! presence))
+          (let [cleanup! (cond
+                           (or reduced? (nil? element) (not (:exit options)))
                            (let [*active? (atom true)]
                              (js/queueMicrotask #(when @*active? ((:finish! presence))))
                              #(reset! *active? false))
+
+                           (not= :ordinary document-phase)
+                           (do
+                             (reset! (:document-phase state) :preparing-exit)
+                             ;; Commit the filled SSR clock's final appearance
+                             ;; without its animation before starting CSS exit.
+                             (next-frame! #(reset! (:document-phase state) :ordinary)))
+
+                           :else
                            (finish-animation! element (config (:exit options)) (:finish! presence)))]
-            (swap! (:stops state) assoc :exit cleanup!)))))))
+            (swap! (:stops state) assoc :exit cleanup!))
+          (when (= :preparing-exit document-phase)
+            ;; Re-entry cancels the pending exit without reviving SSR clocks.
+            (reset! (:document-phase state) :ordinary)))))))
 
 (def motion-feature
   {:setup (fn [options]
-            (let [skip? (skip-enter? options)]
+            (let [skip? (skip-enter? options)
+                  document? (and (not (restore/document-return?)) (document-entrance? options))]
               {:options options
                :skip-enter? skip?
-               :document-enter? (document-entrance? options)
+               :document-enter? document?
+               :document-phase (r/atom (if document? :document :ordinary))
                :observe-document? (and skip? (restore/document-enter?) (:seen options)
+                                      (not (restore/document-return?))
                                       (not (:remembered? options)))
                :visible? (r/atom skip?)
                :viewport-enter? (atom nil)
@@ -263,16 +294,22 @@
                    visible? (if state @(:visible? state) (skip-enter? options))
                    reduced? (boolean (and state @(:reduced? state)))
                    settling? (boolean (and state @(:settling-offscreen? state)))
-                   document-enter? (if state (and (:document-enter? state) (:appear options)
-                                                  (not @(:settled-offscreen? state))
-                                                  (not (:seen options)) (not @(:viewport-enter? state)))
-                                     (document-entrance? options))
+                   document-phase (when state @(:document-phase state))
+                   preparing-exit? (and exiting? state (not= :ordinary document-phase))
+                   document-enter? (and (not exiting?)
+                                        (or (nil? state) (= :document document-phase))
+                                        (if state (and (not (restore/document-return?))
+                                                       (:document-enter? state) (:appear options)
+                                                       (not @(:settled-offscreen? state))
+                                                       (not (:seen options)) (not @(:viewport-enter? state)))
+                                          (document-entrance? options)))
                    base (attrs form)
                    classes (string/join " " (remove string/blank?
                                                   [(class-text (:class base))
                                                    "appear-wrapper" (class-text (:class appearance))
-                                                   (when (and (not exiting?) (or visible? reduced?)) "appeared")
-                                                   (when exiting? (str "exiting " (class-text (:class (config (:exit options))))))]))]
+                                                   (when (and (or (not exiting?) preparing-exit?) (or visible? reduced?)) "appeared")
+                                                   (when (and exiting? (not preparing-exit?))
+                                                     (str "exiting " (class-text (:class (config (:exit options))))))]))]
                {:form (when form
                         (with-attrs form
                           (cond-> (assoc base :class classes)

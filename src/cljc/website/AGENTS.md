@@ -5,6 +5,8 @@
   Enriched media carries its public original `:cms-src` for editing conflicts;
   picture adapters strip it before native markup. Native values stay unchanged
   under the browser's metadata-based presentation binding.
+  CV category labels use the shared nonempty, bounded string contract rather
+  than a site-specific enum; creation retains column identity/count checks.
 
 Keep this guide current. Shared platform data shapes, schema infrastructure,
 query constructors and normalization belong here so CLJ and CLJS use the same
@@ -20,10 +22,14 @@ implementation in `src/frontend/website/modules/<module>/`, also on the JVM sour
   with `navigation/component-routes` under a named host page; retain typed native
   parameters and complete matching instead of parsing unmatched URL prefixes.
   `:document-target` declares a constant target ID or a prefix plus selection
-  parameter for positioning cold SSR before its document entrance. It is data,
+  parameter for smoothly positioning cold SSR as its document entrance opens. It is data,
   consumed by `page/document-target` and the standalone native document gate.
 - Public data plans are adapter-independent. Server reads and managed browser
   subscriptions consume the same filters, projections, batching and row shape.
+  Declared count projections may read a related table with fixed filters and a
+  normalized result field. Use the declared canonical document field for foreign
+  keys and include the related table in scoped realtime invalidation. Blog summary
+  root counts read IDs/parents only; never acquire comment bodies for archive labels.
 - Preserve EDN keys/types in persistence contracts. JSON is converted and normalized
   only at transport boundaries. Never include credentials in public snapshots.
 - `ssr/contract_schema.cljc` owns paired renderer responses and module/export
@@ -52,6 +58,9 @@ implementation in `src/frontend/website/modules/<module>/`, also on the JVM sour
   without importing the interpreter into the production browser shell.
   `validation.cljc` is a stable boundary; its engine/registry are eager on JVM,
   development and Node SSR, and installed by the browser `:coercion` module.
+  The custom release registry must retain every constructor used by owned
+  contracts, including negated repository/path exclusions. Exercise actual
+  module schemas in release-registry browser tests before adding constructors.
 
 - Define meaningful new contracts alongside their owner and use them across both
   runtimes. CMS bundles and normalized app-db/provider content have different

@@ -8,7 +8,7 @@
     [website.schema.page-coercion :as page-coercion]
     [reitit.coercion :as coercion]
     [website.service-status :as status]
-    [website.navigation.transition]
+    [website.navigation.transition :as page-transition]
     [website.navigation.component-routes :as component-routes]
     [website.navigation.schema :as navigation-schema]
     [website.macros :refer-macros [defc defpage]]
@@ -108,6 +108,9 @@
 ;; A late module response must never navigate back over a newer URL.
 (defonce *navigation (atom 0))
 
+(r/reg-cofx :navigation/request
+  (fn [coeffects] (assoc coeffects :navigation/request @*navigation)))
+
 (defn landing-dependencies [match]
   [{:source :strapi
     :keys (content/keys-for-route (or (get-in match [:data :page-route])
@@ -166,10 +169,11 @@
         navigate! (fn [component & [pending-code? replace-shell?]]
                     (when (= navigation @*navigation)
                       (if component
-                        (dispatch! (cond-> [(if replace-shell? :common/navigate :page/navigate)
-                                            (cond-> (assoc-in match [:data :view] component)
-                                              pending-code? (assoc-in [:data :controllers] nil))]
-                                     replace-shell? (conj {:replace-shell? true})))
+                        (dispatch! [(if replace-shell? :common/navigate :page/navigate)
+                                    (cond-> (assoc-in match [:data :view] component)
+                                      pending-code? (assoc-in [:data :controllers] nil))
+                                    (cond-> {:navigation-id navigation}
+                                      replace-shell? (assoc :replace-shell? true))])
                         (dispatch! [:state [:error-page] a404/<not-found-page>]))))]
     (cond
       (nil? match)
@@ -208,6 +212,35 @@
 (defonce *route-request (atom 0))
 (declare coercion-failed!)
 
+(r/reg-event-fx :navigation/route-ready
+  {:args [:tuple navigation-schema/route]}
+  (fn [{:keys [db]} [_ match]]
+    (let [previous (:common/route db)
+          view (get-in (l/code-spec (get-in match [:data :module]))
+                       [:view (get-in match [:data :page])])
+          component-only? (and (get-in match [:data :component-route])
+                               (not (get-in db [:state :browser-nav :got-nav]))
+                               view
+                               (= view (get-in previous [:data :view]))
+                               (component-routes/same-page? previous match))]
+      (if component-only?
+        ;; A component tail changes intent within this mounted host. Retain its
+        ;; restoration/appearance context and skip page acquisition/transition.
+        {:db (assoc-in db [:state :scroll :component-focus] {:path (:path match), :scroll? true})
+         :navigation/retain-page (assoc-in match [:data :view] view)}
+        {:navigation/page match}))))
+
+(r/reg-fx :navigation/retain-page
+  (fn [match]
+    (let [navigation (swap! *navigation inc)]
+      (page-transition/retain-page!)
+      (r/dispatch [:common/navigate match {:navigation-id navigation}]))))
+
+(r/reg-fx :navigation/page
+  (fn [match]
+    (when-let [path (:path match)] (ssr/leave! path))
+    (navigate! *navigation r/dispatch l/load-code! match)))
+
 (defn initial-parameters
   "Only the first matching network SSR route may use the server's typed values."
   [match snapshot initial? hydrating?]
@@ -224,8 +257,7 @@
                     ;; Only same-document routing takes ownership from native restoration.
                     (when (pos? @*navigation)
                       (set! (.-scrollRestoration js/history) "manual"))
-                    (when-let [path (:path match)] (ssr/leave! path))
-                    (navigate! *navigation r/dispatch l/load-code! match)))
+                    (r/dispatch [:navigation/route-ready match])))
         parameters (initial-parameters match @ssr/*snapshot
                                        (zero? @*navigation) (:hydrate? @restore/*context))]
     (cond

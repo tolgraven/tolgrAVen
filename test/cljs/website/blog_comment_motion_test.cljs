@@ -7,7 +7,8 @@
             [website.loader.style-catalog :as style-catalog]
             [website.modules.blog.views :as blog]
             [website.modules.blog.comment-views :as comment-views]
-            [website.test-support :as support]))
+            [website.test-support :as support]
+            [website.macros :refer-macros [defc]]))
 
 (defn- tick! [ms]
   (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
@@ -22,7 +23,19 @@
       (let [start (js/performance.now)]
         (letfn [(frame! [samples]
                   (let [elapsed (- (js/performance.now) start)
-                        samples' (conj samples {:time elapsed, :heights (heights element)})]
+                        placeholder (.querySelector element ".blog-comment-collapsed-placeholder")
+                        placeholder-root (some-> placeholder (.closest ".blog-comment-reply"))
+                        samples' (conj samples {:time elapsed
+                                                :heights (heights element)
+                                                :placeholder? (some? placeholder)
+                                                :placeholder-exiting? (boolean (some-> placeholder-root .-classList (.contains "exiting")))
+                                                :native-exit? (boolean
+                                                                (when placeholder-root
+                                                                  (some #(and (= "running" (.-playState %))
+                                                                              (contains? #{"opacity" "transform"} (.-transitionProperty %)))
+                                                                        (array-seq (.getAnimations placeholder-root)))))
+                                                :outer (some-> (.querySelector element ".blog-comment-reply-outer")
+                                                               .getBoundingClientRect .-height)})]
                     (if (> elapsed duration)
                       (resolve samples')
                       (js/requestAnimationFrame #(frame! samples')))))]
@@ -74,6 +87,181 @@
          :appear {:class "reply-height", :settle-offscreen? true, :restore? false}
          :props {:style {"--comment-reveal-delay" (str (* 48 index) "ms")}}
          :children [[:div {:style {:height "4rem"}} (str "Reply " index)]]}])]]]))
+
+(defn- <thread-handoff> [*ready? *expanded? & [delay-ms]]
+  [:section.blog-comments
+   [:div.blog-comments-inner
+    [comment-views/<reply-thread>
+     [^{:key :replies}
+      [:div.blog-comment-reply
+       (when @*ready?
+         [comment-views/<reply-row>
+          {:expanded? @*expanded?
+           :appear {:class "reply-height", :settle-offscreen? true, :restore? false}
+           :props {:style {"--comment-reveal-delay" (str (or delay-ms 0) "ms")}}
+           :children [[:div {:style {:height "4rem"}} "Arriving reply"]]}])]
+      (when (or (not @*ready?) (not @*expanded?))
+        ^{:key :collapsed}
+        [comment-views/<collapsed-reply-view>
+         {:path [42 "root"], :reply-count 1, :loading? (not @*ready?)}])]]]])
+
+(deftest arriving-and-cached-replies-retain-the-collapsed-footprint
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture!))
+                context @restore/*context
+                *ready? (r/atom false)
+                *expanded? (r/atom true)]
+            (try
+              (restore/begin! {})
+              (await! (support/render! root [<thread-handoff> *ready? *expanded?]))
+              (await! (tick! 550))
+              (let [outer (.querySelector element ".blog-comment-reply-outer")
+                    initial (.-height (.getBoundingClientRect outer))]
+                (is (pos? initial))
+                (reset! *ready? true)
+                (r/flush)
+                (let [samples (await! (sample! element 420))]
+                  (is (every? #(>= (:outer %) (- initial 0.5)) samples)
+                      "Removing the loading placeholder cannot expose a zero-height first reply frame")
+                  (is (some #(< initial (:outer %) (- (:outer (last samples)) 1)) samples)
+                      "The container grows beyond the placeholder through intermediate heights"))
+                (is (nil? (.querySelector element ".blog-comment-collapsed-placeholder")))
+                (reset! *expanded? false)
+                (r/flush)
+                (await! (tick! 550))
+                (let [row (.querySelector element ".blog-comment-reply-row")]
+                  (reset! *expanded? true)
+                  (r/flush)
+                  (let [samples (await! (sample! element 420))]
+                    (is (every? #(>= (:outer %) (- initial 0.5)) samples)))
+                  (is (identical? row (.querySelector element ".blog-comment-reply-row")))))
+              (finally (close!) (reset! restore/*context context)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest arriving-replies-retain-a-placeholder-during-a-shortened-reverse
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture!))
+                context @restore/*context
+                *ready? (r/atom false)
+                *expanded? (r/atom true)]
+            (try
+              (restore/begin! {})
+              (await! (support/render! root [<thread-handoff> *ready? *expanded? 48]))
+              (let [outer (.querySelector element ".blog-comment-reply-outer")
+                    placeholder (.closest (.querySelector outer ".blog-comment-collapsed-placeholder")
+                                          ".blog-comment-reply")
+                    initial (.-height (.getBoundingClientRect outer))]
+                ;; Reverse at the first running entrance frame, as a nested
+                ;; cached thread can do. Native CSS shortens the reversed exit.
+                (loop [attempt 0]
+                  (when (and (< attempt 30) (empty? (array-seq (.getAnimations placeholder))))
+                    (await! (js/Promise. js/requestAnimationFrame))
+                    (recur (inc attempt))))
+                (is (some #(= "running" (.-playState %)) (array-seq (.getAnimations placeholder)))
+                    "The placeholder has an actual unfinished native entrance")
+                (reset! *ready? true)
+                (r/flush)
+                (let [samples (await! (sample! element 420))]
+                  (is (every? #(>= (:outer %) (- initial 0.5)) samples)
+                      "A shortened reverse cannot remove the initial footprint before the arriving reply grows")
+                  (is (some #(< initial (:outer %) (- (:outer (last samples)) 1)) samples)
+                      "The native reply still grows through intermediate heights"))
+                (is (nil? (.querySelector outer ".blog-comment-collapsed-placeholder"))))
+              (finally (close!) (reset! restore/*context context)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(defc <automatic-thread-handoff> [*ready? *expanded?]
+  ;; Nested expanded threads can receive cached data before their placeholder's
+  ;; first entrance frame; this is an ordinary mounted lifecycle, not a fake clock.
+  (r/use-layout-effect (fn [] (reset! *ready? true) nil) [])
+  [<thread-handoff> *ready? *expanded?])
+
+(deftest automatic-replies-retain-a-placeholder-that-never-started-entering
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture!))
+                context @restore/*context
+                *ready? (r/atom false)
+                *expanded? (r/atom true)]
+            (try
+              (restore/begin! {})
+              (let [captured (sample! element 500)]
+                (await! (support/render! root [<automatic-thread-handoff> *ready? *expanded?]))
+                (let [samples (await! captured)
+                      started (drop-while #(not (:placeholder? %)) samples)
+                      initial (:outer (first started))]
+                  (is (and initial (pos? initial)) "Observe the real initial placeholder footprint")
+                  (when initial
+                    (is (every? #(>= (:outer %) (- initial 0.5)) started)
+                        "An unstarted entrance cannot retire its layout before the first reply grows"))
+                  (is (some #(and (:placeholder? %) (:placeholder-exiting? %) (not (:native-exit? %))) samples)
+                      "The native placeholder exits without creating a transition from its already-hidden styles")
+                  (is (some #(< 1 (first (:heights %)) (- (first (:heights (last samples))) 1))
+                            (filter #(seq (:heights %)) samples))
+                      "The reply still grows through intermediate heights")
+                  (is (nil? (.querySelector element ".blog-comment-collapsed-placeholder")))))
+              (finally (close!) (reset! restore/*context context)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest hydrated-placeholder-retires-its-document-clock-before-native-exit
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture!))
+                context @restore/*context
+                *ready? (r/atom false)
+                *expanded? (r/atom true)]
+            (try
+              ;; Exercise network SSR entrance policy, unlike the SPA handoff
+              ;; above. Keep its real completed CSS clocks before exit.
+              (restore/begin! {:hydrate? true})
+              (await! (support/render! root [<thread-handoff> *ready? *expanded?]))
+              (let [outer (.querySelector element ".blog-comment-reply-outer")
+                    placeholder (.closest (.querySelector outer ".blog-comment-collapsed-placeholder")
+                                          ".blog-comment-reply")
+                    entrance (vec (array-seq (.getAnimations placeholder)))]
+                (is (= "true" (.getAttribute placeholder "data-document-appear")))
+                (is (= #{"document-opacity" "document-zoom-y"}
+                       (set (map #(.-animationName %) entrance)))
+                    "The native styles supply both original SSR entrance clocks")
+                (await! (js/Promise.allSettled (into-array (map #(.-finished %) entrance))))
+                (is (every? #(= "finished" (.-playState %)) entrance))
+                (restore/hydrated!)
+                (await! (support/settle!))
+                (is (identical? placeholder
+                                (.closest (.querySelector outer ".blog-comment-collapsed-placeholder")
+                                          ".blog-comment-reply")))
+                (is (= "true" (.getAttribute placeholder "data-document-appear"))
+                    "Completing hydration retains the same settled SSR clock")
+                (let [initial (.-height (.getBoundingClientRect outer))]
+                  (is (pos? initial))
+                  (reset! *ready? true)
+                  (r/flush)
+                  (is (.contains outer placeholder) "Presence retains the actual placeholder on exit")
+                  (is (= "true" (.getAttribute placeholder "aria-hidden")))
+                  (is (nil? (.getAttribute placeholder "data-document-appear"))
+                      "An exiting root cannot retain the fill-both SSR entrance")
+                  (let [samples (await! (sample! element 420))]
+                    (is (some #(and (:placeholder-exiting? %) (:native-exit? %)) samples)
+                        "Native exit transitions follow the committed release of the document clock")
+                    (is (every? #(>= (:outer %) (- initial 0.5)) samples)
+                        "Finished SSR clocks cannot remove the placeholder before the reply grows")
+                    (is (some #(and (:placeholder? %) (< (nth (:heights %) 0 0) 1)) samples)
+                        "The placeholder survives the reply's initial zero-height frames")
+                    (is (every? #(or (>= (nth (:heights %) 0 0) (- initial 0.5))
+                                    (:placeholder? %)) samples)
+                        "Only a reply that covers the collapsed footprint can outlive the placeholder")
+                    (is (some #(< initial (:outer %) (- (:outer (last samples)) 1)) samples)
+                        "The handoff includes continuous intermediate container heights"))
+                  (is (not (.contains outer placeholder)))
+                  (is (nil? (.querySelector outer ".blog-comment-collapsed-placeholder")))))
+              (finally (close!) (reset! restore/*context context)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
 
 (deftest late-replies-grow-layout-in-their-entrance-order-and-reverse-on-reentry
   (async done

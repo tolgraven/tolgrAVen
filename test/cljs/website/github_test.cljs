@@ -3,6 +3,9 @@
   (:require [cljs.core.async]
             [cljs.test :refer-macros [async deftest is testing]]
             [clojure.string :as string]
+            [cljs.reader :as edn]
+            [website.ssr.return-contract :as return-contract]
+            [website.ssr.local]
             [malli.core :as m]
             [website.schema.dsl :as dsl]
             [website.modules.github.message :as message]
@@ -12,6 +15,7 @@
             [website.modules.github.subs]
             [website.components.activity :as activity]
             [website.component.data :as data]
+            [website.loader.styles :as styles]
             [website.events]
             [website.subs]
             [website.react :as r]
@@ -88,25 +92,33 @@
                             labels (.querySelector message ".github-commit-titles")
                             line-height (js/parseFloat (.-lineHeight (js/getComputedStyle info)))
                             row-style (js/getComputedStyle row)
+                            padding-left (js/parseFloat (.-paddingLeft row-style))
+                            padding-right (js/parseFloat (.-paddingRight row-style))
+                            ;; The display reporter can move this fixture as it
+                            ;; prints passing assertions above it. Read related
+                            ;; native boxes together before reporting any result.
                             row-rect (.getBoundingClientRect row)
-                            info-rect (.getBoundingClientRect info)]
-                        (is (pos? (js/parseFloat (.-paddingLeft row-style)))
+                            info-rect (.getBoundingClientRect info)
+                            labels-rect (when labels (.getBoundingClientRect labels))
+                            label-rects (when labels
+                                          (mapv #(.getBoundingClientRect %)
+                                                (array-seq (.querySelectorAll labels ":scope > span"))))]
+                        (is (pos? padding-left)
                             "Each row has space between its content and the left border")
-                        (is (pos? (js/parseFloat (.-paddingRight row-style)))
+                        (is (pos? padding-right)
                             "Each row has space between its content and the right border")
                         (is (<= (.-height info-rect) (+ 1 (* 3 line-height)))
                             "Commit text occupies at most three lines")
                         (when labels
-                          (let [labels-rect (.getBoundingClientRect labels)]
-                            (is (<= (js/Math.abs (- (.-top labels-rect) (.-top info-rect))) 1)
-                                "Labels share the message's top row")
-                            (is (>= (.-left labels-rect) (.-right info-rect))
-                                "Labels stay to the right of the text")
-                            (is (< (.-right labels-rect) (.-right row-rect))
-                                "Labels remain inset from the right border")
-                            (doseq [label (array-seq (.querySelectorAll labels ":scope > span"))]
-                              (is (>= (.-left (.getBoundingClientRect label)) (.-right info-rect))
-                                  "Both category and sublabel stay in the right column"))))))
+                          (is (<= (js/Math.abs (- (.-top labels-rect) (.-top info-rect))) 1)
+                              "Labels share the message's top row")
+                          (is (>= (.-left labels-rect) (.-right info-rect))
+                              "Labels stay to the right of the text")
+                          (is (< (.-right labels-rect) (.-right row-rect))
+                              "Labels remain inset from the right border")
+                          (doseq [label-rect label-rects]
+                            (is (>= (.-left label-rect) (.-right info-rect))
+                                "Both category and sublabel stay in the right column")))))
                     (is (= "theme" (.-textContent (.querySelector (.item rows 1) ".subtitle"))))
                     (is (= "scss" (.-textContent (.querySelector (.item rows 1) ".title"))))
                     (let [long-info (.querySelector (.item rows 0) ".info")]
@@ -129,6 +141,27 @@
                   (.remove container))))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
+
+(deftest absent-settings-are-pending-until-an-empty-response-arrives
+  (let [subscribe (r/subscribe-function)
+        *configuration (r/atom nil)]
+    (r/with-framework-bindings
+      [r/subscribe (fn
+                     ([query]
+                      (case (first query)
+                        :github/configuration-result *configuration
+                        :github/get-from (r/atom [nil nil])
+                        (subscribe query)))
+                     ([query options] (subscribe query options)))]
+      (let [pending (r/render-to-static-markup [views/<commits>])]
+        (is (string/includes? pending "aria-busy=\"true\""))
+        (is (string/includes? pending "Loading repository settings…"))
+        (is (not (string/includes? pending "loading-spinner")))
+        (is (not (string/includes? pending "Configure a GitHub"))))
+      (reset! *configuration {:settings nil})
+      (let [empty (r/render-to-static-markup [views/<commits>])]
+        (is (string/includes? empty "Configure a GitHub"))
+        (is (not (string/includes? empty "loading-spinner")))))))
 
 (deftest configured-repository-rejects-old-responses
   (async done
@@ -153,6 +186,132 @@
             (is (= "https://github.com/second-user/second-repo" (await! (support/subscription-value! [:github/website-url]))))
             (r/dispatch-sync [:github/save-commits "second-user" "second-repo" 2 1 {:commits [], :total 0, :complete true}])
             (is (= 0 (await! (support/subscription-value! [:github/commit-count])))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
+
+(deftest paired-repository-returns-retain-query-content-and-resume-pagination
+  (async done
+    (let [restore! (r/make-restore-fn)
+          *requests (atom [])
+          commits [{:sha "abcdef1234567"
+                    :message ["Preserved repository result" nil nil]}]]
+      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (-> (go-promise
+            (doseq [query ["" "theme"]]
+              (reset! *requests [])
+              (r/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:set [:module :github :configuration]
+                                {:settings {:user "return-user", :repo "repo"}}])
+              (r/dispatch-sync [:set [:content :github]
+                                {:commits commits
+                                 :total 2235
+                                 :next-cursor "saved-cursor"
+                                 :complete? false}])
+              (r/dispatch-sync [:set [:state :github]
+                                {:target ["return-user" "repo"]
+                                 :query query
+                                 :generation 7
+                                 :pages-fetched [1]
+                                 :commits-fetched ["abcdef1234567"]
+                                 :pages-pending #{2}
+                                 :commits-pending #{"pending"}}])
+              (r/dispatch-sync [:set [:state :form-field :github] {:search query}])
+              (let [saved (-> (await! (support/state-at! []))
+                              return-contract/state-for pr-str edn/read-string)]
+                (r/dispatch-sync [:init/app-db])
+                (r/dispatch-sync [:page-return/install saved])
+                ;; The loader initializes the restored module before its native
+                ;; Suspense boundary hydrates. It must retain that boundary's text.
+                (r/dispatch-sync [:github/init])
+                (await! (support/settle!))
+                (is (= 2235 (await! (support/subscription-value! [:github/commit-count]))))
+                (is (= commits (await! (support/subscription-value! [:github/commits]))))
+                (is (= query (await! (support/subscription-value! [:form-field [:github :search]]))))
+                (is (empty? @*requests) "Completed page one is not cleared or fetched again")
+                (is (nil? (get-in saved [:state :github :pages-pending])))
+                (is (nil? (get-in saved [:state :github :commits-pending])))
+                (r/dispatch-sync [:github/fetch-commits-next "return-user" "repo"])
+                (await! (support/settle!))
+                (is (= [{:user "return-user", :repo "repo", :q query, :cursor "saved-cursor"}]
+                       (mapv :url-params @*requests))
+                    "Pagination resumes at the saved cursor after pending IO is discarded")
+                (r/dispatch-sync [:github/search "changed query"])
+                (is (= "Loading" (await! (support/subscription-value! [:github/commit-count]))))
+                (r/dispatch-sync [:component-data/install [:module :github :configuration]
+                                  {:settings {:user "other-user", :repo "repo"}}])
+                (r/dispatch-sync [:github/init])
+                (r/dispatch-sync [:github/save-commits "return-user" "repo" 7 2
+                                  {:commits commits, :total 9999, :complete true}])
+                (is (= ["other-user" "repo"]
+                       (await! (support/subscription-value! [:github/get-from]))))
+                (is (= "Loading" (await! (support/subscription-value! [:github/commit-count])))))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
+
+
+(deftest late-disk-restoration-preserves-paired-repository-input
+  (async done
+    (let [restore! (r/make-restore-fn)
+          *requests (atom [])
+          *disk-source (atom nil)
+          *disk-fields (atom nil)
+          commits [{:sha "abcdef1234567"
+                    :message ["Preserved repository result" nil nil]}]]
+      ;; Keep the registered restoration/init events; replace only disk reads
+      ;; and persistence/network effects so no actual draft or provider is changed.
+      (r/reg-cofx :ls #(assoc % :ls {:form-field @*disk-fields}))
+      (r/reg-cofx :ls/restored
+        #(assoc % :ls/restored (when (= :envelope @*disk-source)
+                                {:value @*disk-fields})))
+      (r/reg-fx :ls (fn [_]))
+      (r/reg-fx :ls/track (fn [_]))
+      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (-> (go-promise
+            (doseq [query ["" "theme"]
+                    disk-source [:legacy :envelope]]
+              (reset! *requests [])
+              (reset! *disk-source disk-source)
+              (reset! *disk-fields {:github {:search (if (= query "theme") "" "stale-disk-query")}
+                                   :comment "Unrelated saved draft"})
+              (r/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:ls/get-path [:form-field] [:state :form-field]])
+              (let [fresh-fields (await! (support/state-at! [:state :form-field]))]
+                (is (= @*disk-fields fresh-fields)
+                    "A fresh page still restores its saved search and unrelated draft"))
+              (r/dispatch-sync [:set [:module :github :configuration]
+                                {:settings {:user "return-user", :repo "repo"}}])
+              (r/dispatch-sync [:set [:content :github]
+                                {:commits commits, :total 2235}])
+              (r/dispatch-sync [:set [:state :github]
+                                {:target ["return-user" "repo"]
+                                 :query query
+                                 :generation 7
+                                 :pages-fetched [1]}])
+              (r/dispatch-sync [:set [:state :form-field :github] {:search query}])
+              (let [saved (return-contract/state-for (await! (support/state-at! [])))]
+                (r/dispatch-sync [:init/app-db])
+                (r/dispatch-sync [:page-return/install saved])
+                ;; Native boot applies disk form fields between the exact pair
+                ;; and the optional module's first selective hydration.
+                (r/dispatch-sync [:ls/get-path [:form-field] [:state :form-field]])
+                (r/dispatch-sync [:github/init])
+                (let [{:keys [values unmount!]}
+                      (await! (support/mount-subscriptions!
+                                {:fields [:get :state :form-field]
+                                 :amount [:github/commit-count]
+                                 :commits [:github/commits]
+                                 :generation [:get :state :github :generation]}))]
+                  (try
+                    (let [current (values)]
+                      (is (= query (get-in current [:fields :github :search]))
+                          (str disk-source " must retain the exact paired input"))
+                      (is (= "Unrelated saved draft" (get-in current [:fields :comment]))
+                          "Unrelated drafts still restore")
+                      (is (= 2235 (:amount current)))
+                      (is (= commits (:commits current)))
+                      (is (= 7 (:generation current)))
+                      (is (empty? @*requests) "Completed paired content needs no page-one refetch"))
+                    (finally (unmount!)))))))
           (.catch #(is false (str %)))
           (.finally (fn [] (restore!) (done)))))))
 
@@ -367,18 +526,39 @@
       (-> (go-promise
             (let [root (await! (support/create-root! container))]
               (try
-                (await! (support/render! root [activity/<calendar>
-                                               [{:date "2026-10-12", :count 42, :level 4}]
-                                               [views/<day-details> "detail-failure-test"]]))
-                (is (empty? @*requests) "No day requests before user intent")
-                (.focus (.querySelector container "[data-date]") #js {:preventScroll true})
-                (await! (support/wait-for! #(some-> (.querySelector js/document ".activity-calendar__popup")
-                                                             .-textContent
-                                                             (string/includes? "Breakdown temporarily unavailable."))))
-                (let [popup (.querySelector js/document ".activity-calendar__popup")]
-                  (is (string/includes? (.-textContent popup) "42 contributions"))
-                  (is (= 1 (count @*requests)))
-                  (is (zero? (.-length (.querySelectorAll popup "button, details, summary")))))
+                ;; The portal needs its own native stylesheet; the preceding
+                ;; case releases its local link on unmount.
+                (await! (styles/acquire! :github))
+                ;; Keep the focus-owned anchor independent of report reflow.
+                (await! (support/render! root
+                          [:div {:style {:position "fixed", :top "0", :width "18rem"}}
+                           [activity/<calendar>
+                            [{:date "2026-10-12", :count 42, :level 4}]
+                            [views/<day-details> "detail-failure-test"]]]))
+                (let [requests-before (count @*requests)]
+                  ;; The display reporter can still be smoothly scrolling from
+                  ;; the preceding case. End that test-owned scroll and drain
+                  ;; its native events before opening a scroll-dismissed tooltip.
+                  (.scrollTo js/window #js {:top (.-scrollY js/window), :behavior "instant"})
+                  (await! (support/settle!))
+                  (.focus (.querySelector container "[data-date]") #js {:preventScroll true})
+                  (await! (support/wait-for! #(.querySelector js/document ".activity-calendar__popup")))
+                  (let [position (.-position (js/getComputedStyle
+                                              (.querySelector js/document ".activity-calendar__popup")))]
+                    (await! (support/wait-for! #(some-> (.querySelector js/document ".activity-calendar__popup")
+                                                               .-textContent
+                                                               (string/includes? "Breakdown temporarily unavailable."))))
+                    ;; Capture together before assertion output reflows the
+                    ;; report and correctly dismisses the native popup again.
+                    (let [popup (.querySelector js/document ".activity-calendar__popup")
+                          text (.-textContent popup)
+                          requests-after (count @*requests)
+                          control-count (.-length (.querySelectorAll popup "button, details, summary"))]
+                      (is (zero? requests-before) "No day requests before user intent")
+                      (is (= "fixed" position) "The native tooltip portal stays out of document flow")
+                      (is (string/includes? text "42 contributions"))
+                      (is (= 1 requests-after))
+                      (is (zero? control-count)))))
                 (finally (support/unmount! root) (.remove container)))))
           (.catch #(is false (str %)))
           (.finally (fn []
@@ -419,3 +599,77 @@
                 (finally (support/unmount! root) (.remove container)))))
           (.catch #(is false (str %)))
           (.finally done)))))
+
+(deftest native-calendar-tracks-focus-and-pointer-without-lazy-reactive-reads
+  (async done
+    (let [container (.createElement js/document "div")
+          days [{:date "2026-10-11", :count 0, :level 0}
+                {:date "2026-10-12", :count 42, :level 4}]
+          before-warn (.-warn js/console)
+          before-error (.-error js/console)
+          before-focus (.-activeElement js/document)
+          *warnings (atom [])
+          capture! (fn [original args]
+                     (let [message (apply str (interpose " " args))]
+                       (when (string/includes? message "Reactive deref not supported in lazy seq")
+                         (swap! *warnings conj message)))
+                     (.apply original js/console (to-array args)))]
+      (.appendChild (.-body js/document) container)
+      (set! (.-warn js/console) (fn [& args] (capture! before-warn args)))
+      (set! (.-error js/console) (fn [& args] (capture! before-error args)))
+      (-> (go-promise
+            (await! (styles/acquire! :github))
+            (let [root (await! (support/create-root! container))]
+              (try
+                (await! (support/render! root
+                          [:div {:style {:position "fixed", :top "1rem", :left "1rem", :width "18rem"}}
+                           [activity/<calendar> days]]))
+                ;; End reporter-owned scrolling before opening the real tooltip;
+                ;; scrolling correctly closes that portal, even during a test.
+                (.scrollTo js/window #js {:top (.-scrollY js/window), :behavior "instant"})
+                (await! (support/settle!))
+                (let [first-day (.querySelector container "[data-date='2026-10-11']")
+                      second-day (.querySelector container "[data-date='2026-10-12']")
+                      popup (fn []
+                              (when-let [id (.getAttribute second-day "aria-describedby")]
+                                (.getElementById js/document id)))]
+                  (.focus second-day #js {:preventScroll true})
+                  (await! (support/wait-for! popup "Focused calendar day did not open its native tooltip"))
+                  (let [tooltip (popup)
+                        id (.-id tooltip)
+                        text (.-textContent tooltip)
+                        focused? (identical? second-day (.-activeElement js/document))
+                        indexes [(.getAttribute first-day "tabindex") (.getAttribute second-day "tabindex")]]
+                    (is focused?)
+                    (is (= ["-1" "0"] indexes))
+                    (is (= id (.getAttribute second-day "aria-describedby")))
+                    (is (string/includes? text "2026-10-12"))
+                    (is (string/includes? text "42 contributions")))
+                  (.dispatchEvent second-day (js/KeyboardEvent. "keydown" #js {:key "Escape", :bubbles true}))
+                  (await! (support/wait-for! #(nil? (popup)) "Escape did not retire the calendar tooltip"))
+                  (is (nil? (.getAttribute second-day "aria-describedby")))
+                  ;; Reagent's pointer-enter adapter receives native pointerover;
+                  ;; this verifies event/state wiring, not a genuine CSS hover.
+                  (.dispatchEvent first-day (js/PointerEvent. "pointerover" #js {:bubbles true, :pointerType "mouse"}))
+                  (await! (support/wait-for!
+                            #(when-let [id (.getAttribute first-day "aria-describedby")]
+                               (.getElementById js/document id))
+                            "Pointer intent did not open the calendar tooltip"))
+                  (let [id (.getAttribute first-day "aria-describedby")
+                        tooltip (.getElementById js/document id)
+                        text (.-textContent tooltip)
+                        indexes [(.getAttribute first-day "tabindex") (.getAttribute second-day "tabindex")]]
+                    (is (= ["0" "-1"] indexes))
+                    (is (nil? (.getAttribute second-day "aria-describedby")))
+                    (is (string/includes? text "0 contributions"))))
+                (is (empty? @*warnings)
+                    (str "Calendar must read reactive state inside its render: " (pr-str @*warnings)))
+                (finally (support/unmount! root)))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (set! (.-warn js/console) before-warn)
+                      (set! (.-error js/console) before-error)
+                      (.remove container)
+                      (when (and before-focus (.-isConnected before-focus))
+                        (.focus before-focus #js {:preventScroll true}))
+                      (done)))))))

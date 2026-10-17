@@ -6,6 +6,8 @@
             [website.ssr.schema :as schema]
             #?(:module/link-preview [website.modules.link-preview.schema :as preview])
             #?(:module/blog [website.modules.blog.schema :as blog])
+            #?(:module/github [website.modules.github.schema :as github])
+            #?(:module/home [website.modules.home.schema :as home])
             #?(:module/user [website.modules.user.schema :as user])
             [website.navigation.schema :as navigation]
             [website.components.shell-schema :as shell])))
@@ -34,7 +36,10 @@
 (def return-state-sections
   (into {} (remove (comp nil? val))
         {:blog #?(:module/blog blog/return-state-keys :default nil)
-         :link-preview #?(:module/link-preview preview/return-state-keys :default nil)}))
+         :link-preview #?(:module/link-preview preview/return-state-keys :default nil)
+         :github #?(:module/github github/return-state-keys :default nil)
+         :gallery #?(:module/home home/return-gallery-keys :default nil)
+         :form-field #?(:module/github github/return-form-field-keys :default nil)}))
 
 (defn restored-view-state [state]
   ;; Shared state is opt-in. Runtime measurements, pending work and temporary

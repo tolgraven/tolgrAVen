@@ -1,6 +1,14 @@
 (ns website.media-test
+  (:require-macros [website.test-async :refer [go-promise await!]])
   (:require
-    [cljs.test :refer-macros [deftest is testing]]
+    [cljs.test :refer-macros [deftest is testing async]]
+    [clojure.string :as string]
+    [website.modules.instagram.views :as instagram]
+    [website.modules.instagram.events]
+    [website.modules.instagram.subs]
+    [website.events]
+    [website.subs]
+    [website.test-support :as support]
     [website.react :as r]
     [website.components.media :as media]
     [website.components.image :as image]
@@ -56,3 +64,69 @@
     (is (= "media/fog-3d-small.jpg"
            (.getAttribute (.querySelector element "img") "src")))
     (is (nil? (.querySelector element ".video-with-poster-wrapper")))))
+
+(deftest pending-instagram-uses-native-logos-before-a-ready-feed-replaces-them
+  (async done
+    (let [restore! (r/make-restore-fn)
+          container (.createElement js/document "div")
+          *root (atom nil)
+          *sources (atom [])
+          *errors (atom [])
+          images (fn [] (vec (array-seq (.querySelectorAll container ".instagram-item img"))))
+          record-source! (fn [node]
+                           (when (= 1 (.-nodeType node))
+                             (doseq [image (if (= "IMG" (.-tagName node))
+                                            [node]
+                                            (array-seq (.querySelectorAll node "img")))]
+                               (swap! *sources conj (.getAttribute image "src")))))
+          record-error! (fn [event]
+                          (when (= "IMG" (.. event -target -tagName))
+                            (swap! *errors conj (.getAttribute (.-target event) "src"))))
+          observer (js/MutationObserver.
+                     (fn [records]
+                       (doseq [record (array-seq records)]
+                         (if (= "attributes" (.-type record))
+                           (record-source! (.-target record))
+                           (doseq [node (array-seq (.-addedNodes record))]
+                             (record-source! node))))))]
+      (.appendChild (.-body js/document) container)
+      (.addEventListener container "error" record-error! true)
+      (.observe observer container #js {:childList true, :subtree true, :attributes true, :attributeFilter #js ["src"]})
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            (r/dispatch-sync [:instagram/store-posts {:posts nil}])
+            (reset! *root (await! (support/create-root! container)))
+            (await! (support/render! @*root [instagram/<instagram>]))
+            (await! (support/wait-for!
+                      #(and (= 24 (count (images)))
+                            (every? (fn [image] (and (.-complete image) (pos? (.-naturalWidth image)))) (images)))
+                      "Pending Instagram logos did not decode"))
+            ;; Keep the initial native src mutations: an HTTP400 followed by
+            ;; the view's error-driven global fallback must not make this pass.
+            (is (= 24 (count (images))))
+            (is (every? #(= "img/logo/instagram-fallback-logo.png" (.getAttribute % "src")) (images)))
+            (is (not-any? #(or (string/includes? (or % "") "url=null")
+                              (string/includes? (or % "") "url=undefined")) @*sources)
+                "A pending range entry never requests an invalid image proxy URL")
+            (is (empty? @*errors) "Native pending logos do not depend on image errors to appear")
+            (r/dispatch-sync [:instagram/store-posts
+                              {:posts {"ready-media" {:id "ready-media"
+                                                      :timestamp "2026-10-17T12:00:00Z"
+                                                      :caption "Native ready image"
+                                                      :media_url "/img/tolgrav-square.png"}}}])
+            (await! (support/wait-for!
+                      #(and (= 1 (count (images)))
+                            (= "/img/tolgrav-square.png" (.getAttribute (first (images)) "src"))
+                            (.-complete (first (images)))
+                            (pos? (.-naturalWidth (first (images)))))
+                      "Ready Instagram media did not replace the pending logos"))
+            (is (= "Native ready image" (.-alt (first (images)))))
+            (is (empty? @*errors) "Ready native media keeps its existing direct URL preference"))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (.disconnect observer)
+                      (.removeEventListener container "error" record-error! true)
+                      (when @*root (support/unmount! @*root))
+                      (.remove container)
+                      (restore!)
+                      (done)))))))

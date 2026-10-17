@@ -3,6 +3,8 @@
   #?(:cljs (:require #?(:clj [website.build.site :refer [when-enabled]])
     [website.react :as r]
     [website.modules.blog.model :as model]
+    [website.modules.blog.avatar :as avatar]
+    [website.modules.blog.metadata :as metadata]
     [website.modules.blog.schema :as schema]
     [website.modules.blog.data :as data]
     #?(:feature/blog-comments [website.modules.blog.comment-views :as comment-views])
@@ -30,17 +32,16 @@
 (declare <blog-container>)
 
 (defc <tag-link> [{:keys [tag]} :- schema/tag-spec]
-  [:span [:a.blog-tag-link {:href @(r/subscribe [:href :blog-tag {:tag tag}])} tag]])
+  [metadata/<tag-link> {:tag tag}])
 
 (defc <tags-list> [{{:keys [id tags]} :post :as spec} :- schema/post-spec]
-  (when-let [tags (seq (model/tags tags))]
-    [:div.blog-post-tags
-     (for [tag (sort tags)]
-       ^{:key (str "blog-post-" id "-category-" tag)}
-       [<tag-link> {:tag tag}])]))
+  (metadata/render-tags-list spec))
 
-(defc <post-header> {:features [[:appear "zoom slower"]]
-                     :spec-schema schema/post-header-spec} [{:keys [children] :as spec}]
+(defc ^:private <post-avatar> {:features [[:appear "zoom slower"]]}
+  [spec user]
+  [:div [avatar/<avatar> user "blog-user-avatar"]])
+
+(defc <post-header> {:spec-schema schema/post-header-spec} [{:keys [children] :as spec}]
   (into [:div.flex.blog-post-header] children))
 
 (defc <post-content> "Render a loaded post with metadata and comments."
@@ -50,9 +51,8 @@
      [:section.blog-post
       {:data-link-trust (name (presentation/link-trust user))}
 
-     [<post-header> {:appear {:class "zoom slower" :remember-key [:blog/post-header id]}
-                    :children [
-       (m/<> :user/avatar user "blog-user-avatar")
+     [<post-header> {:children [
+       [<post-avatar> {:appear {:class "zoom slower" :remember-key [:blog/post-header id]}} user]
       [:div.blog-post-header-main
        [:a {:href @(r/subscribe [:blog/permalink-for-path (or permalink id)])}
          [:h1.blog-post-title title ]]
@@ -109,14 +109,14 @@
           [<adjacent-post-link> {:direction :prev :post-id (:id post)}]
           [<adjacent-post-link> {:direction :next :post-id (:id post)}]])]}]))
 
-(defc <archive-post> [{{:keys [id ts user title permalink comments] :as post} :post :as spec}]
+(defc <archive-post> [{{:keys [id ts user title permalink comment-count] :as post} :post :as spec} :- schema/post-spec]
   [:div.blog-archive-post
    [:a {:href @(r/subscribe [:blog/permalink-for-path (or permalink id)])}
     [:h2 title]]
    [presentation/<posted-by> {:id id :user user :ts ts}]
-   (when (seq comments)
+   (when (pos? (or comment-count 0))
      [:span {:style {:font-size "0.7em" :filter "brightness(0.8)"}}
-      (util/pluralize (count comments) "comment")])
+      (util/pluralize comment-count "comment")])
    [<tags-list> {:post post}]
    [:div {:style {:padding-top "0.4em" :padding-bottom "var(--space)" :font-size "0.9em"}}
     [presentation/<markdown> @(r/subscribe [:blog/post-preview id])

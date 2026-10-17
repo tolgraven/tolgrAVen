@@ -86,14 +86,42 @@ function fixture({pending=true, width=390, dpr=2, same=false, reduced=false, nat
     readyFonts:async()=>{document.fonts.status='loaded';fonts.resolve();await flush();},
     phase:()=>root.__progressiveImages.get(hero)?.phase??null};
 }
-test('cold target positions before reveal and waits for mounted text and fonts',async()=>{
+test('native Back settles before hydration and first intent releases only the temporary guard',()=>{
+  for (const intent of ['pointerdown','keydown','wheel','touchstart','click']) {
+    const f=fixture({direct:true}), root=f.document.documentElement;
+    assert.equal(root.getAttribute('data-document-return'),'true');
+    assert.equal(root.getAttribute('data-return-settling'),'true');
+    f.window.dispatchEvent(new Event(intent));
+    assert.equal(root.hasAttribute('data-return-settling'),false);
+    assert.equal(root.getAttribute('data-document-return'),'true','Existing document clocks remain settled');
+    for (const type of ['pointerdown','keydown','wheel','touchstart','click']) assert.equal(f.window.listeners.get(type),0);
+  }
+});
+test('departure and BFCache resume share one owned input guard without changing normal startup',()=>{
+  const f=fixture(), root=f.document.documentElement;
+  assert.equal(root.hasAttribute('data-document-return'),false);
+  assert.equal(root.hasAttribute('data-return-settling'),false);
+  f.window.dispatchEvent(new Event('pagehide'));
+  f.window.dispatchEvent(Object.assign(new Event('pageshow'),{persisted:true}));
+  assert.equal(root.getAttribute('data-return-settling'),'true');
+  for (const type of ['pointerdown','keydown','wheel','touchstart','click']) assert.equal(f.window.listeners.get(type),1);
+  f.window.dispatchEvent(new Event('wheel'));
+  f.window.dispatchEvent(new Event('pagehide'));
+  assert.equal(root.getAttribute('data-return-settling'),'true');
+  for (const type of ['pointerdown','keydown','wheel','touchstart','click']) assert.equal(f.window.listeners.get(type),1);
+  f.window.dispatchEvent(new Event('keydown'));
+  for (const type of ['pointerdown','keydown','wheel','touchstart','click']) assert.equal(f.window.listeners.get(type),0);
+});
+test('cold target reveals before smooth scrolling and waits for mounted text and fonts',async()=>{
   const f=fixture({target:true,targetMounted:false,fontsLoading:true});
   await f.load(f.preview);await f.frame();await f.frame();
   assert.equal(f.root.hasAttribute('data-document-pending'),true);
   assert.equal(f.scrolls.length,0);
   f.mountTarget();await f.frame();assert.equal(f.scrolls.length,0);
   await f.readyFonts();await f.frame();await f.frame();
-  assert.deepEqual(f.scrolls,[{top:1400,left:0,behavior:'instant',pending:true}]);
+  assert.equal(f.scrolls.length,0);
+  await f.frame();await f.frame();
+  assert.deepEqual(f.scrolls,[{top:1400,left:0,behavior:'smooth',pending:false}]);
   assert.equal(f.root.getAttribute('data-document-positioned'),'comment-target');
   await f.frame();await f.frame();
   assert.equal(f.root.hasAttribute('data-document-pending'),false);
@@ -112,13 +140,23 @@ test('missing cold target releases the page without jumping or leaking its obser
   assert.equal(f.window.listeners.get('pagehide'),fixture().window.listeners.get('pagehide'),
     'The target listener is released while existing document/image owners remain');
 });
+test('cold target remeasures its offset at the visible commit',async()=>{
+  const f=fixture({target:true});
+  await f.load(f.preview);await f.frame();await f.frame();
+  assert.equal(f.scrolls.length,0);
+  f.destination.offsetTop+=200;
+  await f.frame();await f.frame();
+  assert.deepEqual(f.scrolls,[{top:1600,left:0,behavior:'smooth',pending:false}]);
+});
 test('the trailing stream marker wakes a target hidden from layout before completion',async()=>{
   const f=fixture({target:true,skeleton:true,complete:false});
   await f.load(f.preview);await f.frame();await f.frame();
   assert.equal(f.scrolls.length,0);
   assert.equal(f.root.hasAttribute('data-document-pending'),true);
   f.completeMarker();await f.frame();await f.frame();
-  assert.equal(f.scrolls[0].pending,true);
+  assert.equal(f.scrolls.length,0);
+  await f.frame();await f.frame();
+  assert.equal(f.scrolls[0].pending,false);
   await f.frame();await f.frame();
   assert.equal(f.root.hasAttribute('data-document-pending'),false);
 });

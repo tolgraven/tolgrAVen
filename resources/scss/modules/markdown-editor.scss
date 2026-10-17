@@ -14,6 +14,8 @@
   // The toolbar already wraps. Its SDK horizontal scroller clips our menus;
   // anchor those menus to the full toolbar so they also fit narrow screens.
   [role="toolbar"] { flex-wrap: wrap; gap: 0.2em; overflow: visible; border-block-end: var(--line-width) solid var(--line-color); }
+  // Open toolbar menus must paint above the page controls' positioned labels.
+  [role="toolbar"]:has(.md-image-picker__menu, .md-component-picker__menu) { z-index: 3; }
   button { color: inherit; }
   input, select, textarea { color: var(--fg-1); background: var(--bg-1); }
 }

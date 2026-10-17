@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Native Chrome captures and exact pixel/geometry comparisons. No browser launch."""
+"""Configured shared Chrome captures and exact pixel/geometry comparisons."""
 import argparse
 import base64
 import binascii
 import hashlib
+import gzip
 import html
 import json
 import os
@@ -16,11 +17,13 @@ import subprocess
 import sys
 import threading
 import time
+import uuid
 import zlib
 
 ROOT = Path(__file__).resolve().parents[2]
 SIGNATURE = b"\x89PNG\r\n\x1a\n"
-RASTER = "overlapping-viewports-v1"
+RASTER = "interaction-and-overlapping-viewports-v2"
+MOTION = "native-css-motion-v2"
 
 
 def read_png(path):
@@ -118,6 +121,21 @@ def compare_pixels(expected, actual, diff):
             "total_pixels": ew * eh, "changed_bounds": bounds if changed else None}
 
 
+def read_record(folder, stem):
+    """Read one complete case/tile record; never choose between duplicate encodings."""
+    paths = [folder / (stem + suffix) for suffix in (".json", ".json.gz")]
+    present = [path for path in paths if path.exists()]
+    if len(present) != 1:
+        raise ValueError(f"{stem}: expected exactly one .json or .json.gz record; found {len(present)}")
+    path = present[0]
+    opener = gzip.open if path.suffix == ".gz" else Path.open
+    try:
+        with opener(path, "rt", encoding="utf-8") as stream:
+            return json.load(stream)
+    except (EOFError, zlib.error) as error:
+        raise ValueError(f"Unreadable visual record {path}: {error}") from error
+
+
 def geometry_changes(before, after, path=""):
     """Exact geometry equality; no rounding away subpixel layout changes."""
     if type(before) is not type(after):
@@ -139,11 +157,106 @@ def geometry_changes(before, after, path=""):
     return [] if before == after else [{"path": path, "before": before, "after": after}]
 
 
+# Reserved-prefix assumption, NOT proof of React ownership. Only the observed
+# React19 client shape is recognized; SSR IDs and arbitrary prefixes stay exact.
+REACT_CLIENT_ID = re.compile(r'_r_[0-9a-v]+_\Z')
+RUNTIME_ID_POLICY = {
+    'name': 'react19-client-use-id-reserved-prefix-v1',
+    'assumption': 'Native IDs matching _r_[0-9a-v]+_ are reserved for React client useId; syntax is not provenance proof.',
+    'unmeasured': 'Current captures omit general IDREF attributes; this policy does not prove accessibility relationships.',
+}
+
+
+def compare_native_geometry(expected, actual, path="geometry", runtime_id_policy="exact"):
+    """Retain raw differences; classify only paired opaque-ID spelling changes.
+
+    Raw lists are never rewritten. DOM-order indices, native identities and all
+    other captured properties remain exact through public geometry_changes.
+    """
+    if runtime_id_policy not in ['exact', 'react19-client-use-id']:
+        raise ValueError('Unknown runtime ID policy: ' + str(runtime_id_policy))
+    raw = geometry_changes(expected, actual, path)
+    pairs = []
+    if runtime_id_policy == 'react19-client-use-id' and isinstance(expected, list) and isinstance(actual, list) and len(expected) == len(actual):
+        unique = True
+        for nodes in [expected, actual]:
+            if not all(isinstance(node, dict) and isinstance(node.get('id'), str) for node in nodes):
+                unique = False
+                break
+            ids = [node['id'] for node in nodes if node['id']]
+            if len(ids) != len(set(ids)):
+                unique = False
+                break
+        if unique:
+            for index, (before, after) in enumerate(zip(expected, actual)):
+                old_id, new_id = before['id'], after['id']
+                if old_id == new_id:
+                    continue
+                if not (REACT_CLIENT_ID.fullmatch(old_id) and REACT_CLIENT_ID.fullmatch(new_id)):
+                    continue
+                if not all(key in before and key in after and before[key] == after[key]
+                           for key in ['tag', 'class', 'role']):
+                    continue
+                if before.get('selector') != '#' + old_id or after.get('selector') != '#' + new_id:
+                    continue
+                pairs.append({'geometry_path': f'{path}[{index}]', 'node_index': index, 'tag': before['tag'], 'class': before['class'],
+                              'role': before['role'], 'before': old_id, 'after': new_id,
+                              'raw_paths': [f'{path}[{index}].id', f'{path}[{index}].selector']})
+    # Unique non-empty IDs in each complete list make the per-index pairing
+    # one-to-one, including when two valid runtime allocations exchange names.
+    allowed_paths = {path for pair in pairs for path in pair['raw_paths']}
+    return {'geometry': [change for change in raw if change['path'] not in allowed_paths],
+            'raw_geometry': raw, 'runtime_id_changes': pairs,
+            'runtime_id_policy': RUNTIME_ID_POLICY if runtime_id_policy != 'exact' else {'name': 'exact'}}
+
+
+def validate_child_motion(motion, label):
+    """Reuse the unchanged public coverage/gap check in every realm."""
+    if not isinstance(motion.get('triggered'), list):
+        raise ValueError(label + ': invalid native triggered observation list')
+    documents = motion.get('documents', [])
+    if not isinstance(documents, list):
+        raise ValueError(label + ': invalid child motion documents')
+    for index, document in enumerate(documents):
+        child_label = f'{label}.documents[{index}]'
+        if not isinstance(document, dict) or not isinstance(document.get('motion'), dict):
+            raise ValueError(child_label + ': missing child native CSS motion observation')
+        motion_changes({'motion': document['motion']}, {'motion': document['motion']}, child_label)
+        validate_child_motion(document['motion'], child_label)
+
+
+def motion_definitions(motion):
+    """Project only native triggered observations out, keeping all other fields.
+
+    Descend only through declared child-document motion. In particular a source
+    rule property coincidentally named triggered is never removed.
+    """
+    return {key: [{**document, 'motion': motion_definitions(document['motion'])}
+                   for document in value] if key == 'documents' else value
+            for key, value in motion.items() if key != 'triggered'}
+
+
+def compare_motion_contract(expected, actual, label, contract='instances'):
+    if contract not in ['instances', 'definitions']:
+        raise ValueError('Unknown motion contract: ' + str(contract))
+    # Always preserve unmodified full captured native differences, including shortened
+    # transitions and different observed instance cardinality. No rounding.
+    raw = motion_changes(expected, actual, label)
+    for state in [expected, actual]:
+        validate_child_motion(state['motion'], label + '.motion')
+    changes = raw if contract == 'instances' else geometry_changes(
+        motion_definitions(expected['motion']), motion_definitions(actual['motion']), label + '.motion')
+    return {'motion': changes, 'raw_motion': raw, 'motion_contract': contract,
+            'native_instance_comparison': 'different' if raw else 'exact',
+            'motion_contract_limit': ('Authored CSS definitions only; captured native instances may differ; raw_motion retains their differences.'
+                                      if contract == 'definitions' else 'Exact captured native CSS instances and definitions.')}
+
+
 class MCP:
-    """Attach to the installed browser using the configured autoConnect server."""
+    """Attach through the configured shared Development Chrome launcher."""
     def __init__(self, command, stderr):
-        if "--autoConnect" not in command or any(arg in ("--no-autoConnect", "--autoConnect=false") for arg in command):
-            raise ValueError("The configured Chrome adapter must retain --autoConnect; browser launching is not supported")
+        if command != [str(Path.home() / ".local/bin/codex-chrome-devtools")]:
+            raise ValueError("Use only ~/.local/bin/codex-chrome-devtools for the shared Development profile")
         self.process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=stderr, text=True)
         self.messages, self.ident, self.page = queue.Queue(), 0, None
@@ -194,13 +307,19 @@ class MCP:
             arguments["waitForStableDom"] = False
         return self.rpc("tools/call", {"name": name, "arguments": arguments})
 
-    def evaluate(self, function):
-        result = self.call("evaluate_script", function=function)
+    def evaluate(self, function, **arguments):
+        result = self.call("evaluate_script", function=function, **arguments)
         for item in result.get("content", []):
             if item.get("type") == "text":
-                match = re.search(r"```json\s*(.*?)\s*```", item["text"], re.S)
+                match = re.search(r"```json\s*", item["text"])
                 if match:
-                    return json.loads(match.group(1))
+                    # Markdown in a JSON string can contain the same fence.
+                    # Let the JSON decoder find the value's exact boundary.
+                    payload = item["text"][match.end():]
+                    value, end = json.JSONDecoder().raw_decode(payload)
+                    if not payload[end:].lstrip().startswith("```"):
+                        raise RuntimeError("Missing evaluation result closing fence")
+                    return value
         raise RuntimeError(f"Missing evaluation result: {result}")
 
     def close(self):
@@ -248,25 +367,121 @@ class Relay(MCP):
         pass
 
 
+
+def owned_page(client):
+    """Identify the fresh task tab from its unique URL, independent of selection."""
+    def pages(result):
+        return [(int(match.group(1)), match.group(2))
+                for block in result.get("content", []) if block.get("type") == "text"
+                for match in re.finditer(r"(?:^|\n)(\d+):\s+(\S+)", block["text"])]
+    existing = {ident for ident, _ in pages(client.call("list_pages"))}
+    url = "about:blank#tolgraven-visual-" + uuid.uuid4().hex
+    created = pages(client.call("new_page", url=url, background=True))
+    matches = {ident for ident, actual_url in created if actual_url == url and ident not in existing}
+    if len(matches) != 1:
+        raise RuntimeError("Cannot identify owned task tab by unique URL and new ID; no existing tab will be modified")
+    return matches.pop()
+
+def observed_target(client, selector, role, name):
+    """Resolve only UIDs supplied by the latest native accessibility snapshot."""
+    snapshot = client.call("take_snapshot", verbose=True)
+    candidates = []
+    for block in snapshot.get("content", []):
+        if block.get("type") != "text":
+            continue
+        # Native paragraphs can have an observed role/UID but no quoted AX
+        # name. An explicitly empty name still needs exact selector identity.
+        # Whitespace-only text can omit the role; never consume the next row.
+        for match in re.finditer(r'^[ \t]*uid=(\S+)[ \t]+(\S+)(?:[ \t]+("(?:\\.|[^"\\\r\n])*"))?', block["text"], re.M):
+            uid, observed_role, encoded_name = match.groups()
+            if observed_role != role:
+                continue
+            observed_name = json.loads(encoded_name) if encoded_name is not None else ""
+            if observed_name == name and uid not in candidates:
+                candidates.append(uid)
+    verified = []
+    for uid in candidates:
+        if client.evaluate("element => element.ownerDocument === document && element.isConnected && "
+                           "element.matches(" + json.dumps(selector) + ")", args=[uid]) is True:
+            verified.append(uid)
+    if len(verified) != 1:
+        raise RuntimeError(f"Expected one observed {role} {name!r} matching {selector}; found {len(verified)}")
+    return verified[0]
+
+
+def park_pointer(client, origin):
+    """Known native pointer position in task-owned driver markup, never app DOM."""
+    client.call("navigate_page", url=origin + "/fixtures/visual-driver.html")
+    uid = observed_target(client, "body > h1", "heading", "Native pointer parking")
+    client.call("hover", uid=uid)
+
+
+def native_hover(client, case):
+    target = case["native_hover"]
+    selector = json.dumps(target["selector"])
+    client.evaluate("async () => { await window.visualFixture.ready(); const element = document.querySelector(" + selector +
+                    "); if (!element || element.matches(':hover')) throw new Error('Native hover target missing or already hovered'); return true; }")
+    uid = observed_target(client, target["selector"], target["role"], target["name"])
+    client.evaluate("() => { window.visualFixture.motion.phase('native-hover'); return true; }")
+    client.call("hover", uid=uid)
+    client.evaluate("async () => { await window.visualFixture.ready(); const element = document.querySelector(" + selector +
+                    "); if (!element?.matches(':hover')) throw new Error('Configured native hover did not reach its target'); " +
+                    target["assert"] + "; return true; }")
+
+
+def hover_contract(case):
+    return {"target": {key: case["native_hover"][key] for key in ("selector", "role", "name")},
+            "pointer_start": "observed driver heading; target initially not hovered"}
+
+
+def assert_capture(client, case):
+    """Check the intended transient surface on both sides of its PNG."""
+    target = case.get("native_hover")
+    if target:
+        client.evaluate("() => { const element = document.querySelector(" + json.dumps(target["selector"]) +
+                        "); if (!element?.matches(':hover')) throw new Error('Native hover was lost during capture'); " +
+                        target["assert"] + "; return true; }")
+    if case.get("capture_assert"):
+        client.evaluate("() => { " + case["capture_assert"] + "; return true; }")
+
+
 def capture_tiles(client, case, output):
     """Paint the complete document through real, overlapping viewport captures."""
-    states, tiles, target = [], [], 0
+    # Native startup focus/scroll must complete before selecting tile zero.
+    client.evaluate("async () => { await window.visualFixture.ready(); return true; }")
+    # Scrolling can intentionally dismiss a popup or change shell state. Keep
+    # the actual interaction viewport before collecting the complete document.
+    interaction = bool(case.get("action") or case.get("native_hover"))
+    states, tiles, target = [], [], None if interaction else 0
     for index in range(128):
-        state = client.evaluate("async () => { window.scrollTo({left:0,top:" + str(target) +
-                                ",behavior:'instant'}); await window.visualFixture.ready(); return window.visualFixture.snapshot(); }")
+        scroll = "" if target is None else "window.scrollTo({left:0,top:" + str(target) + ",behavior:'instant'}); "
+        state = client.evaluate("async () => { window.visualFixture.motion.phase('tile-" + str(index) + "'); " + scroll +
+                                "await window.visualFixture.ready(); return window.visualFixture.snapshot(); }")
+        if index == 0 and case.get("native_hover"):
+            state["native_hover"] = hover_contract(case)
         width, height = case["viewport"]
+        motion_changes(state, state, case["id"])
         if state["viewport"] != [width, height, 1] or state.get("errors"):
             raise RuntimeError(f"{case['id']}: invalid viewport/DPR or fixture readiness errors")
         x, y, document_height = state["document"]
         maximum = max(0, document_height - height)
-        if x != 0 or y != target:
+        if x != 0 or (target is not None and y != target):
             raise RuntimeError(f"{case['id']}: viewport did not reach requested scroll position {target}: {state['document']}")
+        if index == 0:
+            assert_capture(client, case)
         stem = case["id"] + (f".tile-{index}" if index else "")
         image = client.call("take_screenshot", format="png")
         block = next(block for block in image.get("content", []) if block.get("type") == "image")
         (output / (stem + ".png")).write_bytes(base64.b64decode(block["data"]))
+        if index == 0:
+            # Screenshot acquisition can itself dismiss native hover. Retain
+            # that failed PNG, but never label it a completed interaction pair.
+            assert_capture(client, case)
         states.append(state)
         tiles.append({"stem": stem, "scroll": [x, y], "document_height": document_height})
+        if target is None and y != 0:
+            target = 0
+            continue
         if y >= maximum:
             break
         target = min(maximum, y + max(1, int(height * .8)))
@@ -283,70 +498,112 @@ def capture(args):
     from urllib.parse import urlparse
     if urlparse(args.origin).hostname not in ("127.0.0.1", "localhost", "::1"):
         raise ValueError("Captures require an isolated loopback fixture server")
-    suite = json.loads(args.suite.read_text())
+    suite_bytes = args.suite.read_bytes()
+    suite_sha256 = hashlib.sha256(suite_bytes).hexdigest()
+    git_head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    suite = json.loads(suite_bytes)
     cases = [case for case in suite["cases"] if not args.case or case["id"] in args.case]
     if args.case and set(args.case) - {case["id"] for case in cases}:
         raise ValueError("Unknown visual case")
     args.output.mkdir(parents=True, exist_ok=True)
-    if any(args.output.glob("*.json")) or any(args.output.glob("*.png")):
+    if any(args.output.glob("*.json")) or any(args.output.glob("*.json.gz")) or any(args.output.glob("*.png")):
         raise ValueError("Capture output already exists; use a fresh candidate directory, preserving previous evidence")
     page = None
     with (args.output / "chrome-mcp.log").open("w") as log:
         client = MCP(shlex.split(args.mcp_command), log) if args.mcp_command else Relay()
         try:
-            result = client.call("new_page", url="about:blank", background=True)
-            for item in result.get("content", []):
-                if item.get("type") == "text":
-                    match = re.search(r"(?:^|\n)(\d+):.*\[selected\]", item["text"])
-                    if match:
-                        page = int(match.group(1))
-            if page is None:
-                raise RuntimeError("Cannot identify owned task tab; no existing tab will be modified")
+            page = owned_page(client)
             client.page = page
-            if args.geometry_only:
-                # Avoid repeated extension navigation/snapshot overhead. Native
-                # components still render in exact independent viewport realms.
-                client.call("emulate", viewport="1440x1000x1")
-                client.call("navigate_page", url=args.origin + "/fixtures/visual-driver.html")
+            client.call("select_page", pageId=page, bringToFront=True)
+            script_cases = [case for case in cases if not case.get("native_hover") and not case.get("standalone")]
+            if args.geometry_only and script_cases:
+                # Keep the owned driver tab, but return one complete geometry at
+                # a time: a single generated Docs surface can be tens of MB.
+                driver_width = max(1440, *(case["viewport"][0] for case in script_cases))
+                # The native parent gets a 100 CSS-pixel parking band below all
+                # exact-size child viewports; driver bounds checks prove separation.
+                driver_height = max(1000, *(case["viewport"][1] for case in script_cases)) + 100
+                client.call("emulate", viewport=f"{driver_width}x{driver_height}x1")
+                client.call("navigate_page", url=args.origin + "/fixtures/visual-driver.html?geometry-parking=1")
+                uid = observed_target(client, "body > h1", "heading", "Native pointer parking")
+                client.call("hover", uid=uid)
                 failures = []
-                for start in range(0, len(cases), 4):
-                    batch = cases[start:start + 4]
-                    results = client.evaluate("async () => await window.visualDriver.capture(" + json.dumps(batch) + ")")
-                    if [result.get("id") for result in results] != [case["id"] for case in batch]:
+                for case in script_cases:
+                    results = client.evaluate("async () => await window.visualDriver.capture(" + json.dumps([case]) + ")")
+                    if len(results) != 1 or results[0].get("id") != case["id"]:
                         raise ValueError("Native layout driver omitted or reordered declared cases")
-                    for result, case in zip(results, batch):
-                        if result.get("error"):
-                            failures.append(case["id"] + ": " + result["error"])
-                        else:
-                            state = result["state"]
-                            if state["viewport"] != case["viewport"] + [1] or state.get("errors"):
-                                failures.append(case["id"] + ": invalid viewport or native errors")
-                            (args.output / (case["id"] + ".json")).write_text(json.dumps(state, indent=2) + "\n")
-                            print(f"Captured geometry {case['id']}", flush=True)
+                    result = results[0]
+                    if result.get("error"):
+                        failure = case["id"] + ": " + result["error"]
+                        failures.append(failure)
+                        print("Failed geometry " + failure, file=sys.stderr, flush=True)
+                    else:
+                        state = result["state"]
+                        motion_changes(state, state, case["id"])
+                        if state["viewport"] != case["viewport"] + [1] or state.get("errors"):
+                            failures.append(case["id"] + ": invalid viewport or native errors")
+                        (args.output / (case["id"] + ".json")).write_text(json.dumps(state, indent=2) + "\n")
+                        print(f"Captured geometry {case['id']}", flush=True)
                 if failures:
                     raise ValueError("; ".join(failures))
-            for case in ([] if args.geometry_only else cases):
+            standalone = [case for case in cases if case.get("native_hover") or case.get("standalone")] if args.geometry_only else cases
+            for case in standalone:
                 client.call("select_page", pageId=page)
                 width, height = case["viewport"]
                 client.call("emulate", viewport=f"{width}x{height}x1")
-                client.call("navigate_page", url=args.origin + case["path"])
-                if case.get("action"):
-                    client.evaluate("async () => { await window.visualFixture.ready(); " + case["action"] + "; return true; }")
-                capture_tiles(client, case, args.output)
+                if case.get("native_hover") or case.get("standalone"):
+                    park_pointer(client, args.origin)
+                try:
+                    client.call("navigate_page", url=args.origin + case["path"])
+                    if case.get("action"):
+                        client.evaluate("async () => { await window.visualFixture.ready(); window.visualFixture.motion.phase('action'); " + case["action"] + "; return true; }")
+                    if case.get("native_hover"):
+                        native_hover(client, case)
+                    if args.geometry_only:
+                        state = client.evaluate("async () => { await window.visualFixture.ready(); return window.visualFixture.snapshot(); }")
+                        assert_capture(client, case)
+                        if case.get("native_hover"):
+                            state["native_hover"] = hover_contract(case)
+                        motion_changes(state, state, case["id"])
+                        if state["viewport"] != case["viewport"] + [1] or state.get("errors"):
+                            raise RuntimeError(case["id"] + ": invalid viewport or native errors")
+                        (args.output / (case["id"] + ".json")).write_text(json.dumps(state, indent=2) + "\n")
+                    else:
+                        capture_tiles(client, case, args.output)
+                finally:
+                    client.evaluate("async () => { try { await window.visualFixture?.dispose?.(); } finally { window.visualFixture?.motion?.stop(); } return true; }")
                 print(f"Captured {case['id']}", flush=True)
-            metadata = {"schema": 1, "suite_sha256": hashlib.sha256(args.suite.read_bytes()).hexdigest(),
+            if args.suite.read_bytes() != suite_bytes:
+                raise ValueError("Visual suite changed during capture; partial evidence has no completion metadata")
+            metadata = {"schema": 1, "suite_sha256": suite_sha256,
                         "cases": [case["id"] for case in cases],
-                        "git_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+                        "git_head": git_head,
                         "pixels": not args.geometry_only, "raster": RASTER if not args.geometry_only else None,
+                        "motion": MOTION,
                         "approval": None}
             (args.output / "capture.json").write_text(json.dumps(metadata, indent=2) + "\n")
         finally:
             if page is not None:
                 try:
+                    # Chrome may retain its last page instead of closing it.
+                    # Release the owned frame/resources even in that case.
+                    client.call("navigate_page", pageId=page, type="url", url="about:blank")
                     client.call("close_page", pageId=page)
                 except Exception as error:
                     print(f"Owned task tab {page} needs closing: {error}", file=sys.stderr)
             client.close()
+
+
+def motion_changes(expected, actual, label):
+    for state in (expected, actual):
+        motion = state.get("motion")
+        if not isinstance(motion, dict) or motion.get("version") != MOTION:
+            raise ValueError(label + ": missing native CSS motion observation")
+        if motion.get("gaps"):
+            raise ValueError(label + ": incomplete CSS motion observation: " + str(motion["gaps"]))
+        if not all(key in motion for key in ("properties", "styles", "declarations", "sourceRules", "triggered")):
+            raise ValueError(label + ": incomplete CSS declaration/runtime contract")
+    return geometry_changes(expected["motion"], actual["motion"], label + ".motion")
 
 
 def compare(args):
@@ -355,6 +612,8 @@ def compare(args):
     suite = json.loads(args.suite.read_text())
     args.output.mkdir(parents=True, exist_ok=True)
     results = []
+    contract = getattr(args, "motion_contract", "instances")
+    id_policy = getattr(args, "runtime_id_policy", "exact")
     metadata = json.loads((args.baseline / "capture.json").read_text())
     approval = metadata.get("approval")
     if not isinstance(approval, dict) or not all(isinstance(approval.get(key), str) and approval[key].strip()
@@ -369,13 +628,31 @@ def compare(args):
         raise ValueError("Actual capture mode differs from the approved baseline")
     if metadata.get("pixels", True) and (metadata.get("raster") != RASTER or actual_metadata.get("raster") != RASTER):
         raise ValueError("Raster captures must include the current complete-document viewport tile strategy")
+    motion_version = metadata.get("motion")
+    if motion_version != actual_metadata.get("motion"):
+        raise ValueError("Motion coverage differs: old layout baselines require separately reviewed motion candidates")
+    if motion_version not in (None, MOTION):
+        raise ValueError("Unsupported CSS motion capture contract")
+    if getattr(args, "require_motion", False) and motion_version != MOTION:
+        raise ValueError("Missing approved CSS motion coverage; settled layout is not a motion pass")
+    if contract == "definitions" and motion_version != MOTION:
+        raise ValueError("Definitions mode requires complete native CSS motion observations")
     for case in suite["cases"]:
         ident = case["id"]
         try:
-            expected = json.loads((args.baseline / (ident + ".json")).read_text())
-            actual = json.loads((args.actual / (ident + ".json")).read_text())
+            expected = read_record(args.baseline, ident)
+            actual = read_record(args.actual, ident)
+            if case.get("native_hover") and any(state.get("native_hover") != hover_contract(case)
+                                                for state in (expected, actual)):
+                raise ValueError("Missing or changed native hover interaction evidence")
             environment = geometry_changes(expected["environment"], actual["environment"], "environment")
-            geometry = geometry_changes(expected["geometry"], actual["geometry"], "geometry")
+            native_geometry = compare_native_geometry(expected["geometry"], actual["geometry"], runtime_id_policy=id_policy)
+            geometry = native_geometry["geometry"]
+            raw_geometry = native_geometry["raw_geometry"]
+            runtime_ids = native_geometry["runtime_id_changes"]
+            native_motion = compare_motion_contract(expected, actual, ident, contract) if motion_version else None
+            motion = native_motion["motion"] if native_motion else []
+            raw_motion = native_motion["raw_motion"] if native_motion else []
             tiles = []
             if metadata.get("pixels", True):
                 if not expected.get("tiles") or expected["tiles"] != actual.get("tiles"):
@@ -386,11 +663,18 @@ def compare(args):
                     # arbitrary paths supplied by capture metadata.
                     if stem != ident + (f".tile-{index}" if index else ""):
                         raise ValueError("Invalid viewport tile artifact name")
-                    before = expected if not index else json.loads((args.baseline / (stem + ".json")).read_text())
-                    after = actual if not index else json.loads((args.actual / (stem + ".json")).read_text())
+                    before = expected if not index else read_record(args.baseline, stem)
+                    after = actual if not index else read_record(args.actual, stem)
                     if index:
                         environment.extend(geometry_changes(before["environment"], after["environment"], stem + ".environment"))
-                        geometry.extend(geometry_changes(before["geometry"], after["geometry"], stem + ".geometry"))
+                        tile_geometry = compare_native_geometry(before["geometry"], after["geometry"], stem + ".geometry", id_policy)
+                        geometry.extend(tile_geometry["geometry"])
+                        raw_geometry.extend(tile_geometry["raw_geometry"])
+                        runtime_ids.extend(tile_geometry["runtime_id_changes"])
+                        if motion_version:
+                            tile_motion = compare_motion_contract(before, after, stem, contract)
+                            motion.extend(tile_motion["motion"])
+                            raw_motion.extend(tile_motion["raw_motion"])
                     raster = compare_pixels(args.baseline / (stem + ".png"), args.actual / (stem + ".png"), args.output / (stem + ".diff.png"))
                     tiles.append({**tile, "pixels": raster})
                 pixels = {"passed": all(tile["pixels"]["passed"] for tile in tiles),
@@ -398,19 +682,32 @@ def compare(args):
                           "total_pixels": sum(tile["pixels"].get("total_pixels", 0) for tile in tiles)}
             else:
                 pixels = {"passed": True, "mode": "geometry-only"}
-            result = {"id": ident, "passed": pixels["passed"] and not geometry and not environment,
-                      "pixels": pixels, "tiles": tiles, "geometry": geometry, "environment": environment}
+            result = {"id": ident, "passed": pixels["passed"] and not geometry and not environment and not motion,
+                      "pixels": pixels, "tiles": tiles, "geometry": geometry, "environment": environment,
+                      "motion": motion, "motion_coverage": motion_version or "unmeasured",
+                      "motion_contract": contract, "raw_motion": raw_motion,
+                      "native_instance_comparison": ("different" if raw_motion else "exact") if motion_version else "unmeasured",
+                      "motion_contract_limit": native_motion["motion_contract_limit"] if native_motion else "No native motion observation",
+                      "raw_geometry": raw_geometry, "runtime_id_changes": runtime_ids,
+                      "runtime_id_policy": native_geometry["runtime_id_policy"]}
         except (OSError, ValueError, KeyError) as error:
             result = {"id": ident, "passed": False, "error": str(error)}
         results.append(result)
         if result.get("error"):
             detail = result["error"]
         elif result["pixels"].get("mode") == "geometry-only":
-            detail = f"geometry-only; {len(result['geometry'])} geometry/style changes"
+            detail = f"geometry-only; {len(result['geometry'])} geometry/style changes; {len(result['motion'])} motion changes"
         else:
-            detail = f"{result['pixels'].get('changed_pixels', '?')} pixels; {len(result['geometry'])} geometry changes"
+            detail = f"{result['pixels'].get('changed_pixels', '?')} pixels; {len(result['geometry'])} geometry changes; {len(result['motion'])} motion changes"
+        if not result.get("error"):
+            detail += f"; {contract} gate; {len(result['raw_motion'])} raw native-instance differences; {len(result['runtime_id_changes'])} runtime ID spelling pairs"
         print(f"{'PASS' if result['passed'] else 'FAIL'} {ident}: {detail}")
-    report = {"passed": all(result["passed"] for result in results), "cases": results}
+    report = {"passed": all(result["passed"] for result in results),
+              "motion_coverage": motion_version or "unmeasured", "motion_contract": contract,
+              "runtime_id_policy": id_policy,
+              "native_instance_comparison": ("unmeasured" if not motion_version or any(r.get("error") for r in results)
+                                             else "different" if any(r["raw_motion"] for r in results) else "exact"),
+              "cases": results}
     (args.output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     rows = []
     for result in results:
@@ -421,7 +718,8 @@ def compare(args):
                                                ("Actual", args.actual / (stem + ".png")),
                                                ("Changed pixels", args.output / (stem + ".diff.png"))] if path.exists())
         rows.append(f"<section><h2>{html.escape(ident)}: {'PASS' if result['passed'] else 'FAIL'}</h2><div class='images'>{pictures}</div><pre>{html.escape(json.dumps(result, indent=2))}</pre></section>")
-    (args.output / "index.html").write_text("<!doctype html><meta charset='utf-8'><title>Visual regression report</title><style>body{font:1rem system-ui;margin:2rem} .images{display:flex;gap:1rem;overflow:auto}figure{margin:0;flex:0 0 30%}img{width:100%}pre{white-space:pre-wrap}section{border-bottom:.0625rem solid #888}</style><h1>Pixel and geometry comparison</h1>" + "".join(rows))
+    summary = html.escape(f"Motion gate: {contract}; runtime ID policy: {id_policy}; captured native instance comparison: {report['native_instance_comparison']}. Definitions mode does not establish identical captured native instances.")
+    (args.output / "index.html").write_text("<!doctype html><meta charset='utf-8'><title>Visual regression report</title><style>body{font:1rem system-ui;margin:2rem} .images{display:flex;gap:1rem;overflow:auto}figure{margin:0;flex:0 0 30%}img{width:100%}pre{white-space:pre-wrap}section{border-bottom:.0625rem solid #888}</style><h1>Pixel and geometry comparison</h1><p>" + summary + "</p>" + "".join(rows))
     return 0 if report["passed"] else 1
 
 
@@ -436,6 +734,11 @@ def main():
     take.add_argument("--geometry-only", action="store_true", help="Explicit geometry/style gate without raster comparison; baseline must use the same mode")
     take.add_argument("--mcp-command", help="Optional configured MCP executable; default relays JSON-lines to the existing extension session")
     check = commands.add_parser("compare", help="Fail on any pixel/geometry/environment difference or missing case")
+    check.add_argument("--require-motion", action="store_true", help="Reject layout-only baselines; require reviewed native CSS motion contracts")
+    check.add_argument("--motion-contract", choices=["instances", "definitions"], default="instances",
+                       help="Default exact native instances; definitions gates authored CSS while preserving raw captured-instance differences")
+    check.add_argument("--runtime-id-policy", choices=["exact", "react19-client-use-id"], default="exact",
+                       help="Default exact IDs; explicit reserved React client namespace policy retains raw spelling differences")
     check.add_argument("--baseline", type=Path, required=True)
     check.add_argument("--actual", type=Path, required=True)
     check.add_argument("--output", type=Path, required=True)

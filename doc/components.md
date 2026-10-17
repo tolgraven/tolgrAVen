@@ -266,6 +266,11 @@ the computed CSS-duration fallback, with a maximum of 10 seconds. Reduced motion
 skips animations and releases exits promptly. Reintroducing the same key during
 exit cancels removal and preserves state. Changing the key creates a new instance.
 Observer, frame and deadline work is cleaned up on unmount.
+A layout placeholder can opt into `:retain-layout? true` in its exit options:
+its existing bounded CSS-duration deadline retains the footprint even when a
+partly entered native transition reverses and finishes early. This changes only
+retirement timing, not CSS easing or final layout; reduced motion still exits
+promptly. Ordinary exits continue to finish with their actual native clocks.
 
 The parent must remain mounted during exit: React cannot defer removal from a
 child's unmount callback. Removing the whole parent removes its subtree at once.

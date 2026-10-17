@@ -128,6 +128,7 @@
 
 @mixin i-gradient {
   i {
+    --icon-fill: linear-gradient(-45deg, var(--fg-1), var(--bg-6));
     background: linear-gradient(-45deg, var(--fg-1), var(--bg-6));
     background-clip: text;
     color: transparent;
@@ -141,12 +142,10 @@
   min-height: min(15em, calc(100dvh - 2rem));
   overflow-x: scroll;
 
-  &.cv-education, &.cv-work, &.cv-life {
-    @include i-gradient;
+  @include i-gradient;
 
-    .cv-detail {
-      max-height: 18em;
-    }
+  .cv-detail {
+    max-height: 18em;
   }
 
   h1 {
@@ -275,6 +274,7 @@
       margin-right: calc(3 * var(--space-lg));
     }
     i {
+      --icon-fill: linear-gradient(-45deg, var(--bg-1), var(--bg-6));
       background: linear-gradient(-45deg, var(--bg-1), var(--bg-6));
       background-clip: text;
       color: transparent;
@@ -336,6 +336,7 @@
   &.cv-detail-surface--moving { transition: transform 0.35s ease; }
   .cv-what { margin-top: 1rem; }
   > p, .cv-mini-timeline > p { margin-inline: 0; }
+  > .cv-from, > .cv-to { margin: 0.3em 0.6em; }
   .cv-mini-timeline .cv-detail p { margin: 0.3em 0.6em; }
   .cv-mini-timeline .cv-detail .cv-from { position: static; }
   .cv-how i { margin-left: 0; margin-right: 0.5em; }

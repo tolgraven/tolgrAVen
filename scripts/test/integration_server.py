@@ -24,6 +24,7 @@ class Handler(BaseHTTPRequestHandler):
                   '/__tests/reset.js': 'reset.js',
                   '/__tests/scroll.html': 'scroll.html', '/__tests/scroll.js': 'scroll.js',
                   '/__tests/motion.html': 'motion.html', '/__tests/motion.js': 'motion.js',
+                  '/__tests/visual.js': 'visual.js',
                   '/__tests/away.html': 'away.html'}
         if path in assets:
             body = (ROOT / 'test/browser' / assets[path]).read_bytes()

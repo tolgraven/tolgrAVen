@@ -229,7 +229,9 @@
       ;; Acquisition belongs to the managed source lifecycle, just as for module
       ;; and CMS subscriptions. Preloads use this same deduplicated queue. The
       ;; derived reaction only reads status; SSR must use supplied snapshots.
-      (when-not context/*server?* (prefetch! resources))
+      ;; Acquisition reads caches synchronously without subscribing a speculative
+      ;; render owner to unrelated resources restored into those caches later.
+      (when-not context/*server?* (r/without-tracking #(prefetch! resources)))
       (r/make-reaction #(state resources)))))
 
 (defn wait-for!

@@ -125,7 +125,8 @@
                                       (r/atom {:records @roots, :more? false, :loading? false})
                                     :comments/for-q-flat (if (= 2 (count q)) roots replies)
                                     :comments/thread-expanded? (r/atom false)
-                                    :blog/state (r/atom false)
+                                    :blog/state (r/atom (= [:comments-expanded 28] (second q)))
+                                    :href (r/atom "/blog/post/28")
                                     :user/active-user (r/atom nil)
                                     :comments/adding? (r/atom false)
                                     (original q)))
@@ -144,44 +145,50 @@
       (.catch (fn [error] (is false (str error))))
       (.finally done))))
 (deftest user-panel-closes-state-immediately-and-component-owns-exit
-  (async
-    done
-    (->
-      (go-promise
-        (let [element (.createElement js/document "div")
-              root (await! (support/create-root! element))
-              before @r/*app-db
-              context @restore/*context]
-          (.appendChild (.-body js/document) element)
-          (restore/begin! {})
-          (r/dispatch-sync [:user/close-ui])
-          (await! (support/render! root [user/<user-section>]))
-          (is (nil? (.querySelector element ".user-section-wrapper")))
-          (r/dispatch-sync [:user/open-ui :login])
-          (r/flush)
-          (is (some? (.querySelector element ".user-section-wrapper")))
-          (r/dispatch-sync [:user/close-ui])
-          (r/flush)
-          (is (= [:closed] (get-in @r/*app-db [:state :user-section])))
-          (is (some? (.querySelector element ".user-section-wrapper.exiting")))
-          ;; Reopening before exit completion must retain the same mounted wrapper.
-          (let [panel (.querySelector element ".user-section-wrapper")]
-            (r/dispatch-sync [:user/open-ui :login])
-            (r/flush)
-            (is (identical? panel (.querySelector element ".user-section-wrapper"))))
-          (r/dispatch-sync [:user/close-ui])
-          (r/flush)
-          (js/setTimeout (fn []
-                           (r/flush)
-                           (is (nil? (.querySelector element ".user-section-wrapper"))
-                               "Exited DOM is removed")
-                           (support/unmount! root)
-                           (.remove element)
-                           (reset! r/*app-db before)
-                           (reset! restore/*context context)
-                           (done))
-                         250)))
-      (.catch (fn [error] (is false (str error)) (done))))))
+  (async done
+    (-> (go-promise
+          (let [restore-db! (r/make-restore-fn)
+                context @restore/*context
+                element (.createElement js/document "div")
+                root (await! (support/create-root! element))]
+            (try
+              (.appendChild (.-body js/document) element)
+              (restore/begin! {})
+              ;; This fixture owns panel presence, not service boot. Keep the
+              ;; real open event on its already-initialized store path so no
+              ;; settings request/retry can outlive the mounted panel.
+              (r/dispatch-sync [:state [:supabase-init] :ready])
+              (r/dispatch-sync [:user/close-ui])
+              (await! (support/render! root [user/<user-section>]))
+              (is (nil? (.querySelector element ".user-section-wrapper")))
+              (r/dispatch-sync [:user/open-ui :login])
+              (r/flush)
+              (is (some? (.querySelector element ".user-section-wrapper")))
+              (r/dispatch-sync [:user/close-ui])
+              (r/flush)
+              (is (= [:closed] (get-in @r/*app-db [:state :user-section])))
+              (is (some? (.querySelector element ".user-section-wrapper.exiting")))
+              ;; Reopening before exit completion must retain the same wrapper.
+              (let [panel (.querySelector element ".user-section-wrapper")]
+                (r/dispatch-sync [:user/open-ui :login])
+                (r/flush)
+                (is (identical? panel (.querySelector element ".user-section-wrapper"))))
+              (r/dispatch-sync [:user/close-ui])
+              (r/flush)
+              (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 250))))
+              (r/flush)
+              (is (nil? (.querySelector element ".user-section-wrapper"))
+                  "Exited DOM is removed")
+              (await! (support/settle!))
+              (is (= :ready (await! (support/state-at! [:state :supabase-init])))
+                  "Panel intent leaves the initialized service settled")
+              (finally
+                (support/unmount! root)
+                (.remove element)
+                (restore-db!)
+                (reset! restore/*context context)))))
+        (.catch (fn [error] (is false (str error))))
+        (.finally done))))
 (deftest avatar-does-not-overlay-a-placeholder-while-loading
   (async
     done

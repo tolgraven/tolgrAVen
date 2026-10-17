@@ -91,25 +91,26 @@
   (let [inherited-hydration? (r/use-context restore/hydrating-context)
         [defer? _] (r/use-state #(and (not context/*server?*)
                                      (or inherited-hydration? (restore/initial-hydration?))))
-        release-hydration! (hydration/use-deferred! defer?)
-        committed! (r/use-callback
-                     (fn [] (release-hydration!) (on-ready!))
-                     [release-hydration! on-ready!])
+        committed! (r/use-callback on-ready! [on-ready!])
         [formatter _] (r/use-state #(make-formatter committed!))
         args (into [code] (mapcat identity options))
-        fallback (if (:inline? options) [:code.code-highlight code] [:pre [:code code]])]
+        fallback (if (:inline? options) [:code.code-highlight code] [:pre [:code code]])
+        content (hydration/use-boundary
+                  defer?
+                  #(r/as-element
+                     [r/suspense {:fallback (r/as-element fallback)}
+                      (if context/*server?*
+                        (view/form :highlight :formatted-code args fallback)
+                        ;; Keep Clojure arguments opaque at this React boundary.
+                        (r/create-element (:view formatter) #js {:args args}))])
+                  [context/*server?* args fallback formatter])]
     (r/use-effect
       (fn []
         (if defer?
           (resources/after-page! (:release! formatter))
           ((:release! formatter))))
       [])
-    ;; Reagent defc memoizes this boundary independently of outer controls.
-    [r/suspense {:fallback (r/as-element fallback)}
-     (if context/*server?*
-       (view/form :highlight :formatted-code args fallback)
-       ;; Keep Clojure arguments opaque at this native React boundary.
-       (r/create-element (:view formatter) #js {:args args}))]))
+    content))
 
 (r/reg-event-fx :code-block/copy
   {:args [:cat :string fn?]}

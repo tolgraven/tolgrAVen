@@ -1,21 +1,147 @@
 (ns website.visual-fixture
   "Fixed public content and native components for pixel/geometry comparisons."
-  (:require [website.react :as r]
-            [website.macros :refer-macros [defpage]]
+  (:require [clojure.string :as string]
+            [website.react :as r]
             [website.editor-visual :as editor]
+            [website.messaging-visual-fixture :as messaging-fixture]
             [website.component.restore :as restore]
+            [website.component.data :as data]
+            [website.supabase.runtime :as supabase]
+            [website.modules.contact.events]
+            [website.modules.user.events]
+            [website.modules.docs.views :as docs]
+            [website.modules.docs.events]
+            [website.modules.docs.subs]
+            [website.modules.instagram.views :as instagram]
+            [website.modules.instagram.subs]
+            [website.strava-visual-fixture :as strava-fixture]
+            [website.post-editor-visual-fixture :as post-editor-fixture]
+            [website.link-preview-fixture :as link-preview-fixture]
+            [website.additional-visual-fixture :as additional-fixture]
+            [website.components.ui.overlays :as overlays]
+            [website.modules.github.views :as github]
+            [website.modules.github.model :as github-model]
+            [website.modules.github.events]
+            [website.modules.github.subs]
             [website.modules.cv.views :as cv]
-            [website.modules.home.views :as home]
+            [website.modules.blog.views :as blog]
+            [website.modules.blog.data :as archive-data]
+            [website.modules.blog.schema :as archive-schema]
+            [website.supabase.schema :as store-schema]
+            [website.supabase.scoped :as scoped]
+            [website.modules.home.views :as home-view]
             [website.page-layout :as page-layout]
             [website.modules.blog.comment-views :as comments]
             [website.modules.blog.events]
             [website.modules.blog.subs]
             [website.modules.blog-preview.views :as preview]
+            [website.modules.search.views :as search]
+            [website.modules.search.model :as search-model]
+            [website.validation :as validation]
             [website.components.shell :as shell]
+            [website.components.media :as media]
+            [website.modules.home.sections :as home]
             [website.loader :as loader]
             [website.navigation.routes :as routes]
             [reitit.frontend.easy :as rfe]
-            [reitit.core :as reitit]))
+            [reitit.core :as reitit])
+  (:require-macros [website.macros :as m]))
+
+(def github-commits
+  (mapv (fn [index message]
+          (let [sha (apply str (repeat 40 (nth ["a" "b" "c" "d"] index)))]
+            {:sha sha
+             :html_url (str "https://github.com/visual-user/visual-repo/commit/" sha)
+             :author {:login "visual-user"
+                      :avatar_url "/img/tolgrav-square.png"}
+             :commit {:message message
+                      :author {:name "Visual contributor"
+                               :date (str "2026-10-" (- 14 index) "T12:30:00Z")}}}))
+        (range 4)
+        ["fix(github): keep commit tags, timestamps and links aligned"
+         "scss: theme: preserve the original spacing and native colors"
+         "Keep URLs intact: https://example.invalid/a/long/path?with=parameters"
+         "feat(api): show a multiline commit message\n\nKeep the provider body below the subject."]))
+
+(def github-days
+  (mapv (fn [index]
+          (let [date (subs (.toISOString (js/Date. (+ (.UTC js/Date 2025 9 10) (* index 86400000)))) 0 10)
+                amount (if (= date "2026-10-12") 13 (mod index 5))]
+            {:date date
+             :count amount
+             :level (min 4 amount)}))
+        (range 371)))
+
+(defn github-transport! []
+  ;; Only provider I/O is fixed. Managed dependency installation, HTTP result
+  ;; cleanup, initialization, query generations, normalization and subscriptions
+  ;; all remain native. Each visual case has its own disposable document realm.
+  (data/register-source! :url
+    {:load! (fn [{:keys [url]}]
+              (js/Promise.resolve
+                (case url
+                  "/api/github/settings" {:settings {:user "visual-user", :repo "visual-repo"}}
+                  "/api/deployment" {:commit (:sha (first github-commits))
+                                     :deployed-at "2026-10-15T12:00:00Z"
+                                     :commit-url (:html_url (first github-commits))}
+                  "/api/github/activity?user=visual-user" {:days github-days}
+                  "/api/github/activity/day?user=visual-user&date=2026-10-12"
+                  {:date "2026-10-12"
+                   :types {:commits 7
+                           :issues 2
+                           :pull-requests 1
+                           :reviews 2
+                           :repositories 1
+                           :restricted 0}}
+                  (throw (js/Error. (str "Unexpected GitHub fixture resource: " url))))))})
+  (r/reg-fx :http-xhrio
+    (fn [{:keys [method uri url-params on-success]}]
+      (when-not (= :get method)
+        (throw (js/Error. "GitHub visual fixtures only provide reads")))
+      (let [response (if (= uri "/api/github/commits")
+                       (let [rows (filterv #(github-model/matches? % (:q url-params)) github-commits)]
+                         {:commits rows
+                          :total (count rows)
+                          :complete true
+                          :next-cursor nil})
+                       (or (some #(when (= uri (str "/api/github/commits/" (subs (:sha %) 0 7))) %)
+                                 github-commits)
+                           (throw (js/Error. (str "Unexpected GitHub fixture request: " uri)))))]
+        (when-not (= {:user "visual-user", :repo "visual-repo"}
+                     (select-keys url-params [:user :repo]))
+          (throw (js/Error. "GitHub fixture requested a different repository")))
+        (r/dispatch (conj on-success response))))))
+
+(def instagram-posts
+  (into {}
+    (map-indexed
+      (fn [index image]
+        (let [id (str "visual-instagram-" index)]
+          [id {:id id
+               :caption (str "A native gallery photograph " (inc index) ". Keep its caption and image framing.")
+               :timestamp (str "2026-10-" (+ 10 index) "T12:00:00Z")
+               :media_url image}]))
+      ["/img/tolgrav-square.png" "/img/Leg-tasteful-small.jpg" "/img/tolgrav.png"
+       "/img/Leg-tasteful-small.jpg" "/img/tolgrav.png" "/img/tolgrav-square.png"])))
+
+(defn public-read-transport! []
+  ;; Only read I/O is fixed. Native dependency installation and module-owned
+  ;; subscriptions still determine when Docs and Instagram render their views.
+  (data/register-source! :url
+    {:load! (fn [{:keys [url]}]
+              (if (= url "/api/integrations/instagram")
+                (js/Promise.resolve {:posts instagram-posts})
+                (if-let [[_ page] (re-matches #"/api/doc\?path=(index|docs)" url)]
+                  (-> (js/fetch (str "/fixtures/docs/" page ".html"))
+                      (.then (fn [response]
+                               (when-not (.-ok response)
+                                 (throw (js/Error. (str "Missing generated Codox fixture: " page))))
+                               (.text response)))
+                      ;; Match the backend's trusted generated-body contract.
+                      (.then #(string/replace %
+                                (js/RegExp. "^[\\s\\S]*<body[^>]*>([\\s\\S]*)</body>[\\s\\S]*$")
+                                "$1")))
+                  (js/Promise.reject (js/Error. (str "Unexpected public fixture resource: " url))))))}))
 
 (def entry
   {:id "visual-entry"
@@ -52,6 +178,107 @@
    :karma 3
    :roles []})
 
+(def post-row
+  {:id 42
+   :user "visual-writer"
+   :title "Native post header"
+   :tags "clojure layout"
+   :text "Fixed public post content with its actual author avatar."
+   :ts 1609459200000})
+
+(def archive-posts
+  [(assoc post-row :id 44 :permalink "archive-spacing-44" :ts 1609632000000
+                  :title "Archive preview spacing across native rows"
+                  :text "**First archive preview** preserves the published paragraph inset.\nA second source line wraps naturally at narrow widths.\nThis third line is excluded by the native preview subscription.")
+   (assoc post-row :id 43 :permalink "archive-layout-43" :ts 1609545600000
+                  :title "A second archive entry with a longer heading and native tags"
+                  :text "**Second archive preview** keeps the metadata, tags and excerpt in their original flow.\nIts second source line makes the row height respond to the real viewport.\nThis third line remains outside the preview.")])
+
+;; Summary count fields are native count-projection results, not comment bodies.
+(def archive-summaries
+  (mapv (fn [post amount] (assoc (dissoc post :text) :comment-count amount)) archive-posts [1 2]))
+
+(defonce *archive-observation (atom {:queries #{}, :rejected 0}))
+(defonce *archive-cleanup (atom nil))
+
+(defn install-archive! []
+  (let [response (fn [posts] {:docs (mapv (fn [post] {:id (:id post), :data post}) posts)})
+        queries (into {archive-data/summaries-query (response archive-summaries)}
+                      (map (fn [post] [(archive-data/post-query (:id post)) (response [post])]) archive-posts))
+        handlers (mapv (fn [[kind id]] [kind id (r/get-handler kind id)])
+                       [[:sub :store/on-snapshot] [:fx :http-xhrio] [:fx :supabase/request]])
+        old-ensure-code! supabase/ensure-code!
+        *disposed? (atom false)
+        reject! (fn [& _]
+                  (swap! *archive-observation update :rejected inc)
+                  (throw (js/Error. "Archive fixtures reject provider acquisition, HTTP and writes")))
+        cleanup! (fn cleanup! []
+                   (when (compare-and-set! *disposed? false true)
+                     (.removeEventListener js/window "pagehide" cleanup!)
+                     (doseq [[kind id handler] handlers] (r/register-handler kind id handler))
+                     (set! supabase/ensure-code! old-ensure-code!)))]
+    (when (or (validation/explain archive-schema/post-list archive-posts)
+              (validation/explain archive-schema/post-list archive-summaries)
+              (some (fn [[query value]]
+                      (or (validation/explain store-schema/query query)
+                          (validation/explain store-schema/query-result value))) queries))
+      (throw (js/Error. "Invalid native archive query fixtures")))
+    (reset! *archive-observation {:queries #{}, :rejected 0})
+    (try
+      ;; Blog's actual feed/preview subscriptions use :store/on-snapshot, not the
+      ;; URL data adapter. Keep their pooled reader and scoped result lifecycle;
+      ;; replace only the SDK-facing acquisition boundary in this one realm.
+      (r/reg-sub-raw :store/on-snapshot
+        (fn [_ [_ query]]
+          (when-not (contains? queries query) (reject!))
+          (swap! *archive-observation update :queries conj query)
+          (scoped/ensure-query! query)))
+      (doseq [[query value] queries]
+        (r/dispatch-sync [:store/scoped (scoped/query-key query) value]))
+      (r/dispatch-sync [:state [:supabase-init] :ready])
+      (r/reg-fx :http-xhrio reject!)
+      (r/reg-fx :supabase/request reject!)
+      (set! supabase/ensure-code! reject!)
+      (.addEventListener js/window "pagehide" cleanup! #js {:once true})
+      (reset! *archive-cleanup cleanup!)
+      (catch :default error (cleanup!) (throw error)))))
+
+(defn ^:export archive-counts! [mode]
+  ;; Exercise zero/absent summary updates through the real scoped result event,
+  ;; then restore positive records for capture. No provider operation is invoked.
+  (let [summaries (case mode
+                    "empty" [(assoc (first archive-summaries) :comment-count 0)
+                             (dissoc (second archive-summaries) :comment-count)]
+                    "present" archive-summaries
+                    (throw (js/Error. "Unknown archive count fixture mode")))]
+    (r/dispatch-sync [:store/scoped (scoped/query-key archive-data/summaries-query)
+                      {:docs (mapv (fn [post] {:id (:id post), :data post}) summaries)}])))
+
+(defn ^:export archive-state []
+  (let [queries (:queries @*archive-observation)]
+    (clj->js {:summary-read? (contains? queries archive-data/summaries-query)
+              :preview-ids (mapv :id (filter #(contains? queries (archive-data/post-query (:id %))) archive-posts))
+              :rejected (:rejected @*archive-observation)})))
+
+(r/defc <archive-fixture> []
+  (r/use-effect (fn [] @*archive-cleanup) [])
+  ;; <blog-page> owns its native defpage/error/data boundary and heading. Do not
+  ;; wrap it in the generic fixture page or copy the archive implementation.
+  [:main#main.main-content.perspective-top [blog/<blog-page>]])
+
+(def replies
+  {"visual-comment"
+   {"first-reply" (assoc comment-row :id "first-reply" :parent-comment "visual-comment"
+                                   :path [42 "visual-comment"] :reply-count 1
+                                   :title "A native reply" :text "First reply with one child.")
+    "second-reply" (assoc comment-row :id "second-reply" :parent-comment "visual-comment"
+                                    :path [42 "visual-comment"] :ts 1609459202000
+                                    :title "Another native reply" :text "A sibling in the same thread.")}
+   "first-reply"
+   {"grandchild" (assoc comment-row :id "grandchild" :parent-comment "first-reply"
+                                  :path [42 "visual-comment" "first-reply"]
+                                  :title "A nested reply" :text "Rendered through the native reply row.")}})
+
 (def hit
   {:document {:id "post-42"
               :kind "blog-post"
@@ -61,59 +288,224 @@
               :ts 1609459200000
               :user "visual-writer"
               :author "Visual writer"
-              :tags "clojure,layout"}
+              :tags "clojure layout"}
    :preview :blog-preview/post
    :title [{:text "A ", :marked? false} {:text "marked", :marked? true} {:text " search result", :marked? false}]
    :excerpt [{:text "Native text around the ", :marked? false}
              {:text "highlighted", :marked? true}
              {:text " hit, including literal <script> text.", :marked? false}]})
 
-(defn <search-fixture> []
-  [:main#main.main-content
-   [:section.search-instant
-    [:div.search-instant-results
-     [preview/<post> hit]
-     [preview/<comment> (-> hit
-                           (assoc :preview :blog-preview/comment)
-                           (assoc-in [:document :id] "comment-113")
-                           (assoc-in [:document :kind] "blog-comment")
-                           (assoc-in [:document :href] "/blog/post/42/comment/113"))]
-     [preview/<post> (assoc-in hit [:document :id] "post-43")]]]])
+(def search-response
+  {:query "highlighted"
+   :found 3
+   :page 1
+   :suggestions ["highlighted content"]
+   :hits [hit
+          (-> hit
+              (assoc :preview :blog-preview/comment)
+              (assoc-in [:document :id] "comment-113")
+              (assoc-in [:document :kind] "blog-comment")
+              (assoc-in [:document :href] "/blog/post/42/comment/113"))
+          (assoc-in hit [:document :id] "post-43")]})
 
-(defn <shell-fixture> []
+(def extended-search-response
+  (let [commit (first github-commits)]
+    (-> search-response
+        (assoc :found 5)
+        (update :hits into
+          [(assoc hit
+                  :document {:id (str "github-" (:sha commit))
+                             :kind "github-commit"
+                             :title "GitHub highlighted change"
+                             :text "Native text around the highlighted commit."
+                             :href (str "/github/commits/" (:sha commit))
+                             :repository "visual-user/visual-repo"
+                             :author "Visual contributor"}
+                  :preview :github-preview/commit
+                  :title (search-model/marked-segments "GitHub <mark>highlighted</mark> change"))
+           (assoc hit
+                  :document {:id "site-section-services"
+                             :kind "site-section"
+                             :title "Site highlighted section"
+                             :text "Native text around the highlighted site section."
+                             :href "/section/services"}
+                  :preview :home-preview/section
+                  :title (search-model/marked-segments "Site <mark>highlighted</mark> section"))]))))
+
+(m/defpage <fixture-page>
+  "Use the native page-root container: direct grid children stretch to main's minimum height."
+  [content]
+  content)
+
+(defn <main-fixture> [content]
+  [:main#main.main-content.perspective-top
+   [<fixture-page> content]])
+
+(m/defpage <instagram-page>
+  {:depends [{:source :url
+              :url "/api/integrations/instagram"
+              :into [:content :instagram]}]}
+  []
+  [instagram/<instagram>])
+
+(defn <instagram-fixture> []
+  [:<>
+   ;; The native fullscreen owner is a page sibling, outside main's perspective.
+   [overlays/<zoom-to-modal> :fullscreen]
+   [:main#main.main-content.perspective-top [<instagram-page>]]])
+
+(defn <docs-fixture> []
+  ;; The sticky banner offset follows the real header, as on the Docs route.
+  ;; Docs owns its defpage container; do not nest another page surface.
+  [:<>
+   [shell/<header> (editor/section :header false)]
+   [:main#main.main-content.perspective-top [docs/<page>]]])
+
+(defn <home-fixture> [component]
   (let [content' #(editor/section % false)]
+    [<main-fixture>
+     (case component
+       "home-intro" [home/<intro> (content' :intro)]
+       "home-story" [home/<story> (content' :story)]
+       "home-image-media"
+       [:<>
+        [media/<moneyshot> (content' :moneyshot)]
+        ;; The seed's third interlude is the native still-image branch. Video
+        ;; playback needs its own explicit frame/readiness contract.
+        [media/<interlude> (content' :interlude) 2]
+        [media/<gallery> (content' :gallery)]])]))
+
+(defn <search-fixture> []
+  ;; Keep the native header in flow: the sticky input's top inset follows it.
+  ;; Search remains a main sibling, with its own suggestions/result scrolling.
+  [:<>
+   [shell/<header> (editor/section :header false)]
+   [search/<ui>]
+   [<main-fixture> [:section [:p "Fixed page content behind Search."]]]])
+
+(defn ^:export shell-state! [state]
+  ;; Visual actions exercise the real events and CSS effects. The fixture does
+  ;; not install the full boot listener host or assign shell classes/styles.
+  (r/dispatch-sync [:scroll/past-top true])
+  (r/dispatch-sync [:scroll/at-bottom false])
+  (case state
+    "minimized" (r/dispatch-sync [:hide-header-footer true true])
+    "restored" (r/dispatch-sync [:hide-header-footer false false])
+    "expanded" (do (r/dispatch-sync [:hide-header-footer false false])
+                   (r/dispatch-sync [:state [:fullscreen :cv] true]))
+    "bottom" (do (r/dispatch-sync [:hide-header-footer false false])
+                 (r/dispatch-sync [:scroll/at-bottom true]))
+    (throw (js/Error. (str "Unknown shell fixture state: " state)))))
+
+(defonce *composer-requests (atom []))
+
+(defn ^:export composer-text! [text]
+  (r/dispatch-sync [:form-field [:write-comment [42 "visual-comment"] :text] text]))
+
+(defn ^:export composer-state []
+  ;; Observe the native local form/editor owner for teardown checks. No second
+  ;; application state or replacement view is installed by these fixture reads.
+  (clj->js
+    {:text @(r/subscribe [:form-field [:write-comment [42 "visual-comment"] :text]])
+     :post-text @(r/subscribe [:form-field [:post-blog :text]])
+     :editors (count (filter #(= :comment (:kind %))
+                            (vals @(r/subscribe [:get :state :blog-editor :editors]))))
+     :uploads (count (filter #(= :comment (:kind %))
+                            (vals @(r/subscribe [:blog/state [:image-uploads]]))))
+     :requests (count @*composer-requests)}))
+
+(defn ^:export panel-state! [state]
+  ;; Exercise native state/presence events without following query links or
+  ;; submitting credentials. In particular, the login Register button is Auth.
+  (case state
+    "closed" (do (r/dispatch-sync [:user/close-ui])
+                 (r/dispatch-sync [:state [:settings :panel-open] false])
+                 (r/dispatch-sync [:contact/close]))
+    "login" (r/dispatch-sync [:user/open-ui :login])
+    "register" (do (r/dispatch-sync [:user/open-ui :login])
+                   (r/dispatch-sync [:user/active-section :register]))
+    "settings" (r/dispatch-sync [:state [:settings :panel-open] true])
+    "contact" (r/dispatch-sync [:contact/open])
+    (throw (js/Error. (str "Unknown panel fixture state: " state)))))
+
+(defn <shell-fixture> [component]
+  (let [content' #(editor/section % false)
+        scroll? (= "shell-scroll" component)
+        panels? (#{"shell-panels" "shell-account"} component)]
     [:<>
-     [shell/<header> (content' :header)]
-     [:main#main.main-content [:section [:h1 "Shared shell"] [:p "Fixed page content."]]]
-     [shell/<footer-full> (content' :footer)]
-     [shell/<post-footer> (content' :post-footer)]]))
+     (when (#{"header" "shell" "shell-scroll" "shell-panels" "shell-account"} component)
+       [shell/<header> (content' :header)])
+     ;; Match components/page: User and conditional Settings are main siblings;
+     ;; the Contact presence host follows both footer copies. No extra wrapper.
+     (when panels?
+       (let [open? @(r/subscribe [:user/ui-open?])]
+         (m/<> {:module :user
+                :defer? (not open?)
+                :load-on (if open? :immediate :event)})))
+     (when (and panels? @(r/subscribe [:state [:settings :panel-open]]))
+       (m/<> {:module :settings, :load-on :immediate}))
+     [<main-fixture>
+      [:section
+       [:h1 "Shared shell"]
+       [:p "Fixed page content."]
+       (when scroll?
+         ;; Native paragraph layout keeps the full footer beyond its real
+         ;; observation margin until the case navigates to the page bottom.
+         (for [index (range 100)]
+           ^{:key index}
+           [:p "Fixed page context for minimized, restored and bottom-of-page shell states."]))]]
+     ;; Production footers are siblings of main. The full footer already owns
+     ;; post-footer, including its font size and natural flex-row height.
+     (when (#{"footer" "post-footer" "shell" "shell-scroll" "shell-panels" "shell-account"} component)
+       [shell/<footer-full> (content' :footer)])
+     (when (#{"shell" "shell-scroll" "shell-panels" "shell-account"} component)
+       [shell/<footer> (content' :footer)])
+     (when panels?
+       (let [open? @(r/subscribe [:state [:contact-form :show?]])]
+         (m/<> {:module :contact
+                :view :popup
+                :defer? (not open?)
+                :load-on (if open? :immediate :event)
+                :<loading> (if open? [:span {:role "status"} "Opening contact form…"] [:<>])})))]))
 
 (defn <box-fixture> [container?]
-  [:main#main.main-content
-   [:section.cv
-    [:div.cv-boxes {:style {:height "28rem"}}
-     [:div.cv-items
-      [cv/<box> (cond-> entry container?
-                  (assoc :kind "container" :what "Festival day"
-                         :children [(assoc entry :id "performance" :what "Main stage")]))
-       "10%" "70%" 0 nil
-       {:column 0, :category "work", :parents [], :parent-keys []}]]]]])
+  (let [items (mapcat :things (get-in @(r/subscribe [:content/view [:cv]]) [:cv :timeline]))
+        current-year (.getUTCFullYear (js/Date.))
+        first-year (apply min (map :from items))
+        last-year (apply max (map #(if (number? (:to %)) (:to %) (+ 3 current-year)) items))
+        span (- last-year first-year)
+        position (str (* 95 (/ (- (:from entry) first-year) span)) "%")
+        size (str (* 92 (/ (- (:to entry) (:from entry)) span)) "%")]
+    [<main-fixture>
+     [:section.cv.nopadding.noborder
+      [:div.cv-boxes
+       ;; Match the native timeline column in cv/<cv>. Absolutely positioned boxes
+       ;; cannot establish their parent's width by themselves. This fixed single-row
+       ;; column has native height-ratio 1; dates use the seed's actual shared range.
+       [:div.cv-items.cv-work {:style {:width "200em", :height "9em"}}
+        [cv/<box> (cond-> entry container?
+                    (assoc :kind "container" :what "Festival day"
+                           :children [(assoc entry :id "performance" :what "Main stage")]))
+         position size 0 nil
+         {:column 0, :category "work", :parents [], :parent-keys []}]]]]]))
 
-(defn <comment-fixture> [thread?]
-  [:main#main.main-content
-   [:div.blog.fullwide
-    [:section.blog-comments
-     [:div.blog-comments-inner
-      [comments/<comment-post> {:path [42 "visual-comment"], :comment comment-row, :appear false}]
-      (when thread?
-        [comments/<comment-post>
-         {:path [42 "second-comment"]
-          :comment (assoc comment-row :id "second-comment" :title "A second comment"
-                                 :text "Fixed prose next to the original corner actions.")
-          :appear false}])]]]])
+(defn <post-fixture> [component]
+  [<main-fixture>
+   [blog/<blog-container>
+    {:tag-cloud? false
+     :section [blog/<post-content>
+               {:post (cond-> post-row (= "comments-edge" component)
+                        (assoc :text (apply str (repeat 14 "Context before the comment.\n\n"))))
+                :features [[:appear false]]}]}]])
 
-(defpage <layout-surface> [vertical?]
-  [home/<layout>
+(defn <standalone-fixture> []
+  [<main-fixture>
+   [blog/<blog-container>
+    {:tag-cloud? false
+     :section [comments/<standalone-comment> "visual-comment"]}]])
+
+(m/defpage <layout-surface> [vertical?]
+  [home-view/<layout>
     (let [page (page-layout/find-page page-layout/defaults "experiments")
           page' (update page :sections (fn [sections] (filterv #(#{"story" "page-index"} (:component %)) sections)))
           [story index] (:sections page')]
@@ -129,34 +521,218 @@
   [:main#main.main-content [<layout-surface> vertical?]])
 
 
-(defn ^:export init! []
+(defn- init-fixture! [real-cv-storage?]
   (let [params (js/URLSearchParams. (.-search js/location))
-        component (.get params "component")]
-    (if-not (#{"page-layout" "page-layout-vertical" "cv-regular" "cv-container" "comments" "thread" "search-mixed" "shell"} component)
+        component (.get params "component")
+        composer? (and (= component "comments-auth")
+                       (contains? #{"rich" "plain"} (.get params "composer")))]
+    (cond
+      (messaging-fixture/components component) (messaging-fixture/init! component)
+      (not (or (additional-fixture/component-names component)
+                (#{"page-layout" "page-layout-vertical"
+               "cv-regular" "cv-container" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
+               "thread" "post" "standalone-comments" "search-mixed" "search-extensions" "blog-archive"
+               "shell" "shell-scroll" "shell-panels" "shell-account" "header" "footer" "post-footer" "services" "cv"
+               "home-intro" "home-story" "home-image-media" "github"
+               "docs-index" "docs-topic" "instagram" "strava" "post-editor" "cms-services" "cms-cv" "cms-gallery"
+               "link-preview-ready" "link-preview-metadata" "link-preview-unavailable"} component)))
       (editor/init! false)
-      (-> (js/fetch "/fixtures/editor-seed.json")
+      :else (-> (js/fetch "/fixtures/editor-seed.json")
           (.then #(.json %))
+          ;; Settled layout cases use one deterministic native font state. The
+          ;; dedicated font suite still exercises cold fallback and crossfades.
+          (.then (fn [seed]
+                   (-> (.load (.-fonts js/document) "1em 'Fira Code'" "MWiw0123456789")
+                       (.then (fn [faces]
+                                (when (zero? (.-length faces))
+                                  (throw (js/Error. "Fixture monospace font did not load")))
+                                seed)))))
           (.then
             (fn [seed]
               (rfe/start! routes/router (fn [_ _]) {:use-fragment false})
               (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) false])
-              (r/dispatch-sync [:set [:common/route]
-                                (cond-> (assoc (reitit/match-by-path routes/router "/blog/post/42")
-                                       :parameters {:path {:permalink "42"}, :query {}})
-                                  (#{"page-layout" "page-layout-vertical"} component)
-                                  (assoc :path (.-pathname js/location), :query-params {:component component}))])
+              (when (and (= component "cv") (not real-cv-storage?))
+                (editor/install-cv-visit!))
+              (when (#{"cms-services" "cms-cv" "cms-gallery"} component)
+                (editor/install-cms! component))
+              (when (= component "cms-cv")
+                ;; Ready editing layout: keep native fullscreen, omit the first-visit tour.
+                (r/dispatch-sync [:state [:cv :visited] true]))
+              (when composer?
+                ;; Only these cases deny provider I/O. The real comment owner
+                ;; supplies :library? false and never needs a post draft or Auth.
+                (r/dispatch-sync [:state [:supabase-init] :ready])
+                (r/dispatch-sync [:form-field [:post-blog :text] "Retained post draft"])
+                (set! supabase/authenticated-request!
+                  (fn [method uri & _]
+                    (swap! *composer-requests conj {:method method, :uri uri})
+                    (js/Promise.reject (js/Error. "Composer visual fixtures do not perform provider I/O"))))
+                (r/reg-fx :http-xhrio
+                  (fn [request]
+                    (swap! *composer-requests conj (select-keys request [:method :uri]))
+                    (throw (js/Error. "Composer visual fixtures do not perform HTTP or writes")))))
+              (when (= "shell-panels" component)
+                ;; Public presentation flags only. The already-ready store path
+                ;; prevents login-panel intent from starting settings/SDK boot.
+                (r/dispatch-sync [:state [:supabase-init] :ready])
+                (r/dispatch-sync [:set [:options :supabase :providers]
+                                  {:google true, :github true, :facebook true}])
+                (panel-state! "closed")
+                (r/reg-fx :http-xhrio
+                  (fn [_] (throw (js/Error. "Panel visual fixtures do not perform HTTP or writes")))))
+              (when (#{"comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
+                       "thread" "post" "search-mixed"} component)
+                (r/dispatch-sync [:set [:common/route]
+                                  (assoc (reitit/match-by-path routes/router "/blog/post/42")
+                                         :parameters {:path {:permalink "42"}, :query {}})]))
+              (when (= "blog-archive" component)
+                (r/dispatch-sync [:set [:common/route] (reitit/match-by-path routes/router "/blog/archive")]))
+              (when (#{"docs-index" "docs-topic"} component)
+                (r/dispatch-sync [:set [:common/route]
+                                  (reitit/match-by-path routes/router
+                                    (if (= component "docs-index") "/docs" "/docs/codox/docs"))]))
+              (when (= "standalone-comments" component)
+                (r/dispatch-sync [:set [:common/route]
+                                  (assoc (reitit/match-by-path routes/router "/blog/comment/visual-comment")
+                                         :parameters {:path {:comment-id "visual-comment"}, :query {}})]))
+              (when (#{"page-layout" "page-layout-vertical"} component)
+                (r/dispatch-sync [:set [:common/route]
+                                  (assoc (reitit/match-by-path routes/router "/blog/post/42")
+                                         :parameters {:path {:permalink "42"}, :query {}}
+                                         :path (.-pathname js/location)
+                                         :query-params {:component component})]))
               ;; Only provider boundaries are fixed. Native comment markup,
               ;; actions, clip measurement and expansion events are unchanged.
-              (r/reg-sub :user/user (fn [_ _] writer))
-              (r/reg-sub :user/active-user (fn [_ _] nil))
-              (r/reg-sub :comments/visible-thread (fn [_ _] []))
-              (restore/begin! {:back? true})
+              (r/reg-sub :user/user
+                         (fn [_ [_ user]]
+                           (if (#{"cms-services" "cms-cv" "cms-gallery" "shell-account"} component)
+                             ;; Keep private roles/email on the verified active
+                             ;; owner. Its native subscription merges only this
+                             ;; fixture public-profile read, without acquisition.
+                             (if (map? user) user
+                               (let [profile (if (= "shell-account" component)
+                                               editor/account-profile editor/profile)]
+                                 (when (= user (:id profile))
+                                   (select-keys profile
+                                                [:id :name :avatar :bg-color :comment-count :karma]))))
+                             (cond-> writer (= "post" component)
+                               (assoc :avatar "/img/Leg-tasteful-small.jpg")))))
+              (when-not (#{"cms-services" "cms-cv" "cms-gallery" "shell-account"} component)
+                (r/reg-sub :user/active-user
+                           (fn [_ _]
+                             (case component
+                               ("comments-auth" "comments-edge") writer
+                               "post-editor" editor/profile
+                               "comments-reader" (assoc writer :id "visual-reader" :name "Visual reader")
+                               nil))))
+              (r/reg-sub :blog/vote (fn [_ _] nil))
+              (r/reg-sub :comments/visible-thread
+                         (fn [_ [_ _ parent-id]]
+                           (if (= "thread" component) (get replies parent-id {}) {})))
+              (r/reg-sub :comments/root-page
+                         (fn [_ _]
+                           {:records (if (#{"comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge" "thread"} component)
+                                       (cond-> {"visual-comment" (cond-> comment-row
+                                                                   (= "thread" component) (assoc :reply-count 2))}
+                                         (= "comments-roots" component)
+                                         (assoc "second-root" (assoc comment-row :id "second-root" :ts 1609459202000
+                                                                                :title "Another root comment"
+                                                                                :text "A separate root retains the original gap.")))
+                                       {})
+                            :loading? false
+                            :more? false}))
+              (r/reg-sub :comments/focus-ready? (fn [_ _] true))
+              (r/reg-sub :comments/focus-state
+                         (fn [_ _]
+                           (if (= "standalone-comments" component)
+                             {:ready? true
+                              :comment-id "visual-comment"
+                              :row comment-row
+                              :root comment-row
+                              :parent post-row}
+                             {})))
+              (when (#{"search-mixed" "search-extensions"} component)
+                (let [response (if (= "search-extensions" component)
+                                 extended-search-response
+                                 search-response)]
+                  (when (validation/explain search-model/result response)
+                    (throw (js/Error. "Invalid native search fixture response")))
+                  (r/reg-sub :search/open? (fn [_ _] true))
+                  (r/reg-sub :search/query (fn [_ _] (:query response)))
+                  (r/reg-sub :search/response (fn [_ _] response))
+                  (r/reg-sub :search/pending? (fn [_ _] false))
+                  (r/reg-sub :search/error (fn [_ _] nil))
+                  (r/reg-sub :search/selected (fn [_ _] -1))
+                  (r/reg-sub :search/get (fn [_ _] 0))))
+              (when (= "blog-archive" component) (install-archive!))
+              (when (= "github" component) (github-transport!))
+              (when (= "strava" component) (strava-fixture/install-transport!))
+              (when (= "post-editor" component) (post-editor-fixture/install! editor/profile))
+              (when (#{"link-preview-ready" "link-preview-metadata" "link-preview-unavailable"} component)
+                (link-preview-fixture/install-visual! component))
+              (when (#{"docs-index" "docs-topic" "instagram"} component)
+                (public-read-transport!))
+              (when (#{"docs-index" "docs-topic"} component)
+                (r/dispatch-sync [:docs/set-page (if (= component "docs-index") "index" "docs")]))
+              (restore/begin! (if (#{"docs-index" "docs-topic" "instagram" "shell-panels" "shell-account" "strava" "post-editor" "cms-services" "cms-cv" "cms-gallery"} component) {} {:back? true}))
               (-> (loader/load! {:module :markdown})
                   (.then (fn [_]
+                           (case component
+                             "github" (loader/load! {:module :github})
+                             ("docs-index" "docs-topic") (loader/acquire-code! :docs)
+                             "instagram" (loader/acquire-code! :instagram)
+                             "post-editor" (loader/load! {:module :blog-editor})
+                             ("cms-services" "cms-cv" "cms-gallery") (loader/load! {:module :content-editor})
+                             ("link-preview-ready" "link-preview-metadata" "link-preview-unavailable")
+                             (loader/load! {:module :link-preview})
+                             "strava" (-> (loader/load! {:module :maps})
+                                          (.then (fn [_] (loader/load! {:module :carousel})))
+                                          (.then (fn [_] (loader/load! {:module :strava}))))
+                             nil)))
+                  (.then (fn [_]
+                           (when (#{"cv" "cms-cv"} component)
+                             (loader/load! {:module :carousel}))))
+                  (.then (fn [_]
+                           (when (additional-fixture/component-names component)
+                             (additional-fixture/prepare! component))))
+                  (.then (fn [_]
+                           (when (additional-fixture/component-names component)
+                             (additional-fixture/install! component {:comment-row comment-row
+                                                                     :search-response search-response}))))
+                  (.then (fn [_]
                            (r/render (r/create-root (.getElementById js/document "app"))
-                             (case component
+                             (if (additional-fixture/component-names component)
+                               (if (additional-fixture/experiments? component)
+                                 [:main#main.main-content.perspective-top [additional-fixture/<fixture> component]]
+                                 [:<>
+                                  [<main-fixture> [additional-fixture/<fixture> component]]
+                                  ;; Match the native page's error portal sibling.
+                                  (when (= component "inspector-error") [:div#error-portal])])
+                               (case component
                                ("page-layout" "page-layout-vertical") [<layout-fixture> (= component "page-layout-vertical")]
-                               "search-mixed" [<search-fixture>]
-                               "shell" [<shell-fixture>]
-                               ("comments" "thread") [<comment-fixture> (= component "thread")]
-                               [<box-fixture> (= component "cv-container")])))))))))))
+                               ("search-mixed" "search-extensions") [<search-fixture>]
+                               ("post" "comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge" "thread")
+                               [<post-fixture> component]
+                               "standalone-comments" [<standalone-fixture>]
+                               "blog-archive" [<archive-fixture>]
+                               "shell-account" [editor/<account-owner> [<shell-fixture> component]]
+                               ("shell" "shell-scroll" "shell-panels" "header" "footer" "post-footer") [<shell-fixture> component]
+                               "services" [<main-fixture> [home/<services> (editor/section :services false)]]
+                               "cv" [<main-fixture> [cv/<cv>]]
+                               "github" [<main-fixture> [github/<commits>]]
+                               ("docs-index" "docs-topic") [<docs-fixture>]
+                               "instagram" [<instagram-fixture>]
+                               "strava" [strava-fixture/<fixture>]
+                               "post-editor" [post-editor-fixture/<fixture>]
+                               ("cms-services" "cms-cv" "cms-gallery") [editor/<cms-fixture> component]
+                               ("link-preview-ready" "link-preview-metadata" "link-preview-unavailable")
+                               [link-preview-fixture/<visual-fixture>]
+                               ("home-intro" "home-story" "home-image-media") [<home-fixture> component]
+                               [<box-fixture> (= component "cv-container")]))))))))))))
+
+(defn ^:export init! []
+  (init-fixture! false))
+
+(defn ^:export init-cv-visit! []
+  ;; The manual visit/reload check deliberately exercises the native disk owner.
+  (init-fixture! true))

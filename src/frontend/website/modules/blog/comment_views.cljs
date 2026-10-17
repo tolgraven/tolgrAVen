@@ -5,6 +5,7 @@
             [website.components.timer :as timer]
             [website.components.ui.action :as action]
             [website.modules.blog.comments :as comments]
+            [website.modules.blog.avatar :as avatar]
             [website.modules.blog.schema :as schema]
             [website.modules.blog.presentation :as presentation]
             [website.modules.markdown-editor.model :as editor-model]
@@ -80,7 +81,7 @@
        (case vote :up "+" :down "-")])))
 
 (defc <collapsed-reply-view>
-  {:features [[:appear "zoom-y"]]}
+  {:features [[:appear "zoom-y"] [:exit {:class "zoom-y faster", :retain-layout? true}]]}
   [{:keys [path comments reply-count loading?] :as spec}]
   [:div.blog-comment-reply.flex
    {:style {:cursor "zoom-in"
@@ -91,6 +92,11 @@
    [:section.blog-comment.blog-comment-collapsed-placeholder
     {:aria-busy (boolean loading?)}
     (if loading? "Loading replies…" (util/pluralize (or reply-count (count comments)) " hidden reply"))]])
+
+(defc <reply-thread>
+  {:features [:presence]}
+  [children]
+  (into [:div.blog-comment-reply-outer] children))
 
 (defc <comment-frame> {:features [:props [:appear nil]]} [{:keys [children] :as spec}]
   (into [:div.flex.blog-comment-around] children))
@@ -108,16 +114,32 @@
 (defc <comment-fade> {:features [:props [:appear "opacity"]]} [spec]
   [:div.fade-to-black.bottom {:style {:z-index "0"}}])
 
-(defn- measure-comment-text! [element *full? *truncated? *fade-style]
+(defn- layout-top [element]
+  (loop [node element, top 0]
+    (if node (recur (.-offsetParent node) (+ top (.-offsetTop node))) top)))
+
+(defn- comment-text-limit [element]
+  (let [card (.closest element ".blog-comment")
+        style (js/getComputedStyle card)
+        ;; The original 25rem fold includes title, metadata and card padding.
+        ;; offsetTop is layout geometry, unaffected by entrance transforms.
+        top (- (layout-top element) (layout-top card))
+        bottom (+ (js/parseFloat (.-paddingBottom style))
+                  (js/parseFloat (.-borderBottomWidth style)))]
+    (max 0 (- (util/rem-to-px 25) top bottom))))
+
+(defn- measure-comment-text! [element *full? *truncated? *fade-style *text-limit]
   (when element
-    (let [truncated? (> (util/px-to-rem (.-scrollHeight element)) 24)
+    (let [limit (comment-text-limit element)
+          truncated? (> (.-scrollHeight element) limit)
           bounds (.getBoundingClientRect element)
-          bottom (.-bottom bounds)
+          bottom (+ (.-top bounds) (min limit (.-height bounds)))
           code-bounds (when truncated?
                         (some (fn [code]
                                 (let [box (.getBoundingClientRect code)]
                                   (when (< (.-top box) bottom (.-bottom box)) box)))
                               (array-seq (.querySelectorAll element ".code-block"))))]
+      (reset! *text-limit (str (util/px-to-rem limit) "rem"))
       (reset! *truncated? truncated?)
       ;; Expansion is an explicit reader choice. Measuring the full body must
       ;; not fold it again, but a short focused comment has nothing to collapse.
@@ -143,10 +165,11 @@
         *truncated? (r/atom false)
         *interacted? (r/atom false)
         *fade-style (r/atom nil)
+        *text-limit (r/atom nil)
         *text-element (atom nil)
         capture-height! (fn [element]
                           (reset! *text-element element)
-                          (measure-comment-text! element *full? *truncated? *fade-style))]
+                          (measure-comment-text! element *full? *truncated? *fade-style *text-limit))]
   (let [[show-expand? show-expand! hide-expand!] (timer/use-delayed-hide 2000)
         *element (r/use-ref nil)
         route @(r/subscribe [:common/route])
@@ -163,10 +186,13 @@
         (when-let [element (when showing? @*text-element)]
           (when (exists? js/ResizeObserver)
             (let [observer (js/ResizeObserver.
-                             #(measure-comment-text! element *full? *truncated? *fade-style))]
+                             #(measure-comment-text! element *full? *truncated? *fade-style *text-limit))]
               ;; The unclipped Markdown root changes size even when its text
               ;; viewport is capped, including late formatting/font upgrades.
               (.observe observer (or (.querySelector element ".md-rendered") element))
+              ;; Titles, author metadata and responsive fonts consume the same
+              ;; card budget even when the clipped Markdown height is unchanged.
+              (.observe observer (.-parentElement element))
               (fn [] (.disconnect observer))))))
       [showing? text])
     (r/use-layout-effect
@@ -217,7 +243,7 @@
                                         :opacity 0.8})}
 
              [:div
-              (m/<> :user/avatar user)
+              [avatar/<avatar> user]
 
               [:div.blog-comment-main
                [:h3.blog-comment-title title]
@@ -229,7 +255,8 @@
                 {:ref capture-height!
                  :style {:filter (when (neg? score)
                                    (str "brightness(calc(1 + "
-                                        (max -0.7 (* 0.1 score)) "))"))}}
+                                        (max -0.7 (* 0.1 score)) "))"))
+                         "--comment-text-limit" @*text-limit}}
                 [presentation/<comment-markdown> text
                  {:trust (presentation/link-trust user)
                   :image-assets (:image-assets spec)
@@ -276,8 +303,8 @@
              [<add-comment> {:parent-path path}])
 
            (when replies? ;replies
-             [:div.blog-comment-reply-outer
-              [:div.blog-comment-reply
+             [<reply-thread>
+              [^{:key :replies} [:div.blog-comment-reply
                {:style {"--comment-reveal-duration" (str (comments/reveal-duration-ms (count @*comments)) "ms")}}
                (doall (for [[index post] (map-indexed vector (sort-by :ts (vals @*comments)))]
                         ^{:key (get-id-str (conj path (:id post)))}
@@ -295,10 +322,10 @@
                                                       :visible? *expanded?
                                                       :appear false}]]}] ))]
               (when (or (not @*expanded?) (nil? @*comments))
-                [<collapsed-reply-view> {:path path :comments @*comments :reply-count (:reply-count post)
+                ^{:key :collapsed} [<collapsed-reply-view> {:path path :comments @*comments :reply-count (:reply-count post)
                                          :expand! (fn [] (reset! *interacted? true)
                                                     (r/dispatch [:blog/expand-comment-thread path true]))
-                                         :loading? (and @*expanded? (nil? @*comments))}])])]))))
+                                         :loading? (and @*expanded? (nil? @*comments))}])]])]))))
 
 (defc <comment-focus>
   "Resolve a route intent once; ordinary comment state owns the resulting folds."
@@ -327,9 +354,17 @@
   (let [{:keys [records loading? more?]} @(r/subscribe [:comments/root-page id])
         route @(r/subscribe [:common/route])
         focused-id (get-in route [:parameters :path :comment-id])
-        comments (->> (vals records) (sort-by (juxt :ts :id)) reverse)]
+        focused-root (:root @(r/subscribe [:comments/focus-state id]))
+        expanded? @(r/subscribe [:blog/state [:comments-expanded id]])
+        comments (comments/displayed-roots (vals records) expanded? (:id focused-root))
+        amount (str (util/pluralize (count records) "comment") (when more? "+"))]
     [:section.blog-comments
-     [:h2.blog-comments-title.bottomborder (str (util/pluralize (count comments) "comment") (when more? "+"))]
+     (if (or more? (> (count records) comments/collapsed-root-count))
+       [:button.blog-btn.blog-collapse-btn.nomargin.bottomborder
+        {:aria-expanded (boolean expanded?)
+         :on-click #(r/dispatch [:blog/expand-comments id (not expanded?)])}
+        (if expanded? "Collapse" (str (if more? "Show " "Show all ") amount))]
+       [:h2.blog-comments-title.bottomborder amount])
      (when focused-id [<comment-focus> id])
      (when (seq comments)
        [:div.blog-comments-inner
@@ -338,7 +373,7 @@
                  [<comment-post> {:path path :comment comment
                                   :focused-id focused-id
                                   :stagger-ms (min 48 (* 12 index))}]))])
-     (when more?
+     (when (and expanded? more?)
        [:button.blog-btn.blog-load-more
         {:disabled loading? :on-click #(r/dispatch [:blog/load-more-comments id])}
         (if loading? "Loading comments…" "Load more comments")])

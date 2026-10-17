@@ -29,44 +29,50 @@
               (/ (.-innerHeight js/window) (max 1 (.-innerWidth js/window))))
            "% 0%")))
 
-(defn setup! [element options]
-  (when (and element (exists? js/window))
-    (let [modes (triggers options)
-          *active? (atom true)
-          *fired? (atom false)
-          *visibility (atom nil)
-          fire! (fn [& _]
-                  (when (and @*active? (compare-and-set! *fired? false true))
-                    (r/dispatch (or (:event options)
-                                     [:loader/activate (dissoc options :event)]))))
-          observe! (fn []
-                     (when-let [state @*visibility] ((:stop! state)))
-                     (when (and @*active? (not @*fired?) (modes :view))
-                       (let [state (visibility/setup {:callback fire!
-                                                      :threshold 0
-                                                      :root-margin (root-margin options)})]
-                         (reset! *visibility state)
-                         ((:mount! state) element))))
-          ;; Document capture runs before React's root capture listener queues a
-          ;; click on unhydrated Suspense content. Observe intent only inside this
-          ;; owned root; never cancel the event or mutate its markup.
-          intent! (fn [event]
-                    (when (.contains element (.-target event)) (fire!)))
-          events (cond-> []
-                   (some modes [:view :hover :click]) (conj "focusin")
-                   (or (modes :click) (modes :view)) (conj "click")
-                   (or (modes :hover) (modes :view)) (conj "pointerenter"))
-          bindings (cond-> (mapv (fn [event]
-                                  {:target   "document"
-                                   :event    event
-                                   :handler  intent!
-                                   :capture? true}) events)
-                     (modes :view) (conj {:target "window", :event "resize", :handler observe!}))
-          stop-listeners! (listener/listen! :loader-activation bindings)]
-      (when (modes :view)
-        (observe!))
-      (when (modes :immediate) (fire!))
-      (fn []
-        (reset! *active? false)
-        (when-let [state @*visibility] ((:stop! state)))
-        (stop-listeners!)))))
+(defn setup!
+  ([element options] (setup! element options [element]))
+  ([element options geometry-targets]
+   (when (and element (exists? js/window))
+     (let [modes (triggers options)
+           *active? (atom true)
+           *fired? (atom false)
+           *visibility (atom [])
+           fire! (fn [& _]
+                   (when (and @*active? (compare-and-set! *fired? false true))
+                     (r/dispatch (or (:event options)
+                                      [:loader/activate (dissoc options :event)]))))
+           observe! (fn []
+                      (doseq [state @*visibility] ((:stop! state)))
+                      (reset! *visibility [])
+                      (when (and @*active? (not @*fired?) (modes :view))
+                        (reset! *visibility
+                          (mapv (fn [target]
+                                  (let [state (visibility/setup {:callback fire!
+                                                                 :threshold 0
+                                                                 :root-margin (root-margin options)})]
+                                    ((:mount! state) target)
+                                    state))
+                                geometry-targets))))
+           ;; Document capture runs before React's root capture listener queues a
+           ;; click on unhydrated Suspense content. Observe intent only inside this
+           ;; owned root; never cancel the event or mutate its markup.
+           intent! (fn [event]
+                     (when (.contains element (.-target event)) (fire!)))
+           events (cond-> []
+                    (some modes [:view :hover :click]) (conj "focusin")
+                    (or (modes :click) (modes :view)) (conj "click")
+                    (or (modes :hover) (modes :view)) (conj "pointerenter"))
+           bindings (cond-> (mapv (fn [event]
+                                   {:target   "document"
+                                    :event    event
+                                    :handler  intent!
+                                    :capture? true}) events)
+                      (modes :view) (conj {:target "window", :event "resize", :handler observe!}))
+           stop-listeners! (listener/listen! :loader-activation bindings)]
+       (when (modes :view)
+         (observe!))
+       (when (modes :immediate) (fire!))
+       (fn []
+         (reset! *active? false)
+         (doseq [state @*visibility] ((:stop! state)))
+         (stop-listeners!))))))

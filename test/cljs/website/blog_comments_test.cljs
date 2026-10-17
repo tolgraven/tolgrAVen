@@ -24,12 +24,109 @@
 
 (defn- tick! [ms] (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
 
+(defn- make-loader-restore-fn []
+  (let [restore-db! (r/make-restore-fn)
+        loads @loader/*loads
+        code-loads @loader/*code-loads
+        installed @loader/*installed]
+    ;; These cases temporarily replace :user's spec. Restore its promises and
+    ;; the matching app-db together; never leak a dependency-pruned fake owner
+    ;; or a newly acquired editor promise whose readiness was reset afterwards.
+    (fn []
+      (reset! loader/*loads loads)
+      (reset! loader/*code-loads code-loads)
+      (reset! loader/*installed installed)
+      (restore-db!))))
+
+(defn- load-module! [module]
+  (-> (loader/load! {:module module})
+      (.then (fn [spec]
+               ;; init/app-db intentionally clears this case's readiness while
+               ;; genuine code/CSS may already be cached by another native case.
+               (r/dispatch-sync [:loader/code-ready module])
+               (r/dispatch-sync [:scope/init module])
+               spec))))
+
+(deftest root-comments-toggle-keeps-pagination-and-focused-old-threads
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                restore-db! (make-loader-restore-fn)
+                before-context @restore/*context
+                subscribe (r/subscribe-function)
+                author {:id "writer", :name "Writer"}
+                rows (mapv #(hash-map :id (str %) :parent-post 42 :parent-comment nil
+                                     :reply-count 0 :user "writer" :title (str "Root " %)
+                                     :text "Comment body" :ts %) (range 6))
+                *focused (r/atom nil)
+                modules loader/modules]
+            (try
+              (r/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:set [:common/route] (reitit/match-by-path routes/router "/blog/post/42")])
+              (restore/begin! {:back? true})
+              (await! (load-module! :markdown))
+              (r/with-framework-bindings
+                [loader/modules
+                 (assoc modules :user (reify lazy/ILoadable
+                                        (ready? [_] true)
+                                        IDeref
+                                        (-deref [_] (dissoc user-module/spec :content :depends))))
+                 rfe/href (fn [name params query]
+                            (some-> (reitit/match-by-name routes/router name params)
+                                    (reitit/match->path query)))
+                 r/subscribe
+                 (fn
+                   ([q]
+                    (case (first q)
+                      :comments/root-page (r/atom {:records (into {} (map (juxt :id identity)) rows)
+                                                  :loading? false
+                                                  :more? true})
+                      :comments/focus-state *focused
+                      :user/user (r/atom author)
+                      :user/active-user (r/atom nil)
+                      (subscribe q)))
+                   ([q opts] (subscribe q opts)))]
+                (await! (support/render! root [comment-views/<comments-section> {:post {:id 42}}]))
+                (is (= 4 (.-length (.querySelectorAll element ".blog-comment-title"))))
+                (is (nil? (.querySelector element ".blog-load-more")))
+                (.click (.querySelector element ".blog-collapse-btn"))
+                (await! (support/settle!))
+                (is (= 6 (.-length (.querySelectorAll element ".blog-comment-title"))))
+                (.click (.querySelector element ".blog-load-more"))
+                (await! (support/settle!))
+                (let [limit (await! (support/state-at! [:state :blog :comment-limit 42]))]
+                  (is (> limit comments/page-size))
+                  (.click (.querySelector element ".blog-collapse-btn"))
+                  (await! (support/settle!))
+                  (is (= 4 (.-length (.querySelectorAll element ".blog-comment-title"))))
+                  (reset! *focused {:ready? true
+                                    :comment-id "0"
+                                    :row (first rows)
+                                    :root (first rows)
+                                    :parent nil})
+                  (await! (support/settle!))
+                  (is (= 5 (.-length (.querySelectorAll element ".blog-comment-title")))
+                      "A deep-link root outside the collapsed subset remains mounted")
+                  (.click (.querySelector element ".blog-collapse-btn"))
+                  (await! (support/settle!))
+                  (is (= limit (await! (support/state-at! [:state :blog :comment-limit 42])))
+                      "Folding never throws away the acquired page limit")
+                  (is (contains? (await! (support/state-at! [:state :blog :restore-edits]))
+                                 [:comments-expanded 42]))))
+              (finally
+                (support/unmount! root)
+                (restore-db!)
+                (reset! restore/*context before-context)))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
 (deftest standalone-root-edit-renders-the-parent-path-editor
   (async done
     (-> (go-promise
           (let [element (.createElement js/document "div")
                 root (await! (support/create-root! element))
-                restore-db! (r/make-restore-fn)
+                restore-db! (make-loader-restore-fn)
                 before-context @restore/*context
                 subscribe (r/subscribe-function)
                 author {:id "writer", :name "Writer"}
@@ -61,8 +158,9 @@
               (r/dispatch-sync [:set [:common/route]
                                 (assoc (reitit/match-by-path routes/router "/blog/comment/113")
                                        :parameters {:path {:comment-id "113"}, :query {}})])
-              (await! (loader/load! {:module :markdown}))
-              (await! (loader/load! {:module :styled-input}))
+              (await! (load-module! :markdown))
+              (await! (load-module! :styled-input))
+              (await! (load-module! :markdown-editor))
               (await! (styles/acquire! :user))
               (r/with-framework-bindings
                 [loader/modules (assoc modules :user (ready user-module/spec))
@@ -122,7 +220,7 @@
     (-> (go-promise
           (let [element (.createElement js/document "div")
                 root (await! (support/create-root! element))
-                before @r/*app-db
+                restore-db! (make-loader-restore-fn)
                 context @restore/*context
                 subscribe (r/subscribe-function)
                 modules loader/modules
@@ -137,12 +235,18 @@
                            :text "Reply body"
                            :ts 1})
                 replies (comment "reply" "root")
-                grandchild (assoc (comment "grandchild" "reply") :reply-count 0)]
+                grandchild (assoc (comment "grandchild" "reply") :reply-count 0)
+                ;; Presence retains only the hidden collapsed placeholder while
+                ;; it exits. A real reply must still reach its appeared state.
+                unentered-selector (str ".appear-wrapper:not(.appeared)"
+                                        ":not(.exiting[aria-hidden='true'][inert]:has(> .blog-comment-collapsed-placeholder))")]
             (.appendChild (.-body js/document) element)
             (try
               (restore/begin! {:hydrate? false, :back? false})
               (r/dispatch-sync [:set [:common/route] (reitit/match-by-path routes/router "/blog/post/42")])
-              (await! (loader/load! {:module :markdown}))
+              (r/dispatch-sync [:blog/expand-comment-thread [42 "root"] true])
+              (await! (load-module! :markdown))
+              (await! (styles/acquire! :blog))
               (doseq [[parent rows] [["root" [replies]] ["reply" [grandchild]] ["grandchild" []]]]
                 (r/dispatch-sync [:store/scoped (scoped/query-key (comments/thread-query 42 parent))
                                   {:docs (mapv #(hash-map :id (:id %) :data %) rows)}]))
@@ -185,15 +289,19 @@
                   (is (= "/blog/post/42/comment/root" (.getAttribute link "href")))
                   (is (= "Permalink" (.getAttribute link "aria-label")))
                   (is (nil? (.getAttribute link "title")) "Labels belong to our UI")
-                  (.focus link)
-                  (await! (support/settle!))
+                  ;; This fixed scene is independent of the growing test
+                  ;; report. Native focus scrolling would dismiss its label.
+                  (.focus link #js {:preventScroll true})
+                  (await! (support/wait-for!
+                            #(.getElementById js/document (.getAttribute link "aria-describedby"))
+                            "Focused permalink mounts its custom label"))
                   (is (= "Permalink" (.-textContent (.getElementById js/document (.getAttribute link "aria-describedby")))))
                   (.dispatchEvent link (js/KeyboardEvent. "keydown" #js {:key "Escape", :bubbles true}))
                   (await! (support/settle!))
                   (is (nil? (.querySelector js/document ".action-label")))
                   (.blur link)
                   (.dispatchEvent link (js/PointerEvent. "pointerover" #js {:bubbles true}))
-                  (await! (support/settle!))
+                  (await! (support/wait-for! #(.querySelector js/document ".action-label")))
                   (is (.querySelector js/document ".action-label") "Hover opens the same custom label")
                   (.dispatchEvent link (js/PointerEvent. "pointerout" #js {:bubbles true}))
                   (reset! *active-user author)
@@ -206,7 +314,7 @@
                   (is (nil? (.querySelector actions ".blog-comment-edit-btn")))
                   (reset! *active-user nil)
                   (await! (support/settle!)))
-                (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared)")))
+                (is (zero? (.-length (.querySelectorAll element unentered-selector)))
                     "Initial child transforms cannot trap visible replies")
                 ;; Each pair finishes open, including reversals before the
                 ;; delayed child-unmount and before its entrance completes.
@@ -229,11 +337,11 @@
                 (await! (tick! 300))
                 (is (= 3 (.-length (.querySelectorAll element ".blog-comment-around"))))
                 (is (= 3 (count (re-seq #"Reply body" (.-textContent element)))))
-                (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared)")))))
+                (is (zero? (.-length (.querySelectorAll element unentered-selector)))))
               (finally
                 (support/unmount! root)
                 (.remove element)
-                (reset! r/*app-db before)
+                (restore-db!)
                 (reset! restore/*context context)))))
         (.catch #(is false (str %)))
         (.finally done))))
@@ -241,7 +349,7 @@
 (deftest trusted-comment-markdown-never-renders-site-components-or-iframes
   (async done
     (let [element (.createElement js/document "div")
-          restore-db! (r/make-restore-fn)
+          restore-db! (make-loader-restore-fn)
           root (atom nil)]
       (.appendChild (.-body js/document) element)
       (-> (go-promise
@@ -251,7 +359,7 @@
             ;; the actual loaded JavaScript and stylesheet resources.
             (swap! loader/*loads dissoc :markdown)
             (swap! loader/*code-loads dissoc :markdown)
-            (await! (loader/load! {:module :markdown}))
+            (await! (load-module! :markdown))
             (let [mounted (await! (support/create-root! element))]
               (reset! root mounted)
               (await! (support/render! mounted

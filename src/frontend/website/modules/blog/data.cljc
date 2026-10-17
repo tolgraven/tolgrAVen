@@ -10,7 +10,11 @@
            (require '[website.modules.blog.comments :as comments])))
 
 (def page-size 3)
-(def summaries-query {:path-collection [:blog-posts] :scoped? true :summary? true})
+(def summaries-query
+  (merge {:path-collection [:blog-posts]
+          :scoped? true
+          :summary? true}
+         (when-enabled :blog :comments {:reply-counts? true})))
 (defn post-query [id]
   {:path-collection [:blog-posts] :scoped? true :where [[:id :== id]] :doc-changes true})
 

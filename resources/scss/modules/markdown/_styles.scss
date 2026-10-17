@@ -201,6 +201,8 @@ div > pre[class*="language-"] {
 .code-block-highlight > pre {
   margin: 0 !important;
   line-height: 1.5 !important;
+  // The delayed formatter already uses 1em; retain its box before it arrives.
+  padding: 1em !important;
 }
 .code-edit-controls {
   display: flex;

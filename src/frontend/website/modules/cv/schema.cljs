@@ -7,6 +7,8 @@
      :demo [:map
             [:generation [:int {:min 1}]]
             [:active? :boolean]
+            [:?returned? :boolean]
+            [:?owner :uuid]
             [:?origin number?]]}))
 
 (def zoom-context

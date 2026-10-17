@@ -249,7 +249,7 @@ The resulting code typography and controls:
 
 ![Fira Code with Bruvbox and copy/wrap controls](images/code-controls.png)
 
-## Declared SVG icons
+## Declared icons
 
 Declare literal dependencies beside their rendered owner, for example
 `{:icons ["brands/github" "solid/copy"]}` in a `defc`, module spec or page route
@@ -259,19 +259,21 @@ known owner. Declarations must use literal vectors and known Font Awesome family
 names; computed dependencies and missing glyphs fail generation.
 
 `bb fonts:icons` reads these declarations without requiring browser namespaces.
-It exports original glyph outlines, advance widths and baselines to committed
-`resources/public/img/icons/generated/` SVGs and generated SCSS. Viewports contain
-transformed ink bounds, including overhangs. Expanded mask boxes use compensating
-relative margins to retain the original advance, line-box height and baseline.
-Shared masks
-compile into the shell; feature masks get an automatically catalogued
-`icons-<module>.min.css` dependency. Shared icons satisfy feature declarations
-without duplicating their masks. Small SVGs are inline CSS data URLs, so selected
-icons incur neither a separate image request nor a font download/swap. Existing
-Reagent `:i.fab.fa-github`/`:i.fas.fa-copy` markup and `currentColor` remain usable.
-Regenerate after changing declarations; commit generated SVGs and SCSS together.
-The generator removes stale files only in its owned generated paths. Normal CSS
-(and Docker) builds use these committed outputs, without Python/fontTools.
+It retains the committed original glyph outlines and bounds in
+`resources/public/img/icons/generated/` SVGs. Declared icons render with native
+Font Awesome glyphs in generated owner CSS, preserving original font rasterization,
+fractional baselines and control dimensions. SVG masks have different line metrics
+at some font sizes and must not replace these glyphs during technical refactors.
+Shared glyph rules compile into the shell; feature rules get an automatically
+catalogued `icons-<module>.min.css` dependency. Shared icons satisfy feature
+requirements without duplicate rules. The small subset font faces are available
+in the shell response; the full utility/catalog sheet stays deferred. Existing
+Reagent `:i.fab.fa-github`/`:i.fas.fa-copy` markup, `currentColor` and native text
+clipping for gradients remain usable. Font selection and original auto display
+policy remain browser-owned.
+Regenerate after changing declarations; commit generated SVGs, fonts and SCSS
+together. The generator removes stale files only in its owned generated paths.
+Normal CSS (and Docker) builds use these committed outputs, without Python/fontTools.
 
 Shadow tracks existing icon declaration sources for incremental changes. Restart
 the watch after introducing an icon declaration in a previously untracked source.
@@ -282,6 +284,7 @@ execute frontend code or create a runtime schema inventory.
 
 The deferred `icons.css` bundle uses generated selectors for source/catalog glyphs,
 shared Font Awesome utilities and generated font faces in one compressed output.
+The shell also includes the face declarations for its declared native glyphs.
 Development links that same watched output. Optimus fingerprints the sheet and
 rewrites all of its font URLs, so repeat visits can reuse font bytes without
 caching mutable original paths.
@@ -304,7 +307,9 @@ optional authoring tools, not server or Docker build dependencies; normal CSS
 builds compile the committed generated SCSS. For an isolated setup, install them
 in a virtual environment and run `bb fonts:icons` with that environment on PATH.
 The generator retains font license/copyright records and names derivative fonts
-separately. Verify glyph outlines/metrics, fresh-browser requests, the full-font
+separately. The subset face also includes U+20 in its CSS range to retain the
+original line-box baseline; this does not add a glyph or overlap the full-font
+fallback range. Verify glyph outlines/metrics, fresh-browser requests, the full-font
 fallback and cache headers after changing it.
 
 Build CSS as UTF-8 without a byte-order marker (`charset: false` in Sass). The
@@ -359,3 +364,9 @@ vertical gradient for SSR image boxes and the initial page skeleton. This static
 background can release the document entrance before either image request finishes;
 the native owner and component remove it when the selected final image decodes.
 The gradient adds no request, client canvas work, scaling, or crop changes.
+
+The original fixed `--line-width-base` owns the default border size. Blog framing
+uses `--line-width-thin`, compiled from half that baseline; leaving Blog restores
+the baseline. The header seam follows the active page's `--line-width`. These resolve to plain lengths so existing
+visitor appearance controls can read and edit them. Do not replace these with rem
+approximations, which change physical line sizes at responsive font sizes.

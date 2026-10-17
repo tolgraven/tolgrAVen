@@ -20,6 +20,16 @@
   {"blog-posts" {24 {:id 24, :title "Parent post", :text "Body", :permalink "parent-24", :tags []}}
    "blog-comments" (into {} (map (juxt :id identity)) (concat neighbors [old-root child target descendant]))})
 
+(deftest folded-root-display-retains-the-focused-thread-and-acquired-order
+  (let [rows (conj neighbors old-root)
+        folded (comments/displayed-roots rows false nil)
+        focused (comments/displayed-roots rows false "root")]
+    (is (= ["new-19" "new-18" "new-17" "new-16"] (mapv :id folded)))
+    (is (= (conj (mapv :id folded) "root") (mapv :id focused)))
+    (is (= 21 (count (comments/displayed-roots rows true nil))))
+    (is (= (mapv :id folded) (mapv :id (comments/displayed-roots rows false "new-19"))))
+    (is (empty? (comments/displayed-roots [] false nil)))))
+
 (defn evaluate [selection]
   (let [requests (atom [])
         result (plan/evaluate data/plan selection

@@ -255,12 +255,17 @@
                    (fn [] (js/requestAnimationFrame
                      (fn []
                        (.removeAttribute root "data-document-pending")
+                       (when-let [scroll! (.-scroll gate)]
+                         (set! (.-scroll gate) nil)
+                         (scroll!))
                        ;; Mark preview paint in a following frame, after reveal.
                        (js/requestAnimationFrame #(.forEach entries (fn [^js entry] (.previewPainted entry))))
                        (cleanup!)))))))]
         (if (and (.-pending gate) (not (direct?)))
-          (destination/await! root #(do (set! (.-positioned gate) true)
-                                        (when (.-heroReady gate) (reveal!))))
+          (destination/await! root (fn [scroll!]
+                                     (set! (.-scroll gate) scroll!)
+                                     (set! (.-positioned gate) true)
+                                     (when (.-heroReady gate) (reveal!))))
           (set! (.-positioned gate) true))
         (set! (.-deadline gate) (js/setTimeout reveal! 10000))
         (.forEach (.querySelectorAll root ".progressive-image, img[data-image-placeholder]")

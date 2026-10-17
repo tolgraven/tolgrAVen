@@ -160,8 +160,18 @@ search, and that SPA navigation retains the document. No test functions are
 loaded into the application's CLJS runtime. The proxy forwards the application's
 response bytes and flushes streaming chunks without replacing them.
 
+Live motion/history drivers keep their results in a bounded scroll area below
+the application frame so appending checks or scrolling a nested comment into
+view cannot move the outer document and clip the application. Use an outer Chrome
+viewport of `1440x1200` or `400x1200` for these drivers; the inner application
+retains the fixture's native fixed height. Every assertion rejects a clipped
+application frame instead of treating offscreen animation behavior as visible
+motion evidence.
+
 `/__tests/motion.html` checks the original network SSR entrance through hydration,
-hero readiness before reveal, and settled paired returns without entrance replay, comment layout, simultaneous 250ms linear page fades and the
+hero readiness before reveal, and settled paired returns without entrance replay,
+header/footer minimization with continuous native height motion and matching logo
+clocks after genuine external Back, comment layout, simultaneous 250ms linear page fades and the
 opaque sticky footer. Add `?phone` for a 24.375rem test frame, or `?fallback` to remove the optional native transition API in the test driver and exercise ordinary fallback
 navigation with the same content. `__tests/scroll.html` checks SPA and document
 Back restoration. Run these on separate test origins if they overlap in time.

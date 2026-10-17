@@ -5,7 +5,7 @@ footer {
   margin-top: calc(0px - var(--line-width));
   font-size: 0.85rem;
 
-  border-left: var(--line-width-vert) solid var(--line-color); /* connect bottom to main on left side */
+  border-left: var(--line-width) solid var(--line-color); /* connect bottom to main on left side */
   background: linear-gradient(90deg, var(--bg-2) 75%, var(--bg-1));
 
   transition: max-height var(--header-expand-time) ease;
@@ -42,14 +42,14 @@ footer {
   }
   &:before {  
     background: linear-gradient(35deg, var(--bg-1), var(--blue) 335%);
-    width: var(--space-edges);
-    left: calc(0px - var(--space-edges) - var(--line-width-vert));
+    width: calc(var(--space-sides) - var(--line-width));
+    left: calc(0rem - var(--space-sides));
   }
   &.adjust-for-fullscreen {
     &:after {
       background: var(--bg-1);
-      right: calc(0px - var(--space-edges));
-      width: var(--space-edges);
+      right: calc(0rem - var(--space-sides));
+      width: var(--space-sides);
     }
     // XXX WANT THIS EFFECT. Make it an elem cause out of ::before/::afters lol
     // &:after {
@@ -128,12 +128,6 @@ img.img-icon {
     display: flex;
     flex-direction: column;
 
-    > a {
-      min-height: 2rem;
-      display: flex;
-      align-items: center;
-    }
-
     .footer-link-with-text {
       display: flex;
       justify-content: space-between;
@@ -163,6 +157,11 @@ img.img-icon {
 }
 
 .footer-column {
+  // The responsive picture wrapper must retain the original image footprint.
+  &#footer-left > picture > img.img-icon { display: block; }
+
+  .contact-ways { font-weight: 600; }
+
   .footer-title {
     font-size: 1em;
   }
@@ -205,13 +204,14 @@ img.img-icon {
     }
   }
 }
-.fa-soundcloud { text-shadow: 2px 2px 1px #ff9533; }
-.fa-twitter {    text-shadow: 2px 2px 1px #1DA1F2; }
-.fa-facebook {   text-shadow: 2px 2px 2px #3b5998; }
-.fa-instagram {  text-shadow: 2px 2px 3px #8134af; }
-.fa-linkedin {   text-shadow: 2px 2px 1px #0077b5; }
-.fa-github {     text-shadow: 1px 1px 3px var(--fg-2); }
-.fa-google {     text-shadow: 1px 1px 3px var(--fg-2); }
+// Native glyphs retain the original text shadows, independent of root font size.
+.fa-soundcloud { text-shadow: var(--line-width-base) var(--line-width-base) calc(0.5 * var(--line-width-base)) #ff9533; }
+.fa-twitter {    text-shadow: var(--line-width-base) var(--line-width-base) calc(0.5 * var(--line-width-base)) #1DA1F2; }
+.fa-facebook {   text-shadow: var(--line-width-base) var(--line-width-base) var(--line-width-base) #3b5998; }
+.fa-instagram {  text-shadow: var(--line-width-base) var(--line-width-base) calc(1.5 * var(--line-width-base)) #8134af; }
+.fa-linkedin {   text-shadow: var(--line-width-base) var(--line-width-base) calc(0.5 * var(--line-width-base)) #0077b5; }
+.fa-github {     text-shadow: calc(0.5 * var(--line-width-base)) calc(0.5 * var(--line-width-base)) calc(1.5 * var(--line-width-base)) var(--fg-2); }
+.fa-google {     text-shadow: calc(0.5 * var(--line-width-base)) calc(0.5 * var(--line-width-base)) calc(1.5 * var(--line-width-base)) var(--fg-2); }
 
 .md-icon {
   width:  var(--space-lg);

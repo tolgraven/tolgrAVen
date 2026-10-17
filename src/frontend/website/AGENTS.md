@@ -6,9 +6,29 @@
   center and back. Container boxes render a separate mini timeline with child
   logo/color glyphs; regular boxes render their own details. Empty details expose
   a first editable line only in edit mode, using the existing scalar write path.
+  Categories and their icon classes come from content, with the shared bounded
+  category contract; do not restrict the timeline to resume-specific categories.
+  Declared CV glyphs load with the module; other CMS choices acquire the existing
+  compatibility catalog. Regular details close through outside click or Escape.
+
+- Sideways galleries retain intrinsic slide widths and a maximum viewport height.
+  Native, progressive and editing wrappers share that layout. Keep preview layers
+  overlapped and replacement controls clear of the next sticky slide.
 
 Keep this guide current with source changes. Detailed APIs/examples live in
 `doc/components.md`, `doc/ssr.md`, and `doc/dev-console.md`.
+
+- The CV visit feature owns its pagehide listener and mount identity. Cleanup and
+  pagehide synchronously invalidate that owner's delayed module events, including
+  source callbacks already queued before React disposal; stale generations
+  cannot scroll, focus or expand another view. Initial document returns still
+  restore and claim the visit, but skip automatic motion through the shared return
+  and page context. Later ordinary SPA visits retain their usual behavior.
+
+- Action labels measure their committed native anchor and portal. Follow finite
+  ancestor motion and observe ancestor size changes only while the label is open;
+  release frame sampling, resize observation and dismissal listeners on close.
+  Settled labels have no frame loop.
 
 - The Markdown editor configure hook generates a pinned selective public SDK
   entry under ignored `target/generated-sdk`; Shadow's declared package directory
@@ -34,9 +54,23 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   arbitrary field changes in Strapi admin.
 
 - Activity calendar tooltips mount only during hover/focus and release their
-  portal, managed day dependency and scoped listeners immediately on exit.
+  portal, managed day dependency and scoped listeners immediately on exit. Read
+  active selection during render before constructing lazy day children so aria
+  state and the popup share tracked input. Strava's tiny initial dot sizes vary
+  by activity identity and must match between SSR and hydration; retain their
+  authored grow deadline, final activity sizes and CSS motion.
   GitHub configuration uses its module's managed `/api/github/settings` URL
   dependency, installed at `[:module :github :configuration]` before init.
+  An absent settings result is pending (including SSR); only a completed empty
+  response establishes that no repository is configured.
+  Paired local returns retain GitHub's feed target/query, generation, completed
+  page/detail identities and owned search field together with the cached content.
+  Exclude pending requests; initialization must preserve the restored heading
+  and rows while query/repository changes still invalidate stale responses.
+  Later disk form restoration preserves installed owner-selected inputs while
+  unrelated drafts restore normally.
+  Home's authored gallery retains its loaded display flag in local pairs so
+  already-present images survive the same native gallery renderer.
   GitHub search is debounced through events and queries the backend's complete
   Supabase archive; never filter only the browser's loaded subset.
 
@@ -58,6 +92,13 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   need or demonstrated performance benefit. Keep them behind small shared adapters,
   preserve normal re-frame event tracing, and document the reason. Do not create a
   second state machine/store merely to use a React API.
+  The navigation adapter owns document-root `data-scroll-controlled` outside React:
+  suppress browser anchoring during controlled landings and late data settlement,
+  release it on user input/navigation/pagehide, and keep numeric history restoration
+  separate from following a page/component anchor.
+  Component-only navigation retains its mounted host while superseding pending
+  page/code work. Check request and native transition ownership again when queued
+  commits are handled; discarded native commits must still release their promise.
 - Through `website.react`, hooks delegate to upstream `reagent.hooks`. Effects
   may return implicit nil; cleanup functions run on dependency changes/unmount.
   Hook dependencies use Clojure value equality without converting their contents;
@@ -136,8 +177,18 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Accepted navigation owns a path-scoped component-focus policy. Explicit link
   intent reveals/scrolls its target; history restores its saved position and folds
   even when a newly mounted target view becomes ready later.
+  Component destinations skip the intermediate page-top landing, including when
+  the host view changes. Code arriving before a native transition's update only
+  replaces its pending destination; the original commit still owns route/history
+  and scroll positioning.
   Blog comment UI lives in `modules/blog/comment_views.cljs`, required only by
   the `:feature/blog-comments` reader feature.
+  The folded card's original 25rem budget includes metadata and padding; its owned
+  ref/resize measurement supplies the remaining text budget without entrance transforms.
+  Blog prose retains its one-em paragraph margins within the blog sheet. Comment
+  text keeps the original float wrapping around avatars; `overflow: clip` owns
+  folding without a new formatting context that indents the whole text column.
+  The expanded card owns scrolling, retaining that same text width during motion.
   `comment_exports.cljc` pairs its conditional import with the original Var
   export map; merge that map into the literal module specification. Default JVM
   and Codox readers retain the empty adapter without importing comment views.
@@ -152,17 +203,30 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   enabled tools and a form path. Comment owners allow file uploads but never
   subscribe to the server library or enable site components. Comment rendering
   disables authored component parsing and raw HTML, including trusted authors.
+  Normalize absent canonical form text to an empty string at both rich SDK reads;
+  mounting or clearing an empty draft must not write normalization into the form.
   Each editor lifetime owns its upload anchors and writes only its own form;
   pending comment uploads block submission without blocking a post draft.
   Comment links share the original corner action group with Reply/Edit. Preserve
   the existing layout, typography, spacing and hover appearance when changing
   navigation or data plumbing.
+  Root comments retain the four-item Show all/Collapse fold, with direct replies
+  visible by default. Folding retains acquired pages and the focused permalink's
+  root; the managed query window remains independent of the displayed subset.
+  Reply rows and their exiting placeholder share one grid cell so loading cannot
+  drop the collapsed footprint. Blog avatars keep their native image footprint
+  while the optional account module loads, including lightweight Search previews.
   `validation/schema.cljs` assembles browser/Node app-db sections from their owners;
   small single-use shell-state contracts stay inline there.
 - Image readiness callbacks use the shared picture lifecycle: notify only a decoded,
   visibly committed final candidate after its overlap completes. Source changes and
   unmount release native observation; hidden ancestors wait on scoped visibility/
   motion changes rather than frame polling. See `doc/progressive-images.md`.
+- Restoration mount decisions are snapshots. Document, local-return and image
+  policies use derived Reagent values so completing hydration does not invalidate
+  unchanged consumers and discard their pending SSR descendants. Key those values
+  by their context atom: local capture renders beside the mounted document. Keep
+  actual Back and image-policy changes reactive; do not alter Reagent batching to hide this.
 - Authoring drafts/uploads/anchors belong to re-frame. Pending image chips use
   native editor nodes/decorations, never authored markers. SDK extension slots
   may require stable reverse React adapters; keep their native document/selection
@@ -196,8 +260,12 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Use `<component>` names, `defc` features and `defpage` boundaries. `m/<>` selects
   direct or lazy module exports; it does not add a permanent wrapper. Module
   exports default to proximity activation; `:load-on` and `loader/<trigger>`
-  configure intent/earlier triggers. Hidden panels use explicit intent. Completed
-  SSR boundaries retain native nodes until activation and inner hydration commit.
+  configure intent/earlier triggers. Hidden panels use explicit intent. Custom
+  loading roots retain native layout through a boxless intent owner; proximity
+  observes their element roots, while intent covers all fallback siblings. Empty
+  custom fragments remain valid for immediate/manual activation. Generic loading
+  sections keep their existing layout. Completed SSR boundaries retain native
+  nodes until activation and inner hydration commit.
   Nested owners and formatters capture inherited hydration even after the root
   settles; newly inserted children use ordinary SPA behavior after owner commit.
   User controls/avatars do not depend on Markdown or Link Preview; comments use
@@ -221,9 +289,13 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   sheets stay out of the SSR head but still start before Shadow acquisition. Keep
   feature CSS in `resources/scss/modules` and preserve
   ordinary selector specificity. Literal `:icons ["brands/name" "solid/name"]`
-  on a component/module exports font glyphs as SVG masks in the owner’s CSS.
-  Feature ownership comes from its module folder or explicit `:module`; shared
-  components use the shell. Regenerate assets with `bb fonts:icons`. See `doc/styles.md`.
+  on a component/module exports native font-glyph rules in the owner's CSS.
+  Preserve their original font metrics and rasterization; SVG exports remain
+  available as assets. Feature ownership comes from its module folder or explicit
+  `:module`; shared components use the shell. Header links retain native button
+  typography. The shell supplies the small font faces; keep the fixed border
+  baseline independent of route overrides. Regenerate assets with `bb fonts:icons`.
+  See `doc/styles.md`.
 - The root-merged `:font` feature keeps initial text visible and uses re-frame
   readiness/fade events for a late face. Own the font CSS in its consumer module;
   use an optional initial face plus a separately named ready face to prevent an
@@ -235,8 +307,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Declare managed dependencies at the narrowest owning component/module/page.
   Preloads acquire those same sources; keep pending, empty, failed and cached distinct.
 - `:component-data/status` acquires the shared queue through its managed source
-  factory; the derived reaction only reads readiness. Persistent scoped value
-  subscriptions dispatch the idempotent `:component-state/load` event on acquisition;
+  factory without render tracking. Its derived reaction owns readiness dependencies;
+  restoring unrelated resources must not invalidate an uncommitted view.
+  `:store/on-snapshot` likewise acquires SDK readers without render tracking;
+  the returned reader retains its own dependencies and disposal.
+  Persistent scoped value subscriptions dispatch the idempotent `:component-state/load` event on acquisition;
   ordinary scoped reads stay pure. Declared defaults initialize after commit through
   `:component-state/initialize`, sharing the same effect with eager storage loads.
   Keep transport/initialization out of component bodies and derived computations.
@@ -253,13 +328,18 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   loading and entrances; later SPA navigation must restore ordinary motion.
   Offscreen new `:appear` roots enter through the existing viewport observer.
   Presence commit history is nonreactive; only exit completion schedules a render.
+  Reply placeholders opt into `:retain-layout? true` to retain their shared grid
+  footprint through the bounded CSS exit window. A hidden or partly entered root
+  can reverse before arriving rows paint; ordinary exits follow native clocks.
   Blog replies animate intrinsic height per row with their entrance stagger;
   do not reintroduce a large parent max-height. Layout entrances opt into
   `:settle-offscreen?` so hidden rows retain height without waiting on visibility.
   Unactivated module placeholders and departing skeletons have no shimmer animation.
   Appearance classes merge onto native roots; `appear-wrapper` is only a CSS
   class. Network SSR retains the original site/hero entrance in CSS across
-  hydration; the document-owned mount container gates it on hero decoding.
+  hydration; explicit exits release that filled entrance clock so native exit
+  transitions retain their owner. The document-owned mount container gates the
+  original entrance on hero decoding.
   Streamed skeletons remain until that gate opens. Local/history returns stay settled.
   Loading roots share the lean visibility observer: hidden/offscreen owners keep
   measured relative geometry while React unmounts their body. A skeleton context
@@ -272,21 +352,27 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   inspector uses that component directly. Module-owned implementations do not belong in
   `components/` or hidden shared UI forwarding entries.
   Home owns only its own styles; actual lazy consumers acquire Markdown and
-  monospace sheets. Anonymous account controls keep a native shell link until
-  intent; an open account query or authenticated avatar activates User. Closed
-  account UI is absent from initial SSR exports and style ownership.
+  monospace sheets. Anonymous account controls keep a stable native shell
+  button. An open account query or authenticated avatar activates User. Closed
+  account UI is absent from initial SSR exports and style ownership. Pending shell
+  controls use stable component identities; render-local fallback functions leave
+  discarded Reagent instances subscribed during concurrent navigation.
   Keep the full highlighter out of
   Markdown so link previews do not acquire every language. Node renders highlighted
   code inside completed React Suspense boundaries. Copy/wrapping and the page
   hydrate first; the formatter loads/hydrates after the common after-page gate.
   Keep the formatter in its own memoized `defc` so control updates do not replace
-  pending SSR nodes. Initial boundaries own transition batching in
-  `component/hydration.cljs` until inner commit/unmount; navigation releases it.
-  Loader marker removal is a transition during initial hydration; release its
-  batching owner after that update commits so nested SSR activation can mount.
-  Cached child completion can precede parent setup: acquire no owner after that
-  completion. Overlapping owners and StrictMode cleanup must restore batching
-  only when the last current owner releases; stale document callbacks are inert.
+  pending SSR nodes. `component/hydration.cljs` memoizes each native Suspense
+  element and defers only that boundary's updates through upstream
+  `use-deferred-value`. Include every element input in its Clojure dependencies.
+  Keep Reagent batching unchanged: pending offscreen code must not hold shell
+  visibility or other reactive controls. Loader marker removal remains a local
+  transition so nested SSR activation can mount without replacing native nodes.
+  Completed SSR module readiness follows its inner commit; speculative outer
+  boundaries do not subscribe to code status. Failed lazy acquisitions publish
+  their error synchronously at the Promise boundary before rendering local Retry.
+  Check overlapping pending boundaries, cached completion, changed props,
+  discarded renders, StrictMode and navigation/unmount independently.
   Capture their initial restoration decision without subscribing to completion.
   New SPA code uses the normal loader immediately. Paired local
   returns render completed boundaries too and skip the formatter during bootstrap.
@@ -398,6 +484,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   capture and profiling remain separate development lifecycles, with no empty UI shim.
   Timing capture is bounded and inactive without a console, picker, or explicit page-capture owner. Keep diagnostics out
   of persistence snapshots and do not let diagnostic events trigger page renders.
+- Page-root crossfade providers memoize equal incoming/outgoing surface maps
+  independently. React context compares identity: controller-only route updates
+  must not invalidate pending SSR descendants. Preserve refs, props and native
+  motion while retaining equal values; keep Reagent batching unchanged.
 - Page navigation uses a brief simultaneous opacity crossfade. Native View Transitions
   and the page-root fallback share duration/easing; neither delays the incoming fade.
   Native page snapshots must not cover the sticky footer: retain its own opaque,
@@ -620,7 +710,16 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   cold/SSR geometry and `website.breakpoints` exposes breaking-point's inherited
   `:layout/responsive` subscription; `boot` still owns resize listener cleanup.
 
+- Restored shell guards suppress initial clocks only. Menu or header scroll-state
+  changes release the header guard permanently for that mounted shell; ordinary
+  hide/show logo motion must work after external Back as well as initial loading.
+
 - CV first-visit motion belongs to module events and its mounted lifecycle. Restore
   migrated visit snapshots before deciding; retain the durable legacy visit marker,
   claim the visit in app-db before scheduling, and guard delayed effects by mount
   generation. The demo returns to its measured starting scroll position.
+
+- The anonymous account trigger is a stable native header button. Its existing
+  User request events update the query; the page owns lazy panel acquisition.
+  Focusing the trigger must retain its node and focus without acquiring/replacing
+  a fallback. Loaded account controls retain native Space/Enter activation too.

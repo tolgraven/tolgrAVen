@@ -303,7 +303,8 @@
                    (.catch (fn [error]
                              ;; A failed module owns its Retry view; never reject
                              ;; through the entire page's error boundary.
-                             (r/dispatch [:loader/code-failed module error])
+                             ;; Publish that state before the lazy reader renders Retry.
+                             (r/dispatch-sync [:loader/code-failed module error])
                              content)))))}))
 
 (m/defc ^:private <module-boundary>
@@ -323,7 +324,7 @@
                                      (or inherited-hydration? (restore/initial-hydration?))))
         [committed? set-committed!] (r/use-state false)
         *trigger (r/use-ref nil)
-        release! (hydration/use-deferred! initial?)
+        custom-loading? (boolean (and (not <before>) (:<loading> options)))
         complete! (r/use-callback
                     (fn []
                       ;; A parser may have introduced another unhydrated SSR
@@ -334,15 +335,25 @@
                         (set-committed! true)))
                     [initial? set-committed!])
         boundary (r/use-memo #(make-boundary module) [module])
-        ready? (or context/*server?* (boolean @(r/subscribe [:loader/code-ready module])))
-        failure (when-not context/*server?* @(r/subscribe [:loader/code-error module]))
+        ;; Completed SSR already has a lazy code gate and an inner readiness owner.
+        ;; Its speculative outer boundary must wait for that actual commit.
+        ready? (or context/*server?*
+                   (if ssr? committed? (boolean @(r/subscribe [:loader/code-ready module]))))
+        failure (when (and (not context/*server?*) (not ssr?))
+                  @(r/subscribe [:loader/code-error module]))
         modes (activation/triggers options)
-        requested? (and (not hidden?) active?)]
-    (r/use-layout-effect
-      ;; Keep transition batching until the marker-removal update commits;
-      ;; nested owners can then install their own hydration/activation effects.
-      (fn [] (when committed? (release!)) nil)
-      [committed? release!])
+        requested? (and (not hidden?) active?)
+        content (hydration/use-boundary
+                  (and initial? (not committed?))
+                  #(r/as-element
+                     ^{:key :module-content}
+                     [r/suspense {:fallback (r/as-element (fallback-form options args true))}
+                      (if context/*server?*
+                        [<module-content> options args (fn []) true]
+                        (r/create-element (:view boundary)
+                          #js {:options options :args args :complete! complete!
+                               :hydrating? (and initial? (not committed?))}))])
+                  [context/*server?* options args boundary complete! initial? committed?])]
     (restore/use-readiness! (or (not requested?) ready? (some? failure)))
     (when (and context/*server?* ssr? context/*rendered-views*)
       (swap! context/*rendered-views* update module (fnil conj #{}) (or view :view)))
@@ -365,10 +376,13 @@
       (fn []
         (if (and (not context/*server?*) (not active?) (not committed?) (.-current *trigger))
           (let [marker (.-current *trigger)
-                target (if ssr? (.-nextElementSibling marker) marker)]
-            (or (activation/setup! target (assoc options :args args)) nil))
+                target (if ssr? (.-nextElementSibling marker) marker)
+                geometry-targets (if (and custom-loading? (not hidden?) (not ssr?))
+                                   (vec (array-seq (.-children marker)))
+                                   [target])]
+            (or (activation/setup! target (assoc options :args args) geometry-targets) nil))
           nil))
-      [module options args active? committed? ssr?])
+      [module options args active? committed? hidden? ssr? custom-loading?])
     (cond
       hidden? (when <before>
                 [:div.before-loading-container
@@ -378,15 +392,13 @@
       ssr? [:<>
             (when-not committed? ^{:key :module-marker}
               [:template {:ref *trigger :data-module-boundary (name module)}])
-            ^{:key :module-content}
-            [r/suspense {:fallback (r/as-element (fallback-form options args true))}
-             (if context/*server?*
-               [<module-content> options args (fn []) true]
-               (r/create-element (:view boundary)
-                 #js {:options options :args args :complete! complete!
-                      :hydrating? (and initial? (not committed?))}))]]
+            content]
       (and requested? (or ready? failure)) [<module-content> options args complete! false]
-      :else [:section.module-load-placeholder {:ref *trigger :data-loading-active requested?}
+      :else [(if custom-loading? :div.module-load-placeholder :section.module-load-placeholder)
+             (cond-> {:ref *trigger, :data-loading-active requested?}
+               ;; Custom roots retain their native float/inline footprint while
+               ;; the boundary owns intent across every fallback child.
+               custom-loading? (assoc :style {:display "contents"}))
              (fallback-form options args requested?)])))
 
 (defn component-vector

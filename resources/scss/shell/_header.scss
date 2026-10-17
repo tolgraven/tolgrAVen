@@ -16,7 +16,7 @@ header {
   background-color: var(--bg-1);
   z-index: 100;
   margin-top: var(--space-top);
-  margin-right: var(--line-width-vert); /* Match the main border, including layouts that hide it. */
+  margin-right: var(--line-width); /* Match the active page framing. */
   padding: 0 calc(var(--space));
   transition: min-height calc(1.5 * var(--header-expand-time)) ease,
               height calc(0.7 * var(--header-expand-time)),
@@ -53,7 +53,7 @@ header {
   position: fixed;
   left: 0;
   top: 0;
-  width: var(--space-edges);
+  width: var(--space-sides);
   height: calc(var(--header-height-current) +
                var(--line-width));
   background-color: var(--bg-1);
@@ -78,9 +78,7 @@ header {
   div {
     position: sticky;
     background: linear-gradient(-135deg, var(--bg-1) 10%, var(--blue) 335%);
-    /* Cover the outer gutter and continue the main border above scrolling content. */
-    width: max(0px, calc(var(--space-edges) + var(--line-width-vert)));
-    border-left: var(--line-width-vert) solid var(--line-color);
+    width: calc(var(--space-sides) - var(--line-width));
     height: var(--header-height-current);
     transition: height calc(var(--header-expand-time)) ease,
                 opacity calc(0.3 * var(--header-expand-time)) ease;
@@ -94,8 +92,8 @@ header {
     }
     &.adjust-for-fullscreen {
       right: 0;
-      width: max(0px, calc(var(--space-edges) + var(--line-width-vert)));
-      border-left: var(--line-width-vert) solid var(--line-color);
+      width: calc(var(--space-sides) + var(--line-width));
+      border-left: var(--line-width) solid var(--line-color);
     }
   }
 }
@@ -107,10 +105,19 @@ header {
   align-items: center;
   height: 72%;
 
-  > a, > button {
-    min-width: 2rem;
-    min-height: 2rem;
+  > a, > button { text-align: center; }
+
+  // Intent fallbacks keep their listener owner without adding a flex box.
+  > .before-loading-container { display: contents; }
+
+  // Linked controls retain native button typography through pending boundaries.
+  a.button {
     text-align: center;
+    font: menu;
+    font: -webkit-small-control;
+    font: -moz-button;
+
+    @media screen and (max-width: 31.25rem) { font-size: 105%; }
   }
 }
 
@@ -395,7 +402,7 @@ menu > nav > .nav-section:last-of-type > .nav-links {
 @keyframes menu-anim-out { 25%, 75% { transform: scaleX(1.0) scaleY(0.00); } }
 
 
-// Paired documents already show the shell; explicit menu intent removes the guard.
+// Paired documents already show the shell; menu or scroll state removes the guard.
 #nav-menu-open ~ header[data-restored-motion="true"] {
   .header-logo, menu {
     animation: none;

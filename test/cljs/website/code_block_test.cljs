@@ -14,6 +14,7 @@
             [website.component.restore :as restore]
             [website.browser-resources :as resources]
             [website.listener :as listener]
+            [website.components.ui.action :as action]
             [website.test-support :as support]))
 
 (deftest spa-code-acquires-immediately-and-controls-preserve-content
@@ -158,7 +159,8 @@
               (try
                 (await! (support/render! root [code/<code-block> "(inc 1)"]))
                 (is (empty? @*calls))
-                (is (identical? (r/batching-flush) r/start-transition))
+                (is (identical? (r/batching-flush) before-flush)
+                    "Pending formatting preserves the original batching adapter")
                 (finally (support/unmount! root)))
               (is @*cancelled?)
               (is (identical? (r/batching-flush) before-flush))))
@@ -167,7 +169,7 @@
                       (set! loader/acquire-code! old-acquire)
                       (reset! restore/*context before) (done)))))))
 
-(deftest navigation-releases-pending-initial-hydration-before-module-acquisition
+(deftest navigation-preserves-batching-while-initial-formatting-is-pending
   (async done
     (let [old-after-page resources/after-page!
           before @restore/*context
@@ -179,7 +181,8 @@
                   root (await! (support/create-root! element))]
               (try
                 (await! (support/render! root [code/<code-block> "(inc 1)"]))
-                (is (identical? (r/batching-flush) r/start-transition))
+                (is (identical? (r/batching-flush) before-flush)
+                    "Pending formatting preserves the original batching adapter")
                 (restore/navigate! "/different-page")
                 (is (identical? (r/batching-flush) before-flush))
                 (finally (support/unmount! root)))
@@ -397,3 +400,77 @@
                  [:p "Inline source " [code/<code-block> "(inc 1)" :inline? true] " stays in the text flow."]
                  [code/<code-block> "(defn example []\n  (str \"Hover or focus the controls\"\n       \" — this intentionally long line can wrap at the edge of its code block.\"))"
                   :language "clojure"]]))))
+
+
+(deftest action-label-follows-a-sibling-changing-layout
+  (async done
+    (let [restore! (r/make-restore-fn)
+          before @restore/*context
+          element (.createElement js/document "div")
+          *expanded? (r/atom false)
+          <fixture> (fn []
+                      [:<>
+                       [:link {:rel "stylesheet", :href "/css/website/main.css"}]
+                       [:section {:style {:position "fixed"
+                                         :left "2rem"
+                                         :top "1rem"
+                                         :width "20rem"}}
+                        [:div {:style {:height (if @*expanded? "8rem" "2rem")
+                                       :transition "height 200ms linear"}}]
+                        [action/<action> {:label "Follow changing layout"} [:span "Action"]]]])]
+      (reset! restore/*context {:hydrate? false})
+      (.appendChild (.-body js/document) element)
+      (-> (go-promise
+            (let [root (await! (support/create-root! element))
+                  *stylesheet (atom nil)]
+              (try
+                (await! (support/render! root [<fixture>]))
+                (let [stylesheet (.querySelector element "link")
+                      button (.querySelector element "button")
+                      tooltip #(when-let [id (.getAttribute button "aria-describedby")]
+                                 (.getElementById js/document id))
+                      bottom #(.. button getBoundingClientRect -bottom)
+                      top #(.. (tooltip) getBoundingClientRect -top)]
+                  (reset! *stylesheet stylesheet)
+                  (is (and stylesheet (.contains element stylesheet))
+                      "The test owns its native stylesheet link")
+                  (.focus button)
+                  (await! (support/wait-for!
+                           #(when-let [label (tooltip)]
+                              (= "fixed" (.-position (js/getComputedStyle label))))
+                           "The native action stylesheet did not load"))
+                  (await! (.-ready (.-fonts js/document)))
+                  (await! (support/settle!))
+                  (let [settle-motion! (fn []
+                                         (js/Promise.allSettled
+                                           (into-array
+                                             (map #(.-finished %)
+                                               (array-seq (.getAnimations (.querySelector element "section")
+                                                                         #js {:subtree true}))))))]
+                    (await! (settle-motion!))
+                    (await! (support/settle!))
+                    (let [initial-bottom (bottom)
+                          gap (- (top) initial-bottom)]
+                      (doseq [expanded? [true false]]
+                        (reset! *expanded? expanded?)
+                        (await! (support/settle!))
+                        (await! (settle-motion!))
+                        (await! (support/settle!))
+                        (is (if expanded?
+                              (> (bottom) (+ initial-bottom 20))
+                              (< (js/Math.abs (- (bottom) initial-bottom)) 0.5))
+                            "The native sibling really moves the fixed-size action")
+                        (is (< (js/Math.abs (- (- (top) (bottom)) gap)) 0.5)
+                            "The label follows layout movement without an ancestor animation"))))
+                  (.blur button)
+                  (await! (support/settle!))
+                  (is (nil? (tooltip)) "Closing the label releases its mounted owner"))
+                (finally (support/unmount! root)))
+              (is (not (some-> @*stylesheet .-isConnected))
+                  "Unmount releases the test stylesheet as well as the label")))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (.remove element)
+                      (reset! restore/*context before)
+                      (restore!)
+                      (done)))))))

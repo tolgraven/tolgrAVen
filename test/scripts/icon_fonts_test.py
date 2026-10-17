@@ -63,7 +63,7 @@ class SvgIconsTest(unittest.TestCase):
         self.assertIn("angle-double-up", checked)
         self.assertIn("pen-fancy", checked)
 
-    def test_module_masks_do_not_need_font_or_svg_requests(self):
+    def test_module_glyphs_keep_original_font_without_svg_requests(self):
         with patch.object(icons, "icon_definitions", return_value={"main": ["brands/github"], "user": ["brands/google"]}):
             outputs = icons.svg_outputs({"github": 0xF09B, "google": 0xF1A0})
         common = outputs[ROOT / "resources/scss/generated/icons/_main.scss"].decode()
@@ -71,9 +71,12 @@ class SvgIconsTest(unittest.TestCase):
         self.assertIn(".fab.fa-github::before", common)
         self.assertNotIn("fa-google", common)
         self.assertIn(".fab.fa-google::before", feature)
-        self.assertIn('content: ""', feature)
-        self.assertIn("font-family: inherit", feature)
-        self.assertIn("data:image/svg+xml,", feature)
+        self.assertIn('content: "\\f1a0"', feature)
+        self.assertIn('content: "\\f09b"', common)
+        self.assertIn('font-family: "Font Awesome 5 Brands"', feature)
+        self.assertIn('font-weight: 400', feature)
+        self.assertIn('line-height: 1', feature)
+        self.assertNotIn("data:image/svg+xml,", feature)
         self.assertNotRegex(feature, r"url\([^)]*(?:woff|/img/)")
         self.assertNotIn("px", common + feature)
 

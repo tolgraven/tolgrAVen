@@ -87,19 +87,55 @@
       ] ]))
 
 
+;; Keep lazy fallbacks stable across route/header updates. Render-local functions
+;; leave discarded Reagent instances subscribed during concurrent page work.
+(defc ^:private <pending-search-button> []
+  [:button.search-ui-btn.noborder.nomargin
+   {:name "Search"
+    :title "Search site"
+    ;; Preserve intent before the lazy module's events are installed.
+    :on-click #(r/dispatch [:state [:search :open?] true])}
+   [img/<picture> {:src "svg/search-ico.svg"
+                  :alt "Search"
+                  :style {:width "1.2em"
+                          :height "1.2em"
+                          :filter "var(--light-to-dark)"}}]])
+
+(defc ^:private <anonymous-user-button> []
+  (let [open? @(r/subscribe [:user/ui-open?])]
+    [:button.user-btn.noborder
+     {:type "button"
+      :on-click #(r/dispatch [(if open? :user/request-close-ui :user/request-open-ui)])
+      :aria-label "User account"
+      :title "User account"}
+     [:i.user-btn.fa.fa-user]]))
+
+(defn- use-restored-shell []
+  (let [returned? (restore/document-return?)
+        initial? (or (restore/document-enter?) (restore/back-document?))
+        [restored? set-restored!] (r/use-state #(restore/local-document?))]
+    ;; Match network SSR attributes on the first render. The head policy holds
+    ;; those clocks until this owned state commits, including a BFCache resume.
+    (r/use-layout-effect
+      (fn [] (when (and returned? initial?) (set-restored! true)) nil)
+      [returned? initial?])
+    [restored? set-restored!]))
+
 (defc <header> {:features [:error-boundary]
                  :icons ["solid/cog" "solid/pen-fancy" "solid/user"]}
   [{:keys [text text-personal menu]}] ; [& {:keys [text menu]}] ; wtf since when does this not work? not that these are optional anyways but...
   (let [menu-open? @(r/subscribe [:state [:menu]])
-        initial-menu (r/use-ref menu-open?)
-        [restored? set-restored!] (r/use-state #(restore/local-document?))
-        initial-menu? (= menu-open? (.-current initial-menu))]
-    ;; A restored shell is already visible. The first menu intent resumes motion.
+        hidden? @(r/subscribe [:state [:hidden :header]])
+        motion-state [menu-open? hidden?]
+        initial-state (r/use-ref motion-state)
+        [restored? set-restored!] (use-restored-shell)
+        initial-state? (= motion-state (.-current initial-state))]
+    ;; A restored shell is settled until menu intent or scroll changes its state.
     (r/use-effect
      (fn []
-       (when-not initial-menu? (set-restored! false))
+       (when-not initial-state? (set-restored! false))
        nil)
-     [initial-menu?])
+     [initial-state?])
     [:<>
      [ui-controls/<input-toggle> "nav-menu-open" [:menu] :class "burger-check"]
      (when @(r/subscribe [:fullscreen/any?])
@@ -107,9 +143,8 @@
         {:class (when @(r/subscribe [:state [:scroll :past-top]])
                   "past-top")}])
      [:header
-      {:data-restored-motion (and restored? initial-menu?)
-       :class (when @(r/subscribe [:state [:hidden :header] ])
-                "hide")}
+      {:data-restored-motion (and restored? initial-state?)
+       :class (when hidden? "hide")}
       [:div.cover.cover-clip] ;covers around lines and that... XXX breaks when very wide tho.
       [<header-logo> @(r/subscribe [:header-text])]
       [<header-nav> menu]
@@ -138,28 +173,13 @@
 
       (m/<> {:module :search
              :view :button
-             :<before> (fn []
-                         [:button.search-ui-btn.noborder.nomargin
-                          {:name "Search"
-                           :title "Search site"
-                           ;; Preserve the click's intent while the parent acquires
-                           ;; Search. Its module events do not exist yet.
-                           :on-click #(r/dispatch [:state [:search :open?] true])}
-                          [img/<picture> {:src   "svg/search-ico.svg"
-                                        :alt   "Search"
-                                        :style {:width  "1.2em" :height "1.2em"
-                                                :filter "var(--light-to-dark)"}}]])})
+             :<before> <pending-search-button>})
       (when-enabled :user nil
        (if @(r/subscribe [:user/active-user])
         (m/<> :user/btn)
-        (m/<> {:module :user
-               :view :btn
-               :<before> (fn []
-                           [:a.button.user-btn.noborder
-                            {:href @(r/subscribe [:href-add-query {:userBox true}])
-                             :aria-label "User account"
-                             :title "User account"}
-                            [:i.user-btn.fa.fa-user]])})))
+        ;; The panel owns code acquisition. Focusing this control must not
+        ;; replace it with a lazy view and lose the user's keyboard position.
+        [<anonymous-user-button>]))
       [:label.burger {:for "nav-menu-open"}]]]
 
      [:div.fill-side-top
@@ -183,7 +203,11 @@
     ;; Footer icons render at two em high; source selection follows their ratio.
     (with-meta
       (merge {:class "img-icon", :loading "lazy"}
-             (when (and width height) {:sizes (str (* 2 (/ width height)) "em")}) image)
+             (when (and width height) {:sizes (str (* 2 (/ width height)) "em")})
+             image
+             (when (and width height)
+               ;; Rounded responsive candidates must not change the logo's box.
+               {:style (merge {:aspect-ratio (str width " / " height)} (:style image))}))
       (meta image))))
 
 (defc <footer-content> "Upper content (first few rows) of footer"
@@ -241,7 +265,7 @@
     [:footer#footer-sticky.footer-sticky
      {:aria-hidden (when inactive? true)
       :inert (when inactive? true)
-      :class (str (when hidden? "hide ")
+      :class (str (when inactive? "hide ")
                   (when at-bottom? "bottomed ")
                   (when @(r/subscribe [:fullscreen/any?])
                     "adjust-for-fullscreen"))}
@@ -255,7 +279,7 @@
                         :root-margin "0px 0px 100px 0px"
                         :on-change #(r/dispatch [:scroll/at-bottom %])}]]}
   [content]
-  (let [[restored?] (r/use-state #(restore/local-document?))
+  (let [[restored?] (use-restored-shell)
         at-bottom? @(r/subscribe [:state [:scroll :at-bottom]])]
     [:footer#footer-end.footer-full
      {:class "full"

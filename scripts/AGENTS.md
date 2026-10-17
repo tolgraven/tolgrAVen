@@ -3,10 +3,20 @@
 `bb.edn` is the local task catalog. Keep `doc/tooling.md` and caller paths current
 when moving tools; tasks accept argument vectors, never interpolate a local shell.
 
-- `test/visual.py` attaches to installed Chrome through the configured autoConnect
-  adapter and closes only its own reused task tab. Capture creates candidates;
-  strict pixel/geometry comparison never updates approved baselines. Preserve
-  environment checks and missing-case failures. See `doc/visual-regressions.md`.
+- `test/visual.py` attaches through the configured shared Development-profile
+  launcher (`codex-chrome-devtools`) and closes only its own reused task tab.
+  Identify that new tab by its unique task URL and fresh observed page ID, never selection.
+  Raster capture awaits startup readiness before positioning tile zero, then
+  checks readiness and exact bounds after each scroll.
+  Capture creates candidates; strict pixel/geometry comparison never updates
+  approved baselines. Per-case/tile records may use lossless `.json.gz`; reject
+  ambiguous encodings and retain every field and plain approval metadata. Preserve
+  environment checks and missing-case failures. Default motion/ID comparison stays exact.
+  Explicit definitions and reserved React client-ID policies retain raw differences
+  and label captured native-instance status in JSON/HTML. They never refresh goldens
+  or establish identical runtime execution/accessibility relationships. Decode fenced evaluation results
+  with the JSON parser before checking their closing fence: rendered Markdown can
+  contain literal fences inside the payload. See `doc/visual-regressions.md`.
 
 - `build/styles.mjs` compiles shell, development inspector and module CSS entries
   with locked Sass/PostCSS, compiles the separate icon sheet and vendors
@@ -19,6 +29,9 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   across lazy sheets and preserve runtime selector families and attribute states.
   Development CSS/watch output and bundled editor SCSS remain complete;
   generated-output exclusions must not filter source files. See `doc/styles.md`.
+- `test/server.clj` decodes only the two pinned Docs HTML fixtures from
+  `test/fixtures/docs`; keep their reviewed decoded bytes stable across source
+  changes. Current Codox generation is a separate integration check.
 - `test/server.clj` accepts `--glass-output` for isolated glass fixture output;
   it serves current shared CSS and leaves ordinary browser-suite routing intact.
 - `test/ssr.clj` saves renderer export metadata with each HTML/state hydration
@@ -62,14 +75,14 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   codecs in disposable Git repositories.
 
 - `bb fonts:icons` uses the optional pinned Python/fontTools authoring tool to
-  export literal component/module `:icons` as SVG masks in the owning CSS and
-  regenerate small icon fonts with disjoint Unicode ranges and selected selectors.
+  export literal component/module `:icons` as native glyph rules in owning CSS and
+  retain SVG assets and small fonts with disjoint Unicode ranges and selected selectors.
   Generate the browser name catalog from those same selected glyphs; dynamic
   unknown names acquire the retained full catalog through its module. The shared source
   reader supplies both generation and Shadow style inventories. Source literals
   and `resources/icon-fonts.json` own glyph selection; keep full-font fallbacks.
-  SVG viewports must contain transformed outlines; compensate expanded mask boxes
-  with margins to preserve the original advance/height/baseline.
+  SVG exports must retain complete outlines. Native font glyphs own original
+  rasterization and fractional line metrics; do not substitute SVG masks in controls.
   Commit declared SVGs, catalog, generated SCSS and fonts together; see `doc/styles.md`.
 
 - `audit/middleware.clj` is a disposable Docker-only investigation reproducer.
@@ -128,6 +141,11 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   reads only their recorded names and working directories; never publish prompts,
   previews or transcript text. Preserve former names/paths in the managed footer
   when local metadata changes or disappears. See `doc/tooling.md`.
+- Static Neovim fixtures reuse the module's portable isolation policy for their
+  document/worker paths; the explicit unsupported alias has no document isolation.
+  Keep the direct `:neovim-check` bundle route separate from `:app-test` resources.
+  Standalone visual cases await an optional owned disposal hook on success/failure
+  before the next navigation; active WASM cases must never use the iframe batch.
 
 - Host SSD migration is explicit through `ops/host/coolify-storage.py`: verify the
   provisioned filesystem, drain deployments, preserve originals until live

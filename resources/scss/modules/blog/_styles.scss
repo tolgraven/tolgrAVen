@@ -37,6 +37,7 @@
     }
     .blog-post-text {
       max-width: 820px;
+      .md-rendered > p { margin: 1em; }
       // align-self: center;
     }
     
@@ -49,11 +50,21 @@
       margin: 0.75em 0 0.2em 0;
     }
   }
+  // Standalone threads already fill the unpadded blog container.
+  > .blog-comments {
+    margin-inline: 0;
+    border-top: 0;
+  }
+
   .blog-archive {
     padding: var(--space-lg);
     
     .blog-archive-post {
       padding-bottom: calc(2 * var(--space));
+
+      // Preserve the original metadata-sized gap before the comment count.
+      > .blog-info { margin-right: 1em; }
+      .md-rendered > p { margin: 1em; }
     }
   }
   .blog-prev-next-links {
@@ -214,21 +225,38 @@
     
     .blog-comment { // line up top-level comments with line above
       z-index: 2;
+      max-height: 25rem;
       // Truncation belongs to the text so its fade shares the code/text width.
 
       &:not(.blog-comment-full) .blog-comment-text {
-        max-height: 24rem;
+        max-height: var(--comment-text-limit, 24rem);
         overflow: clip;
+      }
+      &.blog-comment-full {
+        max-height: 150em;
+        overflow: auto;
       }
       &.blog-comment-full .blog-comment-text {
         max-height: 150em;
-        overflow: auto;
+        // The card owns scrolling; keep the same float wrapping when expanded.
+        overflow: clip;
       }
 
       &:hover, &:focus-within {
         .blog-comment-actions { right: 0%; }
       }
       
+    }
+    .blog-comment-reply-outer {
+      display: grid;
+
+      // Keep the existing placeholder footprint during the first reply frames.
+      // Both owners share a cell; its exit cannot add a second layout row.
+      > .blog-comment-reply {
+        grid-area: 1 / 1;
+        align-self: start;
+        min-width: 0;
+      }
     }
     .blog-comment-reply {
       border: 0;
@@ -393,8 +421,9 @@
     }
     .blog-comment-text {
       position: relative;
-      // Keep the avatar float outside this clip without making it scrollable.
-      display: flow-root;
+      transition: max-height 1.2s ease;
+      // overflow: clip retains the original text wrapping around the avatar.
+      .md-rendered > p { margin: 1em; }
       // margin-top: calc(0.25 * var(--space));
       margin-top: 0.20em;
     }

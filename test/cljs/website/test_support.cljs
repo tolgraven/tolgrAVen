@@ -1,8 +1,7 @@
 (ns website.test-support
   "Reagent fixtures for isolated component tests. Initial mounting is asynchronous;
    updates use a stable reactive form, never raw React root renders or flushSync."
-  (:require [cljs.reader :as reader]
-            [cljs.core.async :as a]
+  (:require [cljs.core.async :as a]
             [website.react :as r]
 
             ))
@@ -40,18 +39,24 @@
 (defn settle! [] (js/Promise. (fn [resolve _] (r/after-render #(r/after-render resolve)))))
 (defn render! [{:keys [form]} value] (reset! form value) (settle!))
 (defn unmount! [root] (r/unmount (if (map? root) (:root root) root)))
+(r/defc <subscription-consumer> [queries *values]
+  (let [values (into {} (map (fn [[key query]] [key @(r/subscribe query)])) queries)]
+    ;; Keep opaque native route/controller values intact. The rendered text is
+    ;; diagnostic output, not a serialization transport for subscription data.
+    (r/use-layout-effect (fn [] (reset! *values values) nil) [values *values])
+    [:pre (pr-str values)]))
+
 (defn mount-subscriptions!
   [queries]
   (let [element (.createElement js/document "div")
         *mounted? (atom true)
-        <consumer> (fn [] [:pre
-                           (pr-str (into {} (map (fn [[k q]] [k @(r/subscribe q)])) queries))])]
+        *values (atom {})]
     (.appendChild (.-body js/document) element)
     (-> (create-root! element)
         (.then (fn [root]
-                 (-> (render! root [<consumer>])
+                 (-> (render! root [<subscription-consumer> queries *values])
                      (.then (fn [_]
-                              {:values (fn [] (reader/read-string (.-textContent element))),
+                              {:values #(deref *values),
                                :unmount! (fn []
                                            (when (compare-and-set! *mounted? true false)
                                              (unmount! root)

@@ -2,10 +2,13 @@
   "Local static browser suite server. Live integration uses the flush-aware proxy."
   (:require [babashka.cli :as cli]
             [babashka.fs :as fs]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [cheshire.core :as json]
             [org.httpkit.client :as client]
-            [org.httpkit.server :as http]))
+            [org.httpkit.server :as http]
+            [website.modules.neovim.policy :as neovim-policy])
+  (:import [java.util.zip GZIPInputStream]))
 
 (def mime
   {"html" "text/html; charset=utf-8"
@@ -16,7 +19,12 @@
    "webp" "image/webp"
    "avif" "image/avif"
    "svg" "image/svg+xml"
-   "woff2" "font/woff2"})
+   "woff2" "font/woff2"
+   "wasm" "application/wasm"})
+
+(def docs-fixtures
+  {"fixtures/docs/index.html" (fs/path "test/fixtures/docs/index.html.gz")
+   "fixtures/docs/docs.html" (fs/path "test/fixtures/docs/docs.html.gz")})
 
 (defn route-file
   ([uri] (route-file uri nil))
@@ -32,6 +40,9 @@
           (and glass-output (str/starts-with? path "js/")) (fs/path glass-output "tests" path)
           (= "" path) (fs/path "resources/public/js/tests/index.html")
           (= path "fixtures/editor-seed.json") (fs/path "resources/content-seed.json")
+          (contains? docs-fixtures path) (get docs-fixtures path)
+          (= path "fixtures/neovim-unsupported.html") (fs/path "test/browser/neovim-visual.html")
+          (str/starts-with? path "js/neovim-check/") (fs/path "resources/public" path)
           (str/starts-with? path "fixtures/") (fs/path "test/browser" (subs path 9))
           (some #{path} (map #(str avatar "." %) ["png" "webp" "avif"]))
           (fs/path "resources/public/img" (str "tolgrav." (fs/extension path)))
@@ -42,13 +53,22 @@
   ([glass-output {:keys [uri]}]
     (if-let [file (try (route-file uri glass-output) (catch Exception _ nil))]
       (if (fs/regular-file? file)
-        {:status 200
-         :headers {"content-type" (get mime (fs/extension file) "application/octet-stream")
-                   "cache-control" "no-store"}
-         :body (if (and glass-output (= uri "/tests/"))
-                 (str/replace (slurp (fs/file file)) "<head>"
-                              "<head><link rel=\"stylesheet\" href=\"/css/website/main.css\">")
-                 (fs/file file))}
+        (let [docs-fixture? (contains? (set (vals docs-fixtures)) file)]
+          {:status 200
+           :headers (merge {"content-type" (if docs-fixture? (get mime "html")
+                                              (get mime (fs/extension file) "application/octet-stream"))
+                            "cache-control" "no-store"}
+                           (if (#{"/fixtures/neovim.html" "/fixtures/neovim-visual.html"} uri)
+                             neovim-policy/isolation-headers
+                             (neovim-policy/headers-for uri)))
+           :body (cond
+                   docs-fixture?
+                   (with-open [input (GZIPInputStream. (io/input-stream (fs/file file)))]
+                     (.readAllBytes input))
+                   (and glass-output (= uri "/tests/"))
+                   (str/replace (slurp (fs/file file)) "<head>"
+                                "<head><link rel=\"stylesheet\" href=\"/css/website/main.css\">")
+                   :else (fs/file file))})
         {:status 404 :body "Not found"})
       {:status 400 :body "Invalid test path"})))
 

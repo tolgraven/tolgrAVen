@@ -33,9 +33,9 @@
                                  [column (when (= :image_assets column) {})])) columns)]
     (mapv #(merge defaults %) rows)))
 
-(deftest comment-expansion-opens-two-levels-and-preserves-explicit-folds
+(deftest comment-expansion-shows-direct-replies-and-preserves-explicit-folds
   (is (comments/expanded? {} [42 "root"]))
-  (is (comments/expanded? {} [42 "root" "child"]))
+  (is (false? (comments/expanded? {} [42 "root" "child"])))
   (is (false? (comments/expanded? {} [42 "root" "child" "grandchild"])))
   (is (false? (comments/expanded? {[42 "root" "child"] false} [42 "root" "child"])))
   (is (comments/expanded? {[42 "root" "child" "grandchild"] true}
@@ -228,7 +228,7 @@
           (is (= 5 @*reads) "Zero TTL reads providers even when sibling variants exist")))
       (finally (reset! ssr/*cache {})))))
 
-(deftest post-snapshot-reads-only-selected-post-threads-and-public-columns
+(deftest post-snapshot-reads-selected-thread-bodies-and-public-summary-counts
   (let [*calls (atom [])]
     (with-redefs [content/fresh-bundle! (fn [_] {:content {:header {:text ["Test" []]}}})
                   supabase/request! (fn [_ table {:keys [query-params]}]
@@ -242,7 +242,12 @@
                                                "auth_roles" []))})]
       (let [snapshot (ssr/snapshot! "/blog/post/hi-42" {:post-id 42})]
         (is (some #(= "eq.42" (get-in % [1 "id"])) @*calls))
-        (is (= {"blog_posts" 2 "blog_comments" 2 "site_users" 1 "auth_roles" 1} (frequencies (map first @*calls))))
+        (is (= {"blog_posts" 2 "blog_comments" 3 "site_users" 1 "auth_roles" 1} (frequencies (map first @*calls))))
+        (is (some #(and (= "blog_comments" (first %))
+                        (= "id,parent_post" (get-in % [1 "select"]))
+                        (= "is.null" (get-in % [1 "parent_comment"]))) @*calls)
+            "Archive root totals acquire only filtered metadata")
+        (is (= 1 (:comment-count (first (:summaries snapshot)))))
         (is (some #(= "eq.42" (get-in % [1 "parent_post"])) @*calls))
         (is (= "SSR comment" (get-in snapshot [:comments 0 :text])))
         (is (some #(and (= "blog_posts" (first %)) (not (string/includes? (get-in % [1 "select"]) "text"))) @*calls)
@@ -358,7 +363,9 @@
                                                "auth_roles" []))})]
       (let [snapshot (ssr/snapshot! "/blog/post/test-42" {:post-id 42})
             user-reads (filter #(= "site_users" (first %)) @calls)
-            root-read (second (first (filter #(= "is.null" (get-in % [1 "parent_comment"])) @calls)))]
+            root-read (second (first (filter #(and (= "is.null" (get-in % [1 "parent_comment"]))
+                                                  (= (query/public-columns "blog_comments") (get-in % [1 "select"])))
+                                            @calls)))]
         (is (= 1 (count user-reads)) "Authors are fetched together, not once per commenter")
         (is (string/starts-with? (get-in (first user-reads) [1 "id"]) "in.("))
         (is (= 11 (get root-read "limit")))
@@ -542,3 +549,29 @@
           (is (= 1 (get-in page [:snapshot :renderer-build])))
           (is (not (ssr/cached? "/blog" nil)))))
       (finally (reset! ssr/*cache {})))))
+
+(deftest archive-summary-counts-share-the-server-public-read-pipeline
+  (let [requests (atom [])
+        rows {"blog_posts" [{:doc_id "legacy-a", :id 28, :title "First", :ts 1}
+                            {:doc_id "legacy-b", :id 27, :title "Second", :ts 2}
+                            {:doc_id "legacy-c", :id 26, :title "Third", :ts 3}]
+              "blog_comments" [{:id "a", :parent_post 28}
+                               {:id "b", :parent_post 28}
+                               {:id "c", :parent_post 27}]}]
+    (with-redefs [supabase/request!
+                  (fn [method table {:keys [query-params]}]
+                    (swap! requests conj [method table query-params])
+                    {:body (projected-response (get query-params "select") (get rows table []))})]
+      (let [value (reader/read! blog-data/summaries-query)]
+        (is (= {28 2, 27 1, 26 0}
+               (into {} (map (fn [{:keys [data]}] [(:id data) (:comment-count data)])) (:docs value))))
+        (is (every? #(not (contains? (:data %) :comments)) (:docs value)))
+        (is (every? #(not (contains? (:data %) :text)) (:docs value)))
+        (is (= [[:get "blog_posts"] [:get "blog_comments"]] (mapv #(subvec % 0 2) @requests)))
+        (is (= {"select" "id,parent_post"
+                "order" "id.asc"
+                "parent_post" "in.(28,27,26)"
+                "parent_comment" "is.null"
+                "offset" 0
+                "limit" 500}
+               (last (second @requests))))))))

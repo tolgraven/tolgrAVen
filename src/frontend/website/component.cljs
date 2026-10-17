@@ -269,8 +269,11 @@
           ids (set (map first features))
           spec (current-spec definition args)
           options (into {} (map (fn [[id config _]] [id config])) features)
-          _ (when (ids :font)
-              (validation/check! "component font" font/options-schema (:font options)))
+          _ (do
+              (when (ids :font)
+                (validation/check! "component font" font/options-schema (:font options)))
+              (when (map? (:exit options))
+                (validation/check! "component exit" motion/exit-options-schema (:exit options))))
           appearance (or (:seen options) (:appear options))
           remember-key (when (map? appearance) (:remember-key appearance))
           remembered? (when remember-key @(r/subscribe [:state [:motion-seen remember-key]]))

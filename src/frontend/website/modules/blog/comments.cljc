@@ -2,6 +2,16 @@
   (:require [website.supabase.query :as query]))
 
 (def page-size 10)
+(def collapsed-root-count 4)
+
+(defn displayed-roots
+  "Keep the original four-root fold, without hiding a permalink's root."
+  [rows expanded? focused-root-id]
+  (let [rows' (vec (reverse (sort-by (juxt :ts :id) rows)))
+        visible-ids (set (map (comp str :id) (take collapsed-root-count rows')))]
+    (if expanded? rows'
+      (filterv #(or (visible-ids (str (:id %)))
+                    (= (str focused-root-id) (str (:id %)))) rows'))))
 
 (def comment-id [:and [:string {:min 1, :max 128}] [:re #"^[A-Za-z0-9_-]+$"]])
 
@@ -32,9 +42,9 @@
              (if (and (not override?) (contains? values path)) values
                (assoc values path true))) expanded (ancestor-paths row))))
 (defn expanded?
-  "Open two reply levels, or one level below a manually expanded thread.
+  "Show direct replies by default, or one level below a manually expanded thread.
    An explicit fold always takes precedence, including restored view state."
-  ([expanded path] (expanded? expanded path 2))
+  ([expanded path] (expanded? expanded path 1))
   ([expanded path root-depth]
    (if-some [value (get expanded path)]
      value

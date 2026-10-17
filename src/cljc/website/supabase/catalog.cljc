@@ -24,7 +24,12 @@
       [:?batch-field :keyword]
       [:?cache-document-field identifier]
       [:?summary :string]
-      [:?reply-count [:map [:select :string] [:parent-field identifier]]]]]]
+      [:?reply-count [:map
+                      [:select :string]
+                      [:parent-field identifier]
+                      [:?table identifier]
+                      [:?filters [:sequential [:tuple identifier :string :any]]]
+                      [:?result-field [:enum :reply-count :comment-count]]]]]]]
    [:key [:vector {:min 1} identifier]]
    [:order [:vector {:min 1} [:tuple identifier [:enum :asc :desc]]]]
    [:?select [:vector {:min 1} identifier]]

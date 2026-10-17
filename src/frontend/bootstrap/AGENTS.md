@@ -14,15 +14,19 @@
 - Change only document-root attributes/custom properties. React owns image nodes.
   Native route declarations may supply a `:document-target`; completed cold SSR
   holds the existing entrance while `destination.cljs` waits for that target and
-  fonts, positions against untransformed layout offsets, then releases the same
-  animation clock. Missing targets release after a bounded wait; mounted SPA
+  fonts, measures untransformed layout offsets, then releases the same animation
+  clock before scrolling smoothly. Missing targets release after a bounded wait; mounted SPA
   targets use the normal smooth scroll. Do not replay the entrance on hydration.
   The sole removal exception is `#ssr-shell`: this unhydrated document-owned
   wrapper lives outside React's `#app`. Remove it at its opacity animation end
   after the hero gate opens, immediately for reduced motion, with bounded cleanup.
   Exact wrapper/source owners retain decode/fade through terminal adoption and clean
   native listeners, observers, frames and timeouts. History Back suppresses lazy
-  previews before discovery; later SPA navigation clears the shared return policy.
+  previews before discovery; later SPA navigation clears the image return policy.
+  Native Back also installs document-return and temporary settling attributes
+  before CSS. Retain the network SSR tree, settle its automatic clocks, and
+  release only the temporary transition/instant-scroll guard on first input. Shell components
+  retain their own settled state; later menu/comment interactions stay animated.
 - Verify compiled output with `test/scripts/document_image_test.cjs`, generated SSR
   fixtures and native browser cold/history/BFCache checks. Source-reader checks alone
   do not establish compiler output, resource ordering or native request behavior.

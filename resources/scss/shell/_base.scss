@@ -28,6 +28,10 @@ html {
   /* overscroll-behavior-y: none; /1* actually works in chrome, stops from overscroll. BUT makes scrolling and esp sticky jittery it seems? *1/ */
 }
 
+html[data-scroll-controlled] {
+  overflow-anchor: none;
+}
+
 @keyframes fade-in-site {
   0% {
     opacity: 0%;
@@ -216,7 +220,7 @@ section h1, article h1 { font-size: 2rem; } /* restore proper h1 from 1.5 bs */
 
 h3::first-letter, // make more specific and original hardcore v for whatever links
 span::first-letter,
-p::first-letter {
+p:not(:where(.footer-note))::first-letter {
   font-size: 1.075em;
   filter: brightness(107.5%);
   line-height: 1em;

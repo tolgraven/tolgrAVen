@@ -19,6 +19,40 @@
     (is (= [:story :images 0 :src] (fields/path (get-in wrapped [:images 0]) [:src])))
     (is (fields/editing? (get-in wrapped [:images 0])))))
 
+(deftest cv-category-icons-accept-cms-categories-and-font-awesome-families
+  (is (= "graduation-cap" (cv/icon-name "fas fa-solid fa-graduation-cap"))))
+
+(deftest cv-category-icons-are-not-limited-to-resume-categories
+  (is (= "music" (cv/icon-name "fas fa-music"))))
+
+(deftest cv-regular-details-focus-when-visible-and-close-with-keyboard-or-outside-click
+  (async done
+    (let [element (.createElement js/document "div")
+          root (atom nil)]
+      (.appendChild (.-body js/document) element)
+      (-> (go-promise
+            (let [mounted (await! (support/create-root! element))]
+              (reset! root mounted)
+              (await! (support/render! mounted
+                        [cv/<box> {:from 2020, :to 2021, :what "Details", :how []}
+                         "0%" "10rem" 0]))
+              (let [source (.querySelector element ".cv-detail")]
+                (.focus source)
+                (.dispatchEvent source (js/KeyboardEvent. "keydown" #js {:key "Enter", :bubbles true}))
+                (let [surface (await! (support/wait-for! #(.querySelector js/document ".cv-detail-surface")))]
+                  (await! (support/wait-for! #(identical? surface (.-activeElement js/document))))
+                  (is (nil? (.querySelector surface ".cv-zoom-back")))
+                  (.dispatchEvent surface (js/KeyboardEvent. "keydown" #js {:key "Escape", :bubbles true})))
+                (await! (support/wait-for! #(nil? (.querySelector js/document ".cv-detail-surface"))))
+                (is (identical? source (.-activeElement js/document)))
+                (.click source)
+                (await! (support/wait-for! #(.querySelector js/document ".cv-detail-surface")))
+                (.click (.querySelector js/document ".cv-detail-layer"))
+                (await! (support/wait-for! #(nil? (.querySelector js/document ".cv-detail-surface"))))
+                (is (identical? source (.-activeElement js/document))))))
+          (.catch #(is false (str %)))
+          (.finally #(do (when @root (support/unmount! @root)) (.remove element) (done)))))))
+
 (deftest cv-logos-retain-relative-and-public-upload-urls
   (is (= "../../img/logo.png" (cv/logo-src "img/logo.png" nil)))
   (is (= "/img/logo.png" (cv/logo-src "/img/logo.png" nil)))
@@ -63,30 +97,31 @@
 
 (deftest editing-is-account-bound-and-drafts-preserve-the-loaded-value
   (async done
-    (-> (go-promise
-          (r/dispatch-sync [:init/app-db])
-          (r/dispatch-sync [:editor-visual/install {:intro {:title "Original"}} true])
-          (is (= :edit (await! (support/subscription-value! [:content/mode]))))
-          (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "First"])
-          (r/dispatch-sync [:content-editor/change [:intro :title] "New server value" "Second"])
-          (let [draft (await! (support/state-at! [:state :content-editor :fields (pr-str [:intro :title])]))]
-            (is (= "Original" (:expected draft)))
-            (is (= "Second" (:value draft))))
-          (r/dispatch-sync [:content-editor/change [:intro :text] "Published\nSecond line" "Private draft\nSecond line"])
-          (r/dispatch-sync [:state [:active-user] nil])
-          (is (= :view (await! (support/subscription-value! [:content/mode]))))
-          (is (= "<p>Published</p>"
-                 (r/render-to-string [fields/<text> :p
-                                      (fields/annotate {:text "Published\nSecond line"} [:intro] :view)
-                                      [:text] nil 0])))
-          (is (= "<p>Second line</p>"
-                 (r/render-to-string [fields/<text> :p
-                                      (fields/annotate {:text "Published\r\nSecond line\r\n"} [:intro] :view)
-                                      [:text] nil 1])))
-          (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Unauthorized"])
-          (is (= "Second" (:value (await! (support/state-at! [:state :content-editor :fields (pr-str [:intro :title])]))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+    (let [restore! (r/make-restore-fn)]
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            (r/dispatch-sync [:editor-visual/install {:intro {:title "Original"}} true])
+            (is (= :edit (await! (support/subscription-value! [:content/mode]))))
+            (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "First"])
+            (r/dispatch-sync [:content-editor/change [:intro :title] "New server value" "Second"])
+            (let [draft (await! (support/state-at! [:state :content-editor :fields (pr-str [:intro :title])]))]
+              (is (= "Original" (:expected draft)))
+              (is (= "Second" (:value draft))))
+            (r/dispatch-sync [:content-editor/change [:intro :text] "Published\nSecond line" "Private draft\nSecond line"])
+            (r/dispatch-sync [:state [:active-user] nil])
+            (is (= :view (await! (support/subscription-value! [:content/mode]))))
+            (is (= "<p>Published</p>"
+                   (r/render-to-string [fields/<text> :p
+                                        (fields/annotate {:text "Published\nSecond line"} [:intro] :view)
+                                        [:text] nil 0])))
+            (is (= "<p>Second line</p>"
+                   (r/render-to-string [fields/<text> :p
+                                        (fields/annotate {:text "Published\r\nSecond line\r\n"} [:intro] :view)
+                                        [:text] nil 1])))
+            (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Unauthorized"])
+            (is (= "Second" (:value (await! (support/state-at! [:state :content-editor :fields (pr-str [:intro :title])]))))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
 
 (deftest save-queue-waits-for-each-authoritative-response
   (async done
@@ -117,20 +152,21 @@
 
 (deftest conflict-retains-the-draft-and-installs-the-current-value
   (async done
-    (-> (go-promise
-          (r/dispatch-sync [:editor-visual/install {:intro {:title "Original"}} true])
-          (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Draft"])
-          (let [key (pr-str [:intro :title])]
-            (r/dispatch-sync [:content-editor/failed "visual-admin" key
-                              {:response {:error "Changed in Strapi"
-                                          :content-bundle {:version 1, :content {:intro {:title "Latest"}}}}}])
-            (await! (support/settle!))
-            (is (= "Draft" (:value (await! (support/state-at! [:state :content-editor :fields key])))))
-            (is (= "Latest" (:title (await! (support/subscription-value! [:content [:intro]])))))
-            (r/dispatch-sync [:content-editor/discard-field key])
-            (is (nil? (await! (support/state-at! [:state :content-editor :fields key]))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+    (let [restore! (r/make-restore-fn)]
+      (-> (go-promise
+            (r/dispatch-sync [:editor-visual/install {:intro {:title "Original"}} true])
+            (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Draft"])
+            (let [key (pr-str [:intro :title])]
+              (r/dispatch-sync [:content-editor/failed "visual-admin" key
+                                {:response {:error "Changed in Strapi"
+                                            :content-bundle {:version 1, :content {:intro {:title "Latest"}}}}}])
+              (await! (support/settle!))
+              (is (= "Draft" (:value (await! (support/state-at! [:state :content-editor :fields key])))))
+              (is (= "Latest" (:title (await! (support/subscription-value! [:content [:intro]])))))
+              (r/dispatch-sync [:content-editor/discard-field key])
+              (is (nil? (await! (support/state-at! [:state :content-editor :fields key]))))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
 
 (deftest empty-image-upload-is-a-valid-draft
   (async done

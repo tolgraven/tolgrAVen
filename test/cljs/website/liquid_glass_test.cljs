@@ -7,13 +7,17 @@
             [website.components.ui.liquid-glass :as glass]
             [website.components.ui.liquid-glass.maps :as maps]
             [website.liquid-glass-optics-test :as fixtures]
-            [website.listener :as listener]))
+            [website.listener :as listener]
+            [website.loader.styles :as styles]))
 
 (defn with-root [f]
   (let [element (.createElement js/document "div")]
     (set! (.-cssText (.-style element)) "position:fixed;top:1rem;left:1rem;width:20rem;z-index:99999")
     (.appendChild (.-body js/document) element)
-    (-> (support/create-root! element)
+    ;; The default browser-test document has no application stylesheet. Acquire
+    ;; the same native sheet as the dedicated glass page before measuring it.
+    (-> (styles/acquire-path! "/css/website/main.css")
+        (.then (fn [_] (support/create-root! element)))
         (.then (fn [root] (-> (js/Promise.resolve (f root element))
                              (.finally #(support/unmount! root)))))
         (.finally #(.remove element)))))
@@ -130,22 +134,26 @@
 (deftest hydration-retains-the-ssr-input-node
   (async done
     (let [element (.createElement js/document "div")
+          *root (atom nil)
           *errors (atom [])
           form [glass/<liquid-glass> (options) [:input {:default-value "SSR"}]]]
       (.appendChild (.-body js/document) element)
       ;; Manual DOM setup is confined to the hydration fixture.
       (set! (.-cssText (.-style element)) "position:fixed;top:1rem;left:1rem;z-index:99999")
-      (set! (.-innerHTML element) (server/render-to-string form))
-      (let [input (.querySelector element "input")
-            root (r/hydrate-root element form {:on-recoverable-error #(swap! *errors conj %)})]
-        (-> (support/wait-for! #(.querySelector element "filter"))
-            (.then (fn []
-                     (is (identical? input (.querySelector element "input")))
-                     (is (= "SSR" (.-value input)))
-                     (is (empty? @*errors))))
-            (.catch #(is false (str %)))
-            (.finally (fn [] (r/unmount root) (.remove element) (done))))))))
-
+      (-> (go-promise
+            (await! (styles/acquire-path! "/css/website/main.css"))
+            (set! (.-innerHTML element) (server/render-to-string form))
+            (let [input (.querySelector element "input")]
+              (reset! *root (r/hydrate-root element form {:on-recoverable-error #(swap! *errors conj %)}))
+              (await! (support/wait-for! #(.querySelector element "filter")))
+              (is (identical? input (.querySelector element "input")))
+              (is (= "SSR" (.-value input)))
+              (is (empty? @*errors))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @*root (r/unmount @*root))
+                      (.remove element)
+                      (done)))))))
 
 (deftest resize-and-font-units-invalidate-geometry-without-remounting
   (async done

@@ -1,5 +1,5 @@
 const frame = document.querySelector('#app'), results = document.querySelector('#results');
-if (new URLSearchParams(location.search).has('phone')) frame.style.width = '24.375rem';
+if (new URLSearchParams(location.search).has('phone')) frame.style.width = 'min(24.375rem, 100%)';
 const doc = () => frame.contentDocument;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const wait = async predicate => {
@@ -13,15 +13,44 @@ const wait = async predicate => {
   throw new Error('Application did not settle');
 };
 const check = (value, label, details) => {
+  const viewport = frame.getBoundingClientRect();
+  if (viewport.top < 0 || viewport.left < 0 || viewport.bottom > innerHeight || viewport.right > innerWidth)
+    throw new Error('Keep the complete application frame visible; use an outer viewport at least 1200 CSS pixels high');
   if (!value) throw new Error(label + (details ? ` ${JSON.stringify(details)}` : ""));
   const row = document.createElement('li'); row.className = 'passed'; row.textContent = label; results.append(row);
 };
-const sample = async (action, read, ms = 1400) => {
-  const values = [read()], end = performance.now() + ms;
+const sample = async (action, read, ms = 1400, ready) => {
+  const values = [read()], deadline = performance.now() + 30000;
+  let end = ready ? null : performance.now() + ms;
   action();
-  while (performance.now() < end) { await new Promise(resolve => requestAnimationFrame(resolve)); values.push(read()); }
+  while (end === null || performance.now() < end) {
+    if (performance.now() >= deadline) throw new Error('Motion sampling did not reach its native content');
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    const value = read(); values.push(value);
+    if (end === null && ready(value)) end = performance.now() + ms;
+  }
   return values;
 };
+// Evaluate measured layout and body motion, never the presence of a CSS class.
+const replyMotionEvidence = samples => [...new Set(samples.flatMap(value => value.rows.map(row => row.id)))].map(id => {
+  const captured = samples.flatMap(value => {
+    const row = value.rows.find(row => row.id === id);
+    return row ? [{...row, time: value.time}] : [];
+  });
+  const first = captured[0], final = captured.at(-1);
+  const intermediate = captured.filter(row => row.height > 1 && row.height < final.height - 1);
+  const steps = captured.map((row, index) => row.height - (captured[index - 1]?.height || 0));
+  return {id, delay: final.delay, bodyDelay: final.bodyDelay,
+    duration: final.duration, bodyDuration: final.bodyDuration,
+    properties: final.properties, bodyProperties: final.bodyProperties,
+    visible: first.inViewport && !first.settling,
+    started: captured.find(row => row.height > 1)?.time,
+    finalHeight: final.height, intermediateHeights: [...new Set(intermediate.map(row => Math.round(row.height * 10) / 10))],
+    continuous: intermediate.length >= 2 && steps.every(step => step >= -1 && step < final.height * .75),
+    fading: captured.some(row => row.opacity > .01 && row.opacity < .99),
+    sliding: captured.some(row => Math.abs(row.translateY) > .1),
+    settled: final.height > 1 && final.opacity >= .99 && Math.abs(final.translateY) < .1};
+});
 const settleLayout = async element => {
   await doc().fonts.ready;
   const animations = doc().getAnimations().filter(animation => {
@@ -92,8 +121,253 @@ const sampleStartup = async path => {
   }
   throw new Error('Page did not reach interactive startup');
 };
+// The parent survives the unrelated, genuinely cross-origin document. Observe
+// BFCache's retained document before departure and every returned document from
+// its first accessible parent frame. This does not inject into the app response.
+const returnMatches = (document, url) => document?.URL === url;
+const returnReady = (document, selectors) => {
+  const app = document?.querySelector('#app');
+  return !!app?.querySelector('main') && document.readyState === 'complete' &&
+    !app.hasAttribute('data-document-pending') &&
+    selectors.every(selector => document.querySelector(selector)) &&
+    !app.querySelector('main .component-spinner,main .loading-spinner');
+};
+const searchMotion = async label => {
+  const document = doc(), win = frame.contentWindow;
+  // First intent can replace the lazy fallback; act on the mounted control.
+  const button = () => document.querySelector('button.search-ui-btn');
+  check(!!button() && !document.querySelector('.search-ui-open'), `${label} Search starts closed`);
+  let panel = document.querySelector('.search-ui');
+  if (!panel) {
+    // A restored document may acquire Search on first intent. Establish its
+    // normal closed surface before comparing subsequent user transitions.
+    button().click();
+    await wait(() => document.querySelector('.search-ui-open'));
+    button().click();
+    await wait(() => !document.querySelector('.search-ui-open'));
+    panel = document.querySelector('.search-ui');
+    await settleLayout(panel);
+  }
+  const motion = [], frames = [];
+  for (const open of [true, false]) {
+    let transition;
+    const capture = () => {
+      transition ||= panel.getAnimations().find(animation => animation instanceof win.CSSTransition &&
+        animation.transitionProperty === 'max-height' && animation.effect.target === panel);
+      return transition;
+    };
+    // Retain the actual effect on its native start event too; a quick valid
+    // transition need not remain listed until the next readiness poll.
+    panel.addEventListener('transitionrun', capture);
+    try {
+      button().click();
+      await wait(() => capture() && !!document.querySelector('.search-ui-open') === open);
+    } finally { panel.removeEventListener('transitionrun', capture); }
+    const effect = transition.effect, timing = effect.getTiming(), keyframes = effect.getKeyframes();
+    check(Number.isFinite(effect.getComputedTiming().endTime) && Number(timing.duration) > 0 &&
+      new Set(keyframes.map(value => value.maxHeight)).size > 1,
+      `${label} Search ${open ? 'opening' : 'closing'} runs a finite native height transition`);
+    motion.push({open, property: transition.transitionProperty, timing, keyframes,
+      composite: effect.composite, iterationComposite: effect.iterationComposite, playbackRate: transition.playbackRate});
+    let request, active = true, finished = false, failure;
+    const read = () => {
+      if (frames.length < 512) frames.push({open, height: panel.getBoundingClientRect().height});
+      if (active) request = requestAnimationFrame(read);
+    };
+    transition.finished.then(() => { finished = true; }, error => { failure = error; });
+    try {
+      read();
+      await wait(() => { if (failure) throw failure; return finished; });
+    } finally { active = false; cancelAnimationFrame(request); }
+    check(doc() === document && document.querySelector('.search-ui') === panel,
+      `${label} Search retains its native surface through the transition`);
+  }
+  return {motion, frames};
+};
+// Exercise real shell scroll states, including their native CSS clocks. The
+// long-post case leaves room between the header threshold and footer handover.
+const shellScrollMotion = async label => {
+  const document = doc(), win = frame.contentWindow;
+  const header = document.querySelector('#app header'), footer = document.querySelector('#footer-sticky');
+  const logo = header.querySelector('.header-logo');
+  const read = () => ({height: header.getBoundingClientRect().height,
+    hidden: header.classList.contains('hide') && footer.classList.contains('hide'),
+    logoOpacity: Number(win.getComputedStyle(logo).opacity),
+    footerOpacity: Number(win.getComputedStyle(footer.querySelector('.footer-content')).opacity),
+    inert: footer.inert});
+  win.scrollTo({top: 0, behavior: 'instant'});
+  await wait(() => win.scrollY === 0 && !header.classList.contains('hide'));
+  await settleLayout(document.body);
+  // Prime the scroll listener's native page-height measurement before its
+  // existing direction/150-pixel threshold; no application state is substituted.
+  win.scrollTo({top: 1, behavior: 'instant'});
+  await sleep(250);
+  const observer = window.visualFixture.createMotionObserver(win, label);
+  try {
+    const height = read().height;
+    const hidden = await sample(() => win.scrollTo({
+      top: Math.min(700, (document.scrollingElement.scrollHeight - win.innerHeight) / 3), behavior: 'instant'
+    }), read, 1900, value => value.hidden);
+    check(hidden.at(-1).height === 0 && hidden.at(-1).logoOpacity === 0 &&
+      hidden.at(-1).footerOpacity === 0 && hidden.at(-1).inert,
+      `${label}: minimized header and footer leave no visible or interactive content`);
+    const shown = await sample(() => win.scrollTo({top: win.scrollY / 2, behavior: 'instant'}),
+      read, 1900, value => !value.hidden && value.height > 0);
+    check(shown.at(-1).logoOpacity === 1 && shown.at(-1).footerOpacity === 1 && !shown.at(-1).inert,
+      `${label}: scrolling up restores the shell content`);
+    check(hidden.some(value => value.height > 0 && value.height < height - 1) &&
+      shown.some(value => value.height > 0 && value.height < height - 1),
+      `${label}: native header height changes continuously in both directions`);
+    const measured = observer.snapshot();
+    const motion = measured.triggered.filter(value => value.kind === 'animation' &&
+      ['header-logo-anim', 'header-logo-anim-out'].includes(value.name));
+    check(!measured.gaps.length && new Set(motion.map(value => value.name)).size === 2,
+      `${label}: both native logo clocks run without observation gaps`, measured.gaps);
+    return {motion: motion.map(({name, timing, keyframes}) => ({name, timing, keyframes}))
+      .sort((a, b) => a.name.localeCompare(b.name)), hidden, shown};
+  } finally { observer.stop(); }
+};
+const externalBack = async ({label = 'Home', selectors = ['#app #intro'], shellScroll = false, observationWindowMs = 3500} = {}) => {
+  const previous = doc(), expectedURL = new URL(previous.URL).href;
+  const beforeSearch = await searchMotion(label + ' before departure');
+  const beforeShell = shellScroll ? await shellScrollMotion(label + ' before departure') : null;
+  const observers = new Map(), evidence = [], cleanups = [], positions = [];
+  const focusIds = new WeakMap(), started = performance.now();
+  let nextFocus = 0, ready = false, collecting = true, positionGap = null;
+  const readPosition = document => {
+    if (!collecting || !returnMatches(document, expectedURL)) return;
+    if (positions.length >= 16384) { positionGap = 'Return position observation exceeded its bounded frame budget'; return; }
+    const win = document.defaultView, focus = document.activeElement;
+    if (focus && !focusIds.has(focus)) focusIds.set(focus, ++nextFocus);
+    positions.push({elapsed: performance.now() - started, ready,
+      scroll: [win.scrollX, win.scrollY], focus: focus ? focusIds.get(focus) : null,
+      activeElement: focus ? {tag: focus.localName, id: focus.id || null} : null});
+  };
+  const attach = document => {
+    if (!document || document.URL === 'about:blank' || observers.has(document)) return;
+    const observer = window.visualFixture.createMotionObserver(document.defaultView, document === previous ? 'pre-departure' : 'external-back');
+    observers.set(document, observer);
+    const record = {url: document.URL, persisted: null, navigation:
+      document.defaultView.performance.getEntriesByType('navigation')[0]?.type};
+    const pageshow = event => { record.persisted = event.persisted; };
+    document.defaultView.addEventListener('pageshow', pageshow, {once: true});
+    cleanups.push(() => document.defaultView?.removeEventListener('pageshow', pageshow));
+    evidence.push(record);
+  };
+  // Previously completed objects are not restarted motion. Keep observing this
+  // document across BFCache; a newly created CSS object after Back is a failure.
+  attach(previous);
+  let request, active = true;
+  const poll = () => {
+    if (!active) return;
+    const document = doc();
+    if (returnMatches(document, expectedURL)) { attach(document); readPosition(document); }
+    request = requestAnimationFrame(poll);
+  };
+  try {
+    const away = new URL('/__tests/away.html', location.href);
+    away.hostname = location.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
+    check(away.origin !== location.origin, 'Back leaves for a genuinely different origin');
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { frame.onload = null; reject(new Error('External document did not load')); }, 15000);
+      frame.onload = () => { clearTimeout(timer); frame.onload = null; resolve(); };
+      frame.src = away.href;
+    });
+    check(!doc(), 'External document is cross-origin, rather than substituted application state');
+    request = requestAnimationFrame(poll);
+    // Native session history is shared by this frame tree. Traverse the actual
+    // away entry; do not forge PerformanceNavigationTiming or a restore flag.
+    observers.get(previous).phase('external-back');
+    history.back();
+    await wait(() => returnMatches(doc(), expectedURL) && returnReady(doc(), selectors));
+    // Record initial browser restoration too; require a stable ready route
+    // through its known delayed callbacks before any post-return interaction.
+    ready = true; readPosition(doc());
+    await sleep(observationWindowMs);
+    const returned = doc(), observer = observers.get(returned);
+    readPosition(returned); collecting = false;
+    const settledPositions = positions.filter(value => value.ready), baseline = settledPositions[0];
+    const moved = settledPositions.filter(value => value.focus !== baseline.focus ||
+      value.scroll.some((position, index) => position !== baseline.scroll[index]));
+    check(!!observer, 'Returned document was observed before post-return interactions');
+    const measured = observer.snapshot();
+    const triggered = measured.triggered.filter(entry => entry.phase === 'external-back');
+    const running = returned.getAnimations().filter(animation =>
+      (animation instanceof frame.contentWindow.CSSAnimation || animation instanceof frame.contentWindow.CSSTransition) &&
+      animation.playState === 'running').map(animation => ({name: animation.animationName || animation.transitionProperty,
+        timing: animation.effect.getTiming(), keyframes: animation.effect.getKeyframes()}));
+    const observation = {documents: evidence, sameDocument: returned === previous,
+      motion: {...measured, triggered}, running, observationWindowMs,
+      positions: {baseline: 'native route readiness', samples: positions, gap: positionGap},
+      observation: 'parent-frame first accessible document; BFCache listener retained across departure'};
+    if (label === 'Home') results.dataset.externalBack = JSON.stringify(observation);
+    const cases = JSON.parse(results.dataset.externalBackCases || '{}');
+    cases[expectedURL] = observation;
+    results.dataset.externalBackCases = JSON.stringify(cases);
+    check(returnMatches(returned, expectedURL), `${label} Back restores the exact document URL`);
+    check(returned === previous || evidence.some(value => value.url === returned.URL &&
+      (value.persisted === true || value.navigation === 'back_forward')),
+      `${label}: real native history return is evidenced by retained document or browser navigation timing`, evidence);
+    check(!measured.gaps.length && !triggered.length && !running.length,
+      `${label}: external Back starts no CSS animation or transition before any interaction`, {triggered, running, gaps: measured.gaps});
+    check(!positionGap && settledPositions.length > 0 && !moved.length,
+      `${label}: external Back leaves ready-route scroll and focus unchanged before interaction`,
+      {baseline, moved, gap: positionGap});
+    // Policy is evidence to assert after observing the actual page, never a
+    // prerequisite that conceals motion when the return policy itself breaks.
+    check(returned.documentElement.hasAttribute('data-image-direct'), `${label} Back retains the native image return policy`);
+    check(returned.defaultView.getComputedStyle(returned.documentElement).scrollBehavior === 'auto',
+      `${label}: external Back keeps native scroll restoration instant before interaction`);
+    observer.phase('post-return-interaction');
+    const afterSearch = await searchMotion(label + ' after Back');
+    check(returned.defaultView.getComputedStyle(returned.documentElement).scrollBehavior === 'smooth',
+      `${label}: first interaction restores the authored smooth scrolling`);
+    const interactions = JSON.parse(results.dataset.externalBackInteractions || '{}');
+    const afterShell = shellScroll ? await shellScrollMotion(label + ' after Back') : null;
+    interactions[expectedURL] = {before: beforeSearch, after: afterSearch, beforeShell, afterShell};
+    if (shellScroll) check(JSON.stringify(beforeShell.motion) === JSON.stringify(afterShell.motion),
+      `${label}: scrolling retains native logo keyframes and timing after Back`, {beforeShell, afterShell});
+    results.dataset.externalBackInteractions = JSON.stringify(interactions);
+    check(JSON.stringify(beforeSearch.motion) === JSON.stringify(afterSearch.motion),
+      `${label} Search retains its native opening and closing CSS timing after Back`, interactions[expectedURL]);
+  } finally {
+    active = false; cancelAnimationFrame(request);
+    for (const observer of observers.values()) observer.stop();
+    cleanups.forEach(cleanup => cleanup());
+  }
+};
+const externalBackCases = [
+  {label: 'Blog shell', path: '/blog/post/17', selectors: ['#app .blog-post'], shellScroll: true},
+  {label: 'Blog post', path: '/blog/post/New-features-27', selectors: ['#app .blog-post .blog-post-text']},
+  {label: 'CV', path: '/cv', selectors: ['#app .cv-intro', '#app .cv-skills'], observationWindowMs: 6500},
+  {label: 'Docs', path: '/docs', selectors: ['#app .codox h1']}
+];
+const externalBackRoutes = async () => {
+  for (const test of externalBackCases) {
+    await resetTestOrigin(frame, wait);
+    const url = new URL(test.path, location.href);
+    url.searchParams.set('motion-return', Date.now());
+    frame.src = url.href;
+    await wait(() => returnMatches(doc(), url.href) && returnReady(doc(), test.selectors));
+    // Establish hydrated controls before departure. Returned pages receive no
+    // interaction until externalBack has saved its complete observation window.
+    await wait(() => {
+      if (doc().querySelector('.search-ui-open')) return true;
+      doc().querySelector('button.search-ui-btn')?.click(); return false;
+    });
+    doc().querySelector('button.search-ui-btn').click();
+    await wait(() => !doc().querySelector('.search-ui-open'));
+    await settleLayout(doc().body);
+    await externalBack(test);
+
+  }
+  await resetTestOrigin(frame, wait);
+};
 document.querySelector('#run').onclick = async () => {
   results.replaceChildren();
+  delete results.dataset.externalBack;
+  results.dataset.externalBackCases = '{}';
+  results.dataset.externalBackInteractions = '{}';
   try {
     await resetTestOrigin(frame, wait);
     const path = `/?motion-entrance=${Date.now()}`;
@@ -143,14 +417,9 @@ document.querySelector('#run').onclick = async () => {
           'Paired document restoration stays visible without replaying its entrance');
     check(!doc().querySelector('[data-image-preview]'),
           'Saved HTML/state pair contains only final image candidates');
-    // Leave the application document and use the unrelated document's native
-    // Back button. A saved pair alone is not proof of native Back classification.
-    frame.src = '/__tests/away.html';
-    await wait(() => doc()?.location.pathname === '/__tests/away.html' &&
-      doc()?.querySelector('button'));
-    doc().querySelector('button').click();
-    await wait(() => doc()?.location.pathname === '/' &&
-      doc()?.documentElement.hasAttribute('data-image-direct') && doc()?.querySelector('#intro'));
+    // Traverse real history from an unrelated cross-origin document. A saved
+    // pair alone is not proof of native Back classification.
+    await externalBack();
     await wait(() => {
       if (doc().querySelector('.search-ui-open')) return true;
       doc().querySelector('button.search-ui-btn')?.click(); return false;
@@ -203,8 +472,9 @@ document.querySelector('#run').onclick = async () => {
     queryLink.remove(); queryBack.remove();
     await resetTestOrigin(frame, wait);
     const cached = await sampleStartup(path);
-    check(!doc().querySelector('#ssr-shell'), 'Fresh SSR cache bypasses the skeleton');
+    check(!cached.some(value => value.shell), 'Fresh SSR cache bypasses the skeleton');
     checkEntrance(cached, 'Cached SSR');
+    await externalBackRoutes();
     frame.src = '/blog/post/New-features-27';
     await wait(() => doc()?.querySelector('.blog-comment-collapsed-placeholder'));
     await wait(() => {
@@ -215,22 +485,90 @@ document.querySelector('#run').onclick = async () => {
     doc().querySelector('button.search-ui-btn').click();
     const placeholder = doc().querySelector('.blog-comment-collapsed-placeholder');
     const outer = placeholder.closest('.blog-comment-reply-outer');
-    // Measure a stable footprint, not an in-flight document/font entrance.
-    await settleLayout(outer);
+    // Exercise a visible user action: offscreen replies intentionally settle
+    // without entrances. Allow viewport owners to commit before enumerating
+    // their native animation clocks, then wait for the parent source footprint.
     const parent = outer.previousElementSibling;
+    const settleComment = async trigger => {
+      trigger.scrollIntoView({block: 'center'});
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      await wait(() => parent.getBoundingClientRect().height > 1 &&
+        !parent.querySelector('.module-load-placeholder,.component-skeleton,.component-render-skeleton'));
+      await settleLayout(outer);
+    };
+    await settleComment(placeholder);
     const parentHeight = parent.getBoundingClientRect().height;
-    const read = () => ({parent: parent.getBoundingClientRect().height, outer: outer.getBoundingClientRect().height});
-    const frames = await sample(() => placeholder.click(), read);
+    const ids = new WeakMap(); let nextRow = 0;
+    const milliseconds = value => parseFloat(value) * (value.trim().endsWith('ms') ? 1 : 1000);
+    const read = () => {
+      const win = frame.contentWindow, replies = outer.querySelector(':scope > .blog-comment-reply');
+      return {time: performance.now(), parent: parent.getBoundingClientRect().height,
+        outer: outer.getBoundingClientRect().height,
+        outerChildren: [...outer.children].map(child => ({className: child.className,
+          height: child.getBoundingClientRect().height,
+          animations: child.getAnimations().map(animation => ({
+            name: animation.animationName || animation.transitionProperty, playState: animation.playState}))})),
+        nestedThreads: [...outer.querySelectorAll('.blog-comment-reply-outer')].map(thread => ({
+          height: thread.getBoundingClientRect().height,
+          children: [...thread.children].map(child => ({className: child.className,
+            height: child.getBoundingClientRect().height,
+            document: child.hasAttribute('data-document-appear'),
+            animations: child.getAnimations({subtree: true}).map(animation => ({
+              target: animation.effect?.target?.className,
+              name: animation.animationName || animation.transitionProperty,
+              playState: animation.playState, currentTime: animation.currentTime}))}))})),
+        rows: [...replies.children].filter(row => row.matches('.blog-comment-reply-row')).map(row => {
+          if (!ids.has(row)) ids.set(row, ++nextRow);
+          const body = row.querySelector(':scope > .blog-comment-reply-body');
+          const box = row.getBoundingClientRect(), style = win.getComputedStyle(row), bodyStyle = win.getComputedStyle(body);
+          return {id: ids.get(row), height: box.height, opacity: Number(bodyStyle.opacity),
+            translateY: bodyStyle.transform === 'none' ? 0 : new win.DOMMatrixReadOnly(bodyStyle.transform).m42,
+            delay: milliseconds(style.transitionDelay), bodyDelay: milliseconds(bodyStyle.transitionDelay),
+            duration: milliseconds(style.transitionDuration), bodyDuration: milliseconds(bodyStyle.transitionDuration),
+            properties: style.transitionProperty.split(',').map(value => value.trim()),
+            bodyProperties: bodyStyle.transitionProperty.split(',').map(value => value.trim()),
+            inViewport: box.top < win.innerHeight && box.bottom > 0,
+            settling: row.hasAttribute('data-appear-settling'),
+            expanded: !row.classList.contains('collapsed'), hasContent: !!body.querySelector('.blog-comment-title')};
+        })};
+    };
+    const ready = value => value.rows.some(row => row.expanded && row.hasContent);
+    const verifyReplies = (samples, label) => {
+      const evidence = replyMotionEvidence(samples), visible = evidence.filter(row => row.visible);
+      window.replyMotionSamples ||= {};
+      window.replyMotionSamples[label] = {samples, evidence};
+      check(visible.length > 0, `${label} samples a visible native reply entrance`, evidence);
+      check(visible.every(row => row.continuous && row.intermediateHeights.length >= 2 && row.settled),
+        `${label} reply rows grow continuously through intermediate heights without teleporting`, evidence);
+      check(visible.every(row => row.fading && row.sliding),
+        `${label} reply bodies visibly fade and slide while their rows grow`, evidence);
+      check(visible.every(row => row.duration > 0 && row.bodyDuration === row.duration && row.bodyDelay === row.delay &&
+        row.properties.includes('grid-template-rows') && row.bodyProperties.includes('opacity') && row.bodyProperties.includes('transform')),
+        `${label} row height and body motion share the native timing contract`, evidence);
+      // A live branch may be a single-child chain. Only real siblings can
+      // establish stagger order; the mounted three-sibling fixture covers it too.
+      if (visible.length > 1) {
+        const staggered = visible.slice(1).filter((row, index) => row.delay > visible[index].delay);
+        check(staggered.length > 0 && visible.slice(1).every((row, index) =>
+          row.delay <= visible[index].delay || row.started > visible[index].started),
+          `${label} measured sibling growth starts in its stagger order`, evidence);
+      }
+    };
+    const frames = await sample(() => placeholder.click(), read, 1400, ready);
+    window.replyMotionSamples ||= {};
+    window.replyMotionSamples['First expansion'] = {samples: frames, evidence: replyMotionEvidence(frames)};
     check(frames.every(value => value.parent >= parentHeight - 1), 'Expanding a thread never empties its parent comment');
     check(frames.every(value => value.outer >= frames[0].outer - 1), 'Reply loading never drops the collapsed thread footprint');
     await wait(() => outer.querySelector('.blog-comment-title'));
-    const descendant = outer.querySelector('.blog-comment-around');
-    check(descendant.classList.contains('slide-behind'), 'Replies retain their original slide-behind entrance');
-    check(parseFloat(frame.contentWindow.getComputedStyle(descendant).transitionDelay) > 0, 'Nested replies have staggered entrance timing');
+    verifyReplies(frames, 'First expansion');
     const border = parent.querySelector('.blog-comment-border');
     border.click(); await sleep(1200);
-    const reopened = await sample(() => outer.querySelector('.blog-comment-collapsed-placeholder').click(), read);
+    const collapsed = outer.querySelector('.blog-comment-collapsed-placeholder');
+    await settleComment(collapsed);
+    const reopened = await sample(() => collapsed.click(), read, 1400, ready);
+    window.replyMotionSamples['Cached reopening'] = {samples: reopened, evidence: replyMotionEvidence(reopened)};
     check(reopened.every(value => value.parent >= parentHeight - 1), 'Reopening a cached thread retains its parent layout');
+    verifyReplies(reopened, 'Cached reopening');
     await wait(() => outer.querySelector('.blog-comment-title'));
     // Exercise the same application with the optional native capability absent.
     // Only the test driver changes API availability; app state/markup stay real.

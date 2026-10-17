@@ -4,7 +4,6 @@ import json
 import math
 import re
 import subprocess
-from urllib.parse import quote
 from pathlib import Path
 
 from fontTools import subset
@@ -36,7 +35,7 @@ def face(family, weight, file, points, fallback=None):
   font-family: "{family}";
   font-style: normal;
   font-weight: {weight};
-  font-display: swap;
+  font-display: auto;
   src: {sources};
   unicode-range: {unicode_ranges(points)};
 }}
@@ -97,25 +96,24 @@ def svg_outputs(mapping, definitions=None):
             code = mapping.get(name)
             if code not in cmap:
                 raise ValueError(f"Icon absent from its declared font family: {icon}")
-            svg, layout = svg_icon(font, cmap[code])
-            margins = " ".join(f"{value:g}em" for value in layout["margins"])
+            svg, _layout = svg_icon(font, cmap[code])
             outputs[PUBLIC / "img/icons/generated" / family / f"{name}.svg"] = (
                 "<!-- Font Awesome Free; https://fontawesome.com/license/free -->\n" + svg + "\n"
             ).encode()
             selector = f".{'fab' if family == 'brands' else 'fas'}.fa-{name}"
             if family == "solid":
                 selector += f", .fa.fa-{name}"
-            # Inline the tiny SVG into its owner's CSS: no additional request,
-            # font download, runtime conversion or swap for a declared icon.
-            uri = "data:image/svg+xml," + quote(svg, safe="")
+            # Keep the original font rasterization and fractional line metrics.
+            # SVG exports remain available; native glyphs use the small subsets.
+            font_family = "Font Awesome 5 Brands" if family == "brands" else "Font Awesome 5 Free"
             before = ", ".join(part + "::before" for part in selector.split(", "))
-            rules.append(f"{selector} {{ font-family: inherit; font-weight: inherit; }}\n"
-                         f"{before} {{\n"
-                         f"  content: \"\"; display: inline-block; width: {layout['width']:g}em; "
-                         f"height: {layout['height']:g}em; margin: {margins};\n"
-                         f"  vertical-align: {layout['baseline']:g}em; background-color: currentColor;\n"
-                         f"  mask: url(\"{uri}\") center / 100% 100% no-repeat;\n"
-                         f"}}\n")
+            rules.append(f'{selector} {{\n'
+                         f'  font-family: "{font_family}"; font-weight: {weight};\n'
+                         f'  display: inline-block; font-style: normal; font-variant: normal;\n'
+                         f'  line-height: 1; text-rendering: auto;\n'
+                         f'  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;\n'
+                         f'}}\n'
+                         f'{before} {{ content: "\\{code:x}"; }}\n')
         outputs[ROOT / "resources/scss/generated/icons" / f"_{module}.scss"] = "\n".join(rules).encode()
         if module != "main":
             outputs[ROOT / "resources/scss/modules" / f"icons-{module}.scss"] = (
@@ -207,7 +205,10 @@ def main():
                 raise ValueError(f"Glyph geometry or metrics changed: {target}, U+{code:X}")
         outputs[PUBLIC / "webfonts" / target] = data
         styles += [face(family, weight, original, cmap.keys() - core),
-                   face(family, weight, target, core, fallback=original)]
+                   # Space participates in the font's line-box metrics even though this
+                   # icon font has no space glyph. Excluding it makes Chrome use
+                   # fallback metrics and shifts inline icons and their buttons.
+                   face(family, weight, target, core | {0x20}, fallback=original)]
         print(f"{target}: {len(core)} glyphs, {len(data)} bytes")
     styles.append('''.fa, .fas { font-family: "Font Awesome 5 Free"; font-weight: 900; }
 .fab { font-family: "Font Awesome 5 Brands"; font-weight: 400; }

@@ -31,7 +31,7 @@
                    :content/identities (:content/identities (meta content))}))
 
 (defn overridden [content overrides]
-  (with-meta (merge content overrides)
+  (with-meta (merge {} content overrides)
     (assoc (meta content) :content/overrides (set (keys overrides)))))
 
 (defn editing? [content]

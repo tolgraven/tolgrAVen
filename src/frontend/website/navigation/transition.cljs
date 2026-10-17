@@ -39,6 +39,44 @@
 (defonce *restore-cleanup (atom nil))
 
 (defonce *restored-position (atom nil))
+(defonce *anchor-cleanup (atom nil))
+
+(defn- control-browser-anchor! []
+  (when-let [cleanup! @*anchor-cleanup] (cleanup!))
+  (let [*stop (atom nil)
+        cleanup! (fn []
+                   (.removeAttribute (.-documentElement js/document) "data-scroll-controlled")
+                   (when-let [stop! @*stop] (stop!))
+                   (reset! *anchor-cleanup nil))]
+    ;; The document root is outside React. Keep browser anchoring out of a
+    ;; controlled landing until the next user interaction, including late data
+    ;; arriving after the measured restoration itself has settled.
+    (.setAttribute (.-documentElement js/document) "data-scroll-controlled" "")
+    (reset! *stop
+      (listener/listen! :navigation-anchor-policy
+        (mapv (fn [event]
+                {:target "window"
+                 :event event
+                 :passive? true
+                 :handler (fn [_] (reset! *restored-position nil) (cleanup!))})
+              ["wheel" "touchstart" "pointerdown" "keydown" "pagehide"])))
+    (reset! *anchor-cleanup cleanup!)))
+
+(defn cancel-restoration! []
+  (when-let [cleanup! @*restore-cleanup] (cleanup!))
+  (when-let [cleanup! @*anchor-cleanup] (cleanup!))
+  (reset! *restored-position nil))
+
+(defn retain-page!
+  "Supersede pending page work while retaining the already mounted host."
+  []
+  (cancel-restoration!)
+  (control-browser-anchor!)
+  (when (or @*destination @*transition)
+    (swap! *generation inc)
+    (reset! *destination nil)
+    (when-let [transition @*transition] (.skipTransition transition))
+    (reset! *transition nil)))
 (r/reg-cofx :scroll/restoring?
   (fn [coeffects]
     (assoc coeffects :scroll/restoring?
@@ -67,6 +105,7 @@
    User input/navigation cancels immediately; the timeout only bounds failure."
   [position & [resolve-position behavior position-animations]]
   (when-let [cleanup! @*restore-cleanup] (cleanup!))
+  (control-browser-anchor!)
   (set! (.-scrollRestoration js/history) "manual")
   (reset! *restored-position position)
   (let [smooth? (and (= "smooth" behavior) (not (motion/reduced-motion?)))
@@ -98,7 +137,7 @@
                      ;; Scroll early too: it exposes lazy content at the saved position.
                      (let [requested (if resolve-position (resolve-position) position)]
                        (if (nil? requested)
-                         (cleanup!)
+                         (cancel-restoration!)
                          (let [maximum (max 0 (- (.-scrollHeight (.-documentElement js/document))
                                                 (.-innerHeight js/window)))
                                position' (if resolve-position (min maximum (max 0 requested)) requested)
@@ -190,7 +229,10 @@
   [match animate? & [back?]]
   ;; Initial routing must not cancel restoration started before mounting.
   (when (pos? @*generation)
-    (when-let [cleanup! @*restore-cleanup] (cleanup!)))
+    (cancel-restoration!)
+    ;; The destination can be a component whose target has not mounted yet.
+    ;; Prevent outgoing layout changes from anchoring the viewport in between.
+    (control-browser-anchor!))
   (when back? (restore/spa-back!))
   (let [generation (swap! *generation inc)
         animate? (and animate? (not back?) (not (motion/reduced-motion?)))
@@ -239,6 +281,16 @@
       (update-in db [:page/commit :completion] dissoc :outgoing-height)
       db)))
 
+(defn- anchor-position [id & [viewport-padding?]]
+  (when-let [element (.getElementById js/document id)]
+    (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle element)))
+          padding (if viewport-padding?
+                    (js/parseFloat (.-scrollPaddingTop (js/getComputedStyle (.-documentElement js/document))))
+                    0)]
+      (- (+ (.-top (.getBoundingClientRect element)) (.-scrollY js/window))
+         (if (js/isNaN margin) 0 margin)
+         (if (js/isNaN padding) 0 padding)))))
+
 (defn ready!
   "Position an already committed destination and release its incoming capture.
    Called by the page's layout effect, including when it contains only a shell.
@@ -254,8 +306,15 @@
               (.scrollIntoView element #js {:block "start" :behavior "instant"})
               ;; Anchor positioning is controlled navigation too. Hold adaptive
               ;; header reactions until that layout is settled.
-              (restore-position! (.-scrollY js/window))))))
+              (restore-position! (.-scrollY js/window) #(anchor-position target true))))))
+      (when (and (some? (:transition-id completion))
+                 (= (:transition-id completion) (:generation @*destination)))
+        (reset! *destination nil))
       (when resolve! (resolve!)))))
+
+(r/reg-fx :page/release
+  (fn [completion]
+    (when-let [resolve! (:resolve! completion)] (resolve!))))
 
 (defn- anchor-animations [element]
   ;; The native document can hold its entrance clock during hydration. Keep the
@@ -290,10 +349,7 @@
           (when (and root (not (.hasAttribute root "data-document-pending"))
                      (= id (.getAttribute root "data-document-positioned")))
             (.removeAttribute root "data-document-positioned"))
-          (when-let [target (.getElementById js/document id)]
-            (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle target)))]
-              (- (+ (.-top (.getBoundingClientRect target)) (.-scrollY js/window))
-                 (if (js/isNaN margin) 0 margin)))))
+          (anchor-position id))
         "smooth"
         #(when-let [target (.getElementById js/document id)] (anchor-animations target))))))
 
@@ -311,21 +367,23 @@
         nil)
       [commit])))
 
-(r/reg-event-fx :page/navigate
-  (fn [{:keys [db]} [_ match]]
-    (let [history? (or (get-in db [:state :browser-nav :got-nav])
-                       (and (nil? (get-in db [:state :scroll :component-focus]))
-                            (= 2 (get-in db [:state :browser-nav :nav-type]))))]
-    {:db (cond-> db (:path match)
-           (assoc-in [:state :scroll :component-focus] {:path (:path match), :scroll? (not history?)}))
-     :page/transition
-     [match (and @context/*interactive?
-                 (some? (:common/route db))
-                 (not (and (get-in match [:data :transition-key])
-                           (= (get-in match [:data :transition-key])
-                              (get-in db [:common/route :data :transition-key]))))
-                 (not= (:path match) (get-in db [:common/route :path])))
-      (boolean (get-in db [:state :browser-nav :got-nav]))]})))
+(r/reg-event-fx :page/navigate [(r/inject-cofx :navigation/request)]
+  (fn [{:as coeffects :keys [db]} [_ match request]]
+    (when (or (nil? (:navigation-id request))
+              (= (:navigation-id request) (:navigation/request coeffects)))
+      (let [history? (or (get-in db [:state :browser-nav :got-nav])
+                         (and (nil? (get-in db [:state :scroll :component-focus]))
+                              (= 2 (get-in db [:state :browser-nav :nav-type]))))]
+        {:db (cond-> db (:path match)
+               (assoc-in [:state :scroll :component-focus] {:path (:path match), :scroll? (not history?)}))
+         :page/transition
+         [match (and @context/*interactive?
+                     (some? (:common/route db))
+                     (not (and (get-in match [:data :transition-key])
+                               (= (get-in match [:data :transition-key])
+                                  (get-in db [:common/route :data :transition-key]))))
+                     (not= (:path match) (get-in db [:common/route :path])))
+          (boolean (get-in db [:state :browser-nav :got-nav]))]}))))
 
 (r/reg-fx :page/transition (fn [[match animate? back?]] (navigate! match animate? back?)))
 (r/reg-event-fx :page/ready

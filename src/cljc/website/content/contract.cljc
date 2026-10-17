@@ -38,7 +38,15 @@
                                                  [:state [:contact-form :show?] true] target)]) %))
     (:blog content) (update-in [:blog :heading :target] #(some-> % keyword))
     (:cv content) (update-in [:cv :heading :target] #(some-> % keyword))
-    (:cv content) (update-in [:cv :cv :timeline] #(mapv (fn [item] (update item :category keyword)) %))))
+    (:cv content) (update-in [:cv :cv :timeline]
+                            #(mapv (fn [item]
+                                     (update item :category
+                                             (fn [category]
+                                               ;; Keep historical keyword IDs, but labels
+                                               ;; containing spaces must round-trip as EDN.
+                                               (if (and (string? category)
+                                                        (re-matches #"[A-Za-z0-9_-]+" category))
+                                                 (keyword category) category)))) %))))
 
 (defn checked-bundle
   "Validate normalized public content once at the transport boundary."

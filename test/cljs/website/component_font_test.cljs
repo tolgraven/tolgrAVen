@@ -279,7 +279,8 @@
                 (await! (support/wait-for! #(= 8 (.-length (.querySelectorAll element "[data-font-phase=fallback]")))))
                 (let [input (.querySelector element "#font-input")
                       caret (.querySelector element ".styled-caret")
-                      text (.querySelector element "[data-font-phase]")]
+                      texts (array-seq (.querySelectorAll element "[data-font-phase]"))
+                      text (first texts)]
                   (.focus input #js {:preventScroll true})
                   (is (= 1 (count @loads)) "All visible letters share one ready-face load")
                   (original (first @loads))
@@ -287,7 +288,12 @@
                   (is (= 1 (.-length (.querySelectorAll element "input"))))
                   (is (= 1 (.-length (.querySelectorAll element ".styled-caret"))))
                   (is (identical? input (.-activeElement js/document)))
-                  (await! (until! text "ready"))
+                  ;; Each letter owns its native fade and completion event.
+                  ;; The first ready letter does not settle its seven siblings.
+                  (await! (support/wait-for!
+                            #(every? (fn [node]
+                                       (and (.-isConnected node) (= "ready" (phase node))))
+                                     texts)))
                   (is (identical? input (.querySelector element "#font-input")))
                   (is (identical? caret (.querySelector element ".styled-caret")))
                   (is (nil? (.querySelector element ".font-text-next")))

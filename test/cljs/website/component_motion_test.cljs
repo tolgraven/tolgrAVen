@@ -1,9 +1,12 @@
 (ns website.component-motion-test
   (:require-macros [website.test-async :refer [go-promise await!]])
   (:require [cljs.core.async]
+            [clojure.string :as string]
             [website.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
+            [website.render-context :as context]
+            [website.events]
             [website.subs]
             [website.component :as component]
             [website.component.motion :as motion]
@@ -565,3 +568,139 @@
               (finally (close!) (set! js/IntersectionObserver original) (reset! restore/*context context)))))
         (.catch #(is false (str %)))
         (.finally done))))
+
+
+(defc <return-hydration-list> [committed!]
+  (r/use-layout-effect (fn [] (committed!) nil) [])
+  [:<>
+   [:button {:data-remove-return-item true
+             :on-click #(r/dispatch [:state [:component-motion-return-items] []])}
+    "Remove item"]
+   [<list> @(r/subscribe [:state [:component-motion-return-items]])]])
+
+(deftest network-return-hydrates-the-original-motion-contract-and-retires-it-before-exit
+  (async done
+    (let [element (.createElement js/document "div")
+          stylesheet (.createElement js/document "link")
+          document-root (.-documentElement js/document)
+          before-context @restore/*context
+          before-return (.getAttribute document-root "data-document-return")
+          before-settling (.getAttribute document-root "data-return-settling")
+          before-feature motion/motion-feature
+          before-error (.-error js/console)
+          before-warn (.-warn js/console)
+          before-batching (r/batching-flush)
+          restore-db! (r/make-restore-fn)
+          *root (atom nil)
+          *committed? (atom false)
+          *contracts (atom [])
+          *warnings (atom [])
+          *recoveries (atom [])
+          *starts (atom [])
+          item {:id "native-network-return", :title "Retained server item"}
+          committed! #(reset! *committed? true)
+          form [<return-hydration-list> committed!]
+          capture-console! (fn [original args]
+                             (let [message (string/join " " (filter string? args))]
+                               (when (re-find #"(?i)hydrat|server.rendered|did not match|didn't match" message)
+                                 (swap! *warnings conj message)))
+                             (.apply original js/console (to-array args)))
+          record-start! (fn [event]
+                          (when (= "native-network-return" (.getAttribute (.-target event) "data-item"))
+                            (swap! *starts conj {:type (.-type event)
+                                                :property (.-propertyName event)
+                                                :marker (.getAttribute (.-target event) "data-document-appear")})))]
+      ;; Instrument the actual motion render contract. A stale server DOM
+      ;; attribute alone cannot establish that React's first props matched it.
+      (set! motion/motion-feature
+        (assoc before-feature :render
+               (fn [original-form options state]
+                 (let [result ((:render before-feature) original-form options state)
+                       attrs (second (:form result))]
+                   (when (= (:id item) (:data-item attrs))
+                     (swap! *contracts conj {:server? (boolean (:server? options))
+                                             :exiting? (= :exiting (get-in options [:presence :phase]))
+                                             :marker (:data-document-appear attrs)}))
+                   result))))
+      (set! (.-error js/console) (fn [& args] (capture-console! before-error args)))
+      (set! (.-warn js/console) (fn [& args] (capture-console! before-warn args)))
+      (.addEventListener element "animationstart" record-start! true)
+      (.addEventListener element "transitionrun" record-start! true)
+      (.appendChild (.-body js/document) element)
+      (-> (go-promise
+            (await! (js/Promise.
+                      (fn [resolve reject]
+                        (set! (.-rel stylesheet) "stylesheet")
+                        (set! (.-href stylesheet) "/css/website/main.min.css")
+                        (set! (.-onload stylesheet) #(resolve nil))
+                        (set! (.-onerror stylesheet)
+                              #(reject (js/Error. "Missing network-return motion CSS")))
+                        (.appendChild (.-head js/document) stylesheet))))
+            ;; Generate the real server contract before installing the native
+            ;; document-return policy, just as a network response is produced.
+            (.removeAttribute document-root "data-document-return")
+            (.removeAttribute document-root "data-return-settling")
+            (r/dispatch-sync [:state [:component-motion-return-items] [item]])
+            (restore/begin! {:hydrate? true})
+            (let [markup (binding [context/*server?* true] (r/render-to-string form))]
+              (set! (.-innerHTML element) markup))
+            (let [server-node (.querySelector element "[data-item]")]
+              (is (= "true" (.getAttribute server-node "data-document-appear")))
+              (is (some #(and (:server? %) (true? (:marker %))) @*contracts))
+              ;; Only the permanent return policy is needed here. Head-policy
+              ;; first-input/temporary-guard release has its own native checks;
+              ;; this test must not replace that adapter with a copied listener.
+              (.setAttribute document-root "data-document-return" "true")
+              (reset! *starts [])
+              (reset! *root (r/hydrate-root element form
+                             {:on-recoverable-error #(swap! *recoveries conj (.-message %))}))
+              (await! (support/wait-for! #(deref *committed?) "Returned motion owner did not hydrate"))
+              (restore/hydrated!)
+              (await! (support/settle!))
+              (is (identical? server-node (.querySelector element "[data-item]"))
+                  "Network-return hydration retains the actual server node")
+              (let [first-client (first (remove :server? @*contracts))]
+                (is (some? first-client))
+                (is (true? (:marker first-client))
+                    "The first React motion props retain the server marker; stale DOM is insufficient"))
+              (is (empty? @*recoveries) (str "Native hydration recoveries: " (pr-str @*recoveries)))
+              (is (empty? @*warnings) (str "Native hydration attribute warnings: " (pr-str @*warnings)))
+              (is (empty? @*starts) "Returned SSR does not replay an entrance clock")
+              (is (empty? (array-seq (.getAnimations server-node)))
+                  "The actual return stylesheet settles the retained entrance")
+              (is (= "1" (.-opacity (js/getComputedStyle server-node))))
+              ;; Exercise ordinary declarative intent -> re-frame event ->
+              ;; presence removal. Do not replace the owner or force its styles.
+              (.click (.querySelector element "[data-remove-return-item]"))
+              (await! (support/wait-for! #(some (fn [contract] (:exiting? contract)) @*contracts)
+                                        "Presence did not receive the ordinary removal event"))
+              (is (identical? server-node (.querySelector element "[data-item]"))
+                  "The real owner stays mounted for its CSS exit")
+              (await! (support/wait-for! #(some (fn [start] (= "transitionrun" (:type start))) @*starts)
+                                        "Returned SSR item did not start its native opacity exit"))
+              (is (nil? (.getAttribute server-node "data-document-appear"))
+                  "React retires the SSR marker before ordinary exit")
+              (is (every? #(nil? (:marker %)) @*starts)
+                  "No exit clock starts beneath the persistent return override")
+              (is (some #(and (= "transitionrun" (:type %)) (= "opacity" (:property %))) @*starts))
+              (await! (support/wait-for! #(nil? (.querySelector element "[data-item]"))
+                                        "Native CSS exit did not dispose the retained owner"))))
+          (.catch #(is false (str %)))
+          (.finally
+            (fn []
+              (when @*root (r/unmount @*root))
+              (.removeEventListener element "animationstart" record-start! true)
+              (.removeEventListener element "transitionrun" record-start! true)
+              (.remove element)
+              (.remove stylesheet)
+              (set! motion/motion-feature before-feature)
+              (set! (.-error js/console) before-error)
+              (set! (.-warn js/console) before-warn)
+              (r/set-batching-flush! before-batching)
+              (reset! restore/*context before-context)
+              (doseq [[attribute value] [["data-document-return" before-return]
+                                         ["data-return-settling" before-settling]]]
+                (if (nil? value) (.removeAttribute document-root attribute)
+                  (.setAttribute document-root attribute value)))
+              (restore-db!)
+              (done)))))))

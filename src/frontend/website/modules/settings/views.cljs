@@ -9,8 +9,8 @@
   []
   (r/use-effect (fn [] (r/dispatch [:settings/read-css-vars]) nil) [])
   (let [open? @(r/subscribe [:state [:settings :panel-open]])
-        vars {:line-width         {:unit "rem"  :min 0     :max 1 :step 0.0625}
-              :line-width-vert    {:unit "rem"  :min 0     :max 1 :step 0.0625}
+        vars {:line-width         {:unit "px"   :min 0     :max 15}
+              :line-width-vert    {:unit "px"   :min 0     :max 15}
               :section-rounded    {:unit "%"    :min 0     :max 10}
               :space              {:unit "rem"  :min 0.0   :max 4.0 :step 0.1}
               :space-lg           {:unit "rem"  :min 0.0   :max 6.0 :step 0.1}
@@ -46,8 +46,8 @@
      #_[:idea to let customize as much as possible and eventually turn into a kinda interactive site-builder]]]))
 
 (def appearance-numbers
-  {:line-width {:unit "rem", :min 0, :max 1, :step 0.0625}
-   :line-width-vert {:unit "rem", :min 0, :max 1, :step 0.0625}
+  {:line-width {:unit "px", :min 0, :max 15}
+   :line-width-vert {:unit "px", :min 0, :max 15}
    :section-rounded {:unit "%", :min 0, :max 10, :step 1}
    :space {:unit "rem", :min 0, :max 4, :step 0.1}
    :space-lg {:unit "rem", :min 0, :max 6, :step 0.1}

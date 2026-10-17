@@ -55,6 +55,8 @@
   (fn [{:keys [db]} [_ path nav-count completion]]
     (let [first-nav? (zero? nav-count)
           browser-nav? (get-in db [:state :browser-nav :got-nav])
+          component-destination? (and (not browser-nav?)
+                                      (get-in db [:common/route :data :component-route]))
           component-only? (and (not first-nav?) (not browser-nav?)
                                (get-in db [:common/route :data :component-route])
                                (component-routes/same-page? (:common/route-last db) (:common/route db)))
@@ -63,7 +65,7 @@
       {:db (cond-> db browser-nav? (assoc-in [:state :browser-nav :got-nav] false))
        :dispatch-n [(when-not component-only? [:hide-header-footer false false])
                     (when-not (or restore? component-only?) [:scroll/past-top false])
-                    [:page/ready (when (and (not component-only?) (not first-nav?)
+                    [:page/ready (when (and (not component-destination?) (not first-nav?)
                                            (or (not restore?) (number? saved-pos)))
                                    (if restore? saved-pos "main"))
                      completion]]})))

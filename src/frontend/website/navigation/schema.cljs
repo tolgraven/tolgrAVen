@@ -10,6 +10,7 @@
   (c/optional-map {:current? fn?
                    :resolve! fn?
                    :transition-id c/nonnegative
+                   :navigation-id c/nonnegative
                    :fallback? :boolean
                    :outgoing-height [:?and number? [:>= 0]]
                    :outgoing-top [:maybe number?]}))

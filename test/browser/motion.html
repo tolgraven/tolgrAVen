@@ -1,11 +1,19 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>Live navigation and comment motion checks</title>
-<style>body{font:16px system-ui;margin:1rem}iframe{width:100%;height:850px;border:1px solid #888}.failed{color:#b00}.passed{color:#075}</style>
+<style>
+body{font:1rem system-ui;margin:1rem;height:calc(100dvh - 2rem);display:flex;flex-direction:column;overflow:hidden}
+#run{align-self:start}
+iframe{width:100%;height:53.125rem;border:.0625rem solid #888;flex-shrink:0}
+#results{min-height:0;overflow:auto}
+.failed{color:#b00}.passed{color:#075}
+</style>
 <h1>Live navigation and comment motion checks</h1>
 <p>Real CMS/database content, ordinary clicks, and frame-by-frame layout measurements.</p>
 <button id="run">Run checks</button>
-<ol id="results"></ol>
 <iframe id="app" title="Application under test"></iframe>
+<ol id="results"></ol>
 <script src="/__tests/reset.js"></script>
+<script src="/__tests/visual.js"></script>
+<script>window.visualFixture.motion.stop();</script>
 <script src="/__tests/motion.js"></script>

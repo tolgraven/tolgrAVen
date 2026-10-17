@@ -1,6 +1,7 @@
 (ns website.content-test
   (:require [clojure.test :refer :all]
             [clojure.data.json :as json]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as string]
             [clj-http.client :as http]
@@ -25,6 +26,13 @@
       (is (= [:state [:contact-form :show?] true] (get-in bundle [:content :intro :buttons 1 1])))
       (is (= :cv (get-in bundle [:content :cv :heading :target])))
       (is (= :education (get-in bundle [:content :cv :cv :timeline 0 :category]))))))
+
+(deftest timeline-category-labels-survive-document-state-round-trips
+  (let [content (contract/normalize-content
+                  {:cv {:cv {:timeline [{:category "education"}
+                                        {:category "Friday stage"}]}}})]
+    (is (= [:education "Friday stage"] (mapv :category (get-in content [:cv :cv :timeline]))))
+    (is (= content (edn/read-string (pr-str content))))))
 
 (deftest requests-are-server-authenticated-bounded-and-cached-per-section
   (let [calls (atom [])]

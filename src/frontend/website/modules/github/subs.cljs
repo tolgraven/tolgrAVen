@@ -3,9 +3,14 @@
             [website.modules.github.model :as model]
             [website.react :as r]))
 
-(r/reg-sub :github/configuration
+(r/reg-sub :github/configuration-result
  (fn [db _]
-   (get-in db [:module :github :configuration :settings])))
+   (get-in db [:module :github :configuration])))
+
+(r/reg-sub :github/configuration
+ :<- [:github/configuration-result]
+ (fn [result _]
+   (:settings result)))
 
 (r/reg-sub :github/get-from
  :<- [:github/configuration]

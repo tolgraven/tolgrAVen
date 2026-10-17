@@ -34,7 +34,7 @@
 
   overflow-x: scroll;
   overflow-y: hidden;
-  height: calc(90vh - var(--header-height));
+  max-height: calc(90vh - var(--header-height));
   display: flex;
   flex-wrap: nowrap;
   padding-top: 0;
@@ -55,11 +55,12 @@
 .sideways > picture,
 .sideways > .progressive-image,
 .sideways > .content-edit-image {
-  // Both native pictures and progressive wrappers own a full-height slide.
-  // A definite height lets the image's aspect ratio determine its flex width.
+  // Keep each source's intrinsic width; the tallest image establishes the row,
+  // bounded by the gallery's original maximum height.
   flex: 0 0 auto;
-  height: 100%;
+  height: auto;
   width: auto;
+  min-height: 0;
   max-width: 100%;
   margin: 0;
 
@@ -68,13 +69,32 @@
 
   img {
     display: block;
-    width: auto;
-    height: 100%;
+    flex: 1 1 auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
     max-width: 100%;
     max-height: none;
+    align-self: stretch;
     object-fit: cover;
     margin: 0;
   }
+}
+.sideways > picture,
+.sideways > .content-edit-image { display: flex; }
+.sideways > .content-edit-image > picture,
+.sideways > .content-edit-image > .progressive-image {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+}
+.sideways > .content-edit-image > picture { display: flex; }
+.sideways > .progressive-image img,
+.sideways > .content-edit-image .progressive-image img { height: 100%; }
+.sideways > .content-edit-image:first-child .content-edit-upload {
+  // The next sticky slide overlaps by up to three spaces during the nudge.
+  right: calc(0.75rem + 3 * var(--space-lg));
 }
 .sideways > *:first-child { /* left first be throwaway item */
   border: 0;

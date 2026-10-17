@@ -17,20 +17,26 @@
         (.catch (fn [_] (r/dispatch [:cv/visit-restored generation false]))))))
 
 (r/reg-event-fx :cv/mount [(r/inject-cofx :ls)]
-  (fn [{:keys [db ls]} _]
+  (fn [{:keys [db ls]} [_ {:keys [owner returned?]}]]
     (let [generation (inc (get-in db [:state :cv :demo :generation] 0))]
-      (cond-> {:db (assoc-in db [:state :cv :demo] {:generation generation, :active? true})
-               :dispatch-later [{:ms 2000, :dispatch [:cv/fullscreen generation]}]}
+      (cond-> {:db (assoc-in db [:state :cv :demo]
+                            (cond-> {:generation generation
+                                     :active? true
+                                     :returned? (boolean returned?)}
+                              owner (assoc :owner owner)))}
+        (not returned?)
+        (assoc :dispatch-later [{:ms 2000, :dispatch [:cv/fullscreen generation]}])
         (or (true? (get-in db [:state :cv :visited])) (true? (:cv-visited ls)))
         (assoc :dispatch [:cv/visit-restored generation true])
         (not (or (true? (get-in db [:state :cv :visited])) (true? (:cv-visited ls))))
         (assoc :cv/restore-visit generation)))))
 
 (r/reg-event-db :cv/unmount
-  (fn [db _]
-    (if (get-in db [:state :cv :demo])
-      (update-in db [:state :cv :demo] #(-> % (assoc :active? false) (dissoc :origin)))
-      db)))
+  (fn [db [_ owner]]
+    (let [demo (get-in db [:state :cv :demo])]
+      (if (and demo (or (nil? owner) (= owner (:owner demo))))
+        (update-in db [:state :cv :demo] #(-> % (assoc :active? false) (dissoc :origin)))
+        db))))
 
 (r/reg-event-fx :cv/visit-restored [(r/inject-cofx :ls)]
   (fn [{:keys [db ls]} [_ generation restored?]]
@@ -41,14 +47,14 @@
                  ;; Keep the original durable identity. Startup must not consume
                  ;; this marker into an expiring/one-use component snapshot.
                  :ls (assoc ls :cv-visited true)}
-          (not visited?)
+          (and (not visited?) (not (get-in db [:state :cv :demo :returned?])))
           (assoc :dispatch-later [{:ms 3000, :dispatch [:cv/demo generation :down]}
                                   {:ms 4500, :dispatch [:cv/demo generation :back]}
                                   {:ms 5500, :dispatch [:cv/demo generation :focus]}]))))))
 
 (r/reg-event-fx :cv/fullscreen
   (fn [{:keys [db]} [_ generation]]
-    (when (active? db generation)
+    (when (and (active? db generation) (not (get-in db [:state :cv :demo :returned?])))
       {:dispatch [:state [:fullscreen :cv] true]})))
 
 (r/reg-cofx :cv/scroll-position
@@ -61,7 +67,7 @@
 
 (r/reg-event-fx :cv/demo [(r/inject-cofx :cv/scroll-position)]
   (fn [{:keys [db] :cv/keys [scroll-position]} [_ generation step]]
-    (when (active? db generation)
+    (when (and (active? db generation) (not (get-in db [:state :cv :demo :returned?])))
       (case step
         :down {:db (assoc-in db [:state :cv :demo :origin] scroll-position)
                :dispatch [:scroll/by 50]}

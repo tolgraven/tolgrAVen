@@ -13,7 +13,7 @@
     [website.components.image :as img]
     [website.components.shell :as views]
     [website.util :as util :refer [at]]
-    [react-leaflet]))
+    ["react-leaflet" :as react-leaflet]))
 
 (declare <activity-map>)
 (declare <activity-map-canvas>)
@@ -270,6 +270,11 @@
         [data-max data-min] (map #(apply % data) [max min])
         [w h] [(.-width canvas) (.-height canvas)]
         size (count data)
+        ;; A constant series has no domain span; retain it as a centered line.
+        scale-y (fn [point]
+                  (- h (* h (if (= data-min data-max)
+                              0.5
+                              (util/rescale-to-frac point data-min data-max)))))
         cursor-index (int (* size (/ (first @cursor-pos) w)))]
     (.clearRect ctx 0 0 w h)
     (set! (.-strokeStyle ctx) (:line colors))
@@ -280,12 +285,12 @@
     (set! (.-shadowOffsetY ctx) 1)
     (set! (.-shadowColor ctx) (:highlight colors));
     (.beginPath ctx)
-    (.moveTo ctx 0 (- h (* h (util/rescale-to-frac (first data) data-min data-max))))
+    (.moveTo ctx 0 (scale-y (first data)))
 
     (doall (map-indexed
      (fn [i point]
       (let [x (* w (util/rescale-to-frac i 0 size))
-            y (- h (* h (util/rescale-to-frac point data-min data-max)))]
+            y (scale-y point)]
         (.lineTo ctx x y)
         (when (= i cursor-index)
           (set! (.-strokeStyle ctx) (:highlight colors))
@@ -372,7 +377,9 @@
         tab (r/atom #_:graphs :summary)
         cutoff 80
         size (max 0.85 (/ (:kilojoules activity) 1000))
-        anim-size (r/atom (rand 0.2))]
+        ;; Keep the tiny, varied starting dots identical in SSR and hydration.
+        ;; Keep the existing grow deadline and final activity-sized dimensions.
+        anim-size (r/atom (/ (mod (hash (str (:id activity))) 2000) 10000))]
     (fn [activity i num-total watts-high]
       (when-not (:private activity)
        [:<>
@@ -476,15 +483,15 @@
   {:features [[:appear "opacity slow"]]}
   [lats lngs latlng]
   [:div [:div
-         [:> js/ReactLeaflet.MapContainer
+         [:> react-leaflet/MapContainer
           {:center [(/ (apply + lats) (count lats))
                     (/ (apply + lngs) (count lngs))]
            :zoom 11}
 
-          [:> js/ReactLeaflet.TileLayer
+          [:> react-leaflet/TileLayer
            {:attribution "&copy; contributors"
             :url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"}]
-          [:> js/ReactLeaflet.Polyline
+          [:> react-leaflet/Polyline
            {:pathOptions {:color "#fc4c02"}
             :positions latlng}]]]])
 
@@ -668,7 +675,7 @@
             [img/<picture> (merge (:logo tab) {:class "strava-stats-tab-img"})]
             [:div (:caption tab)]]))]
 
-       (:<comp> @active-tab)])))
+       (some #(when (= (:id %) @active-tab) (:<comp> %)) tabs)])))
 
 (defc ^:private <profile-background>
   {:features [[:appear "opacity"]]}

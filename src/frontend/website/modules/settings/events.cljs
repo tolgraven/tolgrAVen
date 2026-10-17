@@ -11,10 +11,17 @@
  (fn [{:keys [db]} [_ colorscheme]]
    {:db (assoc-in db [:options :theme :colorscheme] (or colorscheme "default"))}))
 
-(defn css-value [value rem-size]
-  (if (string/ends-with? value "px")
-    (str (/ (js/parseFloat value) rem-size) "rem")
-    value))
+(defn css-value
+  ([value rem-size] (css-value value rem-size "rem"))
+  ([value rem-size unit]
+   (cond
+     (and (= unit "px") (string/ends-with? value "rem"))
+     (str (* (js/parseFloat value) rem-size) "px")
+
+     (and (= unit "rem") (string/ends-with? value "px"))
+     (str (/ (js/parseFloat value) rem-size) "rem")
+
+     :else value)))
 
 (r/reg-cofx :settings/rem-size
   (fn [cofx _]
@@ -27,4 +34,7 @@
                              "space" "space-lg" "space-top"])]
   (fn [{:keys [db css-vars rem-size]} _]
     {:db (update-in db [:state :css-var] merge
-                    (into {} (map (fn [[key value]] [key (css-value value rem-size)])) css-vars))}))
+                    (into {} (map (fn [[key value]]
+                                    [key (css-value value rem-size
+                                           (if (#{"line-width" "line-width-vert"} key)
+                                             "px" "rem"))])) css-vars))}))

@@ -56,6 +56,7 @@
   [days :- schema/calendar & [details]]
   :let [*active (r/atom nil)]
   (let [tooltip-id (r/use-id)
+        active @*active
         offset (if-let [date (:date (first days))]
                  (.getUTCDay (js/Date. (str date "T00:00:00Z"))) 0)]
     [:div.activity-calendar
@@ -74,15 +75,15 @@
          [:span.activity-calendar__day {:role "listitem"
                                        :data-date date
                                        :data-level level
-                                       :tab-index (if (= date (or (:date @*active) (:date (first days)))) 0 -1)
-                                       :aria-describedby (when (= date (:date @*active)) tooltip-id)
+                                       :tab-index (if (= date (or (:date active) (:date (first days)))) 0 -1)
+                                       :aria-describedby (when (= date (:date active)) tooltip-id)
                                        :on-pointer-enter #(reset! *active (anchor % day))
                                        :on-focus #(reset! *active (anchor % day))
                                        :on-key-down #(if (= "Escape" (.-key %))
                                                        (reset! *active nil)
                                                        (move-focus! %))
                                        :aria-label label}])]]
-     (when @*active [<calendar-popup> (assoc @*active :id tooltip-id) details #(reset! *active nil)])
+     (when active [<calendar-popup> (assoc active :id tooltip-id) details #(reset! *active nil)])
      [:div.activity-calendar__legend
       [:span (str (reduce + (map :count days)) " contributions")]
       [:span "Less"]

@@ -1,16 +1,22 @@
 (ns website.page-return-test
   "Mounted restoration tests use real events/subscriptions and the same renderer
-   as local documents. Shadow code splitting is the only adapted boundary."
+   as local documents. Code splitting and cached hydration's service readiness
+   stay at their external test boundaries."
   (:require-macros [website.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.react.server :as server]
+            [cljs.reader :as edn]
+            [website.components.media :as media]
 
             [shadow.lazy :as lazy]
 
 
             [website.test-support :as support]
             [website.components.shell :as shell]
+            [website.navigation.routes :as routes]
+            [reitit.frontend :as reitit]
+            [reitit.frontend.easy :as rfe]
             [website.modules.blog.views :as blog]
             [website.modules.blog.comment-views :as comment-views]
             [website.modules.blog.comments :as comments]
@@ -21,6 +27,7 @@
             [website.render-context :as context]
             [website.browser-resources :as browser-resources]
             [website.supabase.scoped :as scoped]
+            [website.supabase.runtime :as supabase]
             [website.ssr.return-contract :as contract]
             [website.ssr.render :as render]
             [website.ssr.local :as local]
@@ -31,6 +38,65 @@
 (r/defc <check> [form committed!]
   (r/use-effect (fn [] (committed!) nil) [])
   form)
+
+(deftest local-pairs-retain-ready-native-gallery-content
+  (async done
+    (let [restore-db! (r/make-restore-fn)
+          form [media/<gallery> [{:src "img/tolgrav.png", :alt "Authored gallery image"}]]
+          sources (fn [db]
+                    (let [element (.createElement js/document "div")]
+                      (set! (.-innerHTML element)
+                            (render/html! db form {:restored? true :modules {}}))
+                      (mapv #(.getAttribute % "src")
+                            (array-seq (.querySelectorAll element "#gallery img")))))]
+      ;; This check owns the pair's view state, not persistence side effects.
+      (r/reg-fx :page-return/consume (fn [_]))
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            (is (empty? (sources (await! (support/state-at! []))))
+                "A fresh gallery still waits for its existing on-seen activation")
+            (r/dispatch-sync [:state [:gallery :loaded] true])
+            (let [ready-db (await! (support/state-at! []))
+                  ready-sources (sources ready-db)
+                  saved (-> ready-db contract/state-for pr-str edn/read-string)]
+              (is (= ["img/tolgrav.png"] ready-sources)
+                  "The actual ready gallery renders its authored image")
+              (is (= ready-sources (sources saved))
+                  "The same native gallery cannot disappear when rendered into a local pair")
+              (r/dispatch-sync [:init/app-db])
+              (r/dispatch-sync [:page-return/install saved])
+              (is (true? (await! (support/subscription-value! [:state [:gallery :loaded]])))
+                  "Installing the pair retains the gallery's ready presentation")))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore-db!) (done)))))))
+
+(deftest local-snapshot-policy-is-independent-of-the-mounted-document
+  (let [mounted (r/atom {:page (restore/page-key)
+                         :initial-document? true
+                         :hydrate? true})
+        snapshot (r/atom {:page (restore/page-key)
+                          :initial-document? false
+                          :local? true
+                          :back? true})
+        read-policy #(vector (restore/document-enter?) (restore/local-document?)
+                             (restore/back-document?) (restore/direct-images?))]
+    (r/with-framework-bindings [restore/*context mounted]
+      (let [owner (r/track! read-policy)]
+        (try
+          (is (= [true false false false] @owner))
+          ;; Local capture renders while the original document still owns live
+          ;; policy reactions. Those cached values must not enter its snapshot.
+          (r/with-framework-bindings [restore/*context snapshot]
+            (is (= [false true true true] (read-policy))))
+          (is (= [true false false false] @owner))
+          (swap! mounted assoc :hydrate? false)
+          (r/flush!)
+          (is (= [true false false false] @owner))
+          (swap! mounted assoc :direct-images? true)
+          (r/flush!)
+          (is (= [true false false true] @owner)
+              "Actual image-policy changes remain reactive")
+          (finally (r/dispose! owner)))))))
 
 (deftest capture-observes-native-source-and-releases-it-on-unmount
   (async done
@@ -76,6 +142,8 @@
           (let [restore-db! (r/make-restore-fn)
                 original-context @restore/*context
                 original-interactive @context/*interactive?
+                ensure! supabase/ensure!
+                *acquisitions (atom 0)
                 element (.createElement js/document "div")
                 script (.createElement js/document "script")
                 *root (atom nil) *errors (atom [])
@@ -85,12 +153,27 @@
                            [["root" nil] ["child" "root"] ["grandchild" "child"]
                             ["deep" "grandchild"] ["leaf" "deep"]])
                 module (dissoc user/spec :content :depends)
+                href (fn [name params query]
+                       (some-> (reitit/match-by-name routes/router name params)
+                               (reitit/match->path query)))
                 form [comment-views/<comments-section> {:post {:id 42}}]]
             (set! (.-id element) "app")
             (.setAttribute element "data-page-build" "test-build")
             (.appendChild (.-body js/document) element)
             (try
+              ;; Cached hydration owns real readers and retained server nodes,
+              ;; not SDK boot. Keep late children inside this boundary until
+              ;; unmount so no settings request/retry outlives the fixture.
+              (set! supabase/ensure!
+                    (fn [] (swap! *acquisitions inc) (js/Promise.resolve nil)))
               (r/dispatch-sync [:init/app-db])
+              ;; The state observer round-trips EDN; retain the native route's
+              ;; data fields without its executable coercion/controller objects.
+              (r/dispatch-sync [:set [:common/route]
+                                (assoc (select-keys (reitit/match-by-path routes/router "/blog/post/42")
+                                                   [:path :path-params :query-params])
+                                       :data {:name :blog-post})])
+              (r/dispatch-sync [:blog/expand-comment-thread [42 "root"] true])
               (r/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] true])
               (doseq [parent [nil "root" "child" "grandchild" "deep"]]
                 (let [query (if parent (comments/thread-query 42 parent) (comments/root-query 42 comments/page-size))]
@@ -100,11 +183,14 @@
               (let [db (await! (support/state-at! []))
                     saved (contract/state-for db)
                     html (render/html! db form {:modules {:user module}
+                                               :href href
                                                :restored? true
                                                :interactive? true
                                                :render-to-string server/render-to-string})]
                 ;; Isolated rendering must not disturb existing app state/readers.
-                (is (= db (await! (support/state-at! []))))
+                ;; html! is synchronous. Compare at that boundary, before a
+                ;; later render frame can deliver unrelated transport events.
+                (is (= db @r/*app-db))
                 (set! (.-innerHTML element) html)
                 (is (= 5 (.-length (.querySelectorAll element ".blog-comment-title"))))
                 (let [nodes (vec (array-seq (.querySelectorAll element ".blog-comment-title")))
@@ -120,7 +206,8 @@
                   (r/dispatch-sync [:blog/expand-comment-thread [42 "root" "child" "grandchild"] false])
                   (local/install!)
                   (r/with-framework-bindings [loader/modules {:user (reify lazy/ILoadable (ready? [_] true)
-                                                            IDeref (-deref [_] module))}]
+                                                            IDeref (-deref [_] module))}
+                                              rfe/href href]
                     (await! (js/Promise.
                               (fn [resolve _]
                                 (reset! *root
@@ -130,12 +217,18 @@
                   (is (= 5 (.-length (.querySelectorAll element ".blog-comment-title"))))
                   (is (every? true? (map identical? nodes (array-seq (.querySelectorAll element ".blog-comment-title")))))
                   (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared),.component-spinner"))))))
+              (is (pos? @*acquisitions) "The paired content still acquires its real managed readers")
+              (is (nil? (await! (support/state-at! [:state :supabase-init])))
+                  "Cached comment hydration does not start service initialization")
               (finally
-                (when @*root (support/unmount! @*root))
-                (.remove element) (.remove script)
-                (reset! restore/*context original-context)
-                (reset! context/*interactive? original-interactive)
-                (restore-db!)))))
+                (try
+                  (when @*root (support/unmount! @*root))
+                  (finally
+                    (set! supabase/ensure! ensure!)
+                    (.remove element) (.remove script)
+                    (reset! restore/*context original-context)
+                    (reset! context/*interactive? original-interactive)
+                    (restore-db!)))))))
         (.catch (fn [error] (is false (str error))))
         (.finally done))))
 
@@ -245,30 +338,35 @@
                         (restore!)
                         (done))))))))
 
-(deftest restored-shell-resumes-motion-on-menu-intent
+(deftest restored-shell-resumes-motion-on-menu-or-scroll-intent
   (async done
     (let [restore-db! (r/make-restore-fn)
           original-context @restore/*context]
       (-> (go-promise
-            (let [element (.createElement js/document "div")
-                  root (await! (support/create-root! element))
-                  form [:<> [shell/<header> {:menu {:work [] :personal []}}]
-                        [shell/<footer-full> []]]]
-              (try
-                (r/dispatch-sync [:init/app-db])
-                (r/dispatch-sync [:state [:menu] false])
-                (reset! restore/*context {:local? true})
-                (await! (support/render! root form))
-                (is (= "true" (.getAttribute (.querySelector element "header") "data-restored-motion")))
-                (is (= "true" (.getAttribute (.querySelector element ".footer-full") "data-restored-motion")))
-                (r/dispatch-sync [:state [:menu] true])
-                (await! (support/settle!))
-                (is (= "false" (.getAttribute (.querySelector element "header") "data-restored-motion")))
-                (r/dispatch-sync [:state [:menu] false])
-                (await! (support/settle!))
-                (is (= "false" (.getAttribute (.querySelector element "header") "data-restored-motion"))
-                    "Closing the menu retains ordinary motion")
-                (finally (support/unmount! root)))))
+            (doseq [path [[:menu] [:hidden :header]]]
+              (let [element (.createElement js/document "div")
+                    root (await! (support/create-root! element))
+                    form [:<> [shell/<header> {:menu {:work [] :personal []}}]
+                          [shell/<footer-full> []]]]
+                (try
+                  (r/dispatch-sync [:init/app-db])
+                  (r/dispatch-sync [:state [:menu] false])
+                  (r/dispatch-sync [:state [:hidden :header] false])
+                  (reset! restore/*context {:local? true})
+                  (await! (support/render! root form))
+                  (let [header (.querySelector element "header")]
+                    (is (= "true" (.getAttribute header "data-restored-motion")))
+                    (is (= "true" (.getAttribute (.querySelector element ".footer-full") "data-restored-motion")))
+                    (r/dispatch-sync [:state path true])
+                    (await! (support/settle!))
+                    (is (= "false" (.getAttribute header "data-restored-motion")))
+                    (r/dispatch-sync [:state path false])
+                    (await! (support/settle!))
+                    (is (= "false" (.getAttribute header "data-restored-motion"))
+                        "Returning to the original state retains ordinary motion")
+                    (is (identical? header (.querySelector element "header"))
+                        "Menu and scroll updates retain the native header"))
+                  (finally (support/unmount! root))))))
           (.catch (fn [error] (is false (str error))))
           (.finally (fn []
                       (reset! restore/*context original-context)
