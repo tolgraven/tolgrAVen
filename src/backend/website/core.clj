@@ -5,7 +5,7 @@
     [website.module-services :as module-services]
     [website.routes.home :as home]
     [website.nrepl :as nrepl]
-    [luminus.http-server :as http]
+    [ring.adapter.undertow :as undertow]
     [website.config :refer [env]]
     [clojure.tools.cli :refer [parse-opts]]
     [taoensso.telemere.timbre :as timbre]
@@ -21,17 +21,18 @@
   (do
     content/startup-content
     module-services/running
-    (http/start
-     (-> env
-        (update :io-threads #(or % (* 2 (.availableProcessors (Runtime/getRuntime))))) 
-        (merge {:handler (handler/app)}
-               {:port (env :port)
-                :http2? true
-                :async? true
-                :websocket? true
-                :buffer-size 64368}))))
+    (undertow/run-undertow
+     (handler/app)
+     (-> (merge {:host "0.0.0.0"} env)
+         (dissoc :handler)
+         (update :io-threads #(or % (* 2 (.availableProcessors (Runtime/getRuntime)))))
+         (merge {:port (env :port)
+                 :http2? true
+                 :async? true
+                 :websocket? true
+                 :buffer-size 64368}))))
   :stop
-  (http/stop http-server))
+  (.stop ^io.undertow.Undertow http-server))
 
 (mount/defstate ^{:on-reload :noop} repl-server
   :start

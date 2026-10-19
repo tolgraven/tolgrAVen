@@ -240,6 +240,9 @@ sessions' tabs and restore any borrowed tab when finished.
   delivery recheck source/output digests; failures return 503 rather than stale CSS.
   CSS writers share the kernel lock and atomic output publication. `(stop)`/JVM exit
   stop only the owned watcher. See `doc/styles.md`; `npm run dev` is optional standalone use.
+  Development application startup failures are logged with their cause while
+  the REPL and native Shadow startup continue; production listener failures still
+  propagate. CSS freshness remains a prerequisite before either mode starts.
   Deferred Shadow watches compile
   sequentially without blocking REPL acknowledgement. The standalone `:document`
   target releases first (no HMR); document/bootstrap requests await only that
