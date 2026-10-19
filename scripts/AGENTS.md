@@ -53,6 +53,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   `provision-site.php` reconciles Docker build settings on existing applications:
   normal build caching, explicit CMS secrets, no automatic ARG injection, and
   runtime-only unrelated keys. Same-source CMS feature/CSS changes need a forced rebuild.
+  Domain changes prepend the canonical origin and retain existing proxy aliases;
+  CMS rewiring must preserve ordinary compiler caching and existing credentials.
   Dockerfile owns the prefab default and persistent Maven cache on every host.
 - `ops/entrypoint-supabase-provision.sh` runs the native CLI with the isolated
   `:provision` profile; its image supplies production environment sources/defaults.

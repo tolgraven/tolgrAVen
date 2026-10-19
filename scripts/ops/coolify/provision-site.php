@@ -21,6 +21,11 @@ function envValue($resource, $key) {
     requireThat(is_string($value) && strlen($value) > 0, "Missing generated environment variable: $key");
     return $value;
 }
+function supabaseDomains($current, $url) {
+    return collect(explode(',', $current ?? ''))
+        ->filter(fn($domain) => $domain && getFqdnWithoutPort($domain) !== $url)
+        ->prepend($url.':8000')->unique()->implode(',');
+}
 function setEnv($resource, $key, $value, $preview = false, $build = false) {
     $fields = ['value' => $value, 'is_literal' => true, 'is_multiline' => false];
     if ($resource instanceof App\Models\Application) {
@@ -139,7 +144,7 @@ try {
             if ($usesSupabase) {
             // Keep configuration stable across retries. Regenerating JWTs would invalidate users.
             $kong = $service->applications()->where('name', 'supabase-kong')->firstOrFail();
-            $kong->fqdn = $config['supabase_url'].':8000';
+            $kong->fqdn = supabaseDomains($kong->fqdn, $config['supabase_url']);
             $kong->save();
             setEnv($service, 'SERVICE_URL_SUPABASEKONG', $config['supabase_url']);
             setEnv($service, 'SERVICE_FQDN_SUPABASEKONG', parse_url($config['supabase_url'], PHP_URL_HOST));

@@ -33,6 +33,29 @@ older `master`, when provisioning directly from tolgraven/tolgrAVen.
 
 Point DNS at the resource server and configure its HTTPS proxy before starting.
 The existing wildcard `*.bux.tolgraven.se` can be used for sites on bux.
+
+Tolgraven's public service origins are independent of the resource host:
+
+| Service | Production | Staging |
+| --- | --- | --- |
+| Supabase | `https://supabase.tolgraven.se` | `https://supabase.staging.tolgraven.se` |
+| Strapi | `https://strapi.tolgraven.se` | `https://strapi.staging.tolgraven.se` |
+
+Their DNS records point to the resource server (`bux.tolgraven.se` currently).
+Use DNS-only CNAMEs and let Coolify issue the endpoint certificates; Cloudflare's
+ordinary wildcard certificate does not cover the nested staging names. Keep the
+previous service domains as proxy aliases during a change. Coolify uses the first
+domain as the canonical service URL; provisioning prepends the configured origin
+without dropping existing aliases. Wire the web applications only after the new
+HTTPS endpoints pass their authenticated API checks. Changing the CMS origin
+preserves existing keys and ordinary compiler caching.
+
+Schema updates are an explicit provisioning phase, separate from app deploys.
+For an existing staging instance, apply the selected module SQL transactionally
+before deploying code that selects new columns, then notify PostgREST to reload
+its schema. `modules/blog_posts.sql` includes the public `image_assets` column and
+the matching publishing RPC; do not substitute a column-only workaround.
+
 The provisioner uses existing root SSH access to call the installed Coolify
 models/actions. CMS preparation also creates deploy-only API tokens and stores
 them in the CMS's private action settings; see [Site capabilities](site-capabilities.md).

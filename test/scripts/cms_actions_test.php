@@ -14,6 +14,21 @@ Illuminate\Support\Facades\DB::beginTransaction();
 try {
     $service = App\Models\Service::where('uuid', $argv[2])->firstOrFail();
     $web = App\Models\Application::where('uuid', $argv[3])->firstOrFail();
+    $web->settings()->update(['disable_build_cache'=>true]);
+    $cmsOrigin = 'https://strapi.staging.example.invalid';
+    cmsWireWeb($service, $web, $cmsOrigin);
+    cmsWireWeb($service, $web, $cmsOrigin);
+    checkCms(!$web->settings()->firstOrFail()->disable_build_cache, 'CMS URL rewiring disabled compiler caching');
+    foreach ([false,true] as $preview) {
+        $environment = fn() => $preview ? $web->environment_variables_preview() : $web->environment_variables();
+        $origin = $environment()->where('key','STRAPI_URL')->firstOrFail();
+        checkCms($origin->value === $cmsOrigin && $origin->is_buildtime && $origin->is_runtime, 'CMS origin was not wired to build and runtime');
+        foreach (['READ','WRITE'] as $mode) {
+            $credential = $environment()->where('key','STRAPI_'.$mode.'_TOKEN')->firstOrFail();
+            $expected = $service->environment_variables()->where('key','CMS_'.$mode.'_TOKEN')->firstOrFail()->value;
+            checkCms(hash_equals($expected, $credential->value), 'CMS rewiring changed the credential');
+        }
+    }
     $team = $service->environment->project->team;
     $settings = App\Models\InstanceSettings::get();
     $settings->is_api_enabled = false; $settings->save();
