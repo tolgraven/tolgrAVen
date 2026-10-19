@@ -21,6 +21,20 @@
             [website.react :as r]
             [website.test-support :as support]))
 
+(deftest commit-selection-state-validates-fractional-scroll-and-paged-details
+  (let [contract (dsl/->malli schema/state)
+        sha (apply str (repeat 40 "a"))
+        state {:target ["u" "r"]
+               :commit-view sha
+               :list-position 68.25
+               :commits-pending #{sha}
+               :commit-pages-pending {sha 2}}]
+    (is (m/validate contract state))
+    (is (m/validate contract (assoc state :commit-view :commits :list-position 0)))
+    (is (not (m/validate contract (assoc state :list-position -1))))
+    (is (not (m/validate contract (assoc state :commit-view "not-a-sha"))))
+    (is (not (m/validate contract (assoc state :commit-pages-pending {sha 31}))))))
+
 (deftest commit-message-styles
   (doseq [[input expected]
           [["scss: fix theme helper" ["fix theme helper" "scss" nil]]

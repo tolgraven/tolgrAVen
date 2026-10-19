@@ -9,6 +9,7 @@
             [website.events]
             [website.subs]
             [website.modules.github.events]
+            [website.navigation.scroll]
             [website.modules.github.subs]
             [website.modules.github.model :as model]
             [website.navigation.routes :as routes]
@@ -196,7 +197,9 @@
   (async done
     (let [restore! (r/make-restore-fn)
           sha "abcdef123456"
-          *position (atom 12.5)]
+          *position (atom 12.5)
+          *landings (atom [])]
+      (r/reg-fx :scroll/component-target #(swap! *landings conj %))
       (r/reg-fx :http-xhrio (fn [_]))
       (r/reg-cofx :github/list-position #(assoc % :github/list-position @*position))
       (-> (go-promise
@@ -215,6 +218,8 @@
             (await! (support/settle!))
             (is (= 68.25 (await! (support/state-at! [:state :github :list-position])))
                 "An unchanged permalink captures the current list position before selecting detail")
+            (is (= ["github-commits" :instant] (last @*landings)))
+            (is (= 2 (count @*landings)) "Each permalink activation requests its owned landing")
             (r/dispatch-sync [:github/close-commit])
             (r/dispatch-sync [:github/search "layout"])
             (await! (support/settle!))

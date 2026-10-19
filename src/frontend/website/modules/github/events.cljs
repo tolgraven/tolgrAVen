@@ -33,7 +33,9 @@
   {:args [:tuple routes/commit-sha]}
   (fn [{:keys [db]} [_ sha]]
     (when (= (string/lower-case sha) (:sha (model/route-target (:common/route db))))
-      {:dispatch-n [[:github/init] [:github/select-commit sha]]})))
+      {:dispatch-n [[:github/init]
+                    [:github/select-commit sha]
+                    [:scroll/component-target "github-commits" (get-in db [:common/route :path]) :instant]]})))
 
 (r/reg-cofx :github/list-position
   (fn [coeffects]
