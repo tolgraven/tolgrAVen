@@ -10,7 +10,7 @@
       "application_uuid": "o84wgo08wcs048ss8sokgkgw",
       "pull_request_id": 0,
       "web_url": "https://o84wgo08wcs048ss8sokgkgw.bux.tolgraven.se",
-      "supabase_url": "https://supabase-staging.bux.tolgraven.se",
+      "supabase_url": "https://supabase.staging.tolgraven.se",
       "branch": "master"
     }
   }

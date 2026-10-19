@@ -11,6 +11,11 @@ function cmsEnv($resource,$key,$value,$preview=false) {
     if ($resource instanceof App\Models\Application) $fields+=['is_buildtime'=>in_array($key,['STRAPI_URL','STRAPI_READ_TOKEN'],true),'is_runtime'=>true];
     $relation->updateOrCreate(['key'=>$key,'is_preview'=>$preview],$fields);
 }
+function cmsDomains($current, $url) {
+    return collect(explode(',', $current ?? ''))
+        ->filter(fn($domain) => $domain && getFqdnWithoutPort($domain) !== $url)
+        ->prepend($url.':1337')->unique()->implode(',');
+}
 // Coolify's interactive User::createToken reads the session's current team.
 // This SSH adapter uses the same Sanctum relation/format with an explicit team.
 function cmsDeployCredential($service, $team, $actionName) {
@@ -76,6 +81,15 @@ function cmsWireActions($service, $web, $team, $overrides) {
         }
         cmsEnv($service, 'CMS_'.strtoupper($actionName).'_WEBHOOK_URL', $hooks[$actionName]['url']);
         cmsEnv($service, 'CMS_'.strtoupper($actionName).'_WEBHOOK_TOKEN', $hooks[$actionName]['token']);
+    }
+}
+
+function cmsWireWeb($service, $web, $url) {
+    $web->settings()->update(['use_build_secrets'=>true,'disable_build_cache'=>false]);
+    foreach ([false,true] as $preview) {
+        cmsEnv($web,'STRAPI_URL',$url,$preview);
+        cmsEnv($web,'STRAPI_READ_TOKEN',$service->environment_variables()->where('key','CMS_READ_TOKEN')->firstOrFail()->value,$preview);
+        cmsEnv($web,'STRAPI_WRITE_TOKEN',$service->environment_variables()->where('key','CMS_WRITE_TOKEN')->firstOrFail()->value,$preview);
     }
 }
 
@@ -153,17 +167,13 @@ try {
         cmsEnv($service,'SERVICE_URL_CMS',$url);
         cmsEnv($service,'SERVICE_FQDN_CMS',parse_url($url,PHP_URL_HOST));
         $cms=$service->applications()->where('name','cms')->firstOrFail();
-        $cms->fqdn=$url.':1337'; $cms->save();
+        $cms->fqdn=cmsDomains($cms->fqdn,$url);
+        $cms->save();
         $service->parse();
     }
     $token=$service->environment_variables()->where('key','CMS_READ_TOKEN')->firstOrFail()->value;
     if ($input['action']==='wire') {
-        $web->settings()->update(['use_build_secrets'=>true,'disable_build_cache'=>true]);
-        foreach([false,true] as $preview) {
-            cmsEnv($web,'STRAPI_URL',$url,$preview);
-            cmsEnv($web,'STRAPI_READ_TOKEN',$token,$preview);
-            cmsEnv($web,'STRAPI_WRITE_TOKEN',$service->environment_variables()->where('key','CMS_WRITE_TOKEN')->firstOrFail()->value,$preview);
-        }
+        cmsWireWeb($service,$web,$url);
     }
     if ($input['action']==='start') App\Actions\Service\StartService::dispatch($service);
     if ($input['action']==='verify') {
