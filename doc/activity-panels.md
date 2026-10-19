@@ -19,7 +19,9 @@ expose a GitHub link rather than a fabricated diff.
 The full message body renders safe Markdown with author, timestamps, SHA, parents,
 file status and change counts beside the patches. Permalinks select this same
 surface without changing the feed's query; component navigation lands at GitHub.
-Back to commits restores the list's internal offset. When enabled, the full
+Every detail intent captures the current list offset before selecting content;
+Back to commits restores it. GitHub's immediate component-target positioning
+tracks layout without waiting for unrelated lazy images elsewhere on Home. When enabled, the full
 before/after Neovim workspace remains an explicit link.
 
 A narrow contribution calendar starts at its right edge to show the latest week.

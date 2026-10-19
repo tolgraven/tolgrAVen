@@ -701,7 +701,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - `ssr/return_worker.cljc` shares the module-owned isolation policy. GitHub's
   optional `/neovim/github/:user/:repo/:sha` views own cached revision reads and
   readonly native diffs. Crossing the isolation boundary uses document navigation;
-  disabled Neovim sites retain the basic viewer and no editor assets.
+  all sites retain inline patch details, with no editor assets on disabled sites.
   Commit rows open an inline unified patch with independent old/new source
   positions. Native external/permalink links stay independent; the full Neovim
   workspace remains an explicit document link. Feed query resets keep
@@ -764,8 +764,13 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   source gutters in both plain loading output and highlighted rows.
   GitHub events own commit selection; row clicks and route activation select
   the same detail, including reactivating an unchanged permalink after closing.
-  Commit permalinks select that surface without rewriting the feed query. The mounted scrollbox resets on detail entry and restores the list's
-  prior offset on return; component-target scrolling remains navigation-owned.
+  Commit permalinks select that surface without rewriting the feed query.
+  Selection captures the list offset through its owned DOM coeffect before
+  every entry, including unchanged-route activation. The mounted scrollbox
+  resets on detail entry and restores that offset on return. GitHub uses the
+  shared component-target adapter's immediate mode to avoid waiting for unrelated
+  lazy images before revealing the destination; its tracking/cancellation remain
+  navigation-owned. Other component targets retain the default smooth policy.
   Internal permalink clicks bubble to Reitit's document handler; the row ignores
   link/button targets rather than stopping propagation and forcing a reload.
   Changed-file metadata acquires bounded sequential pages; only the current

@@ -13,15 +13,19 @@
   ;; Feed queries reset their page state; immutable detail and revision viewers
   ;; retain their independent caches while the managed configuration initializes.
   (let [same-target? (= target (get-in db [:state :github :target]))
+        view (or (when same-target? (get-in db [:state :github :commit-view]))
+                 (:sha (model/route-target (:common/route db)))
+                 :commits)
         cached (merge (select-keys (get-in db [:content :github]) [:diff-view])
                       (when same-target? (select-keys (get-in db [:content :github]) [:commit :commit-errors])))]
     (-> db
         (assoc-in [:state :github]
                   (merge (select-keys (get-in db [:state :github]) [:diff-view :diff-attempt])
-                         (when same-target? (select-keys (get-in db [:state :github]) [:commit-view]))
+                         (when same-target? (select-keys (get-in db [:state :github]) [:list-position]))
                          {:target target
                           :generation (inc (get-in db [:state :github :generation] 0))
                           :query query
+                          :commit-view view
                           :commits-fetched (if same-target? (get-in db [:state :github :commits-fetched] []) [])}))
         (assoc-in [:content :github] cached))))
 
@@ -31,11 +35,22 @@
     (when (= (string/lower-case sha) (:sha (model/route-target (:common/route db))))
       {:dispatch-n [[:github/init] [:github/select-commit sha]]})))
 
+(r/reg-cofx :github/list-position
+  (fn [coeffects]
+    (assoc coeffects :github/list-position
+           (when (exists? js/document)
+             (some-> (.getElementById js/document "github-commits-box") .-scrollTop)))))
+
 (r/reg-event-fx :github/select-commit
   {:args [:tuple routes/commit-sha]}
-  (fn [{:keys [db]} [_ sha]]
-    (let [[user repo] (get-in db [:state :github :target])]
-      (cond-> {:db (assoc-in db [:state :github :commit-view] sha)}
+  [(r/inject-cofx :github/list-position)]
+  (fn [{:keys [db] :as coeffects} [_ sha]]
+    (let [[user repo] (get-in db [:state :github :target])
+          position (:github/list-position coeffects)
+          db' (cond-> (assoc-in db [:state :github :commit-view] sha)
+                (and (number? position) (= :commits (get-in db [:state :github :commit-view] :commits)))
+                (assoc-in [:state :github :list-position] position))]
+      (cond-> {:db db'}
         (and user repo) (assoc :dispatch [:github/fetch-commit user repo sha])))))
 
 (r/reg-event-db :github/close-commit

@@ -28,17 +28,19 @@
    (util/scroll-to id)))
 
 (r/reg-event-fx :scroll/component-target
-  {:args [:tuple :string :string]}
-  (fn [{:keys [db]} [_ id path]]
+  {:args [:cat :string :string [:? [:enum :instant :smooth]]]}
+  (fn [{:keys [db]} [_ id path behavior]]
     (when (and (= path (get-in db [:common/route :path]))
                (not= {:path path, :scroll? false} (get-in db [:state :scroll :component-focus])))
-      {:scroll/component-target id})))
+      {:scroll/component-target (if behavior [id behavior] id)})))
 
 (r/reg-fx :scroll/component-target
-  (fn [id]
+  (fn [target]
     ;; A committed component destination supersedes the page's earlier anchor
     ;; restoration; keep the normal layout-settlement and user-cancel behavior.
-    (page-transition/restore-anchor! id)))
+    (if (vector? target)
+      (page-transition/restore-anchor! (first target) (name (second target)))
+      (page-transition/restore-anchor! target))))
 
 (r/reg-event-fx :scroll/px
  (fn [db [_ px delay-ms]]

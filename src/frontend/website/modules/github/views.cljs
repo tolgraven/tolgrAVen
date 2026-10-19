@@ -153,10 +153,8 @@
 
 (defc ^:private <commit-row>
   {:features [[:appear "slide-in slow"]]}
-  [{:keys [from sha main-view-position author date ts html_url sha7 commit]}]
-  (let [open! (fn []
-                (reset! main-view-position (.-scrollTop (util/elem-by-id "github-commits-box")))
-                (r/dispatch [:github/select-commit sha]))
+  [{:keys [sha author date ts html_url sha7 commit]}]
+  (let [open! #(r/dispatch [:github/select-commit sha])
         avatar [img/<picture> {:src (:avatar_url author)
                        :alt (str (:login author) " avatar")
                        :class "user-avatar center-content"}]]
@@ -249,26 +247,23 @@
         complete? (r/subscribe [:github/archive-complete?])
         more? (r/subscribe [:github/more?])
         view (r/subscribe [:github/commit-view])
-        main-view-position (r/atom 0)
+        main-view-position (r/subscribe [:state [:github :list-position]])
         url (r/subscribe [:github/website-url])]
    (fn [spec]
     (let [{:keys [sha path]} @(r/subscribe [:github/route-target])
           active-view @view]
       (r/use-layout-effect
         (fn []
-          (when (and sha (= @view :commits))
-            (when-let [element (util/elem-by-id "github-commits-box")]
-              (reset! main-view-position (.-scrollTop element))))
           (r/dispatch-sync (if sha [:github/select-commit sha] [:github/close-commit]))
           (when sha
-            (r/dispatch [:scroll/component-target "github-commits" path]))
+            (r/dispatch [:scroll/component-target "github-commits" path :instant]))
           nil)
         [sha path])
       ;; This mounted scrollbox switches content without replacing its native node.
       (r/use-layout-effect
         (fn []
           (when-let [element (util/elem-by-id "github-commits-box")]
-            (set! (.-scrollTop element) (if (= active-view :commits) @main-view-position 0)))
+            (set! (.-scrollTop element) (if (= active-view :commits) (or @main-view-position 0) 0)))
           nil)
         [active-view])
     [:<>
@@ -307,9 +302,7 @@
       (if (= @view :commits)
        (for [{:keys [sha] :as item} @commits]
             ^{:key (str "github-commit-" sha)}
-        [<commit-row> (assoc item
-                            :from from
-                            :main-view-position main-view-position)])
+        [<commit-row> item])
 
           [:div
             [<commit> @view

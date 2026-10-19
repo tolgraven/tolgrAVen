@@ -1281,6 +1281,49 @@
         (.catch #(is false (str %)))
         (.finally done))))
 
+(deftest immediate-component-anchor-positions-before-unrelated-layout-is-ready
+  (async done
+    (-> (go-promise
+          (let [element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                original-position (.-scrollY js/window)
+                original-mode (.-scrollRestoration js/history)
+                blocker (js-obj)]
+            (.appendChild (.-body js/document) element)
+            (try
+              (await! (support/render! root
+                        [:section
+                         [:div {:style {:height "100vh"}}]
+                         [:div#immediate-growing-row {:style {:height "4rem"}}]
+                         [:div#immediate-component-anchor {:style {:height "4rem", :scroll-margin-top "5rem"}}
+                          "Commit detail"]
+                         [:div {:style {:height "100vh"}}]]))
+              (swap! restore/*pending-layout conj blocker)
+              (let [target (.querySelector element "#immediate-component-anchor")
+                    row (.querySelector element "#immediate-growing-row")
+                    positioned? (fn []
+                                  (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle target)))]
+                                    (<= (js/Math.abs (- margin (.-top (.getBoundingClientRect target)))) 1)))]
+                (page-transition/restore-anchor! "immediate-component-anchor" "instant")
+                (await! (wait-for! positioned?))
+                (is (not (restore/layout-ready?)) "Unrelated acquisition cannot block this explicit destination")
+                (is (some? @page-transition/*restore-cleanup) "The existing owner still tracks pending layout")
+                (let [animation (.animate row #js [#js {:height "4rem"} #js {:height "8rem"}]
+                                          #js {:duration 100, :fill "forwards"})]
+                  (await! (.-finished animation))
+                  (await! (wait-for! positioned?))
+                  (is (positioned?) "Later growth retains the component's header clearance")
+                  (.cancel animation)))
+              (finally
+                (when-let [cleanup! @page-transition/*restore-cleanup] (cleanup!))
+                (swap! restore/*pending-layout disj blocker)
+                (support/unmount! root)
+                (.remove element)
+                (set! (.-scrollRestoration js/history) original-mode)
+                (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
 (deftest native-positioned-component-keeps-tracking-layout-through-hydration
   (async done
     (-> (go-promise

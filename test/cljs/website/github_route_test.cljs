@@ -195,8 +195,10 @@
 (deftest the-same-permalink-reopens-after-returning-to-the-list
   (async done
     (let [restore! (r/make-restore-fn)
-          sha "abcdef123456"]
+          sha "abcdef123456"
+          *position (atom 12.5)]
       (r/reg-fx :http-xhrio (fn [_]))
+      (r/reg-cofx :github/list-position #(assoc % :github/list-position @*position))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (r/dispatch-sync [:component-data/install [:module :github :configuration]
@@ -208,6 +210,12 @@
             (r/dispatch-sync [:github/close-commit])
             (await! (support/settle!))
             (is (= :commits (await! (support/subscription-value! [:github/commit-view]))))
+            (reset! *position 68.25)
+            (r/dispatch-sync [:github/navigate-commit sha])
+            (await! (support/settle!))
+            (is (= 68.25 (await! (support/state-at! [:state :github :list-position])))
+                "An unchanged permalink captures the current list position before selecting detail")
+            (r/dispatch-sync [:github/close-commit])
             (r/dispatch-sync [:github/search "layout"])
             (await! (support/settle!))
             (is (= :commits (await! (support/subscription-value! [:github/commit-view])))

@@ -243,14 +243,17 @@ node test/scripts/neovim_profile_test.cjs
 
 ## GitHub commit diffs
 
-Commit rows open `/neovim/github/:user/:repo/:sha` as a new isolated document. Crossing into or out of isolation uses document navigation, so normal pages recover their normal media policy.
+Commit rows and permalinks open GitHub's inline message/metadata/patch detail.
+Its **Open full before / after workspace** link opens
+`/neovim/github/:user/:repo/:sha` as a new isolated document. Crossing into or out
+of isolation uses document navigation, so normal pages recover their normal media policy.
 Metadata, patches and immutable before/after source reads go through the site's
 GitHub API endpoints for the currently configured public repository. The optional
 server GitHub token remains private; binary/size checks and changed-file
 pagination remain part of the viewer. See `doc/activity-panels.md` for delivery,
 visibility, cache and provider failure contracts.
 The GitHub module owns this route, data and controls; it is omitted when Neovim
-is disabled, preserving the existing basic commit viewer. Before/after uses one
+is disabled; the inline commit detail remains available without editor assets. Before/after uses one
 native Neovim process with vertical diff windows, absolute line numbers and
 nonmodifiable, readonly buffers. This layout attaches its hidden UI at the measured size before loading source files and creating equal-width windows; it publishes only the completed redraw. The patch mode requests GitHub's complete patch.
 
