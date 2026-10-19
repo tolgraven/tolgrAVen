@@ -7,14 +7,16 @@
             [taoensso.telemere.utils :as utils]
             [clj-commons.format.exceptions :as exceptions]
             [clj-commons.pretty.repl :as pretty-repl]
-            [mount.core :refer [defstate]]))
+            [mount.core :refer [defstate]])
+  (:import [java.time ZoneId]
+           [java.time.format DateTimeFormatter]))
 
 (def namespace-levels
   {"website.*"               :debug
-   "org.apache.http*"        :warn
-   "com.datomic.db*"         :info
-   "org.xnio.nio*"           :warn
-   "com.zaxxer.hikari*"      :warn
+   "org.apache.http"        :warn
+   "com.datomic.db"         :info
+   "org.xnio.nio"           :warn
+   "com.zaxxer.hikari"      :warn
    "org.eclipse.jetty.server*" :warn
    "io.pedestal*"            :info})
 
@@ -30,9 +32,12 @@
 (defn error-be-red "Make errors red middleware" [])
 
 (defn output-formatter []
-  (tel/format-signal-fn
-    {:content-fn (utils/signal-content-fn
-                   {:format-error-fn exceptions/format-exception})}))
+  (let [timestamp (-> (DateTimeFormatter/ofPattern "yyMMdd HH:mm:ss.SS")
+                       (.withZone (ZoneId/systemDefault)))]
+    (tel/format-signal-fn
+      {:preamble-fn (utils/signal-preamble-fn {:format-inst-fn #(.format timestamp %)})
+       :content-fn (utils/signal-content-fn
+                     {:format-error-fn exceptions/format-exception})})))
 
 (defn file-handler
   ([] (file-handler "log/website.log" 10000000 5))

@@ -129,3 +129,23 @@
         (Thread/setDefaultUncaughtExceptionHandler original-handler)
         (write!)
         (.delete file)))))
+
+
+(deftest namespace-filter-and-local-timestamp-test
+  (let [original-factory tools-log/*logger-factory*
+        original-handler (Thread/getDefaultUncaughtExceptionHandler)]
+    (try
+      (log/init-logging)
+      (is (nil? (tel/with-signal (tel/log! {:ns "org.apache.http" :level :info :msg "exact namespace"}))))
+      (is (some? (tel/with-signal (tel/log! {:ns "org.apache.http.wire" :level :info :msg "descendant namespace"}))))
+      (is (nil? (tel/with-signal (tel/log! {:ns "io.pedestal.service" :level :debug :msg "wildcard namespace"}))))
+      (finally
+        (tel/remove-handler! :website.log/console)
+        (tel/remove-handler! :website.log/file)
+        (alter-var-root #'tools-log/*logger-factory* (constantly original-factory))
+        (Thread/setDefaultUncaughtExceptionHandler original-handler))))
+  (let [output ((log/output-formatter)
+                {:inst (java.time.Instant/parse "2026-10-19T01:00:00Z")
+                 :level :info
+                 :msg_ (delay "timestamp probe")})]
+    (is (re-find #"^261019 \d{2}:\d{2}:\d{2}\.\d{2} INFO" output))))

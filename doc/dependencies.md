@@ -169,6 +169,11 @@ initialization owns the sole default uncaught exception handler; loading `core`
 or `log` must not replace it. `org.clj-commons/pretty` supplies the log exception
 formatter and REPL hooks. Do not add legacy `io.aviso/pretty` alongside it.
 
+Log lines retain the local `yyMMdd HH:mm:ss.SS` timestamp and pretty printed
+arguments/exceptions. Telemere's human-readable layout additionally shows signal
+kind/ID and structured data; the presentation is intentionally updated, while
+existing namespace patterns retain their exact versus wildcard meanings.
+
 JBoss Logging is required by Undertow, XNIO and JBoss Threads. Its automatic
 selection prefers Log4j when available and otherwise falls back to JUL unless
 Logback is present. The shared Lein JVM options and Docker command explicitly
