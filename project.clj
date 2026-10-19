@@ -38,7 +38,8 @@
                  [metosin/reitit-ring "0.11.0"]
                  [metosin/reitit-middleware "0.11.0"]
                  [metosin/reitit-malli "0.11.0"]
-                 [metosin/reitit-swagger "0.11.0"]
+                 [metosin/reitit-swagger "0.11.0"] ; Legacy /api/swagger.json compatibility.
+                 [fi.metosin/reitit-openapi "0.11.0"]
                  [metosin/reitit-swagger-ui "0.11.0"]
                  [metosin/reitit-frontend "0.11.0"]
                  [metosin/reitit-dev "0.11.0"]

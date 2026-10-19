@@ -2,6 +2,7 @@
   (:require
     [website.build.site :refer [when-enabled]]
     [reitit.swagger :as swagger]
+    [reitit.openapi :as openapi]
     [reitit.swagger-ui :as swagger-ui]
     [reitit.ring.coercion :as coercion]
     [website.schema.http :as schemas]
@@ -38,6 +39,7 @@
    {:coercion schemas/coercion
     :muuntaja formats/instance
     :swagger {:id ::api}
+    :openapi {:id ::api}
     :middleware (cond-> [parameters/parameters-middleware       ;; query-params & form-params
                  muuntaja/format-negotiate-middleware   ;; content-negotiation
                  muuntaja/format-response-middleware    ;; encoding response body
@@ -47,17 +49,22 @@
                  multipart/coercion-middleware]
                   (config/validation-enabled?) (conj coercion/coerce-response-middleware))}       ;; multipart
 
-   ;; swagger documentation
+   ;; OpenAPI is the UI default; the original Swagger document remains compatible.
    ["" {:no-doc true
         :swagger {:info {:title "my-api"
                          :description "https://cljdoc.org/d/metosin/reitit"}}}
+
+    ["/openapi.json"
+     {:get {:handler (openapi/create-openapi-handler)
+            :openapi {:openapi "3.1.0"
+                      :info {:title "tolgrAVen API" :version "1.0.0"}}}}]
 
     ["/swagger.json"
      {:get (swagger/create-swagger-handler)}]
 
     ["/api-docs/*"
      {:get (swagger-ui/create-swagger-ui-handler
-             {:url "/api/swagger.json"
+             {:url "/api/openapi.json"
               :config {:validator-url nil}})}]]
 
 
@@ -116,7 +123,7 @@
 
 
    ["/math"
-    {:swagger {:tags ["math"]}}
+    {:tags ["math"]}
 
     ["/plus"
      {:get {:summary "plus with spec query parameters"
@@ -133,11 +140,14 @@
                          :body {:total (+ x y)}})}}]]
 
    ["/files"
-    {:swagger {:tags ["files"]}}
+    {:tags ["files"]}
 
     ["/download"
      {:get {:summary "downloads a file"
             :swagger {:produces ["image/png"]}
+            :openapi {:responses {"200" {:description "PNG image"
+                                         :content {"image/png" {:schema {:type "string"
+                                                                         :format "binary"}}}}}}
             :handler (fn [_]
                        {:status 200
                         :headers {"Content-Type" "image/png"}
