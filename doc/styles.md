@@ -370,7 +370,8 @@ HTTP opens; it must not be reported as a CMS outage.
 
 Development backend subsets use that environment's interpreter directly, with
 Python isolated mode, so shell activation, global packages and `PYTHONPATH` cannot
-supply a different codec. `bb fonts:icons` prepares and uses the same environment.
+supply a different codec. `bb fonts:icons` and the Python checks in `bb test:scripts` prepare and use the
+same environment.
 Production keeps the prefab's Python and `PYTHONPATH` wiring. The packaged codec
 lives at `resources/fonts/subset.py`; no runtime repository checkout is needed.
 
