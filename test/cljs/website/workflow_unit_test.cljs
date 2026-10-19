@@ -773,11 +773,12 @@
                           (before)
                           (done))))))
       (.catch (fn [error] (is false (str error)) (done))))))
-(deftest native-frame-rate-hint-targets-only-the-current-page-crossfade
+(deftest native-history-crossfade-hints-only-the-current-page-layers
   (async done
     (-> (go-promise
           (let [original-start (.-startViewTransition js/document)
                 original-animations (.-getAnimations js/document)
+                original-context @restore/*context
                 original-transition @page-transition/*transition
                 original-generation @page-transition/*generation
                 original-destination @page-transition/*destination
@@ -791,7 +792,7 @@
               (reset! page-transition/*transition nil)
               (set! (.-startViewTransition js/document) (fn [_] transition))
               (set! (.-getAnimations js/document) (fn [] #js [outgoing incoming unrelated]))
-              (page-transition/navigate! {:path "/frame-rate"} true)
+              (page-transition/navigate! {:path "/frame-rate"} true true)
               (await! (.-ready transition))
               (is (= "highest" (.-frameRate outgoing)))
               (is (= "highest" (.-frameRate incoming)))
@@ -800,6 +801,7 @@
               (finally
                 (set! (.-startViewTransition js/document) original-start)
                 (set! (.-getAnimations js/document) original-animations)
+                (reset! restore/*context original-context)
                 (reset! page-transition/*transition original-transition)
                 (reset! page-transition/*generation original-generation)
                 (reset! page-transition/*destination original-destination)))))
@@ -959,14 +961,19 @@
              (.catch (fn [error] (is false (str error)) (done))))))
 (deftest history-navigation-declares-restoration-before-page-commit
   (let [before @restore/*context
+        native-start (.-startViewTransition js/document)
         *events (atom [])]
-    (try (r/with-framework-bindings [r/dispatch #(swap! *events conj %)]
+    (try (set! (.-startViewTransition js/document) nil)
+         (r/with-framework-bindings [r/dispatch #(swap! *events conj %)]
            (page-transition/navigate! {:path (restore/page-key)} true true))
+         (is (true? (get-in @*events [0 2 :fallback?]))
+             "SPA history retains its page crossfade despite restored component entrances")
          (is (restore/skip-enter?))
          (is (not (restore/document-enter?)))
          (restore/navigate! "/another-page")
          (is (not (restore/skip-enter?)) "Ordinary navigation enables motion again")
-         (finally (reset! restore/*context before)))))
+         (finally (set! (.-startViewTransition js/document) native-start)
+                  (reset! restore/*context before)))))
 (deftest client-restored-content-requests-layout-aware-scroll-restoration
   (is (= {:scroll/restore-position 499}
          (event-effects :scroll/restore-history

@@ -584,7 +584,7 @@ document.querySelector('#run').onclick = async () => {
                                               animation.playState !== 'finished'));
     await settleLayout(doc().querySelector('main'));
     const started = performance.now();
-    const navFrames = await sample(() => doc().querySelector('header a[href="/blog"]').click(), () => {
+    const readPageMotion = () => {
       const main = doc().querySelector('main'), win = frame.contentWindow;
       const animation = name => doc().getAnimations().find(value => value.animationName === name);
       const old = animation('page-opacity-out'), incoming = animation('page-opacity-in-a');
@@ -608,7 +608,8 @@ document.querySelector('#run').onclick = async () => {
               footerSnapshotAnimation: footerSnapshot.animationName,
               nativeFade: typeof doc().startViewTransition === 'function' &&
                 win.getComputedStyle(doc().documentElement, '::view-transition-old(page)').animationName === 'page-opacity-out'};
-    }, 1800);
+    };
+    const navFrames = await sample(() => doc().querySelector('header a[href="/blog"]').click(), readPageMotion, 1800);
     check(navFrames.some(value => value.opacity < .95 || value.nativeFade), 'Section navigation uses an opacity fade');
     const native = navFrames.some(value => value.oldProgress != null);
     if (native) {
@@ -632,6 +633,16 @@ document.querySelector('#run').onclick = async () => {
     check(navFrames.every(value => value.footerOpacity === 1), 'Sticky footer stays opaque during page navigation');
     check(navFrames.some(value => value.path === '/blog'), 'Landing → blog commits during the transition');
     check(performance.now() - started < 2500, 'Section motion is bounded independently of content loading');
+    await settleLayout(doc().querySelector('main'));
+    const backFrames = await sample(() => frame.contentWindow.history.back(), readPageMotion, 1800);
+    check(doc() === before, 'SPA Back retains the existing document');
+    check(backFrames.some(value => value.path === '/' && (value.opacity < .95 || value.nativeFade)),
+          'SPA Back uses the same page opacity fade');
+    check(backFrames.some(value => value.oldProgress > .05 && value.oldProgress < .95 &&
+                                  value.newProgress > .05 && value.newProgress < .95) ||
+          backFrames.some(value => value.outgoing > .05 && value.outgoing < .95 &&
+                                  value.opacity > .05 && value.opacity < .95),
+          'SPA Back crossfades both pages simultaneously');
     check(true, 'MOTION CHECKS PASSED');
   } catch (error) {
     const diagnostics = {

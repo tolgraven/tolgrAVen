@@ -31,15 +31,15 @@
   "One realized path map per revision. A supplied TTL owns development refresh;
    no unowned watcher observes unrelated resources or upload directories."
   [app get-assets optimize {:keys [cache-live-assets] :as options}]
-  (let [load! (fn []
+  (let [load! (fn [_]
                 (let [assets (vec (optimize (strategies/guard-against-duplicate-assets
                                              (get-assets)) options))]
                   {:assets assets, :by-path (into {} (map (juxt asset/path identity) assets))}))
         snapshot! (if cache-live-assets
                     (memo/ttl load! {} :ttl/threshold cache-live-assets)
-                    (let [snapshot (load!)] (constantly snapshot)))]
+                    (let [snapshot (load! nil)] (constantly snapshot)))]
     (fn [request]
-      (let [{:keys [assets by-path]} (snapshot!)]
+      (let [{:keys [assets by-path]} (snapshot! (:styles/revision request))]
         (if-let [asset (when (#{:get :head} (:request-method request)) (by-path (:uri request)))]
           (asset-response asset)
           (app (assoc request :optimus-assets assets)))))))

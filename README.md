@@ -35,9 +35,11 @@ starting or stopping that server. `LEIN_REPL_HOST`, `LEIN_REPL_PORT` and
 original REPL-y task and its full transport/socket/profile configuration.
 
 The development server checks CSS before opening HTTP and rebuilds stale or missing
-sheets with the locked tools. Fresh output skips compilation. It runs at
-http://localhost:4000. Run `npm run dev` in a
-second terminal to watch CSS. The Clojure REPL becomes available before the
+sheets with the locked tools and owns one supervised Sass/PostCSS watcher.
+Fresh output skips compilation. It runs at http://localhost:4000; a separate
+`npm run dev` is optional for CSS-only work. Development browser compilation and
+HTML/CSS/chunk requests recheck freshness, so failed builds return 503 instead of
+serving stale sheets. `(stop)` and JVM exit stop only the REPL-owned watcher. The Clojure REPL becomes available before the
 initial Shadow compilations finish. After a short deferral, the standalone
 `:document` bootstrap is released first with its own optimized runtime. Documents
 and bootstrap requests wait for that release; unrelated assets and APIs stay

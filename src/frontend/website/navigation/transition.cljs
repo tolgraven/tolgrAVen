@@ -235,9 +235,9 @@
     (control-browser-anchor!))
   (when back? (restore/spa-back!))
   (let [generation (swap! *generation inc)
-        animate? (and animate? (not back?) (not (motion/reduced-motion?)))
-        native? (and animate? (exists? js/document) (fn? (.-startViewTransition js/document)))
-        outgoing-top (when (and animate? (exists? js/document))
+        animate?' (and animate? (not (motion/reduced-motion?)))
+        native? (and animate?' (exists? js/document) (fn? (.-startViewTransition js/document)))
+        outgoing-top (when (and animate?' (exists? js/document))
                        (some-> (.querySelector js/document "#main > .page-root") .getBoundingClientRect .-top))
         outgoing-height (when native?
                           (some-> (.getElementById js/document "main") .getBoundingClientRect .-height))
@@ -251,7 +251,7 @@
                                       :transition-id generation
                                       :outgoing-height outgoing-height
                                       :outgoing-top outgoing-top
-                                      :fallback? (and animate? (not native?))}])
+                                      :fallback? (and animate?' (not native?))}])
                        (resolve!)))))]
     (reset! *restored-position nil)
     (reset! *destination {:generation generation :match match})

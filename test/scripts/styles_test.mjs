@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import {watch as watchDirectory} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {spawnSync} from 'node:child_process';
+import {spawn, spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 const project = fileURLToPath(new URL('../..', import.meta.url));
@@ -23,6 +24,7 @@ const rebuilt = () => { assert.match(build(), /Built \d+ CSS entries/); checks++
 
 try {
   await fs.symlink(path.join(project, 'node_modules'), path.join(fixture, 'node_modules'), 'dir');
+  await write('scripts/build/styles-lock.clj', await fs.readFile(path.join(project, 'scripts/build/styles-lock.clj')));
   await write('scripts/build/styles.mjs', await fs.readFile(path.join(project, 'scripts/build/styles.mjs')));
   await write('scripts/build/editor-styles.mjs', await fs.readFile(path.join(project, 'scripts/build/editor-styles.mjs')));
   await write('scripts/build/style-overrides.mjs', await fs.readFile(path.join(project, 'scripts/build/style-overrides.mjs')));
@@ -96,6 +98,87 @@ try {
   await fs.rm(path.join(fixture, 'resources/site.overrides.css'));
   rebuilt();
   assert.doesNotMatch(await read('resources/public/css/website/main.min.css'), /--space:/);
+
+  await fs.appendFile(path.join(fixture, 'resources/scss/main.scss'), '\n.concurrent { display: grid; }');
+  const concurrent = () => new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['scripts/build/styles.mjs', '--if-stale'], {cwd: fixture});
+    let output = '', error = '';
+    child.stdout.on('data', chunk => { output += chunk; });
+    child.stderr.on('data', chunk => { error += chunk; });
+    child.once('error', reject);
+    child.once('exit', code => resolve({code, output, error}));
+  });
+  const writers = await Promise.all([concurrent(), concurrent()]);
+  assert.ok(writers.every(result => result.code === 0), JSON.stringify(writers));
+  assert.equal(writers.filter(result => result.output.includes('Built ')).length, 1);
+  assert.match(await read('resources/public/css/website/main.min.css'), /concurrent/);
+  checks++;
+
+  // Overwrite the first published sheet while later entries are still building.
+  // Its generated hash, rather than the foreign bytes, must own the final stamp.
+  await fs.appendFile(path.join(fixture, 'resources/scss/main.scss'), '\n.publication { display: grid; }');
+  let overwritten = false, mutation;
+  const publicationObserver = watchDirectory(path.join(fixture, 'resources/public/css/website'),
+    (event, name) => {
+      if (!overwritten && event === 'rename' && String(name) === 'main.min.css') {
+        overwritten = true;
+        mutation = write('resources/public/css/website/main.min.css', '.foreign-publication { display: none; }');
+      }
+    });
+  try {
+    const result = await concurrent();
+    if (mutation) await mutation;
+    assert.equal(result.code, 0, result.error);
+    assert.ok(overwritten, 'The fixture must overwrite an actual publication');
+    assert.match(await read('resources/public/css/website/main.min.css'), /publication\{display:grid/);
+    assert.doesNotMatch(await read('resources/public/css/website/main.min.css'), /foreign-publication/);
+    assert.match(build(), /CSS is current/);
+    checks++;
+  } finally { publicationObserver.close(); }
+
+  const watcher = spawn(process.execPath, ['scripts/build/styles.mjs', '--watch'], {cwd: fixture, stdio: 'ignore'});
+  const waitFor = async predicate => {
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      if (await predicate()) return;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.fail('CSS watcher did not repair its output');
+  };
+  try {
+    await write('resources/scss/_pictures.scss', '.progressive-image__final { width: 91%; }');
+    await waitFor(async () => (await read('resources/public/css/website/main.min.css')).includes('width:91%'));
+    checks++;
+    await write('resources/public/css/website/main.min.css', '.stale { display: none; }');
+    await waitFor(async () => (await read('resources/public/css/website/main.min.css')).includes('width:91%'));
+    checks++;
+    await write('resources/scss/_pictures.scss', '.broken {');
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    await write('resources/scss/_pictures.scss', '.progressive-image__final { width: 92%; }');
+    await waitFor(async () => (await read('resources/public/css/website/main.min.css')).includes('width:92%'));
+    checks++;
+  } finally {
+    const exited = new Promise(resolve => watcher.once('exit', resolve));
+    watcher.kill('SIGTERM');
+    await exited;
+  }
+
+  await write('scripts/build/neovim_workspace.clj', `(ns build.neovim-workspace)
+    (defn -main [& _]
+      (.mkdirs (java.io.File. "resources/public/vendor/neovim"))
+      (spit "resources/public/vendor/neovim/workspace.json" "workspace")
+      (spit "resources/public/vendor/neovim/profile.json"
+            (slurp "resources/public/vendor/neovim/init.lua")))`);
+  await write('resources/public/vendor/neovim/init.lua', 'first profile');
+  rebuilt();
+  await fs.rm(path.join(fixture, 'resources/public/vendor/neovim/workspace.json'));
+  rebuilt();
+  assert.equal(await read('resources/public/vendor/neovim/workspace.json'), 'workspace');
+  await write('resources/public/vendor/neovim/init.lua', 'edited profile');
+  rebuilt();
+  assert.equal(await read('resources/public/vendor/neovim/profile.json'), 'edited profile');
+  assert.match(build(), /CSS is current/);
+  checks++;
 
   const partial = spawnSync(process.execPath, ['scripts/build/styles.mjs', '--if-stale', '--sass-only'],
     {cwd: fixture, encoding: 'utf8'});

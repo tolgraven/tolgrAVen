@@ -2,6 +2,8 @@
   (:require-macros [website.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [async deftest is testing]]
             [website.react :as r]
+            [website.component.restore :as restore]
+            [website.modules.user.views :as user]
             [website.events]
             [website.subs]
             [website.modules.settings.views :as views]
@@ -62,3 +64,47 @@
                           (.removeAttribute document-root "data-theme"))
                       (restore!)
                       (done)))))))
+
+(deftest explicit-menu-panels-enter-after-document-restoration
+  (async done
+    (-> (go-promise
+          (doseq [context [{:back? true} {:hydrate? true}]
+                  [component selector open-event close-event]
+                  [[views/<settings> ".settings-panel"
+                    [:state [:settings :panel-open] true] [:state [:settings :panel-open] false]]
+                   [user/<user-section> ".user-section-wrapper"
+                    [:user/open-ui :login] [:user/close-ui]]]]
+            (let [restore-db! (r/make-restore-fn)
+                  previous @restore/*context
+                  element (.createElement js/document "div")
+                  root (await! (support/create-root! element))
+                  *initial (atom nil)
+                  observer (js/MutationObserver.
+                             (fn [_ _]
+                               (when-let [panel (.querySelector element selector)]
+                                 (when-not @*initial
+                                   (reset! *initial {:appeared? (.contains (.-classList panel) "appeared")})))))]
+              (try
+                (.appendChild (.-body js/document) element)
+                (restore/begin! context)
+                (restore/hydrated!)
+                (r/dispatch-sync [:state [:supabase-init] :ready])
+                (r/dispatch-sync close-event)
+                (await! (support/render! root [component]))
+                (.observe observer element #js {:subtree true, :childList true})
+                (r/dispatch-sync open-event)
+                (let [panel (await! (support/wait-for! #(.querySelector element selector)))]
+                  (when-not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))
+                    (is (false? (:appeared? @*initial))
+                        (str selector " starts its entrance after " context)))
+                  (await! (support/wait-for! #(.contains (.-classList panel) "appeared")))
+                  (r/dispatch-sync close-event)
+                  (await! (support/wait-for! #(nil? (.querySelector element selector)))))
+                (finally
+                  (.disconnect observer)
+                  (support/unmount! root)
+                  (.remove element)
+                  (restore-db!)
+                  (reset! restore/*context previous))))))
+        (.catch #(is false (str %)))
+        (.finally done))))
