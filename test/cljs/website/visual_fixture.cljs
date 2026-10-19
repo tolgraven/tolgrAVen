@@ -42,6 +42,10 @@
             [website.components.media :as media]
             [website.modules.home.sections :as home]
             [website.loader :as loader]
+            [website.module-transport :as transport]
+            [website.modules.search.module :as search-module]
+            [website.modules.settings.module :as settings-module]
+            [website.modules.user.module :as user-module]
             [website.navigation.routes :as routes]
             [reitit.frontend.easy :as rfe]
             [reitit.core :as reitit])
@@ -425,6 +429,7 @@
     "register" (do (r/dispatch-sync [:user/open-ui :login])
                    (r/dispatch-sync [:user/active-section :register]))
     "settings" (r/dispatch-sync [:state [:settings :panel-open] true])
+    "search" (r/dispatch-sync [:search/state [:open?] true])
     "contact" (r/dispatch-sync [:contact/open])
     (throw (js/Error. (str "Unknown panel fixture state: " state)))))
 
@@ -531,6 +536,7 @@
 (defn- init-fixture! [real-cv-storage?]
   (let [params (js/URLSearchParams. (.-search js/location))
         component (.get params "component")
+        pending-owner (some-> (.get params "pending") keyword)
         composer? (and (= component "comments-auth")
                        (contains? #{"rich" "plain"} (.get params "composer")))]
     (cond
@@ -558,6 +564,14 @@
             (fn [seed]
               (rfe/start! routes/router (fn [_ _]) {:use-fragment false})
               (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) false])
+              (when-let [pending-spec (get {:search search-module/spec
+                                           :settings settings-module/spec
+                                           :user user-module/spec} pending-owner)]
+                ;; This disposable fixture document holds the real acquisition
+                ;; boundary; native header state and markup remain unchanged.
+                (transport/install! {pending-owner pending-spec})
+                (r/dispatch-sync [:state [:supabase-init] :ready])
+                (r/dispatch-sync [:loader/activate {:module pending-owner}]))
               (when (and (= component "cv") (not real-cv-storage?))
                 (editor/install-cv-visit!))
               (when (#{"cms-services" "cms-cv" "cms-gallery"} component)
