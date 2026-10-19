@@ -245,8 +245,8 @@ easing. The outgoing layer supplies layout during the fade; at completion React
 removes it and retains the incoming layer as the sole accessible text. Neither
 controls nor container backgrounds fade. The feature belongs on text-only roots;
 do not duplicate inputs, IDs, component lifecycles or interactive descendants.
-The highlighter supplies its already-generated native text tree to a stable
-Reagent `PreTag` adapter, so crossfading does not mount a second formatter.
+The highlighter supplies its already-generated native text tree to its stable
+Reagent font root, so crossfading does not mount a second formatter.
 
 Readiness and phases are re-frame events; Reagent animation completion and a
 bounded `:dispatch-later` deadline remove the old layer. Already loaded initial

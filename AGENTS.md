@@ -161,6 +161,8 @@ sessions' tabs and restore any borrowed tab when finished.
   formatter boundary. Node SSR renders Bruvbox-highlighted tokens immediately;
   browser acquisition waits for the existing after-page gate. The blog supplies
   its Clojure fallback and detection set; reusable Markdown has no site-specific default.
+  The formatter uses direct Lowlight HAST and native Reagent tokens; retain
+  complete language support, owner-specific detection and numbered/editable rows.
   Bruvbox palette/token ownership lives in `modules/highlight/theme.cljs`.
 
 ## Project Structure & Module Organization

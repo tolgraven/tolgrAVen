@@ -734,3 +734,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Settings panels opt out of restoration via `:appear {:restore? false}` and parent
   viewport ownership. The shell owns a stable Search button; its eager events
   activate lazy Search code without replacing/replaying the first intent.
+
+- Highlight owns the direct Lowlight instance and pure HAST-to-Hiccup renderer.
+  Keep code as text nodes, flatten nested token styles in order and retain exact
+  line breaks, caller row attributes, numbered gutters and editable final rows.
+  Browser and Node use the same formatter behind the existing lazy boundary.

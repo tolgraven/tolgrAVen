@@ -1,5 +1,6 @@
 (ns website.modules.highlight.views
   (:require
+    [clojure.string :as string]
     [website.component.registry]
     [website.component.font :as font]
     [website.macros :refer-macros [defc]]
@@ -7,7 +8,6 @@
 
     [website.modules.highlight.theme :as theme]
     ["lowlight" :as lowlight]
-    ["react-syntax-highlighter/dist/esm/default-highlight$default" :as SyntaxHighlighter]
    ; ["react-syntax-highlighter/dist/esm/languages/hljs/clojure" :as clj-lang]
    ; ["react-syntax-highlighter/dist/esm/languages/hljs/javascript" :as js-lang]
     ))
@@ -22,15 +22,7 @@
   [{:keys [children] :as props}]
   [:code (update (dissoc props :children) :style #(when % (js->clj % :keywordize-keys true))) children])
 
-;; PreTag is an ordinary React interop boundary. Its children are the native
-;; highlighted text tree; duplicating them mounts no highlighter or effects.
-(def font-pre (r/reactify-component (fn [props] [<font-pre> props])))
-(def font-inline (r/reactify-component (fn [props] [<font-inline> props])))
-
-(def syntax-highlighter (r/adapt-react-class SyntaxHighlighter))
-
-; (.registerLanguage SyntaxHighlighter "javascript" js-lang)
-; (.registerLanguage SyntaxHighlighter "clojure" clj-lang)
+(def highlighter (.createLowlight lowlight (.-all lowlight)))
 
 (def language-aliases
   ;; These fence tags share Clojure's grammar. Authoring retains the original tag.
@@ -51,14 +43,77 @@
         default-language' (grammar-language default-language)
         auto-languages' (when auto-languages (vec (distinct (map grammar-language auto-languages))))
         explicit (when language'
-                   (try (.highlight lowlight language' code)
+                   (try (.highlight highlighter language' code)
                         (catch :default _ nil)))
-        detected (or explicit (.highlightAuto lowlight code
+        detected (or explicit (.highlightAuto highlighter code
                                            (when auto-languages'
                                              #js {:subset (into-array auto-languages')})))]
-    (if (and (nil? (.-language detected)) default-language')
-      (.highlight lowlight default-language' code)
+    (if (and (nil? (some-> detected .-data .-language)) default-language')
+      (.highlight highlighter default-language' code)
       detected)))
+
+(defn- token-runs
+  "Flatten HAST spans into styled text runs without interpreting source HTML."
+  [nodes stylesheet inherited]
+  (mapcat
+    (fn [node]
+      (if (= "text" (.-type node))
+        [[inherited (.-value node)]]
+        (let [classes (some-> node .-properties .-className array-seq)
+              style (reduce #(merge %1 (get stylesheet %2)) inherited classes)]
+          (token-runs (array-seq (.-children node)) stylesheet style))))
+    nodes))
+
+(defn- code-lines [runs]
+  (reduce
+    (fn [lines [style text]]
+      (let [parts (string/split text #"\n" -1)]
+        (reduce-kv
+          (fn [lines' index part]
+            (let [last? (= index (dec (count parts)))
+                  lines'' (update lines' (dec (count lines')) conj
+                                  [style (str part (when-not last? "\n"))])]
+              (if last? lines'' (conj lines'' []))))
+          lines (vec parts))))
+    [[]] runs))
+
+(defn- line-attributes [line-props number]
+  (let [props (when line-props (line-props number))]
+    (if (map? props) props (js->clj props :keywordize-keys true))))
+
+(defn- rendered-code [tree stylesheet numbered? starting-line-number line-props editable?]
+  (let [runs (token-runs (array-seq (.-children tree)) stylesheet {})
+        lines (code-lines runs)
+        largest (+ starting-line-number (dec (count lines)))
+        number-style (merge {:display "inline-block"
+                             :minWidth (str (count (str largest)) ".25em")
+                             :paddingRight "1em"
+                             :textAlign "right"
+                             :userSelect "none"}
+                            (when editable?
+                              {:width "var(--code-gutter)"
+                               :minWidth 0
+                               :textIndent 0}))
+        tokens (fn [line]
+                 (map-indexed (fn [index [style text]]
+                                ^{:key index} [:span {:style style} text]) line))]
+    (if (or numbered? line-props)
+      (map-indexed
+        (fn [index line]
+          (let [number (+ starting-line-number index)
+                props (line-attributes line-props number)
+                props' (cond-> props
+                         (and editable? numbered?)
+                         (update :className str " code-block-edit-line"))]
+            ^{:key index}
+            (into [:span props']
+                  (concat
+                    (when numbered?
+                      [[:span.comment.linenumber.react-syntax-highlighter-line-number
+                        {:style number-style} number]])
+                    (tokens line)))))
+        lines)
+      (tokens runs))))
 
 (defc <formatted-code>
   "Full language support and Bruvbox are acquired only by code consumers."
@@ -66,45 +121,24 @@
                  line-numbers? starting-line-number line-props editable?]
            :or {basic? true
                 style theme/bruvbox}}]
-  (let [language (or language (when inline? (or inline-language "bash")))
+  (let [language' (or language (when inline? (or inline-language "bash")))
         numbered? (and (not inline?) (if (nil? line-numbers?) (not basic?) line-numbers?))
-        ;; A pre normally drops the empty line after a final newline. The edit
-        ;; surface must retain that caret line without changing authored text.
+        ;; Retain the editable caret line without modifying authored source.
         display-code (if (and editable? (.endsWith code "\n")) (str code "\u200b") code)
-        tree (r/use-memo #(code-tree display-code language default-language auto-languages)
-                         [display-code language default-language auto-languages])
-        ;; Reuse the selected AST instead of running auto-detection twice.
-        generator (r/use-memo
-                    #(clj->js {:listLanguages (fn [] #js [])
-                               :highlightAuto (fn [_] tree)})
-                    [tree])]
-    [syntax-highlighter
-     (cond-> {:language (or (.-language tree) language "text")
-              :astGenerator generator
-              :style style
-              :showLineNumbers numbered?
-              :startingLineNumber (or starting-line-number 1)
-              :lineNumberStyle {:userSelect "none"}
-              :children display-code
-              :PreTag (if editable? "pre" font-pre)
-              :wrapLines (or numbered? (boolean line-props))}
-       line-props (assoc :lineProps line-props)
-       (and editable? numbered?)
-       (assoc :lineProps
-              (fn [number]
-                ;; React Syntax Highlighter calls this native props adapter.
-                ;; Keep caller line attributes while adding hanging-indent rows
-                ;; so wrapped continuations align with the textarea's gutter.
-                (let [props (when line-props (line-props number))
-                      props' (if (map? props) props (js->clj props :keywordize-keys true))]
-                  (clj->js (update props' :className str " code-block-edit-line"))))
-              :lineNumberStyle {:width "var(--code-gutter)"
-                                :minWidth 0
-                                :textIndent 0
-                                :userSelect "none"})
-       inline? (assoc :PreTag font-inline
-                      :CodeTag "span"
-                      :className "code-highlight"
-                      :customStyle {:display "inline"
-                                    :padding 0
-                                    :background "transparent"}))]))
+        tree (r/use-memo #(code-tree display-code language' default-language auto-languages)
+                         [display-code language' default-language auto-languages])
+        stylesheet (r/use-memo #(js->clj style :keywordize-keys false) [style])
+        selected-language (or (some-> tree .-data .-language) language' "text")
+        contents (rendered-code tree stylesheet numbered? (or starting-line-number 1) line-props editable?)
+        code-element (into [(if inline? :span :code)
+                            {:class (str "language-" selected-language)
+                             :style {:whiteSpace "pre"}}] contents)
+        attrs {:style (cond-> (get stylesheet "hljs")
+                        inline? (merge {:display "inline"
+                                        :padding 0
+                                        :background "transparent"}))
+               :children (r/as-element code-element)}]
+    (cond
+      inline? [<font-inline> (assoc attrs :className "code-highlight")]
+      editable? [:pre (dissoc attrs :children) code-element]
+      :else [<font-pre> attrs])))
