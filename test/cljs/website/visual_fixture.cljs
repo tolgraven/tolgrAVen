@@ -431,7 +431,6 @@
                    (r/dispatch-sync [:user/active-section :register]))
     "settings" (r/dispatch-sync [:state [:settings :panel-open] true])
     "search" (r/dispatch-sync [:search/state [:open?] true])
-    "search-closed" (r/dispatch-sync [:search/state [:open?] false])
     "contact" (r/dispatch-sync [:contact/open])
     (throw (js/Error. (str "Unknown panel fixture state: " state)))))
 
@@ -680,7 +679,7 @@
                                  search-response)]
                   (when (validation/explain search-model/result response)
                     (throw (js/Error. "Invalid native search fixture response")))
-                  (r/dispatch-sync [:state [:search :open?] true])
+                  (r/dispatch-sync [:state [:search :open?] (not= "1" (.get params "closed"))])
                   (r/reg-sub :search/query (fn [_ _] (:query response)))
                   (r/reg-sub :search/response (fn [_ _] response))
                   (r/reg-sub :search/pending? (fn [_ _] false))
@@ -704,6 +703,7 @@
                              "github" (loader/load! {:module :github})
                              ("docs-index" "docs-topic") (loader/acquire-code! :docs)
                              "instagram" (loader/acquire-code! :instagram)
+                             ("search-mixed" "search-extensions") (loader/acquire-code! :search)
                              "post-editor" (loader/load! {:module :blog-editor})
                              ("cms-services" "cms-cv" "cms-gallery") (loader/load! {:module :content-editor})
                              ("link-preview-ready" "link-preview-metadata" "link-preview-unavailable")
