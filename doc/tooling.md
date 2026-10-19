@@ -14,6 +14,7 @@ needed to run these tasks; they use Babashka's built-in libraries.
 | Videos | `bb videos [--force] [files...]`, `bb videos:responsive` | Manual assets; FFmpeg VP9/AV1, muted output, original MP4 fallback |
 | Development | `bb cpu <action>`, `tolgraven-cpu` | Serialized isolated Docker agent builds and scoped macOS CPU monitor; see [resource controls](resource-controls.md) |
 | Development | `bb pr <operation>` | Repository-scoped GitHub CLI wrapper; session attribution on create/edit |
+| Development | `bb dev:setup` | Prepare/repair pinned local Python icon tools; also runs before development application startup |
 | Development | `bb hooks`, `bb pair <operation>` | Per-checkout setup and installed re-frame-pair skill |
 | Renderer tests | `bb ssr:fixtures [--worker path]` | Actual compiled generic Node renderer; generates browser hydration fixtures |
 | Browser tests | `bb test:browser [--port 4002]` | Static component suite and fixtures; loopback HTTP-kit server (`--glass-output PATH` serves the focused glass suite/playground) |
