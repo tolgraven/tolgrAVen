@@ -88,9 +88,10 @@ sessions' tabs and restore any borrowed tab when finished.
   verification records; archive the latter before removing the worktree.
 - From another checkout, run `bb cleanup --worktree <task-path> --remove-worktree`
   to inspect the plan, then add `--apply`. The command requires a clean registered
-  feature worktree, an exact merged PR head present in `origin/master`, no open
-  follow-up PR and no processes, build reservations or container mounts using its
-  directory (including cache-disabled and older builds). It archives ignored task data
+  feature worktree whose HEAD matches the head or exact merge commit of a merged
+  PR in `origin/master`, no open follow-up PR, and no processes, build reservations
+  or container mounts using its directory (including cache-disabled and older builds).
+  It archives ignored task data
   under the primary checkout's `.local-wip/task-archives`, preserves branch refs,
   and uses ordinary `git worktree remove` without force. Detached or ambiguous
   worktrees require manual investigation; age or ahead/behind counts are not proof.
