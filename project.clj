@@ -121,7 +121,13 @@
    :source-uri "https://github.com/tolgraven/tolgraven/blob/master/{filepath}#L{line}"}
 
   :profiles
-  {:provided {:dependencies [[thheller/shadow-cljs "3.5.7"]
+  {:antq {:dependencies ^:replace [[org.clojure/clojure "1.12.6"]
+                                   [com.github.liquidz/antq "2.11.1276"]]
+          :source-paths ^:replace []
+          :resource-paths ^:replace []
+          :plugins ^:replace []
+          :prep-tasks ^:replace []}
+   :provided {:dependencies [[thheller/shadow-cljs "3.5.7"]
                              [com.cognitect/transit-cljs "0.8.280"]
                              [cljs-ajax "0.8.4"]
                              [com.andrewmcveigh/cljs-time "0.5.2"]

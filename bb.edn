@@ -11,6 +11,9 @@
              [test.server :as server])
   pr {:doc "Wrap gh pr with owning/contributing Codex session attribution"
       :task (apply pr/-main *command-line-args*)}
+  deps:outdated {:doc "Check Lein, Shadow, Babashka and Actions versions with pinned antq"
+                 :task (apply process/shell "lein" "with-profile" "antq" "run" "-m" "antq.core"
+                              "--skip=gradle" "--no-changes" *command-line-args*)}
   hooks {:doc "Install the tracked image and Codex session hooks"
          :task (staged/install!)}
   images {:doc "Convert bundled images, or explicit paths [--force] [--] [files...]"

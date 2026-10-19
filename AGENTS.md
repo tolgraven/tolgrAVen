@@ -338,6 +338,8 @@ maintain a duplicate handwritten variable catalog.
   live in `test/experiments` and require that profile.
 - Keep Ring mocks in `:project/test`, prototype dependencies/source paths in `:experiments`, and the S3 wagon in `:s3-publish`.
 - The personal `deploy-private` alias uses `lein-shell` and AWS CLI with a seeded local Maven staging repository; see `doc/dependencies.md` and `doc/lein-profiles.clj`.
+- `bb deps:outdated` runs pinned antq in an isolated tooling profile for Lein,
+  Shadow, Babashka and Actions; keep npm checks separate.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
 
 ## Docker dependency updates
