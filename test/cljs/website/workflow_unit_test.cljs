@@ -1682,6 +1682,7 @@
                                         :github/commit-count 0
                                         :github/website-url "https://github.com/owner/repo"
                                         :github/commits []
+                                        :github/commit-view :commits
                                         :github/more? true
                                         nil)))
                               ([_ _] (r/atom nil)))]
