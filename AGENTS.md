@@ -236,7 +236,7 @@ sessions' tabs and restore any borrowed tab when finished.
   neorepl client; keep CIDER/Piggieback/Shadow middleware aligned with the original
   `:repl-options`. `lein repl-classic` retains the original Lein task. Both call
   the existing `user/start`, which checks/rebuilds CSS before HTTP and owns one
-  supervised Sass/PostCSS watcher. Development browser compilation and HTML/CSS/chunk
+  supervised Sass Embedded/PostCSS watcher. Development browser compilation and HTML/CSS/chunk
   delivery recheck source/output digests; failures return 503 rather than stale CSS.
   CSS writers share the kernel lock and atomic output publication. `(stop)`/JVM exit
   stop only the owned watcher. See `doc/styles.md`; `npm run dev` is optional standalone use.
