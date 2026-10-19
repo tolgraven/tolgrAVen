@@ -5,6 +5,7 @@
             [clojure.string :as string]
             [clojure.walk :as walk]
             [website.media.pipeline :as media]
+            [website.fonts.icons :as icons]
             [website.config :as config]
             [website.page-router :as pages]
             [clojure.tools.logging :as log]
@@ -91,30 +92,39 @@
                                       (do (log/warn "Module startup content unavailable" (name k))
                                           content)))))
                            (select-keys previous optional) optional))
-         value (merge (select-keys previous ks) shell modules)]
+         value (merge (select-keys previous ks) shell modules)
+         icon-fonts (icons/prepare! (icons/content-selection value))]
      (when (.isInterrupted (Thread/currentThread))
        (throw (InterruptedException. "Module startup content refresh interrupted")))
      ;; An inline save can finish while the refresh is reading Strapi. Its
      ;; authoritative snapshot must win over this older request.
      (if (compare-and-set! *immediate original
-                          (cond-> {:source source, :content value}
+                          (cond-> {:source source, :content value, :icon-fonts icon-fonts}
                             (and (= source (:source original)) (:edit-revision original))
                             (assoc :edit-revision (:edit-revision original))))
        value (:content @*immediate)))))
 
 (defn install-edited! [sections]
-  (let [source (:url (settings))
-        now (System/currentTimeMillis)]
-    (locking *cache
-      (swap! *cache update source
-             #(reduce-kv (fn [entries k value] (assoc entries k {:at now, :value value}))
-                         (or % {}) sections))
-      (swap! *immediate
-             (fn [snapshot]
-               (if (= source (:source snapshot))
-                 (-> snapshot
-                     (update :content merge sections)
-                     (update :edit-revision (fnil inc 0))) snapshot))))))
+  (let [source (:url (settings))]
+    (loop []
+      (let [original @*immediate
+            content' (merge (:content original) sections)
+            icon-fonts (icons/prepare! (icons/content-selection content'))
+            snapshot' (if (= source (:source original))
+                        (-> original
+                            (assoc :content content' :icon-fonts icon-fonts)
+                            (update :edit-revision (fnil inc 0))) original)
+            published (locking *cache
+                        ;; Preparation stays outside cache locks. An overlapping
+                        ;; publication must retry against its new content/fonts.
+                        (when (compare-and-set! *immediate original snapshot')
+                          (let [now (System/currentTimeMillis)]
+                            (swap! *cache update source
+                                   #(reduce-kv (fn [entries k value]
+                                                 (assoc entries k {:at now, :value value}))
+                                               (or % {}) sections)))
+                          {:snapshot snapshot'}))]
+        (if published (:snapshot published) (recur))))))
 
 (defn edit-revision
   "Server-only cache identity: configured source plus its inline publication count."
@@ -122,6 +132,10 @@
   (let [source (:url (settings))
         snapshot @*immediate]
     [source (if (= source (:source snapshot)) (or (:edit-revision snapshot) 0) 0)]))
+
+(defn icon-font-css []
+  (when (= (:source @*immediate) (:url (settings)))
+    (get-in @*immediate [:icon-fonts :css])))
 
 (defn immediate-content []
   (let [{:keys [source content]} @*immediate]

@@ -39,7 +39,7 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   edits using existing exports retain HMR. See `doc/markdown-authoring.md`.
   Its bundle depends on Markdown so shared parsing packages remain in that lazy
   ancestor rather than main. Dynamic Home service icons use the acquisition-only
-  loader trigger with a quarter-viewport lead for their fallback catalog/font;
+  loader trigger with a quarter-viewport lead for their compatibility selectors;
   do not mount an empty module view with a section-shaped pending placeholder.
 
 - Page specs may declare `:shell {:chrome? false}` for dedicated workspaces; the
@@ -293,8 +293,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Preserve their original font metrics and rasterization; SVG exports remain
   available as assets. Feature ownership comes from its module folder or explicit
   `:module`; shared components use the shell. Header links retain native button
-  typography. The shell supplies the small font faces; keep the fixed border
-  baseline independent of route overrides. Regenerate assets with `bb fonts:icons`.
+  typography. The backend supplies prepared subset faces in the SSR head; keep
+  the fixed border baseline independent of route overrides. Regenerate assets with `bb fonts:icons`.
   See `doc/styles.md`.
 - The root-merged `:font` feature keeps initial text visible and uses re-frame
   readiness/fade events for a late face. Own the font CSS in its consumer module;
@@ -410,8 +410,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Closed Settings contributes no DOM or CSS-variable reads; its view and styles
   belong to `:settings` and activate on open intent. Dynamic glyph consumers use
   the pure `components.icon/<icon>`. Their call sites explicitly acquire the full
-  `:icon-catalog` sheet for unknown CMS names; known selectors and subset fonts
-  remain in the small icon sheet. Basic components do not acquire optional modules.
+  `:icon-catalog` sheet for unknown names; known selectors remain in the small
+  icon sheet and font faces come from the synchronized backend snapshot. Basic components do not acquire optional modules.
   Include newly split SSR components in the eager Node worker spec map and verify
   their actual markup in fixtures before checking hydration identity.
   Contact email/toggle markup stays in the shell; the popup view/styles belong
@@ -552,10 +552,12 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   `:ssr`, `:dev`); `.cljs` cannot contain reader conditionals. Keep these separate
   from shared JVM contracts and do not infer a server renderer from the extension.
 
-- Icon faces use small application subsets with disjoint Unicode ranges and the
-  original full fonts as on-demand fallbacks. Keep CMS-driven names in
-  `resources/icon-fonts.json`; regenerate after adding literal icons. The deferred
-  icon bundle and font URLs are fingerprinted by Optimus. See `doc/styles.md`.
+- Backend CMS syncs prepare icon subsets before publishing content; SSR emits
+  their face CSS with immutable subset URLs. Production CSS must not reference
+  full-font fallbacks. The CMS has no icon-editing controls yet; seeded Services,
+  CV and footer references share the explicit backend/authoring content reader.
+  Add future typed glyph fields at that sync boundary. Regenerate declared glyph selection
+  and selector assets with `bb fonts:icons`. See `doc/styles.md`.
 
 - Link Preview acquires readable text/image data only when opened through the
   managed URL source. Render remote content as text in site styles; an optional

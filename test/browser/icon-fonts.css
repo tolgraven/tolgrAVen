@@ -1,0 +1,18 @@
+/* Generated baseline faces for standalone component fixtures only. */
+@font-face {
+  font-family: "Font Awesome 5 Free";
+  font-style: normal;
+  font-weight: 900;
+  font-display: auto;
+  src: url("/webfonts/fa-solid-900-core.woff2") format("woff2");
+  unicode-range: U+20, U+F004, U+F007-F008, U+F00C-F00D, U+F013, U+F036, U+F044, U+F053-F054, U+F060-F063, U+F086, U+F0A1, U+F0AC, U+F0B1, U+F0C1, U+F0C5, U+F0E0, U+F0EB, U+F102, U+F104-F107, U+F109, U+F110-F111, U+F121, U+F12A, U+F141, U+F188, U+F19D, U+F1EC, U+F3E5, U+F559, U+F56B, U+F595, U+F5AC;
+}
+
+@font-face {
+  font-family: "Font Awesome 5 Brands";
+  font-style: normal;
+  font-weight: 400;
+  font-display: auto;
+  src: url("/webfonts/fa-brands-400-core.woff2") format("woff2");
+  unicode-range: U+20, U+F08C, U+F099-F09B, U+F167, U+F16D, U+F1A0, U+F1BE;
+}

@@ -9,6 +9,7 @@
             [website.config :as config]
             [website.content.contract :as contract]
             [website.page-router :as pages]
+            [website.fonts.icons :as icons]
             [website.content.service :as content]))
 
 (use-fixtures :each
@@ -275,3 +276,63 @@
         (is (= ["document" "blog"] @*calls))
         (is (= snapshot @content/*immediate)))
       (finally (Thread/interrupted) (reset! content/*immediate original)))))
+
+(deftest cms-refresh-publishes-content-with-ready-fonts-and-retains-last-good-on-failure
+  (let [original @content/*immediate
+        fail? (atom false)]
+    (try
+      (reset! content/*immediate nil)
+      (with-redefs [content/settings (constantly {:url nil})
+                    pages/immediate-keys (constantly [:document :footer])
+                    icons/prepare! (fn [_] (if @fail? (throw (ex-info "codec failed" {}))
+                                             {:css "ready-fonts"}))]
+        (content/refresh-immediate! false)
+        (is (= "ready-fonts" (content/icon-font-css)))
+        (let [ready @content/*immediate]
+          (reset! fail? true)
+          (is (thrown? clojure.lang.ExceptionInfo (content/refresh-immediate! false)))
+          (is (= ready @content/*immediate))
+          (is (thrown? clojure.lang.ExceptionInfo (content/install-edited! {:footer []})))
+          (is (= ready @content/*immediate))))
+      (finally (reset! content/*immediate original)))))
+
+(deftest overlapping-publications-retry-fonts-against-the-content-they-actually-merge
+  (let [original @content/*immediate
+        first-prepared (promise)
+        release-first (promise)
+        held? (atom false)
+        updates (atom [])]
+    (try
+      (reset! content/*immediate
+              {:source "https://icons.test"
+               :content {:services {:categories [["Software" "code" []]]}
+                         :footer [{:links [{:icon "github"}]}]}})
+      (with-redefs [content/settings (constantly {:url "https://icons.test"})
+                    icons/prepare! (fn [selected]
+                                     (when (and (contains? (:solid selected) 61440)
+                                                (compare-and-set! held? false true))
+                                       (deliver first-prepared true)
+                                       (when (= ::timeout (deref release-first 10000 ::timeout))
+                                         (throw (ex-info "Publication test timed out" {}))))
+                                     {:css (pr-str selected)})]
+        (let [first-update (future (content/install-edited!
+                                    {:services {:categories [["Bar" "glass-martini" []]]}}))]
+          (swap! updates conj first-update)
+          (is (true? (deref first-prepared 5000 ::timeout)))
+          (let [second-update (future (content/install-edited!
+                                       {:footer [{:links [{:icon "apple"}]}]}))]
+            (swap! updates conj second-update)
+            (is (not= ::timeout (deref second-update 5000 ::timeout))
+                "Another publication must not wait behind font preparation")
+            (deliver release-first true)
+            (is (not= ::timeout (deref first-update 5000 ::timeout)))
+            (let [snapshot @content/*immediate]
+              (is (= {:solid #{61440}, :brands #{61817}}
+                     (edn/read-string (get-in snapshot [:icon-fonts :css]))))
+              (is (= "glass-martini" (get-in snapshot [:content :services :categories 0 1])))
+              (is (= "apple" (get-in snapshot [:content :footer 0 :links 0 :icon])))
+              (is (= 2 (:edit-revision snapshot)))))))
+      (finally
+        (deliver release-first true)
+        (doseq [update @updates] (future-cancel update))
+        (reset! content/*immediate original)))))

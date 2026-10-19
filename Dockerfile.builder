@@ -10,9 +10,11 @@ FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddf
 FROM --platform=$TARGETPLATFORM babashka/babashka:1.13.225@sha256:0dd6985b8492b3bde9defbd95a7e7daf7d6fcb08102df9de4f07337f99d000a2 AS runtime-babashka
 FROM --platform=$TARGETPLATFORM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS runtime-node
 FROM --platform=$TARGETPLATFORM eclipse-temurin:21-jre-jammy@sha256:f04fb34e053148344e83317976114ec3f37e4b830ec8bdab5a2fe3cecd7d010b AS runtime-dependencies
-ENV MAGICK_THREAD_LIMIT=1
+ENV MAGICK_THREAD_LIMIT=1 PYTHONPATH=/opt/fonttools
 RUN apt-get update \
- && apt-get install -y --no-install-recommends imagemagick webp \
+ && apt-get install -y --no-install-recommends imagemagick webp python3-pip \
+ && python3 -m pip install --no-cache-dir --no-deps --target /opt/fonttools fonttools==4.60.2 Brotli==1.2.0 \
+ && python3 -c "from fontTools import subset; import brotli" \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=runtime-babashka /usr/local/bin/bb /usr/local/bin/bb
 COPY --from=runtime-node /usr/local/bin/node /usr/local/bin/node
@@ -27,9 +29,11 @@ FROM clojure:temurin-21-lein-bookworm-slim@sha256:12d1d3d51f3aa9b4f1c643a084b6e1
 COPY --from=babashka /usr/local/bin/bb /usr/local/bin/bb
 RUN bb --version
 # Media generation and backend codec tests use the ordinary dependency prefab.
-ENV MAGICK_THREAD_LIMIT=1
+ENV MAGICK_THREAD_LIMIT=1 PYTHONPATH=/opt/fonttools
 RUN apt-get update \
- && apt-get install -y --no-install-recommends imagemagick webp \
+ && apt-get install -y --no-install-recommends imagemagick webp python3-pip \
+ && python3 -m pip install --no-cache-dir --no-deps --target /opt/fonttools fonttools==4.60.2 Brotli==1.2.0 \
+ && python3 -c "from fontTools import subset; import brotli" \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir /tmp/image-codec-check \
  && convert -size 16x16 xc:red /tmp/image-codec-check/image.png \

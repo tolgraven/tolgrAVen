@@ -296,14 +296,14 @@ fractional baselines and control dimensions. SVG masks have different line metri
 at some font sizes and must not replace these glyphs during technical refactors.
 Shared glyph rules compile into the shell; feature rules get an automatically
 catalogued `icons-<module>.min.css` dependency. Shared icons satisfy feature
-requirements without duplicate rules. The small subset font faces are available
-in the shell response; the full utility/catalog sheet stays deferred. Existing
+requirements without duplicate rules. The backend-prepared subset font faces are available
+in the document head; the full utility/catalog sheet stays deferred. Existing
 Reagent `:i.fab.fa-github`/`:i.fas.fa-copy` markup, `currentColor` and native text
 clipping for gradients remain usable. Font selection and original auto display
 policy remain browser-owned.
-Regenerate after changing declarations; commit generated SVGs, fonts and SCSS
+Regenerate after changing declarations; commit generated SVGs, glyph selection and SCSS
 together. The generator removes stale files only in its owned generated paths.
-Normal CSS (and Docker) builds use these committed outputs, without Python/fontTools.
+CSS builds use the committed declarations; backend CMS syncs prepare the actual WOFF2 subsets.
 
 Shadow tracks existing icon declaration sources for incremental changes. Restart
 the watch after introducing an icon declaration in a previously untracked source.
@@ -312,35 +312,56 @@ execute frontend code or create a runtime schema inventory.
 
 ## Icon fonts
 
-The deferred `icons.css` bundle uses generated selectors for source/catalog glyphs,
-shared Font Awesome utilities and generated font faces in one compressed output.
-The shell also includes the face declarations for its declared native glyphs.
-Development links that same watched output. Optimus fingerprints the sheet and
-rewrites all of its font URLs, so repeat visits can reuse font bytes without
-caching mutable original paths.
+The deferred `icons.css` bundle contains generated glyph selectors and shared
+Font Awesome utilities. Font faces belong to backend CMS synchronization, rather
+than Optimus or a build-time font binary. `bb fonts:icons` writes the declared
+source/catalog/seed codepoints to `resources/icon-subsets.json`; its SVG and selector
+authoring still uses the original vendored fonts. Retained legacy core font files
+and generated face SCSS are not referenced by production stylesheet entries.
+Standalone browser fixtures receive `test/browser/icon-fonts.css` from their
+fixture server, using baseline core files regenerated with the same subset codec.
 
-`bb fonts:icons` regenerates small WOFF2 faces from the vendored originals. It
-collects literal `fa-*` names from application source and the CMS-driven names in
-`resources/icon-fonts.json`; commit that catalog, the generated SCSS and both fonts.
-The generated faces have disjoint Unicode ranges: known glyphs use the small
-fonts, while other glyphs acquire the original full font when actually rendered.
-A failed subset request can also fall back to the full font through native CSS
-source selection.
-Keep full originals available for regeneration. Dynamic icon consumers render
-the pure `components.icon/<icon>` and explicitly acquire `:icon-catalog` for an
-unknown name, including its CSS-before-code readiness. Known names
-never load that compatibility sheet. Regenerate after
-adding literal icons, changing catalog names, or replacing the vendored fonts.
+`website.fonts.icons/prepare!` combines the declared selection with an optional,
+validated per-family codepoint set, then runs the bounded Python/fontTools codec.
+The CMS currently exposes no icon-editing controls, but seeded Services categories,
+CV column classes and footer links already carry icon references. The shared
+`website.content.icons/references` reader follows those exact typed paths for both
+authoring and backend sync; it never scans arbitrary prose. The declared seed
+inventory covers initial documents and later SPA visits. Refreshes and inline
+publications add references from their current synchronized sections. New editable
+icon fields must extend this reader and publish updated font resources to open
+clients; do not restore full-font browser fallbacks.
 
-Generation uses Python with `fonttools==4.60.2` and `Brotli==1.2.0`. These are
-optional authoring tools, not server or Docker build dependencies; normal CSS
-builds compile the committed generated SCSS. For an isolated setup, install them
-in a virtual environment and run `bb fonts:icons` with that environment on PATH.
-The generator retains font license/copyright records and names derivative fonts
-separately. The subset face also includes U+20 in its CSS range to retain the
-original line-box baseline; this does not add a glyph or overlap the full-font
-fallback range. Verify glyph outlines/metrics, fresh-browser requests, the full-font
-fallback and cache headers after changing it.
+Preparation happens before CMS content publication, outside cache locks. Unchanged
+selections reuse the existing result. Both subsets must finish and validate their
+exact codepoint coverage, original outlines and advance metrics before publication.
+A failure retains the last published content/font pair; initial production startup
+requires successful preparation. The existing refresh worker retries failures.
+
+SSR emits the prepared face CSS in the initial head, including error documents and
+local-return templates. Faces reference only content-addressed subset URLs under
+`/webfonts/icons/fa-solid-900-<sha256>.woff2` and
+`/webfonts/icons/fa-brands-400-<sha256>.woff2`; full originals are never CSS fallback
+sources. Internal description metadata names the parent family and original font
+filename, while the subset retains its own distinct family/PostScript identities. U+20 remains in
+the CSS range to preserve original inline line-box metrics, without adding a glyph.
+Font family, weight, auto display policy and browser rasterization remain unchanged.
+The original full fonts stay available as codec inputs from the packaged
+resources, retaining their existing public asset paths.
+
+The backend retains issued font bytes for its process lifetime, so refreshing a
+selection does not break older documents. GET/HEAD font delivery runs before
+browser sessions and uses immutable caching, exact lengths and content ETags;
+unknown URLs receive uncached errors. Preparation never runs during asset requests
+or per-page SSR. After a process/container replacement, its current CMS sync
+recreates the current selection; historical dynamic selections are not persisted.
+Persistent historical versions must accompany the eventual CMS icon-field feature.
+
+The dependency prefab supplies Python/fontTools and Brotli in the compiler and
+runtime roots. Local backend development also requires these tools; for an isolated
+setup, install `fonttools==4.60.2` and `Brotli==1.2.0` in a virtual environment and
+start the backend with that environment on PATH. The packaged codec lives at
+`resources/fonts/subset.py`; no runtime repository checkout is needed.
 
 Build CSS as UTF-8 without a byte-order marker (`charset: false` in Sass). The
 server also strips a leading marker before inlining third-party/optimized sheets;

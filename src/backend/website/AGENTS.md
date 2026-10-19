@@ -64,8 +64,9 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   classes. Never infer an SSR renderer from browser-only release inputs.
 - Optimus fingerprints the shell and each declared module stylesheet independently;
   shared styles keep one URL across consumer modules. A separate deferred icon
-  bundle uses one Sass-compressed selector/font-face sheet; Optimus fingerprints
-  its fonts and rewrites CSS references. Development-only inspector
+  bundle uses one Sass-compressed selector/utility sheet. Backend CMS synchronization
+  prepares icon WOFF2 subsets before content publication; SSR emits the paired face
+  CSS with immutable runtime subset URLs. Do not restore full-font CSS fallbacks. Development-only inspector
   rules use a separate unbundled sheet; normal and error documents share the shell
   stylesheet policy. Emit
   route dependency styles and actually rendered SSR module
@@ -82,7 +83,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   Strip a leading UTF-8 marker when inlining CSS so its first selector remains valid.
 - Shell text fonts use local variable WOFF2 subsets with their original Unicode
   ranges. Keep the Latin preload aligned with its prepared CSS URL; independent
-  feature/icon fonts must remain outside `styles.css`. See `doc/styles.md`.
+  feature fonts remain outside `styles.css`; icon faces belong to the synchronized
+  backend subset snapshot. See `doc/styles.md`.
 - Keep SDK and app scripts ordered and deferred, including local-return templates. Emit no analytics metadata,
   queue or scripts; the browser initializes it only after hydration and page readiness.
   SSR hydration preloads follow only the route’s Shadow dependency graph; other

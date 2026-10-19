@@ -271,6 +271,8 @@
                          "/css/website/modules/monospace.min.css"
                          "/css/website/modules/markdown.min.css"
                          "/css/website/modules/icons-blog.min.css"]
+                 "cv" ["/css/website/modules/cv.min.css"
+                       "/css/website/modules/icons-cv.min.css"]
                  [(str "/css/website/modules/" absent ".min.css")])
                (get (json/read-str
                       (second (re-find #"<script[^>]*id=\"module-styles\"[^>]*>(.*?)</script>" body))) absent)))))))
@@ -392,3 +394,12 @@
                             (layout/initial-styles
                               {:uri "/blog/post/17" :ssr {:snapshot {:module-views {:user [:view]}}}}
                               manifest)))))))
+
+(deftest prepared-subset-css-is-in-the-initial-head-and-error-documents
+  (with-redefs [config/env {:dev true :ssr {:enabled false}}
+                content/icon-font-css (constantly "@font-face{src:url(/webfonts/icons/prepared.woff2)}")
+                ohtml/link-to-js-bundles (fn [& _] nil)]
+    (doseq [body [(:body (layout/render-home {:uri "/"}))
+                  (:body (layout/error-page {:request {} :status 503}))]]
+      (is (.contains body "data-icon-fonts"))
+      (is (< (.indexOf body "/webfonts/icons/prepared.woff2") (.indexOf body "</head>"))))))

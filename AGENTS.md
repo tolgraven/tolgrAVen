@@ -272,7 +272,7 @@ sessions' tabs and restore any borrowed tab when finished.
   It also writes a source-map-based `report.html`/`report.json` identifying each
   source's actual optimized contribution.
 - `npm run build`: produce shared CSS, a development-only inspector sheet, a
-  compressed icon selector/font-face sheet, and independent feature sheets.
+  compressed icon selector/utility sheet, and independent feature sheets.
   `bb site:resolve` snapshots CMS variable CSS beside capability selections.
   Parse it as plain custom-property CSS before output writes and append it only
   after the shell defaults; keep it in style freshness/watch inputs and out of
@@ -287,8 +287,8 @@ sessions' tabs and restore any borrowed tab when finished.
   fingerprints each bundle separately. Production packaging prepares its inventory
   once; runtime imports the validated artifact without minification or image conversion.
   Literal component/module `:icons` export native font-glyph rules into the same
-  style inventory; small font faces live in the shell. `bb fonts:icons` also retains
-  committed SVG exports. Preserve original glyph metrics and rasterization.
+  style inventory; backend CMS syncs prepare icon subsets and emit their faces in
+  the SSR head. `bb fonts:icons` also retains committed SVG exports. Preserve original glyph metrics and rasterization.
   Text faces stay consumer-scoped; `defc`'s `:font` feature owns controlled late
   upgrades independently of stylesheet/module readiness.
   Production asset preparation prunes unused selectors, custom properties,
@@ -297,8 +297,8 @@ sessions' tabs and restore any borrowed tab when finished.
   complete. See `doc/styles.md` for source ownership and loading behavior.
 - `bb images:responsive [--force]`: discover still raster originals with longest edge ≥960, native width >320 and source size ≥64 KiB and rebuild the responsive catalog's sized AVIF/WebP assets.
 - `bb videos:responsive`: rebuild the opt-in video catalog's mobile renditions.
-- `bb fonts:icons`: regenerate small application icon fonts and full-font Unicode
-  fallbacks with optional Python authoring tools; see `doc/styles.md`.
+- `bb fonts:icons`: regenerate icon SVGs, selectors and backend glyph selection
+  with optional Python authoring tools; see `doc/styles.md`.
 - `npm run init`: bootstrap CSS output, locked local npm tools, and the vendored SDK.
 - `make hooks`: install the tracked pre-commit hook; staged public JPG/PNG images
   generate staged WebP/AVIF variants without including unstaged source edits.

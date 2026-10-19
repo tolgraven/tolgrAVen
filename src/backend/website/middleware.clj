@@ -37,6 +37,7 @@
     ; [ring.middleware.logger :refer [wrap-with-logger]]
     [website.loader.style-catalog :as styles]
     [optimus.assets :as assets]
+    [website.fonts.icons :as icons]
     [taoensso.telemere.timbre :as timbre :refer [debug log error]]
     ))
 
@@ -263,6 +264,7 @@
         delivery/wrap-public-resources
         ; (wrap-file "resources/public" {:prefer-handler? true}) ; preserved file-serving experiment
         wrap-optimus
+        icons/wrap-assets
         ;; One response policy covers plain resources, Optimus and routed bodies.
         (wrap-content-type {:mime-types {"avif" "image/avif"}})
         (wrap-default-charset "utf-8")
