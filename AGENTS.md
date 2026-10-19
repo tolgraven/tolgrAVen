@@ -327,6 +327,9 @@ maintain a duplicate handwritten variable catalog.
   Piggieback in Shadow's separate nREPL configuration. Keep the cold-start timeout
   large enough for cold application initialization; watches run afterward.
   See `doc/dependencies.md`.
+- Provisioning uses next.jdbc with unqualified lower-case result keys. Schema apply joins
+  its supplied transaction; standalone table imports retain atomic inserts and row defaults.
+  Keep the retained java.jdbc SQL prototype in `:experiments`.
 - Keep Ring mocks in `:project/test`, prototype dependencies/source paths in `:experiments`, and the S3 wagon in `:s3-publish`.
 - The personal `deploy-private` alias uses `lein-shell` and AWS CLI with a seeded local Maven staging repository; see `doc/dependencies.md` and `doc/lein-profiles.clj`.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.

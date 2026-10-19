@@ -20,7 +20,7 @@
                  [expound "0.9.0"]
                  [metosin/malli "0.20.3"]
 
-                 [org.clojure/java.jdbc "0.7.12"]
+                 [com.github.seancorfield/next.jdbc "1.3.1118"]
                  [org.postgresql/postgresql "42.7.14"]
                  [cprop "0.1.21"] ;env loading
                  [clj-http "3.13.1"]
@@ -179,7 +179,8 @@
                   :dependencies [[re-frisk "1.7.1"]
                                  [day8.re-frame/re-frame-10x "1.12.3" :exclusions [superstructor/re-highlight]]]}
    :experiments {:source-paths ["experiments/clj"]
-                 :dependencies [[honeysql "1.0.461"]
+                 :dependencies [[org.clojure/java.jdbc "0.7.12"]
+                                [honeysql "1.0.461"]
                                 [differ "0.3.3"]
                                 [ring-ratelimit "0.2.3"]
                                 [radicalzephyr/ring.middleware.logger "0.6.0"]

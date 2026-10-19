@@ -1,7 +1,9 @@
 (ns website.provision.supabase.import
   (:require
    [clojure.data.json :as json]
-   [clojure.java.jdbc :as jdbc]
+   [next.jdbc :as jdbc]
+   [next.jdbc.sql :as sql]
+   [next.jdbc.transaction :as transaction]
    [clojure.string :as string]
    [website.platform.supabase :as supabase]
    [website.provision.supabase.config :as config]
@@ -15,10 +17,10 @@
    (let [tables (supabase/delete-order)]
      (when (seq tables)
        (if (supabase/jdbc-available?)
-         (jdbc/db-do-commands
+         (jdbc/execute!
           (or db (supabase/database-spec))
-          (str "truncate table " (string/join ", " (map name tables))
-               " restart identity"))
+          [(str "truncate table " (string/join ", " (map name tables))
+               " restart identity")])
          (doseq [table tables]
            (supabase/reset-table-rest! table)))))))
 
@@ -29,9 +31,12 @@
      (doseq [table (supabase/table-order)
              :let [rows (get seed (:seed-key (supabase/table-config table)))]]
        (when (seq rows)
-         (jdbc/insert-multi! (or db (supabase/database-spec))
-                             table
-                             (map #(supabase/prepare-row table %) rows))))
+         ;; Preserve java.jdbc's joined transaction semantics, including callers
+         ;; supplying a db spec and rows with different optional columns.
+         (binding [transaction/*nested-tx* :ignore]
+           (jdbc/with-transaction [tx (or db (supabase/database-spec))]
+             (doseq [row rows]
+               (sql/insert! tx table (supabase/prepare-row table row)))))))
      (doseq [table (supabase/table-order)
              :let [rows (get seed (:seed-key (supabase/table-config table)))]]
        (supabase/upsert-rest! table rows)))
@@ -54,11 +59,12 @@
    (let [seed (export->seed export-path)]
      (when-not (supabase/jdbc-available?)
        (throw (ex-info "Full import requires direct Postgres access" {})))
-     (jdbc/with-db-transaction [tx (supabase/database-spec)]
-       (schema/apply-schema! tx)
-       (reset-data! tx)
-       (import-seed! tx seed)
-       (schema/apply-schema! tx))
+     (binding [transaction/*nested-tx* :ignore]
+       (jdbc/with-transaction [tx (supabase/database-spec)]
+         (schema/apply-schema! tx)
+         (reset-data! tx)
+         (import-seed! tx seed)
+         (schema/apply-schema! tx)))
      seed)))
 
 (defn- upsert-rows! [db table rows]
@@ -100,9 +106,10 @@
                     (doseq [[table rows] changes :when (seq rows)]
                       (upsert-rows! db table rows)))]
        (if (supabase/jdbc-available?)
-         (jdbc/with-db-transaction [tx (supabase/database-spec)]
-           (apply! tx)
-           (schema/apply-schema! tx))
+         (binding [transaction/*nested-tx* :ignore]
+           (jdbc/with-transaction [tx (supabase/database-spec)]
+             (apply! tx)
+             (schema/apply-schema! tx)))
          (apply! nil)))
      {:scope scope
       :collections (sort collections)})))

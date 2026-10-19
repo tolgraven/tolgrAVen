@@ -1,6 +1,7 @@
 (ns website.supabase-catalog-test
   (:require [clojure.test :refer [deftest is testing]]
-            [clojure.java.jdbc :as jdbc]
+            [next.jdbc :as jdbc]
+            [next.jdbc.sql :as sql]
             [clojure.string :as string]
             [website.config :as config]
             [website.build.modules :as modules]
@@ -15,7 +16,8 @@
   (with-redefs [config/env {}]
     (is (= #{:site_users :auth_roles :blog_posts :blog_comments :chat_messages
              :service_configs :store_documents :site_media} (set (platform/table-order))))
-    (is (= #{:comment_votes :user_documents :github_repositories :github_commits}
+    (is (= #{:comment_votes :user_documents :github_repositories :github_commits
+             :website_search_documents :website_search_consumers :website_search_jobs}
            (set (remove (set (platform/table-order)) (platform/delete-order)))))
     (doseq [{:keys [table references]} (platform/table-definitions)
             dependency references]
@@ -73,8 +75,9 @@
       (with-redefs [config/env (options {:blog {:enabled false} :gpt {:enabled false}})
                     platform/jdbc-available? (constantly jdbc?)
                     platform/database-spec (constantly {})
-                    jdbc/query (fn [_ [sql]] (swap! reads conj sql) [])
-                    jdbc/insert-multi! (fn [_ table rows] (swap! writes conj table))
+                    jdbc/transact (fn [_ f _] (f :fixture-connection))
+                    jdbc/execute! (fn [_ [sql] _] (swap! reads conj sql) [])
+                    sql/insert! (fn [_ table row] (swap! writes conj table))
                     platform/request! (fn [method table _] (swap! reads conj table) {:body []})
                     platform/upsert-rest! (fn [table rows] (when (seq rows) (swap! writes conj table)))]
         (is (not (contains? (platform/fetch-seed) :blog_posts)))
@@ -89,7 +92,7 @@
     (with-redefs [config/env {}
                   platform/database-spec (constantly {})
                   platform/jdbc-available? (constantly true)
-                  jdbc/query (fn [_ [query]] (swap! sql conj query) [])]
+                  jdbc/execute! (fn [_ [query] _] (swap! sql conj query) [])]
       (platform/fetch-seed)
       (is (some #{"select role,user_id from auth_roles order by role asc,user_id asc"} @sql))
       (is (some #{"select * from blog_comments order by ts asc,id asc"} @sql)))
@@ -105,7 +108,7 @@
     (with-redefs [config/env {}
                   platform/jdbc-available? (constantly true)
                   platform/database-spec (constantly {})
-                  jdbc/db-do-commands (fn [_ statement] (swap! sql conj statement))]
+                  jdbc/execute! (fn [_ [statement]] (swap! sql conj statement))]
       (importer/reset-data!)
       (is (string/includes? (first @sql) "comment_votes"))
       (is (string/includes? (first @sql) "user_documents"))
@@ -113,7 +116,7 @@
     (with-redefs [catalog/definitions {}
                   config/env {}
                   platform/jdbc-available? (constantly true)
-                  jdbc/db-do-commands (fn [& _] (throw (Exception. "Empty reset must be inert")))]
+                  jdbc/execute! (fn [& _] (throw (Exception. "Empty reset must be inert")))]
       (is (nil? (importer/reset-data!))))))
 
 (deftest invalid-dependency-graphs-are-rejected
