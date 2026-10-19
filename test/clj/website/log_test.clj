@@ -5,7 +5,8 @@
             [clojure.tools.logging.impl :as logging-impl]
             [taoensso.telemere :as tel]
             [taoensso.telemere.timbre :as timbre]
-            [website.log :as log])
+            [website.log :as log]
+            [mount.core :as mount])
   (:import [java.nio.file Files]
            [org.jboss.logging Logger]
            [org.slf4j LoggerFactory]))
@@ -105,3 +106,26 @@
         (write!)
         (doseq [owned-file (.listFiles directory)] (.delete owned-file))
         (.delete directory)))))
+
+
+(deftest stopped-component-diagnostics-retain-owned-output-test
+  (let [original-factory tools-log/*logger-factory*
+        original-handler (Thread/getDefaultUncaughtExceptionHandler)
+        file (.toFile (Files/createTempFile "tolgraven-stop-logging-" ".log"
+                                            (make-array java.nio.file.attribute.FileAttribute 0)))
+        write! (log/file-handler (.getPath file) 1000000 1)]
+    (try
+      (with-redefs [log/file-handler (constantly write!)]
+        (mount/start #'log/logger-timbre)
+        (mount/stop #'log/logger-timbre)
+        (timbre/info "post-stop component diagnostics")
+        (is (.contains (slurp file) "post-stop component diagnostics"))
+        (is (contains? (tel/get-handlers) :website.log/console))
+        (is (contains? (tel/get-handlers) :website.log/file)))
+      (finally
+        (tel/remove-handler! :website.log/console)
+        (tel/remove-handler! :website.log/file)
+        (alter-var-root #'tools-log/*logger-factory* (constantly original-factory))
+        (Thread/setDefaultUncaughtExceptionHandler original-handler)
+        (write!)
+        (.delete file)))))

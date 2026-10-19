@@ -77,8 +77,8 @@
                    :msg (str "Uncaught exception on " (.getName thread))}))))
   nil)
 
-;; Retain the Mount identity used by existing REPL/lifecycle callers.
+;; Retain the Mount identity used by existing REPL/lifecycle callers. Sinks
+;; survive service stops so core/user can report stopped components afterward;
+;; reinitialization replaces/closes them and Telemere closes them at JVM exit.
 (defstate ^{:on-reload :noop} logger-timbre
-  :start (init-logging)
-  :stop (do (tel/remove-handler! ::console)
-            (tel/remove-handler! ::file)))
+  :start (init-logging))
