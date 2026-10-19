@@ -40,7 +40,10 @@ Fresh output skips compilation. It runs at http://localhost:4000; a separate
 `npm run dev` is optional for CSS-only work. Development browser compilation and
 HTML/CSS/chunk requests recheck freshness, so failed builds return 503 instead of
 serving stale sheets. `(stop)` and JVM exit stop only the REPL-owned watcher. The Clojure REPL becomes available before the
-initial Shadow compilations finish. After a short deferral, the standalone
+initial Shadow compilations finish. An application startup failure (including an
+occupied HTTP port) is logged with its cause while the REPL and native Shadow
+watches still start; fix the cause and call `(start)` to retry HTTP. CSS failures
+remain a startup barrier so stale sheets cannot be served. After a short deferral, the standalone
 `:document` bootstrap is released first with its own optimized runtime. Documents
 and bootstrap requests wait for that release; unrelated assets and APIs stay
 available. Native watches then start in order: `:return-worker`, `:ssr` when

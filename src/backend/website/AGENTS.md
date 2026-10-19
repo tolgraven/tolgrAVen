@@ -283,4 +283,5 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 
 - `website.core/http-server` owns the direct Undertow adapter lifecycle. Preserve
   async streaming, WebSocket and native session options; startup/bind failures
-  propagate rather than returning a nil server.
+  propagate rather than returning a nil server. Development `user/start` logs
+  application failures and retains the REPL/native watches; CSS stays a prerequisite.

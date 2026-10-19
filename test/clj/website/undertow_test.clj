@@ -1,5 +1,15 @@
 (ns website.undertow-test
   (:require [clojure.test :refer [deftest is]]
+            [clojure.java.io :as io]
+            [clojure.spec.alpha :as spec]
+            [clojure.tools.logging :as log]
+            [nrepl.core :as nrepl]
+            [user :as user]
+            [website.dev.terminal :as terminal]
+            [website.dev.shadow :as shadow]
+            [website.dev.styles :as styles]
+            [website.routes.home :as home]
+            [website.ssr :as ssr]
             [mount.core :as mount]
             [website.core :as core]
             [website.handler :as handler]
@@ -107,3 +117,68 @@
       (try
         (is (thrown? Exception (mount/start #'core/http-server)))
         (finally (mount/stop #'core/http-server))))))
+
+
+(deftest occupied-development-http-port-retains-repl-and-native-watch-startup-test
+  (let [previous-shadow @shadow/*startup
+        previous-explain spec/*explain-out*
+        original-resolve requiring-resolve
+        original-file io/file
+        file (java.io.File/createTempFile "development-bind-repl-" ".port")
+        *events (atom [])
+        *errors (atom [])
+        resolve! (fn [symbol]
+                   (case symbol
+                     shadow.cljs.devtools.server/start! #(swap! *events conj :shadow-server)
+                     shadow.cljs.devtools.api/release! (fn [build] (swap! *events conj [:release build]))
+                     shadow.cljs.devtools.api/watch (fn [build] (swap! *events conj [:watch build]))
+                     (original-resolve symbol)))]
+    (reset! shadow/*startup nil)
+    (try
+      (with-open [occupied (ServerSocket. 0)]
+        (with-redefs [config/env {:dev true
+                                 :port (.getLocalPort occupied)
+                                 :host "127.0.0.1"
+                                 :io-threads 1
+                                 :worker-threads 2}
+                      handler/app (constantly (concurrent/wrap-async (constantly {:status 200 :body "unused"})))
+                      mount/start-without (fn [& _]
+                                            (swap! *events conj :http)
+                                            (mount/start #'core/http-server))
+                      styles/start! #(swap! *events conj :styles)
+                      home/gen-sitemap! (constantly nil)
+                      ssr/enabled? (constantly false)
+                      clojure.core/add-tap (constantly nil)
+                      clojure.core/requiring-resolve resolve!
+                      shadow/startup-delay-ms 0
+                      log/log* (fn [_ level error message]
+                                 (when (= :error level)
+                                   (swap! *errors conj {:error error :message message})))
+                      io/file (fn [& args]
+                                (if (= [".nrepl-port"] (vec args)) file (apply original-file args)))
+                      terminal/stop! (constantly nil)
+                      terminal/run-client!
+                      (fn [host port]
+                        (with-open [connection (nrepl/connect :host host :port port)]
+                          (let [client (nrepl/client connection 30000)
+                                response (doall (nrepl/message client {:op "eval" :code "(+ 20 22)"}))
+                                description (nrepl/combine-responses (nrepl/message client {:op "describe"}))]
+                            (is (some #(= "42" (:value %)) response))
+                            (is (contains? (:ops description) :cider/info))))
+                        (is (not= ::timeout (deref (:task @shadow/*startup) 5000 ::timeout)))
+                        0)]
+          (is (= 0 (terminal/run! (terminal/options [":port" "0"]))))
+          (is (= [:styles :http :shadow-server [:release :document]
+                  [:watch :return-worker] [:watch :app-dev]] @*events))
+          (is (= 1 (count @*errors)))
+          (is (re-find #"Application startup failed; REPL and Shadow watches remain available"
+                       (:message (first @*errors))))
+          (is (some #(instance? java.net.BindException %)
+                    (take-while some? (iterate ex-cause (:error (first @*errors))))))
+          (is (.isBound occupied))))
+      (finally
+        (when-let [task (:task @shadow/*startup)] (deref task 5000 nil))
+        (reset! shadow/*startup previous-shadow)
+        (alter-var-root #'spec/*explain-out* (constantly previous-explain))
+        (mount/stop #'core/http-server)
+        (io/delete-file file true)))))
