@@ -19,7 +19,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   contain literal fences inside the payload. See `doc/visual-regressions.md`.
 
 - `build/styles.mjs` compiles shell, development inspector and module CSS entries
-  with locked Sass/PostCSS, compiles the separate icon sheet and vendors
+  with locked Sass Embedded/PostCSS, reuses one asynchronous compiler across each
+  build's sequential entries and disposes it on success/failure, compiles the separate icon sheet and vendors
   Leaflet images. Emit UTF-8 without a byte-order marker so the same sheets can
   be inlined safely. `--if-stale` verifies source/tool/font/icon-declaration inputs
   and every raw/minified output before skipping compilation; development startup
@@ -55,6 +56,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   Domain changes prepend the canonical origin and retain existing proxy aliases;
   CMS rewiring must preserve ordinary compiler caching and existing credentials.
   Dockerfile owns the prefab default and persistent Maven cache on every host.
+- `ops/entrypoint-supabase-provision.sh` runs the native CLI with the isolated
+  `:provision` profile; its image supplies production environment sources/defaults.
 - `ops/`: isolated site provisioning and Coolify adapters. `ops/coolify/*.php`
   executes inside the existing Laravel container. Preserve persisted ownership
   markers even when their historical script names differ from current paths.

@@ -2,7 +2,10 @@
 
 `npm run build` compiles the shared `resources/scss/main.scss`, `dev.scss`,
 `icons.scss` and the entry files
-in `resources/scss/modules/` through the locked Sass and Autoprefixer packages.
+in `resources/scss/modules/` through the locked Sass Embedded and Autoprefixer packages.
+One asynchronous Dart Sass compiler serves the sequential entries in each build
+and is disposed on success or failure; watcher rebuilds start a fresh compiler.
+The same pinned Dart Sass version preserves compiled CSS semantics.
 Outputs are `resources/public/css/website/main.min.css`, `dev.min.css`, `icons.min.css`, and
 `modules/<feature>.min.css`. The development document alone links `dev.min.css`,
 which contains inspector styles; production shell and error pages share the same
@@ -242,8 +245,8 @@ easing. The outgoing layer supplies layout during the fade; at completion React
 removes it and retains the incoming layer as the sole accessible text. Neither
 controls nor container backgrounds fade. The feature belongs on text-only roots;
 do not duplicate inputs, IDs, component lifecycles or interactive descendants.
-The highlighter supplies its already-generated native text tree to a stable
-Reagent `PreTag` adapter, so crossfading does not mount a second formatter.
+The highlighter supplies its already-generated native text tree to its stable
+Reagent font root, so crossfading does not mount a second formatter.
 
 Readiness and phases are re-frame events; Reagent animation completion and a
 bounded `:dispatch-later` deadline remove the old layer. Already loaded initial

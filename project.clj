@@ -20,7 +20,7 @@
                  [expound "0.9.0"]
                  [metosin/malli "0.20.3"]
 
-                 [org.clojure/java.jdbc "0.7.12"]
+                 [com.github.seancorfield/next.jdbc "1.3.1118"]
                  [org.postgresql/postgresql "42.7.14"]
                  [cprop "0.1.21"] ;env loading
                  [clj-http "3.13.1"]
@@ -28,7 +28,7 @@
                  [cheshire "6.2.0"] ; clj-http's :as :json / JSON request adapter
 
                  [luminus-transit "0.1.6"]
-                 [luminus-undertow "0.1.18"]
+                 [luminus/ring-undertow-adapter "1.3.1"]
 
                  [markdown-clj "1.12.10"]
 
@@ -38,7 +38,8 @@
                  [metosin/reitit-ring "0.11.0"]
                  [metosin/reitit-middleware "0.11.0"]
                  [metosin/reitit-malli "0.11.0"]
-                 [metosin/reitit-swagger "0.11.0"]
+                 [metosin/reitit-swagger "0.11.0"] ; Legacy /api/swagger.json compatibility.
+                 [fi.metosin/reitit-openapi "0.11.0"]
                  [metosin/reitit-swagger-ui "0.11.0"]
                  [metosin/reitit-frontend "0.11.0"]
                  [metosin/reitit-dev "0.11.0"]
@@ -46,10 +47,11 @@
                  [mount "0.1.24"]
 
                  [org.clojure/tools.logging "1.3.1"]
-                 [com.taoensso/timbre "6.8.0" :exclusions [org.clojure/tools.reader]]
+                 [com.taoensso/telemere "1.4.0"]
                  [com.taoensso/encore "3.172.1"]
-                 [com.fzakaria/slf4j-timbre "0.4.1" :exclusions [org.slf4j/slf4j-api]] ; Java SLF4J callers use Timbre.
-                 [org.clj-commons/pretty "3.6.3"] ; Shared with Timbre; REPL exception formatting.
+                 [com.taoensso/telemere-slf4j "1.4.0"]
+                 [org.slf4j/slf4j-api "2.0.18"] ; One Java SLF4J provider: Telemere.
+                 [org.clj-commons/pretty "3.6.3"] ; Shared REPL and logging exception formatting.
 
                  [ring/ring-core "1.15.5"]
                  [ring/ring-defaults "0.7.1"]
@@ -84,7 +86,7 @@
   :min-lein-version "2.0.0"
 
   ;; JBoss otherwise prefers Log4j when present, or JUL without Logback.
-  ;; Select the existing SLF4J -> Timbre provider before Undertow loads.
+  ;; Select the existing SLF4J -> Telemere provider before Undertow loads.
   :jvm-opts ["-Dorg.jboss.logging.provider=slf4j"]
 
   :source-paths ["src/backend" "src/frontend" "src/cljc"]
@@ -119,7 +121,13 @@
    :source-uri "https://github.com/tolgraven/tolgraven/blob/master/{filepath}#L{line}"}
 
   :profiles
-  {:provided {:dependencies [[thheller/shadow-cljs "3.5.7"]
+  {:antq {:dependencies ^:replace [[org.clojure/clojure "1.12.6"]
+                                   [com.github.liquidz/antq "2.11.1276"]]
+          :source-paths ^:replace []
+          :resource-paths ^:replace []
+          :plugins ^:replace []
+          :prep-tasks ^:replace []}
+   :provided {:dependencies [[thheller/shadow-cljs "3.5.7"]
                              [com.cognitect/transit-cljs "0.8.280"]
                              [cljs-ajax "0.8.4"]
                              [com.andrewmcveigh/cljs-time "0.5.2"]
@@ -165,6 +173,10 @@
              :source-paths ["env/prod/clj" "env/prod/cljs"]
              :resource-paths ["env/prod/resources" "resources"]}
 
+   :provision {:source-paths ["env/prod/clj"]
+               :resource-paths ["env/prod/resources"]
+               :prep-tasks ^:replace []}
+
    :prod {:jvm-opts ["-Dconf=config/prod-local.edn"]
           :source-paths ["env/prod/clj" "env/prod/cljs"]
           :resource-paths ["env/prod/resources" "target/production/resources"]}
@@ -179,7 +191,9 @@
                   :dependencies [[re-frisk "1.7.1"]
                                  [day8.re-frame/re-frame-10x "1.12.3" :exclusions [superstructor/re-highlight]]]}
    :experiments {:source-paths ["experiments/clj"]
-                 :dependencies [[honeysql "1.0.461"]
+                 :test-paths ["test/experiments"]
+                 :dependencies [[org.clojure/java.jdbc "0.7.12"]
+                                [com.github.seancorfield/honeysql "2.7.1479"]
                                 [differ "0.3.3"]
                                 [ring-ratelimit "0.2.3"]
                                 [radicalzephyr/ring.middleware.logger "0.6.0"]

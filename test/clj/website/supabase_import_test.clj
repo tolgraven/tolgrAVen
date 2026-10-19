@@ -1,6 +1,6 @@
 (ns website.supabase-import-test
   (:require [clojure.test :refer :all]
-            [clojure.java.jdbc :as jdbc]
+            [next.jdbc :as jdbc]
             [website.platform.supabase :as platform]
             [website.provision.supabase.import :as importer]
             [website.provision.supabase.schema :as schema]
@@ -10,7 +10,7 @@
   (let [calls (atom []) tx {:connection :test} seed {:users []}]
     (with-redefs [platform/jdbc-available? (constantly true)
                   platform/database-spec (constantly {})
-                  jdbc/db-transaction* (fn [_ f & _] (swap! calls conj :begin) (f tx) (swap! calls conj :commit))
+                  jdbc/transact (fn [_ f & _] (swap! calls conj :begin) (f tx) (swap! calls conj :commit))
                   importer/export->seed (constantly seed)
                   schema/apply-schema! (fn [db] (is (= tx db)) (swap! calls conj :schema))
                   importer/reset-data! (fn [db] (is (= tx db)) (swap! calls conj :reset))

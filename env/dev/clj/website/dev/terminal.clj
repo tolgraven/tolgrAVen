@@ -12,6 +12,8 @@
    "--host" host "--port" (str port)])
 
 (defn run-client! [host port]
+  ;; Ctrl-C belongs to the client/evaluation in both start and connect modes.
+  (cmdline/set-signal-handler! "INT" (constantly nil))
   ;; Lein trampoline and inherited descriptors let JLine use the real terminal.
   (.waitFor (.start (.inheritIO (ProcessBuilder. ^java.util.List (client-command host port))))))
 
@@ -82,10 +84,7 @@
         (flush)
         (if (= ":headless" mode)
           (do @(promise) 0)
-          (do
-            ;; Ctrl-C belongs to the client/evaluation, rather than this server.
-            (cmdline/set-signal-handler! "INT" (constantly nil))
-            (run-client! (:host repl-server) (:port repl-server))))
+          (run-client! (:host repl-server) (:port repl-server)))
         (finally
           (cleanup!)
           (.removeShutdownHook (Runtime/getRuntime) hook))))))

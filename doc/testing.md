@@ -202,6 +202,16 @@ changes; sequences can still advance. The auth-import Python test uses the real
 import SQL across commits and removes its fixture accounts in `finally`, so it
 must never target a normal application database. It does not prove a GoTrue login.
 
+`test/sql/supabase_catalog_check.clj` uses `SUPABASE_CATALOG_TEST_DB_URL` for
+real JDBC import/read/reset, optional-column defaults and transaction checks.
+`test/sql/next_jdbc_schema_check.clj` uses `SUPABASE_SCHEMA_TEST_DB_URL` for actual
+selected schema install/reapply and full-import rollback. The latter needs an
+empty disposable database with Supabase's `anon`, `authenticated`, `service_role`
+roles, `auth.uid()` / `auth.jwt()` functions and `supabase_realtime` publication.
+Simple fixture Auth functions suffice for these provisioning checks; they do not
+establish Auth or RLS behavior. Run each through `lein with-profile +project/test
+run -m clojure.main <file>` under the agent CPU launcher.
+
 The Coolify wiring PHP check targets the explicitly listed application/service
 UUIDs and requires the installed helper/container. Inspect those targets before
 running it; a local mocked provisioning test does not replace it. Keep SQL and

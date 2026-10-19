@@ -161,6 +161,8 @@ sessions' tabs and restore any borrowed tab when finished.
   formatter boundary. Node SSR renders Bruvbox-highlighted tokens immediately;
   browser acquisition waits for the existing after-page gate. The blog supplies
   its Clojure fallback and detection set; reusable Markdown has no site-specific default.
+  The formatter uses direct Lowlight HAST and native Reagent tokens; retain
+  complete language support, owner-specific detection and numbered/editable rows.
   Bruvbox palette/token ownership lives in `modules/highlight/theme.cljs`.
 
 ## Project Structure & Module Organization
@@ -236,10 +238,13 @@ sessions' tabs and restore any borrowed tab when finished.
   neorepl client; keep CIDER/Piggieback/Shadow middleware aligned with the original
   `:repl-options`. `lein repl-classic` retains the original Lein task. Both call
   the existing `user/start`, which checks/rebuilds CSS before HTTP and owns one
-  supervised Sass/PostCSS watcher. Development browser compilation and HTML/CSS/chunk
+  supervised Sass Embedded/PostCSS watcher. Development browser compilation and HTML/CSS/chunk
   delivery recheck source/output digests; failures return 503 rather than stale CSS.
   CSS writers share the kernel lock and atomic output publication. `(stop)`/JVM exit
   stop only the owned watcher. See `doc/styles.md`; `npm run dev` is optional standalone use.
+  Development application startup failures are logged with their cause while
+  the REPL and native Shadow startup continue; production listener failures still
+  propagate. CSS freshness remains a prerequisite before either mode starts.
   Deferred Shadow watches compile
   sequentially without blocking REPL acknowledgement. The standalone `:document`
   target releases first (no HMR); document/bootstrap requests await only that
@@ -305,8 +310,9 @@ maintain a duplicate handwritten variable catalog.
 
 ## Dependency ownership
 
-- Timbre owns JVM logging configuration in `website.log`; tools.logging and
-  SLF4J route through its existing adapters. Select JBoss's SLF4J provider in
+- Telemere owns JVM logging configuration in `website.log`; tools.logging and
+  SLF4J route through its adapters and the sole `telemere-slf4j` provider. Existing
+  logging calls use the upstream Timbre migration shim. Select JBoss's SLF4J provider in
   Lein and direct Java launches before Undertow loads. Use the shared
   `org.clj-commons/pretty`, not the duplicate `io.aviso/pretty` or Logback XML.
   See `doc/dependencies.md`.
@@ -327,11 +333,21 @@ maintain a duplicate handwritten variable catalog.
   Piggieback in Shadow's separate nREPL configuration. Keep the cold-start timeout
   large enough for cold application initialization; watches run afterward.
   See `doc/dependencies.md`.
+- Provisioning uses next.jdbc with unqualified lower-case result keys. Schema apply joins
+  its supplied transaction; standalone table imports retain atomic inserts and row defaults.
+  Keep the retained java.jdbc SQL prototype in `:experiments`.
+- The retained SQL prototype uses HoneySQL 2 in `:experiments`; its focused tests
+  live in `test/experiments` and require that profile.
 - Keep Ring mocks in `:project/test`, prototype dependencies/source paths in `:experiments`, and the S3 wagon in `:s3-publish`.
 - The personal `deploy-private` alias uses `lein-shell` and AWS CLI with a seeded local Maven staging repository; see `doc/dependencies.md` and `doc/lein-profiles.clj`.
+- `bb deps:outdated` runs pinned antq in an isolated tooling profile for Lein,
+  Shadow, Babashka and Actions; keep npm checks separate.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
 
 ## Docker dependency updates
+- The one-shot Supabase image uses the pinned Java 21 prefab base and the
+  `:provision` profile with production environment sources/defaults; keep private
+  overrides and development watchers out of that image. See `doc/supabase-provisioning.md`.
 - Coolify provisioning keeps ordinary build caching enabled; forced rebuilds
   clear BuildKit mounts. Force a same-source rebuild for CMS feature/CSS snapshot
   changes. Sequence AOT, Codox and Shadow JVMs to bound shared-host memory.

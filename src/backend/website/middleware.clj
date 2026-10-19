@@ -37,7 +37,7 @@
     ; [ring.middleware.logger :refer [wrap-with-logger]]
     [website.loader.style-catalog :as styles]
     [optimus.assets :as assets]
-    [taoensso.timbre :as timbre :refer [debug log error]]
+    [taoensso.telemere.timbre :as timbre :refer [debug log error]]
     ))
 
 (defn wrap-internal-error [handler]

@@ -87,30 +87,43 @@
       ] ]))
 
 
-;; Keep lazy fallbacks stable across route/header updates. Render-local functions
-;; leave discarded Reagent instances subscribed during concurrent page work.
+(defn- module-loading-attrs [module open?]
+  (let [ready? @(r/subscribe [:loader/code-ready module])
+        failure @(r/subscribe [:loader/code-error module])
+        pending? (boolean (and open? (not ready?) (not failure)))]
+    {:aria-busy pending?
+     :data-module-loading pending?}))
+
 (defc ^:private <search-button> []
   (let [open? (true? @(r/subscribe [:state [:search :open?]]))]
-   [:button.search-ui-btn.noborder.nomargin
-    {:name "Search"
-     :title "Search site"
-     :aria-expanded open?
-     :on-click #(r/dispatch [:search/state [:open?] (not open?)])}
-    [img/<picture> {:src "svg/search-ico.svg"
-                   :alt "Search"
-                   :style {:width "1.2em"
-                           :height "1.2em"
-                           :filter "var(--light-to-dark)"}}]]))
+    [:button.search-ui-btn.noborder.nomargin
+     (merge (module-loading-attrs :search open?)
+            {:type "button"
+             :name "Search"
+             :title "Search site"
+             :aria-expanded open?
+             :on-click #(r/dispatch [:search/state [:open?] (not open?)])})
+     [img/<picture> {:src "svg/search-ico.svg"
+                    :alt "Search"
+                    :style {:width "1.2em"
+                            :height "1.2em"
+                            :filter "var(--light-to-dark)"}}]]))
 
-
-(defc ^:private <anonymous-user-button> []
+(defc ^:private <account-button> []
   (let [open? @(r/subscribe [:user/ui-open?])]
     [:button.user-btn.noborder
-     {:type "button"
-      :on-click #(r/dispatch [(if open? :user/request-close-ui :user/request-open-ui)])
-      :aria-label "User account"
-      :title "User account"}
-     [:i.user-btn.fa.fa-user]]))
+     (merge (module-loading-attrs :user open?)
+            {:type "button"
+             :on-click #(r/dispatch [(if open? :user/request-close-ui :user/request-open-ui)])
+             :aria-label "User account"
+             :title "User account"})
+     (if-let [user @(r/subscribe [:user/active-user])]
+       (m/<> {:module :user
+              :view :avatar
+              :load-on :immediate
+              :<loading> [:i.user-btn.fa.fa-user]}
+             (merge user {:no-zoom true}) "btn-img")
+       [:i.user-btn.fa.fa-user])]))
 
 (defn- use-restored-shell []
   (let [returned? (restore/document-return?)
@@ -167,19 +180,18 @@
         [:i.fa.fa-pen-fancy]]
       (when-enabled :settings nil
        [:a.button.settings-btn.noborder.nomargin
-       {:href @(r/subscribe [:href-add-query
-                              {:settingsBox (not @(r/subscribe [:state [:settings :panel-open]]))}])
-        :aria-label "Settings"
-        :title "Settings"}
+       (merge (module-loading-attrs :settings @(r/subscribe [:state [:settings :panel-open]]))
+              {:href @(r/subscribe [:href-add-query
+                                     {:settingsBox (not @(r/subscribe [:state [:settings :panel-open]]))}])
+               :aria-label "Settings"
+               :title "Settings"})
        [:i.settings-btn {:class "fa fa-cog"}]])
 
       (when-enabled :search nil [<search-button>])
       (when-enabled :user nil
-       (if @(r/subscribe [:user/active-user])
-        (m/<> :user/btn)
-        ;; The panel owns code acquisition. Focusing this control must not
-        ;; replace it with a lazy view and lose the user's keyboard position.
-        [<anonymous-user-button>]))
+       ;; Only the avatar is lazy. The native account button retains focus and
+       ;; click intent for anonymous and authenticated users alike.
+       [<account-button>])
       [:label.burger {:for "nav-menu-open"}]]]
 
      [:div.fill-side-top

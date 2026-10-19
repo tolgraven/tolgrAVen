@@ -71,7 +71,10 @@ selects in the calling nREPL session; a failed background startup is logged and 
 Application stop/restart retains Shadow workers as before; Shadow owns their
 JVM shutdown lifecycle. Repeated starts share any pending startup task.
 
-`luminus-undertow` supplies the Ring HTTP server through its Undertow adapter.
+`luminus/ring-undertow-adapter` supplies the Ring HTTP server directly.
+`website.core/http-server` owns its Mount lifecycle and native Undertow instance.
+Bind/startup failures propagate to Mount and process startup; they must never
+be logged and converted to a successful nil state.
 Undertow's XNIO workers use JBoss Threads for execution. Managed Undertow 2.3.26
 and JBoss Threads 3.10.1 retain the adapter's 2.3 API family and replace the old
 executor's `sun.misc.Unsafe.objectFieldOffset` implementation. Align JBoss Logging
@@ -85,9 +88,13 @@ available to re-frame-pair. 10x and re-frisk are opt-in with `:legacy-debug`;
 see [the debugging guide](re-frame-pair.md). This avoids loading two additional
 inspectors into every development page.
 
-`:experiments` retains HoneySQL and optional diff/Ring middleware dependencies
+`:experiments` retains java.jdbc for its SQL prototype, HoneySQL 2
+(`honey.sql` / `honey.sql.helpers`), and optional diff/Ring middleware dependencies
 for preserved prototypes. Its `experiments/clj` source path keeps the SQL prototype
 out of normal application compilation. Enable the profile before working on it.
+`lein with-profile +experiments test website.sql-prototype-test` checks SQL generation;
+`SUPABASE_CATALOG_TEST_DB_URL` adds temporary-table PostgreSQL round trips only
+against a disposable test database.
 CodeMirror and React Player dependencies have been removed; their preserved
 frontend examples require restoring compatible dependencies before use.
 
@@ -140,33 +147,40 @@ Several larger libraries remain because they perform real work:
 | Optimus + image transforms | Asset bundles, URLs and runtime image transforms. Its Graal/Truffle dependencies are substantial; removing them requires replacing these active asset paths. |
 | clj-http | Server-side provider HTTP adapters; use existing bulk plans rather than adding transport clients in views. |
 | cljs-time | Existing date calculations/formatting. |
-| PostgreSQL JDBC + clojure.java.jdbc | Active database provisioning tooling. HoneySQL is confined to `:experiments`. |
-| tools.logging + Timbre + SLF4J bridge | Application logging facade and Timbre sink, including Java libraries using SLF4J 2. Keep the bridge compatible with the resolved SLF4J API. |
-| org.clj-commons/pretty / Prone | Pretty exceptions shared with Timbre, and development error pages respectively. |
+| PostgreSQL JDBC + next.jdbc | Active database provisioning tooling. Reads explicitly retain unqualified lower-case keys; imports retain per-table transactions and heterogeneous row defaults. Schema installation joins a supplied transaction. java.jdbc and HoneySQL are confined to `:experiments`. |
+| tools.logging + Telemere + SLF4J bridge | Application logging facade and Telemere sink, including Java libraries using SLF4J 2. Keep the bridge compatible with the resolved SLF4J API. |
+| org.clj-commons/pretty / Prone | Pretty exceptions shared with Telemere, and development error pages respectively. |
 | Leaflet / react-leaflet | Preserved map functionality. |
 | react-markdown, remark-gfm, rehype-raw, syntax highlighter | Existing Markdown rendering and highlighting. |
 | xmlhttprequest | Node test transport adapter; a development dependency. |
 
 ## JVM logging
 
-Timbre is the application logging backend. The handler loads `website.log`
-first so Mount initializes its configuration before application services.
-`website.log` owns console output
-(info and above), rotating `log/website.log` output, namespace thresholds and
-pretty exceptions. Its initialization also installs the sole application default
-uncaught exception handler, passing the Throwable and failing thread's name to
-Timbre. Loading `core` or `log` must not replace that handler.
-`clojure.tools.logging` callers use Timbre's existing adapter;
-Java SLF4J callers use `slf4j-timbre`. Keep both adapters: application and dependency
-code use these APIs. Encore is used directly by the namespace filter and required
-by Timbre. `org.clj-commons/pretty` supplies both Timbre's exception formatter and
-the REPL hooks; the older `io.aviso/pretty` duplicates compatibility namespaces
-and must not be added alongside it.
+Telemere 1.4 is the application logging backend. Existing calls use the upstream
+`taoensso.telemere.timbre` migration shim; new structured telemetry can use
+`taoensso.telemere` directly. The handler loads `website.log` before services.
+Mount retains the existing `logger-timbre` state identity, while `website.log`
+owns namespace thresholds, info-level console output, pretty exceptions and
+10 MB rotating `log/website.log` output with five uncompressed numbered archives.
+File handlers are synchronous and retain the existing rate limits. Service stops retain the sinks for final shutdown diagnostics; reinitialization
+replaces/closes the owned handlers. Synchronous writes flush immediately;
+process exit releases remaining file descriptors.
+
+`clojure.tools.logging` uses Telemere's adapter; `telemere-slf4j` is the sole
+SLF4J 2 provider. Keep Throwables intact through both bridges. Explicit logger
+initialization owns the sole default uncaught exception handler; loading `core`
+or `log` must not replace it. `org.clj-commons/pretty` supplies the log exception
+formatter and REPL hooks. Do not add legacy `io.aviso/pretty` alongside it.
+
+Log lines retain the local `yyMMdd HH:mm:ss.SS` timestamp and pretty printed
+arguments/exceptions. Telemere's human-readable layout additionally shows signal
+kind/ID and structured data; the presentation is intentionally updated, while
+existing namespace patterns retain their exact versus wildcard meanings.
 
 JBoss Logging is required by Undertow, XNIO and JBoss Threads. Its automatic
 selection prefers Log4j when available and otherwise falls back to JUL unless
 Logback is present. The shared Lein JVM options and Docker command explicitly
-select `-Dorg.jboss.logging.provider=slf4j`, routing HTTP-server logs to Timbre
+select `-Dorg.jboss.logging.provider=slf4j`, routing HTTP-server logs to Telemere
 from class initialization, before the application logger is mounted. Include
 that option when launching the JAR directly too. A running JVM retains its
 selected provider; restart it to pick up dependency or JVM-option changes.
@@ -182,7 +196,7 @@ Apache HttpClient 4's transitive `commons-logging` facade remains necessary for
 ## Upgrade checks
 
 ```sh
-lein ancient
+bb deps:outdated
 lein deps :tree
 lein classpath
 npm outdated
@@ -191,6 +205,21 @@ npm audit --omit=dev
 npm ls --depth=0
 npm run build
 ```
+
+`bb deps:outdated` runs pinned antq in its own Lein profile, with no application
+source paths, middleware plugins or runtime dependency injection. It checks the
+project's Lein, Shadow, Babashka and GitHub Actions declarations and reports moved
+coordinates known to antq. Gradle checks are disabled because this project does
+not use Gradle. Pass `--focus=group/artifact` to narrow a check or `--reporter=json`
+for structured output. Exit code 1 indicates outdated or unverified dependencies;
+inspect the report before treating it as a tool failure. The default check does
+not rewrite manifests; antq's `--upgrade` is an explicit opt-in.
+
+The personal `lein-ancient` plugin remains available for other projects. This
+project's check does not modify the user's global Lein profile. antq does not
+cover npm or discover semantic replacement libraries; retain the npm checks and
+source-based successor reviews. Stable antq discovers standard manifest filenames;
+check the separate `config/neorepl.edn` Git pin manually against upstream tags.
 
 Inspect actual JARs when two different artifact names may supply the same classes:
 Maven chooses one version per coordinate but cannot detect every duplicate class.
@@ -234,3 +263,36 @@ server HTML does not include it. Phoenix 0.4.5 emits two npm JSDoc parse notices
 for TypeScript-style `@template [T=PresenceState]` comments. These do not change
 executable code; configuration audits still require zero CLJS compiler warnings
 and recognize only those specific upstream comment notices.
+
+## Sass compiler host
+
+CSS builds use the official `sass-embedded` host, pinned to Dart Sass 1.105.1.
+A single asynchronous compiler handles each build's sequential sheets and closes
+in `finally`, including failed watch rebuilds. npm selects its native binary for
+macOS development and Linux ARM64/AMD64 prefabs; retain optional dependencies
+when installing. PostCSS/Autoprefixer, style freshness and atomic publication keep
+their existing owners. See [Sass Embedded](https://sass-lang.com/blog/embedded-sass-is-live/).
+
+## API descriptions
+
+`fi.metosin/reitit-openapi` matches Reitit 0.11.0 and generates OpenAPI 3.1 at
+`/api/openapi.json`; the existing `/api/api-docs/` Swagger UI loads it by default.
+OpenAPI 3.1 is explicit because this released generator defaults to 3.2, while
+the bundled UI supports 3.1. Shared Malli parameter/response schemas supply both
+descriptions. Keep `reitit-swagger` for the original `/api/swagger.json` Swagger
+2 compatibility contract. This migration does not change request coercion or
+response formats. Reitit's OpenAPI generator remains upstream alpha.
+
+## Syntax formatter
+
+The Highlight module imports `lowlight` 3 directly and renders its HAST token tree
+with native Reagent elements. It owns its Highlight.js graph explicitly, rather
+than importing the transitive Lowlight 1 from React Syntax Highlighter. Full
+grammars and auto-detection remain available; the blog retains its bounded
+detection subset. Default detection excludes the Properties grammar because its
+new bare-key recognition otherwise misclassifies neutral numeric snippets;
+explicit Properties tags and owner-selected detection subsets remain supported.
+Bruvbox maps existing Highlight.js classes to the same palette.
+The existing code-block owner retains controls, font upgrades, deferred browser
+acquisition and immediate Node SSR formatting. Modern Lowlight is a maintenance
+upgrade; it is not a demonstrated speed or bundle reduction.
