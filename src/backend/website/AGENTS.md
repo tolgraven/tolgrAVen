@@ -26,10 +26,10 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 `doc/site-provisioning.md` for operating and configuration details.
 
 - The handler loads `website.log` before its other dependencies so Mount
-  initializes logging before application startup. It owns Timbre appenders,
+  initializes logging before application startup. It owns Telemere handlers,
   pretty exceptions and the default uncaught exception handler. Namespace loading
-  must not replace that handler; keep Throwable
-  objects intact through tools.logging and SLF4J. JBoss provider selection is a
+  must not replace that handler; keep Throwable objects intact through
+  tools.logging and the sole Telemere SLF4J provider. JBoss provider selection is a
   launch-time JVM option shared by Lein and Docker, before Undertow loads.
   See `doc/dependencies.md` for logging dependency ownership.
 
@@ -154,6 +154,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   and 10x/re-frisk/legacy
   inspectors through `build/policy.clj`; stale analysis cache files are not graph membership.
 
+- API docs default to OpenAPI 3.1 at `/api/openapi.json`; retain the original
+  `/api/swagger.json` Swagger 2 compatibility document.
 - Reitit uses shared Malli parameter schemas. Internal/response validation follows
   runtime configuration; request coercion remains active. Coercion error handlers
   must not log full exception data or return request/response values.
@@ -278,3 +280,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   watcher plus startup/compile/request checks. Only HTML/CSS/direct browser chunks
   wait; failure returns 503, and the verified revision invalidates Optimus delivery.
   Production retains its prepared inventory without runtime compilers.
+
+- `website.core/http-server` owns the direct Undertow adapter lifecycle. Preserve
+  async streaming, WebSocket and native session options; startup/bind failures
+  propagate rather than returning a nil server. Development `user/start` logs
+  application failures and retains the REPL/native watches; CSS stays a prerequisite.

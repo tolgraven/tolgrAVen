@@ -19,6 +19,7 @@ needed to run these tasks; they use Babashka's built-in libraries.
 | Browser tests | `bb test:browser [--port 4002]` | Static component suite and fixtures; loopback HTTP-kit server (`--glass-output PATH` serves the focused glass suite/playground) |
 | Live tests | `bb test:integration [options...]` | Python streaming HTTP proxy; preserves early SSR flushes and upstream responses |
 | Tool tests | `bb test:scripts` | Babashka contracts and existing Python operations/media harness; disposable Git repos, no deployments |
+| Dependencies | `bb deps:outdated [antq options]` | Pinned antq checks Lein, Shadow, Babashka and Actions in an isolated tool profile; npm retains `npm outdated`/`npm audit` |
 | Supabase | `bb supabase <schema\|import\|all> [args...]` | Calls the native JVM CLI; container has its small `ops/entrypoint-supabase-provision.sh` launcher |
 | Site / CMS | `scripts/ops/provision-site.py`, `provision-strapi.py` | Explicit operator commands; validated manifests, SSH and readiness checks |
 | Coolify | `scripts/ops/coolify/*.php` | Sent over SSH into Coolify's Laravel container; uses its models, queue and transactions |

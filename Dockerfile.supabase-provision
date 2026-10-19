@@ -1,14 +1,15 @@
-FROM clojure:temurin-22-lein-jammy
+FROM clojure:temurin-21-lein-bookworm-slim@sha256:12d1d3d51f3aa9b4f1c643a084b6e13180caa3b83176423ad839a3b1ac493bb2
 
 WORKDIR /app
 
 COPY project.clj /app/project.clj
 COPY resources /app/resources
 COPY src /app/src
-COPY test /app/test
+COPY env/prod/clj /app/env/prod/clj
+COPY env/prod/resources /app/env/prod/resources
 COPY scripts/ops/entrypoint-supabase-provision.sh /usr/local/bin/entrypoint-supabase-provision.sh
 
 RUN chmod +x /usr/local/bin/entrypoint-supabase-provision.sh && \
-    lein deps
+    lein with-profile provision deps
 
 ENTRYPOINT ["/usr/local/bin/entrypoint-supabase-provision.sh"]

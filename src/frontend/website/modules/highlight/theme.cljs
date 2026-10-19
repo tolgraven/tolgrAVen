@@ -23,7 +23,7 @@
    :deletion "#281913"})
 
 (def bruvbox
-  ;; Conversion happens once at the React highlighter boundary, in its lazy bundle.
+  ;; Conversion happens once at the native formatter boundary, in its lazy bundle.
   (clj->js
     {"hljs" {:display "block"
              :overflowX "auto"

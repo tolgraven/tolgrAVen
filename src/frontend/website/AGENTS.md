@@ -739,3 +739,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   indicator; panel boundaries use empty loading fragments so opening motion begins
   only with the ready native view. Keep intent in re-frame while loading, including
   closing before acquisition finishes; focus alone must not replace the trigger.
+
+- Highlight owns the direct Lowlight instance and pure HAST-to-Hiccup renderer.
+  Coalesce adjacent plain text to retain font shaping. Keep code as text nodes,
+  flatten nested token styles in order and retain exact
+  line breaks, caller row attributes, numbered gutters and editable final rows.
+  Browser and Node use the same formatter behind the existing lazy boundary.

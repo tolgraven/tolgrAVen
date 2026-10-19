@@ -58,13 +58,17 @@
 (deftest language-selection-preserves-tags-and-keeps-fallback-local
   (doseq [tag ["clj" "cljs" "cljc" "clojurescript"]]
     (let [tree (highlight-view/code-tree "(defn yada [] [])" tag "javascript")]
-      (is (= "clojure" (.-language tree)) (str "Explicit " tag " uses its grammar"))
-      (is (pos? (.-length (.-value tree))))))
-  (is (= "cpp" (.-language (highlight-view/code-tree "int answer = 42;" "cpp" "clojure"))))
-  (is (= "clojure" (.-language (highlight-view/code-tree "(defn greet [x] (inc x))" nil nil))))
-  (is (= "clojure" (.-language (highlight-view/code-tree "42" nil "clojure"))))
-  (is (nil? (.-language (highlight-view/code-tree "42" nil nil))))
-  (is (= "clojure" (.-language (highlight-view/code-tree "(inc 1)" "unknown-tag" "clojure")))))
+      (is (= "clojure" (some-> tree .-data .-language)) (str "Explicit " tag " uses its grammar"))
+      (is (pos? (.-length (.-children tree))))))
+  (is (= "cpp" (some-> (highlight-view/code-tree "int answer = 42;" "cpp" "clojure") .-data .-language)))
+  (is (= "clojure" (some-> (highlight-view/code-tree "(defn greet [x] (inc x))" nil nil) .-data .-language)))
+  (is (= "clojure" (some-> (highlight-view/code-tree "42" nil "clojure") .-data .-language)))
+  (is (nil? (some-> (highlight-view/code-tree "42" nil nil) .-data .-language)))
+  (is (= "clojure" (some-> (highlight-view/code-tree "(inc 1)" "unknown-tag" "clojure") .-data .-language)))
+  (is (= "properties" (some-> (highlight-view/code-tree "42" "properties" nil) .-data .-language))
+      "Explicit Properties remains supported")
+  (is (= "properties" (some-> (highlight-view/code-tree "42" nil nil ["properties"]) .-data .-language))
+      "An owner can explicitly opt Properties into detection"))
 
 (deftest untagged-blocks-and-inline-snippets-render-highlighted-during-ssr
   (binding [context/*server?* true
@@ -85,8 +89,8 @@
 
 (deftest blog-detection-avoids-lisp-family-false-positives
   (let [text "(rf/reg-event-fx :blog/edit-post\n  (fn [_ [_ post]]\n    {:dispatch-n [[:form-field/clear] [:state [:blog :editing] post]]}))"]
-    (is (= "clojure" (.-language (highlight-view/code-tree text nil "clojure" blog/code-languages))))
-    (is (= "elixir" (.-language (highlight-view/code-tree "def hello, do: :world" "elixir" "clojure" blog/code-languages)))
+    (is (= "clojure" (some-> (highlight-view/code-tree text nil "clojure" blog/code-languages) .-data .-language)))
+    (is (= "elixir" (some-> (highlight-view/code-tree "def hello, do: :world" "elixir" "clojure" blog/code-languages) .-data .-language))
         "An explicit tag can still select a language outside the detection subset")))
 
 (deftest explicit-nil-options-preserve-the-neutral-markdown-api
@@ -150,6 +154,24 @@
   (is (not (m/validate (dsl/->malli code-block/args-schema) ["code" {:starting-line-number -1}])))
   (is (not (m/validate (dsl/->malli code-block/args-schema) ["code" :line-numbers? "true"]))))
 
+(deftest custom-styles-render-from-keyword-maps-and-native-javascript
+  (binding [context/*server?* true
+            context/*modules* {:highlight highlight/spec}]
+    (doseq [style [{:hljs {:color "red"}
+                   :hljs-number {:color "blue"}}
+                  #js {:hljs #js {:color "red"}
+                       :hljs-number #js {:color "blue"}}]]
+      (let [html (r/render-to-string
+                   [code-block/<code-block> "(+ 1 2)" :language "clojure" :style style])
+            container (.createElement js/document "div")]
+        (set! (.-innerHTML container) html)
+        (is (= "red" (.. container (querySelector "pre") -style -color)))
+        (is (= ["1" "2"]
+               (into [] (comp (filter #(= "blue" (.. % -style -color)))
+                              (map #(.-textContent %)))
+                     (array-seq (.querySelectorAll container "code span")))))
+        (is (= "(+ 1 2)" (.-textContent (.querySelector container "pre code"))))))))
+
 (deftest linked-inline-code-retains-navigation-without-nested-controls
   (binding [context/*server?* true
             context/*modules* {:highlight highlight/spec}]
@@ -177,3 +199,25 @@
       (set! (.-innerHTML container) html)
       (is (.querySelector container ".code-block-wrapped.code-block-folded"))
       (is (.querySelector container ".react-syntax-highlighter-line-number")))))
+
+(deftest native-token-rendering-preserves-multiline-text-and-numbered-attributes
+  (binding [context/*server?* true
+            context/*modules* {:highlight highlight/spec}]
+    (let [source "/* first\n  second <script>& */\nconst x = \"λ\";"
+          html (r/render-to-string
+                 [code-block/<code-block> source
+                  :language "javascript"
+                  :line-numbers? true
+                  :starting-line-number 9
+                  :line-props (fn [number] {:data-line number})])
+          container (.createElement js/document "div")]
+      (set! (.-innerHTML container) html)
+      (let [code (.querySelector container "pre code")
+            numbers (when code (array-seq (.querySelectorAll code ".react-syntax-highlighter-line-number")))]
+        (is code html)
+        (is (= ["9" "10" "11"] (mapv #(.-textContent %) numbers)))
+        (is (= 3 (.-length (.querySelectorAll code "[data-line]"))))
+        (is (nil? (.querySelector code "script")) "Code text cannot become raw HTML")
+        (doseq [number numbers] (.remove number))
+        (is (= source (.-textContent code)) "Multiline tokens retain every whitespace/codepoint")
+        (is (string/includes? html "color:#908682") "Comment tokens retain Bruvbox")))))

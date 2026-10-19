@@ -44,6 +44,10 @@ scripts/**
 !scripts/build/sync-vendor.mjs
 !scripts/media/
 !scripts/media/images.clj
+# The standalone provisioning image needs only its launcher from ops.
+!scripts/ops/
+scripts/ops/**
+!scripts/ops/entrypoint-supabase-provision.sh
 .githooks
 test
 resources/docs/codox

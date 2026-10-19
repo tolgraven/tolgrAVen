@@ -33,9 +33,12 @@
   (styles/start!)
   (shadow-startup/prepare!)
   (home/gen-sitemap!)
-  (doseq [component (-> (mount/start-without #'website.core/repl-server)
-                        :started)]
-    (log/info component "started"))
+  (try
+    (doseq [component (-> (mount/start-without #'website.core/repl-server)
+                         :started)]
+      (log/info component "started"))
+    (catch Exception error
+      (log/error error "Application startup failed; REPL and Shadow watches remain available. Call (start) to retry.")))
   (alter-var-root #'s/*explain-out* (constantly expound/printer))
   (add-tap (bound-fn* clojure.pprint/pprint)) ; (tap> ) goes to repl, anything else?
   (shadow-startup/start! (cljs-builds :app-dev))
