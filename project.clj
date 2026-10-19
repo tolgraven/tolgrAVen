@@ -173,6 +173,10 @@
              :source-paths ["env/prod/clj" "env/prod/cljs"]
              :resource-paths ["env/prod/resources" "resources"]}
 
+   :provision {:source-paths ["env/prod/clj"]
+               :resource-paths ["env/prod/resources"]
+               :prep-tasks ^:replace []}
+
    :prod {:jvm-opts ["-Dconf=config/prod-local.edn"]
           :source-paths ["env/prod/clj" "env/prod/cljs"]
           :resource-paths ["env/prod/resources" "target/production/resources"]}

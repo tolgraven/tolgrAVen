@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Ordinary builds pull one complete dependency image. BUILDER_IMAGE=prefab builds
 # the same recipe locally on a host without registry access.
-ARG BUILDER_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:deps-83f5a83e6a269f81
+ARG BUILDER_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:deps-2273edd52b1657cc
 ARG MAVEN_SEED_IMAGE=empty-maven-seed
 FROM scratch AS empty-maven-seed
 COPY package.json /root/.m2/repository/.seed

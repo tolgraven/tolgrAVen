@@ -343,6 +343,9 @@ maintain a duplicate handwritten variable catalog.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
 
 ## Docker dependency updates
+- The one-shot Supabase image uses the pinned Java 21 prefab base and the
+  `:provision` profile with production environment sources/defaults; keep private
+  overrides and development watchers out of that image. See `doc/supabase-provisioning.md`.
 - Coolify provisioning keeps ordinary build caching enabled; forced rebuilds
   clear BuildKit mounts. Force a same-source rebuild for CMS feature/CSS snapshot
   changes. Sequence AOT, Codox and Shadow JVMs to bound shared-host memory.
