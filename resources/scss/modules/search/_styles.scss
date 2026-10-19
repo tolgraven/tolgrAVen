@@ -2,6 +2,7 @@
 .search-results-panel,
 .search-autocomplete {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: 0fr;
   opacity: 0;
   transition: grid-template-rows 0.25s ease, opacity 0.2s ease;

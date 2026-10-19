@@ -104,7 +104,7 @@
 
 (m/defc ^:private <suggestion-panel>
   {:features [[:appear {:viewport? false, :restore? false}] :exit]}
-  [id suggestions selected]
+  [spec id suggestions selected]
   [:div.search-autocomplete.search-autocomplete-open
    {:id (str id "-suggestions")
     :role "listbox"
@@ -181,7 +181,7 @@
 
 (m/defc ^:private <panel>
   {:features [[:appear {:viewport? false, :restore? false}] :exit]}
-  []
+  [spec]
   (let [open? @(r/subscribe [:search/open?])]
     [:section.search-ui {:class (when open? "search-ui-open")}
      [:div.search-ui__content
@@ -202,7 +202,7 @@
 
 (m/defc ^:private <results-panel>
   {:features [[:appear {:viewport? false, :restore? false}] :exit]}
-  []
+  [spec]
   [:div.search-results-panel
    [:div.search-results-panel__content
     [<instant-results> true]]])

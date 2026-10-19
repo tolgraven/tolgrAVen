@@ -2308,7 +2308,7 @@
         1000
       ],
       "path": "/fixtures/visual.html?component=search-mixed",
-      "action": "website.visual_fixture.panel_state_BANG_(\"search-closed\");\nawait window.visualFixture.ready();",
+      "action": "website.visual_fixture.panel_state_BANG_('search-closed'); await window.visualFixture.ready();",
       "capture_assert": "if (document.querySelector('.search-ui, .search-results-panel, #search-input')) throw new Error('Closed Search retained a hidden layout surface');"
     },
     {
@@ -2318,7 +2318,7 @@
         1000
       ],
       "path": "/fixtures/visual.html?component=search-mixed",
-      "action": "website.visual_fixture.panel_state_BANG_(\"search-closed\");\nawait window.visualFixture.ready();",
+      "action": "website.visual_fixture.panel_state_BANG_('search-closed'); await window.visualFixture.ready();",
       "capture_assert": "if (document.querySelector('.search-ui, .search-results-panel, #search-input')) throw new Error('Closed Search retained a hidden layout surface');"
     }
   ]

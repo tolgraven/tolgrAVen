@@ -199,3 +199,32 @@
                       (.remove style)
                       (restore!)
                       (done)))))))
+
+(deftest suggestion-motion-keeps-its-domain-arguments-after-the-instance-spec
+  (async done
+    (let [restore! (r/make-restore-fn)
+          original-delay (registrar/get-handler :fx :dispatch-later)
+          element (.createElement js/document "div")
+          *root (atom nil)]
+      (.appendChild (.-body js/document) element)
+      (r/reg-fx :dispatch-later (constantly nil))
+      (-> (go-promise
+            (r/dispatch-sync [:search/init])
+            (r/dispatch-sync [:search/query "native"])
+            (r/dispatch-sync [:search/received (get-in @r/*app-db [:search :generation])
+                              "native" (response "native")])
+            (let [root (await! (support/create-root! element))]
+              (reset! *root root)
+              (await! (support/render! root [views/<suggestions> {:id "native-search", :open? true}]))
+              (await! (support/wait-for! #(.querySelector element "[role=listbox]")))
+              (is (= "native-search-suggestions" (.-id (.querySelector element "[role=listbox]"))))
+              (is (= ["native example" "native guide"]
+                     (mapv #(.-textContent %) (array-seq (.querySelectorAll element "[role=option]")))))
+              (is (= "native-search-suggestions-1" (.-id (.querySelector element "[role=option]:last-child"))))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @*root (support/unmount! @*root))
+                      (.remove element)
+                      (r/reg-fx :dispatch-later original-delay)
+                      (restore!)
+                      (done)))))))
