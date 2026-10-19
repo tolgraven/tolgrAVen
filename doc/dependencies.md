@@ -218,7 +218,8 @@ not rewrite manifests; antq's `--upgrade` is an explicit opt-in.
 The personal `lein-ancient` plugin remains available for other projects. This
 project's check does not modify the user's global Lein profile. antq does not
 cover npm or discover semantic replacement libraries; retain the npm checks and
-source-based successor reviews.
+source-based successor reviews. Stable antq discovers standard manifest filenames;
+check the separate `config/neorepl.edn` Git pin manually against upstream tags.
 
 Inspect actual JARs when two different artifact names may supply the same classes:
 Maven chooses one version per coordinate but cannot detect every duplicate class.
