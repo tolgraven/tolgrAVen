@@ -16,11 +16,20 @@
   position: relative;
   padding: 0;
   border: 0;
+
+  .styled-input-container {
+    // The shell owns stickiness; this child must stay inside the animated row.
+    position: relative;
+    top: auto;
+    margin-bottom: 0;
+  }
 }
 
 .search-ui__content,
 .search-results-panel__content,
 .search-autocomplete__content {
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
