@@ -21,7 +21,7 @@
     [reitit.ring.middleware.parameters :as parameters]
     [clj-http.client :as http]
     [ring.util.http-response :as response]
-    [taoensso.timbre :as timbre]
+    [taoensso.telemere.timbre :as timbre]
     [clojure.data.json :as json]
     [website.middleware.formats :as formats]
     [website.middleware.exception :as exception]

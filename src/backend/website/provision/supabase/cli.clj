@@ -3,7 +3,7 @@
    [clojure.data.json :as json]
    [clojure.java.io :as io]
    [clojure.string :as string]
-   [taoensso.timbre :as timbre]
+   [taoensso.telemere.timbre :as timbre]
    [mount.core :as mount]
    [website.config :as config]
    [website.platform.supabase :as supabase]

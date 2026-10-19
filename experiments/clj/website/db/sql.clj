@@ -4,7 +4,7 @@
    [honey.sql :as hsql]
    [honey.sql.helpers :as helpers :refer [select from where insert-into columns values]]
    [mount.core :refer [defstate]]
-   [taoensso.timbre :as timbre]
+   [taoensso.telemere.timbre :as timbre]
    [clojure.tools.logging :as log]
    [website.config :refer [env]]))
 
