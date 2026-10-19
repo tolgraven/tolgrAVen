@@ -41,13 +41,27 @@ ClojureScript changes.
 
 ## Optional and retained libraries
 
-The development CIDER Lein plugin injects its middleware automatically. The
-REPL handler explicitly lists Piggieback and Shadow to satisfy their middleware
+The development CIDER Lein plugin supplies its middleware dependency. The default
+`lein repl` alias trampolines into `website.dev.terminal`, which uses nREPL's
+server adapter with the CIDER middleware list, Piggieback and Shadow, and calls
+the unchanged `user/start`. The terminal client is neorepl v0.3.0, pinned by full
+Git SHA in `config/neorepl.edn`, running in a separate Babashka process so JLine
+and client dependencies do not enter the application JVM/prefab. Trampoline
+preserves terminal descriptors; do not replace it with a piped `lein run`.
+`lein repl-classic` removes the alias and calls the original Lein task, preserving
+custom `:repl-options`/editor injections and transports outside the terminal
+adapter's standard host/port modes. When adding middleware, keep the terminal
+adapter and original `:repl-options` aligned. The official Clojure enhanced REPL
+supports Clojure 1.12+, but its default value renderer has plain output; neorepl
+was chosen for highlighted values and explicit CIDER/Shadow session support.
+
+The REPL handler explicitly lists Piggieback and Shadow to satisfy their middleware
 ordering dependencies. Shadow's separate nREPL server explicitly includes
 Piggieback through `shadow-cljs.edn` too; keep both server configurations aligned.
 CIDER 0.63.1 includes Piggieback when constructing its internal handler, avoiding
 its former missing-middleware warnings without filtering startup output.
-The development REPL allows three minutes for cold application initialization.
+The original Lein task allows three minutes for cold application initialization;
+the terminal adapter starts its client after that initialization completes.
 Shadow startup runs on a background task after a one-second deferral, so initial
 `:return-worker`, optional `:ssr`, and `:app-dev` compilations do not block the
 REPL acknowledgement. Watches compile in that order rather than competing for

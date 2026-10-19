@@ -10,8 +10,8 @@ You will need [Leiningen][1] 2.0 or above installed.
 
 ## Setup and development
 
-Use Java 21 or newer, Leiningen, and Node.js 22.12 or newer. Install the lockfile
-and build CSS:
+Use Java 21 or newer, Leiningen, Babashka 1.13.225 or newer, and Node.js 22.12 or newer.
+Install the lockfile and build CSS:
 
 ```sh
 cp config/dev.example.edn env/dev/resources/config.edn
@@ -21,6 +21,18 @@ npm run build
 make hooks
 lein repl
 ```
+
+`lein repl` uses [neorepl](https://github.com/nrepl/neorepl), with syntax-coloured
+input and pretty-printed values, completion, documentation and CIDER tooling.
+The client runs in Babashka; its release is pinned in `config/neorepl.edn` and is
+downloaded on first use. `NO_COLOR` disables colours. Ctrl-C interrupts an
+evaluation; Ctrl-D or `:repl/quit` exits and stops this development server.
+`(cljs-repl)` switches this same session to Shadow; `:cljs/quit` returns to Clojure.
+Use `lein repl :port 7001` for another nREPL port, `lein repl :headless` for an
+editor-owned client, or `lein repl :connect localhost:7000` to attach without
+starting or stopping that server. `LEIN_REPL_HOST`, `LEIN_REPL_PORT` and
+`LEIN_REPL_ACK_PORT` are supported. `lein repl-classic` retains Leiningen's
+original REPL-y task and its full transport/socket/profile configuration.
 
 The development server checks CSS before opening HTTP and rebuilds stale or missing
 sheets with the locked tools and owns one supervised Sass/PostCSS watcher.
