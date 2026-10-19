@@ -154,6 +154,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   and 10x/re-frisk/legacy
   inspectors through `build/policy.clj`; stale analysis cache files are not graph membership.
 
+- API docs default to OpenAPI 3.1 at `/api/openapi.json`; retain the original
+  `/api/swagger.json` Swagger 2 compatibility document.
 - Reitit uses shared Malli parameter schemas. Internal/response validation follows
   runtime configuration; request coercion remains active. Coercion error handlers
   must not log full exception data or return request/response values.

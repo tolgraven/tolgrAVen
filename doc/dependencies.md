@@ -247,3 +247,13 @@ in `finally`, including failed watch rebuilds. npm selects its native binary for
 macOS development and Linux ARM64/AMD64 prefabs; retain optional dependencies
 when installing. PostCSS/Autoprefixer, style freshness and atomic publication keep
 their existing owners. See [Sass Embedded](https://sass-lang.com/blog/embedded-sass-is-live/).
+
+## API descriptions
+
+`fi.metosin/reitit-openapi` matches Reitit 0.11.0 and generates OpenAPI 3.1 at
+`/api/openapi.json`; the existing `/api/api-docs/` Swagger UI loads it by default.
+OpenAPI 3.1 is explicit because this released generator defaults to 3.2, while
+the bundled UI supports 3.1. Shared Malli parameter/response schemas supply both
+descriptions. Keep `reitit-swagger` for the original `/api/swagger.json` Swagger
+2 compatibility contract. This migration does not change request coercion or
+response formats. Reitit's OpenAPI generator remains upstream alpha.
