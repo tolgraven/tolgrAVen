@@ -2,7 +2,7 @@
   (:require [website.schema.http :as schemas]
             [clj-http.client :as http]
             [clojure.data.json :as json]
-            [taoensso.timbre :as timbre]))
+            [taoensso.telemere.timbre :as timbre]))
 
 (defn routes []
   (vec (remove nil?

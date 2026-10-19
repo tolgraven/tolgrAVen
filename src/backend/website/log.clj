@@ -1,80 +1,84 @@
 (ns website.log
-  (:require [clojure.java.io :as io]
-            [clojure.pprint :as pprint]
-            [taoensso.timbre :as timbre]
+  (:require [clojure.pprint :as pprint]
+            [clojure.string :as string]
+            [taoensso.telemere :as tel]
             [taoensso.encore :as enc]
-            [taoensso.timbre.appenders.community.rotor :as rotor]
-            [taoensso.timbre.tools.logging]
+            [taoensso.telemere.tools-logging :as tools-logging]
+            [taoensso.telemere.utils :as utils]
+            [clj-commons.format.exceptions :as exceptions]
             [clj-commons.pretty.repl :as pretty-repl]
-            [website.config :refer [env]]
             [mount.core :refer [defstate]]))
 
-(defn log-by-ns-pattern
-  [ns-patterns & [{:keys [?ns-str config level] :as opts}]]
-  (let [ns-filter #(-> %
-                       enc/compile-ns-filter
-                       enc/memoize_)
-        namesp   (or (some->> ns-patterns
-                              keys
-                              (filter #(and (string? %)
-                                            ((ns-filter %) ?ns-str)))
-                              not-empty
-                              (apply max-key count))
-                     :all)
-        loglevel (get ns-patterns namesp (get config :min-level))]
-    ;; Timbre has already applied its global threshold to this entry. Checking
-    ;; whether the namespace's threshold itself may log drops even errors when
-    ;; the global threshold is higher (for example :info versus :debug).
-    (when (timbre/level>= level loglevel)
-      opts)))
+(def namespace-levels
+  {"website.*"               :debug
+   "org.apache.http*"        :warn
+   "com.datomic.db*"         :info
+   "org.xnio.nio*"           :warn
+   "com.zaxxer.hikari*"      :warn
+   "org.eclipse.jetty.server*" :warn
+   "io.pedestal*"            :info})
 
-(defn log-with-pprint [data] 
-  (update data :vargs
-          (partial mapv #(if (string? %) 
-                           % 
-                           (with-out-str (pprint/pprint %))))))
+(defn log-with-pprint
+  "Retain pretty printed arguments from the upstream Timbre migration shim."
+  [{:keys [timbre/vargs] :as signal}]
+  (if (seq vargs)
+    (assoc signal :msg_
+           (delay (string/join " " (map #(if (string? %) % (with-out-str (pprint/pprint %)))
+                                         vargs))))
+    signal))
 
 (defn error-be-red "Make errors red middleware" [])
 
-(defn init-timbre [] ; should grab below from env tho...
- (let [ns-levels {"website.*"                         :debug
-                  "org.apache.http"                     :warn
-                  "com.datomic.db"                      :info
-                  "org.xnio.nio"                        :warn
-                  "com.zaxxer.hikari"                   :warn
-                  "org.eclipse.jetty.server*"           :warn
-                  "io.pedestal*"                        :info
-                  :all                                  :debug}]
-  (timbre/merge-config!
-   {:min-level :debug
-    :timestamp-opts {:pattern "yyMMdd HH:mm:ss.SS"
-                     :locale :jvm-default
-                     :timezone (java.util.TimeZone/getDefault)}
-    :appenders {:println {:min-level :info}
-                :rotor (merge (rotor/rotor-appender
-                               {:path "log/website.log"
-                                :max-size 10000000 ;was set to just 100kb... thats like 10 stacktraces lol
-                                :backlog 5})
-                              {:rate-limit [[1 250] [2 1000] [4 10000]]})}
-    :middleware [(partial log-by-ns-pattern ns-levels)
-                 log-with-pprint]})))
+(defn output-formatter []
+  (tel/format-signal-fn
+    {:content-fn (utils/signal-content-fn
+                   {:format-error-fn exceptions/format-exception})}))
 
-(defn init-logging "Hijack others, make exceptions nice, init timbre"
+(defn file-handler
+  ([] (file-handler "log/website.log" 10000000 5))
+  ([path max-size backlog]
+   (tel/handler:file {:path path
+                      :interval nil
+                      :max-file-size max-size
+                      :max-num-parts backlog
+                      :gzip-archives? false
+                      :output-fn (output-formatter)})))
+
+(defn- repeated-signal-filter []
+  (let [limited? (enc/rate-limiter [[1 250] [2 1000] [4 10000]])]
+    (fn [{:keys [ns coords level msg_] :as signal}]
+      (when-not (limited? [ns coords level (force msg_)])
+        signal))))
+
+(defn init-logging
+  "Mount owns filtering, sinks, bridges and the application uncaught handler."
   []
-  (taoensso.timbre.tools.logging/use-timbre) ;route logging through timbre
-  
-  ;; Timbre already formats logged Throwables with clj-commons/pretty. Keep the
-  ;; Throwable intact through tools.logging and Java bridges for every appender.
+  (tel/set-min-level! :debug)
+  (doseq [[pattern level] namespace-levels]
+    (tel/set-min-level! nil pattern level))
+  (tel/set-root-xfn! log-with-pprint)
+  ;; Replace our existing handlers on restart; Telemere closes their file writers.
+  (tel/remove-handler! :default/console)
+  (tel/add-handler! ::console (tel/handler:console {:output-fn (output-formatter)})
+                    {:min-level :info :async nil})
+  (tel/add-handler! ::file (file-handler)
+                    {:min-level :debug
+                     :async nil
+                     :xfn (repeated-signal-filter)})
+  (tools-logging/tools-logging->telemere!)
   (pretty-repl/install-pretty-exceptions)
-  ;; Pretty installs a default handler too; the mounted logger owns the final
-  ;; handler, rather than namespace load order deciding how failures are logged.
   (Thread/setDefaultUncaughtExceptionHandler
     (reify Thread$UncaughtExceptionHandler
       (uncaughtException [_ thread ex]
-        (timbre/error ex {:what :uncaught-exception
-                         :where (str "Uncaught exception on " (.getName thread))}))))
-  (init-timbre))
+        (tel/log! {:level :error
+                   :id :uncaught-exception
+                   :error ex
+                   :data {:thread (.getName thread)}
+                   :msg (str "Uncaught exception on " (.getName thread))}))))
+  nil)
 
-(defstate ^{:on-reload :noop} logger-timbre ;problem: afterglow timbre (im guessing) overwrites our config...
- :start (init-logging))
-; (init-logging) ;want this to happen on load yo
+;; Retain the Mount identity used by existing REPL/lifecycle callers.
+(defstate ^{:on-reload :noop} logger-timbre
+  :start (init-logging)
+  :stop (do (tel/remove-handler! ::console)
+            (tel/remove-handler! ::file)))

@@ -8,7 +8,7 @@
     [luminus.http-server :as http]
     [website.config :refer [env]]
     [clojure.tools.cli :refer [parse-opts]]
-    [taoensso.timbre :as timbre]
+    [taoensso.telemere.timbre :as timbre]
     [mount.core :as mount])
   (:gen-class))
 

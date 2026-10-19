@@ -2,7 +2,7 @@
   (:require
    [website.config :refer [env]]
    [clojure.data.json :as json]
-   [taoensso.timbre :as timbre]
+   [taoensso.telemere.timbre :as timbre]
    [clj-http.client :as client]))
 
 (def base-url "https://api.openai.com/v1/")

@@ -145,32 +145,33 @@ Several larger libraries remain because they perform real work:
 | clj-http | Server-side provider HTTP adapters; use existing bulk plans rather than adding transport clients in views. |
 | cljs-time | Existing date calculations/formatting. |
 | PostgreSQL JDBC + next.jdbc | Active database provisioning tooling. Reads explicitly retain unqualified lower-case keys; imports retain per-table transactions and heterogeneous row defaults. Schema installation joins a supplied transaction. java.jdbc and HoneySQL are confined to `:experiments`. |
-| tools.logging + Timbre + SLF4J bridge | Application logging facade and Timbre sink, including Java libraries using SLF4J 2. Keep the bridge compatible with the resolved SLF4J API. |
-| org.clj-commons/pretty / Prone | Pretty exceptions shared with Timbre, and development error pages respectively. |
+| tools.logging + Telemere + SLF4J bridge | Application logging facade and Telemere sink, including Java libraries using SLF4J 2. Keep the bridge compatible with the resolved SLF4J API. |
+| org.clj-commons/pretty / Prone | Pretty exceptions shared with Telemere, and development error pages respectively. |
 | Leaflet / react-leaflet | Preserved map functionality. |
 | react-markdown, remark-gfm, rehype-raw, syntax highlighter | Existing Markdown rendering and highlighting. |
 | xmlhttprequest | Node test transport adapter; a development dependency. |
 
 ## JVM logging
 
-Timbre is the application logging backend. The handler loads `website.log`
-first so Mount initializes its configuration before application services.
-`website.log` owns console output
-(info and above), rotating `log/website.log` output, namespace thresholds and
-pretty exceptions. Its initialization also installs the sole application default
-uncaught exception handler, passing the Throwable and failing thread's name to
-Timbre. Loading `core` or `log` must not replace that handler.
-`clojure.tools.logging` callers use Timbre's existing adapter;
-Java SLF4J callers use `slf4j-timbre`. Keep both adapters: application and dependency
-code use these APIs. Encore is used directly by the namespace filter and required
-by Timbre. `org.clj-commons/pretty` supplies both Timbre's exception formatter and
-the REPL hooks; the older `io.aviso/pretty` duplicates compatibility namespaces
-and must not be added alongside it.
+Telemere 1.4 is the application logging backend. Existing calls use the upstream
+`taoensso.telemere.timbre` migration shim; new structured telemetry can use
+`taoensso.telemere` directly. The handler loads `website.log` before services.
+Mount retains the existing `logger-timbre` state identity, while `website.log`
+owns namespace thresholds, info-level console output, pretty exceptions and
+10 MB rotating `log/website.log` output with five uncompressed numbered archives.
+File handlers are synchronous and retain the existing rate limits. Stop/restart
+closes only the application's owned console/file handlers.
+
+`clojure.tools.logging` uses Telemere's adapter; `telemere-slf4j` is the sole
+SLF4J 2 provider. Keep Throwables intact through both bridges. Explicit logger
+initialization owns the sole default uncaught exception handler; loading `core`
+or `log` must not replace it. `org.clj-commons/pretty` supplies the log exception
+formatter and REPL hooks. Do not add legacy `io.aviso/pretty` alongside it.
 
 JBoss Logging is required by Undertow, XNIO and JBoss Threads. Its automatic
 selection prefers Log4j when available and otherwise falls back to JUL unless
 Logback is present. The shared Lein JVM options and Docker command explicitly
-select `-Dorg.jboss.logging.provider=slf4j`, routing HTTP-server logs to Timbre
+select `-Dorg.jboss.logging.provider=slf4j`, routing HTTP-server logs to Telemere
 from class initialization, before the application logger is mounted. Include
 that option when launching the JAR directly too. A running JVM retains its
 selected provider; restart it to pick up dependency or JVM-option changes.

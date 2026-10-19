@@ -47,10 +47,11 @@
                  [mount "0.1.24"]
 
                  [org.clojure/tools.logging "1.3.1"]
-                 [com.taoensso/timbre "6.8.0" :exclusions [org.clojure/tools.reader]]
+                 [com.taoensso/telemere "1.4.0"]
                  [com.taoensso/encore "3.172.1"]
-                 [com.fzakaria/slf4j-timbre "0.4.1" :exclusions [org.slf4j/slf4j-api]] ; Java SLF4J callers use Timbre.
-                 [org.clj-commons/pretty "3.6.3"] ; Shared with Timbre; REPL exception formatting.
+                 [com.taoensso/telemere-slf4j "1.4.0"]
+                 [org.slf4j/slf4j-api "2.0.18"] ; One Java SLF4J provider: Telemere.
+                 [org.clj-commons/pretty "3.6.3"] ; Shared REPL and logging exception formatting.
 
                  [ring/ring-core "1.15.5"]
                  [ring/ring-defaults "0.7.1"]
@@ -85,7 +86,7 @@
   :min-lein-version "2.0.0"
 
   ;; JBoss otherwise prefers Log4j when present, or JUL without Logback.
-  ;; Select the existing SLF4J -> Timbre provider before Undertow loads.
+  ;; Select the existing SLF4J -> Telemere provider before Undertow loads.
   :jvm-opts ["-Dorg.jboss.logging.provider=slf4j"]
 
   :source-paths ["src/backend" "src/frontend" "src/cljc"]

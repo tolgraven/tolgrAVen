@@ -305,8 +305,9 @@ maintain a duplicate handwritten variable catalog.
 
 ## Dependency ownership
 
-- Timbre owns JVM logging configuration in `website.log`; tools.logging and
-  SLF4J route through its existing adapters. Select JBoss's SLF4J provider in
+- Telemere owns JVM logging configuration in `website.log`; tools.logging and
+  SLF4J route through its adapters and the sole `telemere-slf4j` provider. Existing
+  logging calls use the upstream Timbre migration shim. Select JBoss's SLF4J provider in
   Lein and direct Java launches before Undertow loads. Use the shared
   `org.clj-commons/pretty`, not the duplicate `io.aviso/pretty` or Logback XML.
   See `doc/dependencies.md`.
