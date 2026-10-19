@@ -174,8 +174,20 @@
 
   &__commit { padding: 1rem; overflow-wrap: anywhere; }
   &__commit a { display: inline-block; margin-inline-end: 1rem; }
-  &__message { margin-block: 1rem; }
-  &__message pre { overflow-x: auto; }
+  &__message {
+    margin-block: 1rem;
+    line-height: 1.5;
+    p, ul, ol, blockquote, pre, table { margin-block: .75em; }
+    ul, ol { padding-inline-start: 1.5em; }
+    ul { list-style: disc; }
+    ol { list-style: decimal; }
+    li { display: list-item; }
+    blockquote { border-inline-start: .2rem solid var(--bg-6); padding-inline-start: 1em; }
+    pre { overflow-x: auto; }
+    .code-snippet > code { display: inline; }
+    table { border-collapse: collapse; }
+    th, td { padding: .35em .6em; border: var(--line-width-sm) solid var(--bg-6); }
+  }
   &__metadata { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .35rem 1rem; }
   &__metadata dt { color: var(--fg-5); }
   &__metadata dd { margin: 0; overflow-wrap: anywhere; }
