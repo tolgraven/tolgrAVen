@@ -134,39 +134,29 @@ const returnReady = (document, selectors) => {
 };
 const searchMotion = async label => {
   const document = doc(), win = frame.contentWindow;
-  // First intent can replace the lazy fallback; act on the mounted control.
   const button = () => document.querySelector('button.search-ui-btn');
-  check(!!button() && !document.querySelector('.search-ui-open'), `${label} Search starts closed`);
-  let panel = document.querySelector('.search-ui');
-  if (!panel) {
-    // A restored document may acquire Search on first intent. Establish its
-    // normal closed surface before comparing subsequent user transitions.
-    button().click();
-    await wait(() => document.querySelector('.search-ui-open'));
-    button().click();
-    await wait(() => !document.querySelector('.search-ui-open'));
-    panel = document.querySelector('.search-ui');
-    await settleLayout(panel);
-  }
+  check(!!button() && !document.querySelector('.search-ui'), `${label} Search starts without a hidden panel`);
   const motion = [], frames = [];
+  let panel;
   for (const open of [true, false]) {
     let transition;
     const capture = () => {
-      transition ||= panel.getAnimations().find(animation => animation instanceof win.CSSTransition &&
-        animation.transitionProperty === 'max-height' && animation.effect.target === panel);
+      panel ||= document.querySelector('.search-ui');
+      transition ||= panel?.getAnimations().find(animation => animation instanceof win.CSSTransition &&
+        animation.transitionProperty === 'grid-template-rows' && animation.effect.target === panel);
       return transition;
     };
-    // Retain the actual effect on its native start event too; a quick valid
-    // transition need not remain listed until the next readiness poll.
-    panel.addEventListener('transitionrun', capture);
+    document.addEventListener('transitionrun', capture);
     try {
       button().click();
       await wait(() => capture() && !!document.querySelector('.search-ui-open') === open);
-    } finally { panel.removeEventListener('transitionrun', capture); }
+    } finally { document.removeEventListener('transitionrun', capture); }
     const effect = transition.effect, timing = effect.getTiming(), keyframes = effect.getKeyframes();
     check(Number.isFinite(effect.getComputedTiming().endTime) && Number(timing.duration) > 0 &&
-      new Set(keyframes.map(value => value.maxHeight)).size > 1,
-      `${label} Search ${open ? 'opening' : 'closing'} runs a finite native height transition`);
+      new Set(keyframes.map(value => value.gridTemplateRows)).size > 1,
+      `${label} Search ${open ? 'opening' : 'closing'} runs a finite intrinsic-height transition`);
+    check(!panel.querySelector('.styled-input-container.closed'), `${label} Search has no nested closing geometry`);
+    if (!open) check(panel.hasAttribute('inert'), `${label} departing Search is inert`);
     motion.push({open, property: transition.transitionProperty, timing, keyframes,
       composite: effect.composite, iterationComposite: effect.iterationComposite, playbackRate: transition.playbackRate});
     let request, active = true, finished = false, failure;
@@ -179,8 +169,9 @@ const searchMotion = async label => {
       read();
       await wait(() => { if (failure) throw failure; return finished; });
     } finally { active = false; cancelAnimationFrame(request); }
-    check(doc() === document && document.querySelector('.search-ui') === panel,
-      `${label} Search retains its native surface through the transition`);
+    check(doc() === document, `${label} Search stays in the same document`);
+    if (open) check(document.querySelector('.search-ui') === panel, `${label} entrance retains its native surface`);
+    else await wait(() => !document.querySelector('.search-ui'));
   }
   return {motion, frames};
 };

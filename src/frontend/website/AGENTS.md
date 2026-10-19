@@ -745,3 +745,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   flatten nested token styles in order and retain exact
   line breaks, caller row attributes, numbered gutters and editable final rows.
   Browser and Node use the same formatter behind the existing lazy boundary.
+
+- Search controls, suggestions and separate results use keyed `:presence` children
+  with native-root `:appear`/`:exit`. Grid rows animate their intrinsic height;
+  keep the styled input at its natural geometry during exit. Do not restore the
+  old viewport max-height or nested closed-margin/border animation.

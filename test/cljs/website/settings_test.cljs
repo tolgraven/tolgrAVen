@@ -7,6 +7,8 @@
             [website.events]
             [website.subs]
             [website.modules.settings.views :as views]
+            [website.modules.search.views :as search]
+            [website.modules.search.subs]
             [website.test-support :as support]
             [website.modules.settings.events :as settings]))
 
@@ -72,6 +74,8 @@
                   [component selector open-event close-event]
                   [[views/<settings> ".settings-panel"
                     [:state [:settings :panel-open] true] [:state [:settings :panel-open] false]]
+                   [search/<ui> ".search-ui"
+                    [:state [:search :open?] true] [:state [:search :open?] false]]
                    [user/<user-section> ".user-section-wrapper"
                     [:user/open-ui :login] [:user/close-ui]]]]
             (let [restore-db! (r/make-restore-fn)

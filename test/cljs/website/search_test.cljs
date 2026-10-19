@@ -151,3 +151,51 @@
           (.catch #(is false (str %)))
           (.finally #(do (when @root (support/unmount! @root)) (.remove element)
                          (r/reg-fx :dispatch-later original-delay) (restore!) (done)))))))
+
+(deftest header-search-retains-its-exiting-input-and-cancels-removal-on-reentry
+  (async done
+    (let [restore! (r/make-restore-fn)
+          element (.createElement js/document "div")
+          style (.createElement js/document "style")
+          *root (atom nil)]
+      (set! (.-id element) "search-presence-fixture")
+      ;; A finite native clock exercises presence in the otherwise unstyled runner.
+      (set! (.-textContent style)
+            "#search-presence-fixture .search-ui {opacity:0;transition:opacity .3s linear} #search-presence-fixture .search-ui.appeared {opacity:1}")
+      (.appendChild (.-head js/document) style)
+      (.appendChild (.-body js/document) element)
+      (r/dispatch-sync [:state [:search :open?] false])
+      (-> (go-promise
+            (let [root (await! (support/create-root! element))]
+              (reset! *root root)
+              (await! (support/render! root [views/<ui>]))
+              (is (nil? (.querySelector element ".search-ui")))
+              (r/dispatch-sync [:state [:search :open?] true])
+              (await! (support/wait-for! #(.querySelector element "#search-input")))
+              (let [panel (.querySelector element ".search-ui")
+                    input (.querySelector element "#search-input")]
+                (await! (support/wait-for! #(identical? input (.-activeElement js/document))))
+                (await! (support/wait-for! #(.contains (.-classList panel) "appeared")))
+                (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 350))))
+                (r/dispatch-sync [:state [:search :open?] false])
+                (await! (support/wait-for! #(.hasAttribute panel "inert")))
+                (is (identical? panel (.querySelector element ".search-ui"))
+                    "Presence retains the actual panel during its exit")
+                (is (nil? (.querySelector panel ".styled-input-container.closed"))
+                    "The input must not change margin/border while its parent collapses")
+                (is (not (identical? input (.-activeElement js/document))))
+                (r/dispatch-sync [:state [:search :open?] true])
+                (await! (support/wait-for! #(not (.hasAttribute panel "inert"))))
+                (is (identical? input (.querySelector element "#search-input"))
+                    "Reopening during exit keeps the same controlled input")
+                (await! (support/wait-for! #(identical? input (.-activeElement js/document))))
+                (r/dispatch-sync [:state [:search :open?] false])
+                (await! (support/wait-for! #(nil? (.querySelector element ".search-ui"))))
+                (is (not (.-isConnected input)) "Completed exit leaves no hidden panel"))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @*root (support/unmount! @*root))
+                      (.remove element)
+                      (.remove style)
+                      (restore!)
+                      (done)))))))

@@ -385,6 +385,7 @@
   [:<>
    [shell/<header> (editor/section :header false)]
    [search/<ui>]
+   [search/<results>]
    [<main-fixture> [:section [:p "Fixed page content behind Search."]]]])
 
 (defn ^:export shell-state! [state]
@@ -430,6 +431,7 @@
                    (r/dispatch-sync [:user/active-section :register]))
     "settings" (r/dispatch-sync [:state [:settings :panel-open] true])
     "search" (r/dispatch-sync [:search/state [:open?] true])
+    "search-closed" (r/dispatch-sync [:search/state [:open?] false])
     "contact" (r/dispatch-sync [:contact/open])
     (throw (js/Error. (str "Unknown panel fixture state: " state)))))
 
@@ -678,7 +680,7 @@
                                  search-response)]
                   (when (validation/explain search-model/result response)
                     (throw (js/Error. "Invalid native search fixture response")))
-                  (r/reg-sub :search/open? (fn [_ _] true))
+                  (r/dispatch-sync [:state [:search :open?] true])
                   (r/reg-sub :search/query (fn [_ _] (:query response)))
                   (r/reg-sub :search/response (fn [_ _] response))
                   (r/reg-sub :search/pending? (fn [_ _] false))

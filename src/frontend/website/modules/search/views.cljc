@@ -2,6 +2,8 @@
   #?(:cljs (:require [website.react :as r]
                      [website.component.font :as font]
                      [website.component.motion :as motion]
+                     [website.component.restore :as restore]
+                     [website.render-context :as context]
                      [website.modules.styled-input.views :as styled-input]
                      [website.modules.search.presentation :as presentation]
                      [website.components.image :as img]
@@ -81,7 +83,8 @@
      :controlled? true
      :animate? false
      :text-fn <query-text>
-     :open? open?
+     ;; The owning panel controls layout through presence, including its exit.
+     :open? true
      :height (if inline? "2.5em" "2em")
      :suggestions [(get suggestions (max 0 selected'))]
      :completion-fn <completion>
@@ -99,27 +102,38 @@
      :on-change #(r/dispatch-sync [:search/query %])
      :on-key-down #(key-down! % suggestions selected' inline?)]))
 
-(m/defc <suggestions> [{:keys [id open?]}]
+(m/defc ^:private <suggestion-panel>
+  {:features [[:appear {:viewport? false, :restore? false}] :exit]}
+  [id suggestions selected]
+  [:div.search-autocomplete.search-autocomplete-open
+   {:id (str id "-suggestions")
+    :role "listbox"
+    :aria-label "Search suggestions"}
+   [:div.search-autocomplete__content
+    (for [[index suggestion] (map-indexed vector suggestions)]
+      ^{:key suggestion}
+      [:button.search-autocomplete-item.noborder
+       {:type "button"
+        :id (str id "-suggestions-" index)
+        :role "option"
+        :tab-index -1
+        :aria-selected (= selected index)
+        :on-mouse-down #(.preventDefault %)
+        :on-click #(r/dispatch [:search/query suggestion])}
+       suggestion])]])
+
+(m/defc <suggestions>
+  {:features [:presence]}
+  [{:keys [id open?]}]
   (let [suggestions @(r/subscribe [:search/suggestions])
         selected @(r/subscribe [:search/selected])
-        list-id (str id "-suggestions")]
-    [:div.search-autocomplete
-     {:id list-id
-      :role "listbox"
-      :aria-label "Search suggestions"
-      :class (when (and open? (seq suggestions)) "search-autocomplete-open")}
-     (when open?
-       (for [[index suggestion] (map-indexed vector suggestions)]
-         ^{:key suggestion}
-         [:button.search-autocomplete-item.noborder
-          {:type "button"
-           :id (str list-id "-" index)
-           :role "option"
-           :tab-index -1
-           :aria-selected (= selected index)
-           :on-mouse-down #(.preventDefault %)
-           :on-click #(r/dispatch [:search/query suggestion])}
-          suggestion]))]))
+        hydrating? (r/use-context restore/hydrating-context)
+        document? (or context/*server?* hydrating? (restore/initial-hydration?))]
+    [:<>
+     (when (and open? (seq suggestions))
+       ^{:key :search-suggestions}
+       [<suggestion-panel> {:features [[:appear {:viewport? false, :restore? document?}]]}
+        id suggestions selected])]))
 
 (m/defc <instant-results> [open?]
   (let [query @(r/subscribe [:search/query])
@@ -165,18 +179,43 @@
 (m/defc <full-results> "Preserved full-results experiment."
   [collection query])
 
-(m/defc <ui> "Search public content through the shared search boundary."
-  {:features [:error-boundary]}
-  [& _]
+(m/defc ^:private <panel>
+  {:features [[:appear {:viewport? false, :restore? false}] :exit]}
+  []
   (let [open? @(r/subscribe [:search/open?])]
     [:section.search-ui {:class (when open? "search-ui-open")}
-     [<box> {:id "search-input", :open? open?}]
-     [<suggestions> {:id "search-input", :open? open?}]]))
+     [:div.search-ui__content
+      [<box> {:id "search-input", :open? open?}]
+      ;; Retain the list's intrinsic height while the whole panel exits.
+      [<suggestions> {:id "search-input", :open? true}]]]))
+
+(m/defc <ui> "Search public content through the shared search boundary."
+  {:features [:error-boundary :presence]}
+  [& _]
+  (let [open? @(r/subscribe [:search/open?])
+        hydrating? (r/use-context restore/hydrating-context)
+        document? (or context/*server?* hydrating? (restore/initial-hydration?))]
+    [:<>
+     (when open?
+       ^{:key :search-panel}
+       [<panel> {:features [[:appear {:viewport? false, :restore? document?}]]}])]))
+
+(m/defc ^:private <results-panel>
+  {:features [[:appear {:viewport? false, :restore? false}] :exit]}
+  []
+  [:div.search-results-panel
+   [:div.search-results-panel__content
+    [<instant-results> true]]])
 
 (m/defc <results> "Header results remain outside the sticky controls."
-  {:features [:error-boundary]}
+  {:features [:error-boundary :presence]}
   []
-  [<instant-results> @(r/subscribe [:search/open?])])
+  (let [hydrating? (r/use-context restore/hydrating-context)
+        document? (or context/*server?* hydrating? (restore/initial-hydration?))]
+    [:<>
+     (when @(r/subscribe [:search/open?])
+       ^{:key :search-results}
+       [<results-panel> {:features [[:appear {:viewport? false, :restore? document?}]]}])]))
 
 (m/defc <inline> "Always-visible search using the same query and result state."
   {:features [:error-boundary]}
