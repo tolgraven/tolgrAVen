@@ -36,12 +36,24 @@ def merged_task(checkout, branch, head):
          '--state', 'all', '--limit', '100', '--json', 'number,state,headRefOid,mergeCommit'], text=True))
     if any(pr['state'] == 'OPEN' for pr in prs):
         raise RuntimeError('The branch still has an open PR.')
-    for pr in prs:
-        if pr['state'] == 'MERGED' and pr['headRefOid'] == head and pr.get('mergeCommit'):
-            result = subprocess.run(['git', '-C', str(checkout), 'merge-base', '--is-ancestor',
-                                     pr['mergeCommit']['oid'], 'origin/master'], capture_output=True)
-            if result.returncode == 0:
-                return pr['number']
+    candidates = [pr for pr in prs if pr['state'] == 'MERGED' and pr.get('mergeCommit')
+                  and pr['headRefOid'] == head]
+    if not candidates:
+        # A worktree may be advanced to a merged PR's exact integration commit
+        # while retaining a different local branch name. Match that immutable
+        # merge commit globally, after checking this branch has no open PR.
+        merged = json.loads(subprocess.check_output(
+            ['gh', 'pr', 'list', '--repo', 'tolgraven/tolgrAVen', '--state', 'merged',
+             '--limit', '1000', '--json', 'number,headRefOid,mergeCommit'], text=True))
+        candidates = [pr for pr in merged if (pr.get('mergeCommit') or {}).get('oid') == head]
+    for pr in candidates:
+        merge_oid = (pr.get('mergeCommit') or {}).get('oid')
+        if not merge_oid:
+            continue
+        result = subprocess.run(['git', '-C', str(checkout), 'merge-base', '--is-ancestor',
+                                 merge_oid, 'origin/master'], capture_output=True)
+        if result.returncode == 0:
+            return pr['number']
     raise RuntimeError('No merged PR matches this exact worktree head in origin/master; preserve it.')
 
 
