@@ -14,6 +14,12 @@ Use the dedicated provisioning image for first-time schema bootstrap and repeata
 
 ## Build
 
+The one-shot image pins the same Java 21 LTS Leiningen base as the application
+prefab. It copies the provisioning entrypoint explicitly; tests and private
+runtime overrides remain outside its Docker context. The isolated `:provision`
+profile includes the production `website.env` and defaults without starting web
+servers or development watchers. Credentials are supplied only when running the job.
+
 ```bash
 docker build -f Dockerfile.supabase-provision -t tolgraven-supabase-provision .
 ```

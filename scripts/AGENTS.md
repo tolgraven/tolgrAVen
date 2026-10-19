@@ -54,6 +54,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   normal build caching, explicit CMS secrets, no automatic ARG injection, and
   runtime-only unrelated keys. Same-source CMS feature/CSS changes need a forced rebuild.
   Dockerfile owns the prefab default and persistent Maven cache on every host.
+- `ops/entrypoint-supabase-provision.sh` runs the native CLI with the isolated
+  `:provision` profile; its image supplies production environment sources/defaults.
 - `ops/`: isolated site provisioning and Coolify adapters. `ops/coolify/*.php`
   executes inside the existing Laravel container. Preserve persisted ownership
   markers even when their historical script names differ from current paths.
