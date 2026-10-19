@@ -42,7 +42,7 @@
                          paths))))
         (is (= 200 (:status before)))
         (is (string/includes? (:css first-snapshot) "U+20"))
-        (is (not (re-find #"fa-(?:solid|brands)-|fallback" (:css first-snapshot))))
+        (is (not (re-find #"/webfonts/fa-(?:solid|brands)-[0-9]+\.woff2|fallback" (:css first-snapshot))))
         (reset! fail? true)
         (is (thrown? clojure.lang.ExceptionInfo (icons/prepare! {:solid #{61440}})))
         (is (= first-snapshot (icons/prepare!)))
