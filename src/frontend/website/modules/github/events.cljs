@@ -18,6 +18,7 @@
     (-> db
         (assoc-in [:state :github]
                   (merge (select-keys (get-in db [:state :github]) [:diff-view :diff-attempt])
+                         (when same-target? (select-keys (get-in db [:state :github]) [:commit-view]))
                          {:target target
                           :generation (inc (get-in db [:state :github :generation] 0))
                           :query query
@@ -28,7 +29,17 @@
   {:args [:tuple routes/commit-sha]}
   (fn [{:keys [db]} [_ sha]]
     (when (= (string/lower-case sha) (:sha (model/route-target (:common/route db))))
-      {:dispatch [:github/init]})))
+      {:dispatch-n [[:github/init] [:github/select-commit sha]]})))
+
+(r/reg-event-fx :github/select-commit
+  {:args [:tuple routes/commit-sha]}
+  (fn [{:keys [db]} [_ sha]]
+    (let [[user repo] (get-in db [:state :github :target])]
+      (cond-> {:db (assoc-in db [:state :github :commit-view] sha)}
+        (and user repo) (assoc :dispatch [:github/fetch-commit user repo sha])))))
+
+(r/reg-event-db :github/close-commit
+  (fn [db _] (assoc-in db [:state :github :commit-view] :commits)))
 
 (r/reg-event-fx :github/open-diff
   {:args [:tuple diff/revision-schema]}

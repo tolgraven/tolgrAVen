@@ -79,3 +79,8 @@
 (r/reg-sub :github/commit-pending?
   :<- [:state [:github :commits-pending]]
   (fn [pending [_ sha]] (contains? pending sha)))
+
+(r/reg-sub :github/commit-view
+  :<- [:state [:github :commit-view]]
+  :<- [:github/route-target]
+  (fn [[selected target] _] (or selected (:sha target) :commits)))

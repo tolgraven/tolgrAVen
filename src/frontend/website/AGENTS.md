@@ -762,8 +762,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   only their own side and newline notes advance neither. Missing patches stay
   explicit. The existing lazy formatter's optional `:line-prefix` owns custom
   source gutters in both plain loading output and highlighted rows.
-  Commit permalinks select that same detail surface without rewriting the feed
-  query. The mounted scrollbox resets on detail entry and restores the list's
+  GitHub events own commit selection; row clicks and route activation select
+  the same detail, including reactivating an unchanged permalink after closing.
+  Commit permalinks select that surface without rewriting the feed query. The mounted scrollbox resets on detail entry and restores the list's
   prior offset on return; component-target scrolling remains navigation-owned.
   Internal permalink clicks bubble to Reitit's document handler; the row ignores
   link/button targets rather than stopping propagation and forcing a reload.

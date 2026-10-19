@@ -27,6 +27,7 @@
                    :generation c/nonnegative
                    :pages-pending [:set :int]
                    :commits-pending [:set :string]
+                   :commit-view [:or [:= :commits] [:re #"^[a-fA-F0-9]{7,40}$"]]
                    :commit-pages-pending [:map-of :string [:int {:min 1, :max 30}]]
                    :headers-pending? :boolean
                    :query :string

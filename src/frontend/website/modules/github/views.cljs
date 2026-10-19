@@ -153,11 +153,10 @@
 
 (defc ^:private <commit-row>
   {:features [[:appear "slide-in slow"]]}
-  [{:keys [from sha main-view-position view author date ts html_url sha7 commit]}]
+  [{:keys [from sha main-view-position author date ts html_url sha7 commit]}]
   (let [open! (fn []
-                (r/dispatch [:github/fetch-commit (first @from) (second @from) sha])
                 (reset! main-view-position (.-scrollTop (util/elem-by-id "github-commits-box")))
-                (reset! view sha))
+                (r/dispatch [:github/select-commit sha]))
         avatar [img/<picture> {:src (:avatar_url author)
                        :alt (str (:login author) " avatar")
                        :class "user-avatar center-content"}]]
@@ -249,7 +248,7 @@
         amount (r/subscribe [:github/commit-count])
         complete? (r/subscribe [:github/archive-complete?])
         more? (r/subscribe [:github/more?])
-        view (r/atom (or (:sha @(r/subscribe [:github/route-target])) :commits))
+        view (r/subscribe [:github/commit-view])
         main-view-position (r/atom 0)
         url (r/subscribe [:github/website-url])]
    (fn [spec]
@@ -260,7 +259,7 @@
           (when (and sha (= @view :commits))
             (when-let [element (util/elem-by-id "github-commits-box")]
               (reset! main-view-position (.-scrollTop element))))
-          (reset! view (or sha :commits))
+          (r/dispatch-sync (if sha [:github/select-commit sha] [:github/close-commit]))
           (when sha
             (r/dispatch [:scroll/component-target "github-commits" path]))
           nil)
@@ -310,13 +309,12 @@
             ^{:key (str "github-commit-" sha)}
         [<commit-row> (assoc item
                             :from from
-                            :main-view-position main-view-position
-                            :view view)])
+                            :main-view-position main-view-position)])
 
           [:div
             [<commit> @view
              [:button.github-patch__back
-              {:type "button", :on-click #(reset! view :commits)} "← Back to commits"]]])
+              {:type "button", :on-click #(r/dispatch [:github/close-commit])} "← Back to commits"]]])
 
      (when (and (= @view :commits) @more?)
       [<loading> (first @from) (second @from)])]]]

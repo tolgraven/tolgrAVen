@@ -191,3 +191,29 @@
             (is (= 1 (count @*requests)) "A current complete detail stays cached"))
           (.catch #(is false (str %)))
           (.finally (fn [] (restore!) (done)))))))
+
+(deftest the-same-permalink-reopens-after-returning-to-the-list
+  (async done
+    (let [restore! (r/make-restore-fn)
+          sha "abcdef123456"]
+      (r/reg-fx :http-xhrio (fn [_]))
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            (r/dispatch-sync [:component-data/install [:module :github :configuration]
+                              {:settings {:user "u", :repo "r"}}])
+            (r/dispatch-sync [:component-data/install [:common/route] (match sha)])
+            (r/dispatch-sync [:github/navigate-commit sha])
+            (await! (support/settle!))
+            (is (= sha (await! (support/subscription-value! [:github/commit-view]))))
+            (r/dispatch-sync [:github/close-commit])
+            (await! (support/settle!))
+            (is (= :commits (await! (support/subscription-value! [:github/commit-view]))))
+            (r/dispatch-sync [:github/search "layout"])
+            (await! (support/settle!))
+            (is (= :commits (await! (support/subscription-value! [:github/commit-view])))
+                "Editing the feed query does not reopen a closed permalink")
+            (r/dispatch-sync [:github/navigate-commit sha])
+            (await! (support/settle!))
+            (is (= sha (await! (support/subscription-value! [:github/commit-view])))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
