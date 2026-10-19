@@ -1,32 +1,43 @@
+.search-ui,
+.search-results-panel,
+.search-autocomplete {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.25s ease, opacity 0.2s ease;
+
+  &.appeared {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
 .search-ui {
   position: relative;
   padding: 0;
   border: 0;
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.4s ease;
 
-  &.search-ui-open {
-    transition: max-height 1.8s ease;
-    max-height: 80vh;
-    overflow: initial;
+  .styled-input-container {
+    // The shell owns stickiness; this child must stay inside the animated row.
+    position: relative;
+    top: auto;
+    margin-bottom: 0;
   }
 }
 
-
+.search-ui__content,
+.search-results-panel__content,
+.search-autocomplete__content {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
 
 .search-autocomplete {
-  transition: max-height 0.5s ease;
-  max-height: 0;
-  overflow: hidden;
+  background-color: var(--bg-2);
   font-family: var(--monospace-font, 'Fira Code', 'Fira Code Fallback', monospace);
-
-  &.search-autocomplete-open {
-    background-color: var(--bg-2);
-    max-height: 30rem;
-    overflow: initial;
-
-  }
 
   .search-autocomplete-item {
     display: flex;
@@ -112,4 +123,10 @@
       margin: 1em;
     }
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-ui,
+  .search-results-panel,
+  .search-autocomplete { transition: none; }
 }
