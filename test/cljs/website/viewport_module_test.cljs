@@ -542,6 +542,7 @@
                 element (.createElement js/document "div")
                 root (await! (support/create-root! element))
                 original-state (await! (support/state-at! [:state :search]))
+                original-query (await! (support/state-at! [:search]))
                 original-loader (await! (support/state-at! [:loader]))
                 original-init (await! (support/state-at! [:state :init :scope module]))
                 original-loads @loader/*loads
@@ -589,6 +590,7 @@
                 (reset! loader/*installed original-installed)
                 (doseq [[path value] [[[:loader] original-loader]
                                       [[:state :search] original-state]
+                                      [[:search] original-query]
                                       [[:state :init :scope module] original-init]]]
                   (r/dispatch (if (nil? value)
                                 [:component-data/remove path]
