@@ -32,6 +32,7 @@
                   docker/run! #(swap! calls conj %&)]
       (is (= "registry/prefab:hash" (docker/prefab! true)))
       (is (empty? @calls)))
+    (reset! calls [])
     (with-redefs [docker/builder-tag (constantly "registry/prefab:hash")
                   p/shell (fn [& _] {:exit 1})
                   docker/remote-digest (constantly "existing-image")

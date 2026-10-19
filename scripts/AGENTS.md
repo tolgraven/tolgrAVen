@@ -43,11 +43,26 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   assets into watched browser/SSR outputs. See `doc/testing.md`.
 - `build/`, `media/`, `dev/`, `test/`: local build, asset and verification tools.
   Prefer Babashka using its built-in libraries; Node owns SDK/zlib operations.
+- `build/docker.clj` hashes the dependency recipe/manifests and bundled runtime
+  converter and publishes the native compiler/runtime prefab. Coolify advances aliases from master. The staged
+  commit pin must use index bytes and preserve unstaged edits. PR readiness is
+  checked by the Coolify gate against that exact hash on ARM64/AMD64 runtimes; missing/auth
+  failures must not be treated as a successful cache hit or bypass the merge gate.
+  Keep the fallback recipe identical after normalizing stage names/platform flags.
+  `provision-site.php` reconciles Docker build settings on existing applications:
+  normal build caching, explicit CMS secrets, no automatic ARG injection, and
+  runtime-only unrelated keys. Same-source CMS feature/CSS changes need a forced rebuild.
+  Dockerfile owns the prefab default and persistent Maven cache on every host.
 - `ops/`: isolated site provisioning and Coolify adapters. `ops/coolify/*.php`
   executes inside the existing Laravel container. Preserve persisted ownership
   markers even when their historical script names differ from current paths.
   CMS upgrades reconcile the write-token Compose reference on existing services;
   storing a credential alone does not install it into a running container.
+- `ops/host/prefab_gate.py` is the trusted Coolify event gate. Preserve signed
+  delivery validation, same-repository trust checks, durable deduplication, stale
+  head checks and independent close-event handling. Only BuildKit may execute PR
+  recipes. The App identity stays in the Laravel adapter; no Actions deployment
+  relay or registry credential copy belongs in GitHub. See `doc/docker-builds.md`.
 - `ops/host/`: installed server programs. Keep each program's declared host/service scope, recovery
   metadata, locks, graceful suspension and rollback protections intact. Relocation
   does not authorize running provisioning, seeding, deployment or installation.
@@ -154,3 +169,13 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   and unused Docker cache; preserve rollback/container references and all volumes.
   Its timer must skip inactive Docker and missing mounts without activating either.
   See `doc/coolify-storage.md`.
+
+- `build/compiler-cache.mjs` runs only within a locked deployment BuildKit mount.
+  Preserve unchanged macro/resource timestamps by content; changed bytes must get
+  a different timestamp. AOT reuse requires the complete input/toolchain/options
+  identity and publishes only successful output. Never share writable compiler
+  output with live watches or let failed/removed sources leave reusable classes.
+
+  Warm deployment compiler measurements must not use Docker `--no-cache`: it
+  clears matching cache mounts. Rerun normal build instructions and verify actual
+  compiler counts/restored AOT classes separately from whole-layer hits.
