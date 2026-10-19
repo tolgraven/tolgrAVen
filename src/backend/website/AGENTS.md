@@ -287,3 +287,6 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   async streaming, WebSocket and native session options; startup/bind failures
   propagate rather than returning a nil server. Development `user/start` logs
   application failures and retains the REPL/native watches; CSS stays a prerequisite.
+
+- Development icon preparation uses `.local-wip/python` after `user/start` prepares
+  pinned tools through `scripts/dev/python.py`; production retains prefab Python.

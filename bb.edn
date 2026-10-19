@@ -34,8 +34,10 @@
           :task (apply videos/-main *command-line-args*)}
   videos:responsive {:doc "Rebuild the opt-in responsive video catalog's renditions"
                      :task (videos/responsive!)}
+  dev:setup {:doc "Prepare pinned checkout-local Python icon tools"
+             :task (process/shell "python3" "scripts/dev/python.py")}
   fonts:icons {:doc "Regenerate declared SVG icons, selectors and backend glyph selection with Python/fontTools (see doc/styles.md)"
-              :task (process/shell "python3" "scripts/media/icon_fonts.py")}
+              :task (process/shell "python3" "scripts/dev/python.py" "scripts/media/icon_fonts.py")}
   prod:build {:doc "Build isolated local production document, browser, SSR and return-worker assets"
               :task (dev/production-local!)}
   audit {:doc "Measure isolated production bundles [label]"

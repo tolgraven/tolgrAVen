@@ -10,6 +10,7 @@
    [mount.core :as mount]
    [website.dev.shadow :as shadow-startup]
    [website.dev.styles :as styles]
+   [website.dev.python :as python]
    [website.handler :as handler]
    [website.ssr :as ssr]
    [website.core]))
@@ -30,6 +31,7 @@
 (defn start "Starts application.  You'll usually want to run this on startup." []
   ;; A new SSR/browser build must never paint against CSS from an older checkout.
   ;; Fresh styles skip Sass/PostCSS; Shadow still starts on its deferred thread.
+  (python/ensure-ready!)
   (styles/start!)
   (shadow-startup/prepare!)
   (home/gen-sitemap!)

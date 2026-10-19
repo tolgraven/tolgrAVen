@@ -94,7 +94,10 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   before staging, and preserves unstaged source and variant edits. Test with real
   codecs in disposable Git repositories.
 
-- `bb fonts:icons` uses the optional pinned Python/fontTools authoring tool to
+- `dev/python.py` owns the pinned checkout-local Python environment, version/import
+  checks and repair. `bb dev:setup` and development startup run it; `bb fonts:icons`
+  and the Python script tests also use its isolated interpreter. Never install these packages globally.
+- `bb fonts:icons` uses the pinned Python/fontTools authoring tool to
   export literal component/module `:icons` as native glyph rules in owning CSS and
   retain SVG assets, selected selectors and the backend codepoint selection manifest.
   Generate the browser name catalog from those same selected glyphs; dynamic
