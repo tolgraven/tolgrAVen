@@ -739,4 +739,3 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   indicator; panel boundaries use empty loading fragments so opening motion begins
   only with the ready native view. Keep intent in re-frame while loading, including
   closing before acquisition finishes; focus alone must not replace the trigger.
-
