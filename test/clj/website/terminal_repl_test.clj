@@ -1,5 +1,6 @@
 (ns website.terminal-repl-test
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is]]
             [nrepl.ack :as ack]
             [nrepl.core :as nrepl]
@@ -65,3 +66,32 @@
         (is @stopped?)
         (is (= "previous-discovery" (slurp file))))
       (finally (io/delete-file file)))))
+
+(deftest attached-client-survives-parent-interrupt
+  ;; Signal a disposable JVM, never the test runner or an existing REPL. The
+  ;; stand-in client sends the same SIGINT the wrapper receives from the terminal.
+  (let [separator java.io.File/pathSeparator
+        classpath (->> (str/split (System/getProperty "java.class.path")
+                                 (re-pattern (java.util.regex.Pattern/quote separator)))
+                       (remove #(.endsWith (str/replace % "\\" "/") "/env/dev/clj"))
+                       (str/join separator))
+        program "(load-file \"env/dev/clj/website/dev/terminal.clj\")
+                 (with-redefs [website.dev.terminal/client-command
+                               (fn [_ _] [\"sh\" \"-c\" \"kill -INT $PPID; sleep 0.2; exit 7\"])
+                               website.dev.terminal/start! #(throw (Exception. \"must not start\"))
+                               website.dev.terminal/stop! #(throw (Exception. \"must not stop\"))]
+                   (website.dev.terminal/-main \":connect\" \"127.0.0.1:7888\"))"
+        output (java.io.File/createTempFile "terminal-repl-interrupt-" ".log")
+        process (-> (ProcessBuilder. ^java.util.List ["java" "-cp" classpath "clojure.main" "-e" program])
+                    (.redirectErrorStream true)
+                    (.redirectOutput output)
+                    (.start))]
+    (try
+      (let [finished? (.waitFor process 30 java.util.concurrent.TimeUnit/SECONDS)]
+        (is finished? "Attached client must exit within the timeout")
+        (when finished?
+          (is (= 7 (.exitValue process)) (slurp output))))
+      (finally
+        (.destroyForcibly process)
+        (.waitFor process)
+        (io/delete-file output)))))
