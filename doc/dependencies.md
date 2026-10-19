@@ -282,3 +282,17 @@ the bundled UI supports 3.1. Shared Malli parameter/response schemas supply both
 descriptions. Keep `reitit-swagger` for the original `/api/swagger.json` Swagger
 2 compatibility contract. This migration does not change request coercion or
 response formats. Reitit's OpenAPI generator remains upstream alpha.
+
+## Syntax formatter
+
+The Highlight module imports `lowlight` 3 directly and renders its HAST token tree
+with native Reagent elements. It owns its Highlight.js graph explicitly, rather
+than importing the transitive Lowlight 1 from React Syntax Highlighter. Full
+grammars and auto-detection remain available; the blog retains its bounded
+detection subset. Default detection excludes the Properties grammar because its
+new bare-key recognition otherwise misclassifies neutral numeric snippets;
+explicit Properties tags and owner-selected detection subsets remain supported.
+Bruvbox maps existing Highlight.js classes to the same palette.
+The existing code-block owner retains controls, font upgrades, deferred browser
+acquisition and immediate Node SSR formatting. Modern Lowlight is a maintenance
+upgrade; it is not a demonstrated speed or bundle reduction.
