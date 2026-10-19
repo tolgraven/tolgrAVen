@@ -2300,6 +2300,24 @@
       "path": "/fixtures/visual.html?component=inspector-error",
       "action": "document.querySelector('button.error-show').click()",
       "capture_assert": "const panel = document.querySelector('#error-portal .error'); if (!panel || !panel.textContent.includes('Native diagnostic details') || !panel.textContent.includes('Attempt reload') || !panel.querySelector('.code-block')) throw Error('Native error details missing');"
+    },
+    {
+      "id": "search-controls-closed-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=search-mixed&closed=1",
+      "capture_assert": "if (document.querySelector('.search-ui, .search-results-panel, #search-input')) throw new Error('Closed Search retained a hidden layout surface');"
+    },
+    {
+      "id": "search-controls-closed-narrow",
+      "viewport": [
+        400,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=search-mixed&closed=1",
+      "capture_assert": "if (document.querySelector('.search-ui, .search-results-panel, #search-input')) throw new Error('Closed Search retained a hidden layout surface');"
     }
   ]
 }
