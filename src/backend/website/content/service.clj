@@ -105,21 +105,26 @@
        value (:content @*immediate)))))
 
 (defn install-edited! [sections]
-  (let [source (:url (settings))
-        now (System/currentTimeMillis)
-        icon-fonts (icons/prepare!
-                     (icons/content-selection (merge (:content @*immediate) sections)))]
-    (locking *cache
-      (swap! *cache update source
-             #(reduce-kv (fn [entries k value] (assoc entries k {:at now, :value value}))
-                         (or % {}) sections))
-      (swap! *immediate
-             (fn [snapshot]
-               (if (= source (:source snapshot))
-                 (-> snapshot
-                     (assoc :icon-fonts icon-fonts)
-                     (update :content merge sections)
-                     (update :edit-revision (fnil inc 0))) snapshot))))))
+  (let [source (:url (settings))]
+    (loop []
+      (let [original @*immediate
+            content' (merge (:content original) sections)
+            icon-fonts (icons/prepare! (icons/content-selection content'))
+            snapshot' (if (= source (:source original))
+                        (-> original
+                            (assoc :content content' :icon-fonts icon-fonts)
+                            (update :edit-revision (fnil inc 0))) original)
+            published (locking *cache
+                        ;; Preparation stays outside cache locks. An overlapping
+                        ;; publication must retry against its new content/fonts.
+                        (when (compare-and-set! *immediate original snapshot')
+                          (let [now (System/currentTimeMillis)]
+                            (swap! *cache update source
+                                   #(reduce-kv (fn [entries k value]
+                                                 (assoc entries k {:at now, :value value}))
+                                               (or % {}) sections)))
+                          {:snapshot snapshot'}))]
+        (if published (:snapshot published) (recur))))))
 
 (defn edit-revision
   "Server-only cache identity: configured source plus its inline publication count."
