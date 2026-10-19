@@ -2,7 +2,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as string]
-   [clojure.java.jdbc :as jdbc]
+   [next.jdbc :as jdbc]
+   [next.jdbc.transaction :as transaction]
    [website.platform.supabase :as supabase]
    [website.site-catalog :as catalog]
    [website.site :as site]
@@ -28,6 +29,7 @@
      (let [sql (schema-sql)]
        ;; PostgreSQL parses the complete script, including semicolons in DO blocks.
        ;; A transaction keeps a failed bootstrap from leaving a partial schema.
-       (jdbc/with-db-transaction [tx (or db (supabase/database-spec))]
-         (jdbc/db-do-commands tx sql))
+       (binding [transaction/*nested-tx* :ignore]
+         (jdbc/with-transaction [tx (or db (supabase/database-spec))]
+           (jdbc/execute! tx [sql])))
        {:applied? true}))))

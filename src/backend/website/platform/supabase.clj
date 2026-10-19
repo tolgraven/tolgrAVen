@@ -3,7 +3,8 @@
    [clj-http.client :as http]
    [clj-http.conn-mgr :as connections]
    [clojure.data.json :as json]
-   [clojure.java.jdbc :as jdbc]
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as result-set]
    [clojure.string :as string]
    [website.config :as config]
    [website.supabase.catalog :as catalog]
@@ -231,8 +232,9 @@
                (if (jdbc-available?)
                  (let [{:keys [seed-key select order]} (table-config table)
                        sql-order (string/replace order #"\.(asc|desc)" " $1")]
-                   [seed-key (jdbc/query (database-spec)
+                   [seed-key (jdbc/execute! (database-spec)
                                         [(str "select " select " from " (name table)
-                                              " order by " sql-order)])])
+                                              " order by " sql-order)]
+                                        {:builder-fn result-set/as-unqualified-lower-maps})])
                  (fetch-table-rest table))))
         (table-order)))

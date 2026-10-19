@@ -85,7 +85,7 @@ available to re-frame-pair. 10x and re-frisk are opt-in with `:legacy-debug`;
 see [the debugging guide](re-frame-pair.md). This avoids loading two additional
 inspectors into every development page.
 
-`:experiments` retains HoneySQL and optional diff/Ring middleware dependencies
+`:experiments` retains java.jdbc for its SQL prototype, HoneySQL, and optional diff/Ring middleware dependencies
 for preserved prototypes. Its `experiments/clj` source path keeps the SQL prototype
 out of normal application compilation. Enable the profile before working on it.
 CodeMirror and React Player dependencies have been removed; their preserved
@@ -140,7 +140,7 @@ Several larger libraries remain because they perform real work:
 | Optimus + image transforms | Asset bundles, URLs and runtime image transforms. Its Graal/Truffle dependencies are substantial; removing them requires replacing these active asset paths. |
 | clj-http | Server-side provider HTTP adapters; use existing bulk plans rather than adding transport clients in views. |
 | cljs-time | Existing date calculations/formatting. |
-| PostgreSQL JDBC + clojure.java.jdbc | Active database provisioning tooling. HoneySQL is confined to `:experiments`. |
+| PostgreSQL JDBC + next.jdbc | Active database provisioning tooling. Reads explicitly retain unqualified lower-case keys; imports retain per-table transactions and heterogeneous row defaults. Schema installation joins a supplied transaction. java.jdbc and HoneySQL are confined to `:experiments`. |
 | tools.logging + Timbre + SLF4J bridge | Application logging facade and Timbre sink, including Java libraries using SLF4J 2. Keep the bridge compatible with the resolved SLF4J API. |
 | org.clj-commons/pretty / Prone | Pretty exceptions shared with Timbre, and development error pages respectively. |
 | Leaflet / react-leaflet | Preserved map functionality. |
