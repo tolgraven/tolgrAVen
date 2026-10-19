@@ -9,6 +9,7 @@
             [website.config :as config]
             [website.content.contract :as contract]
             [website.page-router :as pages]
+            [website.fonts.icons :as icons]
             [website.content.service :as content]))
 
 (use-fixtures :each
@@ -275,3 +276,22 @@
         (is (= ["document" "blog"] @*calls))
         (is (= snapshot @content/*immediate)))
       (finally (Thread/interrupted) (reset! content/*immediate original)))))
+
+(deftest cms-refresh-publishes-content-with-ready-fonts-and-retains-last-good-on-failure
+  (let [original @content/*immediate
+        fail? (atom false)]
+    (try
+      (reset! content/*immediate nil)
+      (with-redefs [content/settings (constantly {:url nil})
+                    pages/immediate-keys (constantly [:document :footer])
+                    icons/prepare! (fn [] (if @fail? (throw (ex-info "codec failed" {}))
+                                             {:css "ready-fonts"}))]
+        (content/refresh-immediate! false)
+        (is (= "ready-fonts" (content/icon-font-css)))
+        (let [ready @content/*immediate]
+          (reset! fail? true)
+          (is (thrown? clojure.lang.ExceptionInfo (content/refresh-immediate! false)))
+          (is (= ready @content/*immediate))
+          (is (thrown? clojure.lang.ExceptionInfo (content/install-edited! {:footer []})))
+          (is (= ready @content/*immediate))))
+      (finally (reset! content/*immediate original)))))

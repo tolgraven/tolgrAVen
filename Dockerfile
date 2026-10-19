@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Ordinary builds pull one complete dependency image. BUILDER_IMAGE=prefab builds
 # the same recipe locally on a host without registry access.
-ARG BUILDER_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:deps-70a585dc39d26790
+ARG BUILDER_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:deps-66963b009101810b
 ARG MAVEN_SEED_IMAGE=empty-maven-seed
 FROM scratch AS empty-maven-seed
 COPY package.json /root/.m2/repository/.seed
@@ -12,9 +12,11 @@ FROM --platform=$BUILDPLATFORM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746
 FROM --platform=$TARGETPLATFORM babashka/babashka:1.13.225@sha256:0dd6985b8492b3bde9defbd95a7e7daf7d6fcb08102df9de4f07337f99d000a2 AS runtime-babashka
 FROM --platform=$TARGETPLATFORM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS runtime-node
 FROM --platform=$TARGETPLATFORM eclipse-temurin:21-jre-jammy@sha256:f04fb34e053148344e83317976114ec3f37e4b830ec8bdab5a2fe3cecd7d010b AS runtime-dependencies
-ENV MAGICK_THREAD_LIMIT=1
+ENV MAGICK_THREAD_LIMIT=1 PYTHONPATH=/opt/fonttools
 RUN apt-get update \
- && apt-get install -y --no-install-recommends imagemagick webp \
+ && apt-get install -y --no-install-recommends imagemagick webp python3-pip \
+ && python3 -m pip install --no-cache-dir --no-deps --target /opt/fonttools fonttools==4.60.2 Brotli==1.2.0 \
+ && python3 -c "from fontTools import subset; import brotli" \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=runtime-babashka /usr/local/bin/bb /usr/local/bin/bb
 COPY --from=runtime-node /usr/local/bin/node /usr/local/bin/node
@@ -29,9 +31,11 @@ FROM --platform=$BUILDPLATFORM clojure:temurin-21-lein-bookworm-slim@sha256:12d1
 COPY --from=babashka /usr/local/bin/bb /usr/local/bin/bb
 RUN bb --version
 # Media generation and backend codec tests use the ordinary dependency prefab.
-ENV MAGICK_THREAD_LIMIT=1
+ENV MAGICK_THREAD_LIMIT=1 PYTHONPATH=/opt/fonttools
 RUN apt-get update \
- && apt-get install -y --no-install-recommends imagemagick webp \
+ && apt-get install -y --no-install-recommends imagemagick webp python3-pip \
+ && python3 -m pip install --no-cache-dir --no-deps --target /opt/fonttools fonttools==4.60.2 Brotli==1.2.0 \
+ && python3 -c "from fontTools import subset; import brotli" \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir /tmp/image-codec-check \
  && convert -size 16x16 xc:red /tmp/image-codec-check/image.png \
@@ -145,7 +149,8 @@ ENV JAVA_HOME=/opt/java/openjdk \
     LANG=en_US.UTF-8 \
     LANGUAGE=en_US:en \
     LC_ALL=en_US.UTF-8 \
-    MAGICK_THREAD_LIMIT=1
+    MAGICK_THREAD_LIMIT=1 \
+    PYTHONPATH=/opt/fonttools
 
 FROM media-tools AS runtime
 WORKDIR /app

@@ -93,6 +93,8 @@ Runtime configuration is described in [config/README.md](../config/README.md).
 Unfinished project notes remain under `experiments/notes/`; prototype source remains
 under `experiments/clj/`. Tool-mandated root configuration stays at its native path.
 
+Backend CMS syncs prepare icon font subsets using packaged Python/fontTools;
+`bb fonts:icons` publishes their declared codepoints, SVGs and selectors.
 CSS build and watch entry points compile shared, icon and feature sheets independently;
 see [styles.md](styles.md) for declarations, source ownership and verification.
 Development startup runs `node scripts/build/styles.mjs --if-stale` before HTTP.

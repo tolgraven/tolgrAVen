@@ -232,6 +232,8 @@
                       "/webfonts/OpenSans-v29-latin.woff2")}]
     ;; The layout must be styled before first paint, including on a cold/private visit.
     (shell-styles request)
+    (when-let [font-css (content/icon-font-css)]
+      [:style {:data-icon-fonts true} font-css])
     (when-not (:local-return? request) (initial-style-tags request style-manifest))
     (when (:local-return? request) "__LOCAL_PAGE_STYLES__")
     [:script#module-styles {:type "application/json"} (content/hydration-json style-manifest)]
@@ -454,6 +456,8 @@
        [:meta {:name "description" :content "Error page"}]
 
        (shell-styles request)
+       (when-let [font-css (content/icon-font-css)]
+         [:style {:data-icon-fonts true} font-css])
        [:script {:type "text/javascript"}
         (str "var csrfToken = \"" (force *anti-forgery-token*) "\";")]] ; this is where everything ends up for prod but cant remember why?
 

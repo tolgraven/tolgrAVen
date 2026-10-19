@@ -67,7 +67,12 @@
                      (.readAllBytes input))
                    (and glass-output (= uri "/tests/"))
                    (str/replace (slurp (fs/file file)) "<head>"
-                                "<head><link rel=\"stylesheet\" href=\"/css/website/main.css\">")
+                                "<head><link rel=\"stylesheet\" href=\"/css/website/main.css\"><link rel=\"stylesheet\" href=\"/fixtures/icon-fonts.css\">")
+                   (and (= "html" (fs/extension file))
+                        (or (= uri "/") (str/starts-with? uri "/fixtures/")))
+                   ;; Static component documents have no backend CMS/SSR head.
+                   (str/replace-first (slurp (fs/file file)) "</head>"
+                                      "<link rel=\"stylesheet\" href=\"/fixtures/icon-fonts.css\"></head>")
                    :else (fs/file file))})
         {:status 404 :body "Not found"})
       {:status 400 :body "Invalid test path"})))

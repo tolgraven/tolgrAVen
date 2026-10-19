@@ -1,6 +1,8 @@
 @use "sass:meta";
 
-@include meta.load-css("generated/icon-fonts");
+// Font faces are prepared by the backend CMS sync and emitted with the document.
+.fa, .fas { font-family: "Font Awesome 5 Free"; font-weight: 900; }
+.fab { font-family: "Font Awesome 5 Brands"; font-weight: 400; }
 @include meta.load-css("generated/icons/main");
 
 // Shared shell and reusable components. Feature sheets are loaded by the module loader.

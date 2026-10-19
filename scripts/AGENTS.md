@@ -96,14 +96,15 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 
 - `bb fonts:icons` uses the optional pinned Python/fontTools authoring tool to
   export literal component/module `:icons` as native glyph rules in owning CSS and
-  retain SVG assets and small fonts with disjoint Unicode ranges and selected selectors.
+  retain SVG assets, selected selectors and the backend codepoint selection manifest.
   Generate the browser name catalog from those same selected glyphs; dynamic
   unknown names acquire the retained full catalog through its module. The shared source
   reader supplies both generation and Shadow style inventories. Source literals
-  and `resources/icon-fonts.json` own glyph selection; keep full-font fallbacks.
+  and `resources/icon-fonts.json` own declared glyph selection. The backend CMS sync
+  runs the packaged `resources/fonts/subset.py` codec; active CSS has no full-font fallback.
   SVG exports must retain complete outlines. Native font glyphs own original
   rasterization and fractional line metrics; do not substitute SVG masks in controls.
-  Commit declared SVGs, catalog, generated SCSS and fonts together; see `doc/styles.md`.
+  Commit declared SVGs, catalogs, generated SCSS and codepoint selection together; see `doc/styles.md`.
 
 - `audit/middleware.clj` is a disposable Docker-only investigation reproducer.
   It may generate stand-in JavaScript only inside the CPU controller's snapshot;
