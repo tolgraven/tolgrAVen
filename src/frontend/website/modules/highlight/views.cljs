@@ -151,9 +151,9 @@
                             {:class (str "language-" selected-language)
                              :style {:whiteSpace "pre"}}] contents)
         attrs {:style (cond-> (get stylesheet "hljs")
-                        inline? (merge {:display "inline"
-                                        :padding 0
-                                        :background "transparent"}))
+                        inline? (merge {"display" "inline"
+                                        "padding" 0
+                                        "background" "transparent"}))
                :children (r/as-element code-element)}]
     (cond
       inline? [<font-inline> (assoc attrs :className "code-highlight")]

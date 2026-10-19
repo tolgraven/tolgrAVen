@@ -142,6 +142,8 @@
       (is (.querySelector container ".code-snippet .code-copy[aria-label='Copy code']"))
       (is (.querySelector container ".code-snippet code span[style]"))
       (is (not (.querySelector container ".code-snippet pre, .code-snippet .react-syntax-highlighter-line-number")))
+      (is (= "inline" (.. container (querySelector ".code-snippet code") -style -display)))
+      (is (= "transparent" (.. container (querySelector ".code-snippet code") -style -background)))
       (is (= "echo \"hello\"" (.-textContent (.querySelector container ".code-snippet code")))))))
 
 (deftest code-options-share-map-and-keyword-contracts
