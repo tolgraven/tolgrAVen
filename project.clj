@@ -179,8 +179,9 @@
                   :dependencies [[re-frisk "1.7.1"]
                                  [day8.re-frame/re-frame-10x "1.12.3" :exclusions [superstructor/re-highlight]]]}
    :experiments {:source-paths ["experiments/clj"]
+                 :test-paths ["test/experiments"]
                  :dependencies [[org.clojure/java.jdbc "0.7.12"]
-                                [honeysql "1.0.461"]
+                                [com.github.seancorfield/honeysql "2.7.1479"]
                                 [differ "0.3.3"]
                                 [ring-ratelimit "0.2.3"]
                                 [radicalzephyr/ring.middleware.logger "0.6.0"]

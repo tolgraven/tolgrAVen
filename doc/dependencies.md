@@ -85,7 +85,8 @@ available to re-frame-pair. 10x and re-frisk are opt-in with `:legacy-debug`;
 see [the debugging guide](re-frame-pair.md). This avoids loading two additional
 inspectors into every development page.
 
-`:experiments` retains java.jdbc for its SQL prototype, HoneySQL, and optional diff/Ring middleware dependencies
+`:experiments` retains java.jdbc for its SQL prototype, HoneySQL 2
+(`honey.sql` / `honey.sql.helpers`), and optional diff/Ring middleware dependencies
 for preserved prototypes. Its `experiments/clj` source path keeps the SQL prototype
 out of normal application compilation. Enable the profile before working on it.
 CodeMirror and React Player dependencies have been removed; their preserved

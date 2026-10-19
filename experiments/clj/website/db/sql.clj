@@ -1,8 +1,8 @@
 (ns website.db.sql
   (:require
    [clojure.java.jdbc :as sql]
-   [honeysql.core :as hsql :refer [build]]
-   [honeysql.helpers :as helpers :refer [select from where insert-into columns values]]
+   [honey.sql :as hsql]
+   [honey.sql.helpers :as helpers :refer [select from where insert-into columns values]]
    [mount.core :refer [defstate]]
    [taoensso.timbre :as timbre]
    [clojure.tools.logging :as log]
@@ -116,18 +116,17 @@
 (defn get-all []
   (into [] (sql/query uri ["select * from blog order by id desc"])))
 (defn get-all-2 []
-  (->> (build :select :*
-              :from [:blog]
-              ; :order-by [[:id :desc]]
-              )
+  (->> (-> (select :*)
+           (from :blog)
+           ; (helpers/order-by [:id :desc])
+           )
        query
        (into [])))
 
 (defn get-from [from select & args]
-  (->> (apply build
-              :from from
-              :select select
-              args)
+  (->> (merge (helpers/from from)
+              (helpers/select select)
+              (apply hash-map args))
        query
        (into [])))
 
