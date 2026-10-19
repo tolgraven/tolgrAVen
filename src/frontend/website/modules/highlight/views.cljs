@@ -97,7 +97,7 @@
   (let [props (when line-props (line-props number))]
     (if (map? props) props (js->clj props :keywordize-keys true))))
 
-(defn- rendered-code [tree stylesheet numbered? starting-line-number line-props editable?]
+(defn- rendered-code [tree stylesheet numbered? starting-line-number line-props line-prefix editable?]
   (let [runs (coalesce-text (token-runs (array-seq (.-children tree)) stylesheet {}))
         lines (code-lines runs)
         largest (+ starting-line-number (dec (count lines)))
@@ -113,7 +113,7 @@
         tokens (fn [line]
                  (map-indexed (fn [index [style text]]
                                 ^{:key index} [:span {:style style} text]) line))]
-    (if (or numbered? line-props)
+    (if (or numbered? line-props line-prefix)
       (map-indexed
         (fn [index line]
           (let [number (+ starting-line-number index)
@@ -127,6 +127,7 @@
                     (when numbered?
                       [[:span.comment.linenumber.react-syntax-highlighter-line-number
                         {:style number-style} number]])
+                    (when line-prefix [(line-prefix number)])
                     (tokens line)))))
         lines)
       (tokens runs))))
@@ -134,7 +135,7 @@
 (defc <formatted-code>
   "Full language support and Bruvbox are acquired only by code consumers."
   [code & {:keys [language default-language auto-languages style basic? inline? inline-language
-                 line-numbers? starting-line-number line-props editable?]
+                 line-numbers? starting-line-number line-props line-prefix editable?]
            :or {basic? true
                 style theme/bruvbox}}]
   (let [language' (or language (when inline? (or inline-language "bash")))
@@ -145,14 +146,14 @@
                          [display-code language' default-language auto-languages])
         stylesheet (r/use-memo #(js->clj (clj->js style) :keywordize-keys false) [style])
         selected-language (or (some-> tree .-data .-language) language' "text")
-        contents (rendered-code tree stylesheet numbered? (or starting-line-number 1) line-props editable?)
+        contents (rendered-code tree stylesheet numbered? (or starting-line-number 1) line-props line-prefix editable?)
         code-element (into [(if inline? :span :code)
                             {:class (str "language-" selected-language)
                              :style {:whiteSpace "pre"}}] contents)
         attrs {:style (cond-> (get stylesheet "hljs")
-                        inline? (merge {:display "inline"
-                                        :padding 0
-                                        :background "transparent"}))
+                        inline? (merge {"display" "inline"
+                                        "padding" 0
+                                        "background" "transparent"}))
                :children (r/as-element code-element)}]
     (cond
       inline? [<font-inline> (assoc attrs :className "code-highlight")]

@@ -21,6 +21,20 @@
             [website.react :as r]
             [website.test-support :as support]))
 
+(deftest commit-selection-state-validates-fractional-scroll-and-paged-details
+  (let [contract (dsl/->malli schema/state)
+        sha (apply str (repeat 40 "a"))
+        state {:target ["u" "r"]
+               :commit-view sha
+               :list-position 68.25
+               :commits-pending #{sha}
+               :commit-pages-pending {sha 2}}]
+    (is (m/validate contract state))
+    (is (m/validate contract (assoc state :commit-view :commits :list-position 0)))
+    (is (not (m/validate contract (assoc state :list-position -1))))
+    (is (not (m/validate contract (assoc state :commit-view "not-a-sha"))))
+    (is (not (m/validate contract (assoc state :commit-pages-pending {sha 31}))))))
+
 (deftest commit-message-styles
   (doseq [[input expected]
           [["scss: fix theme helper" ["fix theme helper" "scss" nil]]
@@ -44,6 +58,14 @@
       (let [parsed (message/parse-message input)]
         (is (= expected parsed))
         (is (m/validate (dsl/->malli schema/parsed-message) parsed))))))
+
+(deftest squash-bodies-and-session-trailers-never-enter-subject-tags
+  (let [text "fix(github): correct rows (#42)\n\n* style: first change\n\nCodex-Session: 1234\nCo-authored-by: Example <dev@example.com>"]
+    (is (= ["correct rows (#42)" "github" "fix"] (message/parse-subject text)))
+    (is (string/includes? (first (message/parse-message text)) "Codex-Session: 1234"))
+    (let [markup (r/render-to-static-markup [views/<commit-message> (message/parse-subject text) text])]
+      (is (string/includes? markup "correct rows (#42)"))
+      (is (not (string/includes? (second (string/split markup #"<div class=\"info\"")) "* style:"))))))
 
 (deftest missing-commit-message-remains-renderable
   (let [parsed (message/parse-message nil)]
@@ -133,9 +155,8 @@
                         "The complete multiline message remains available on hover")
                     (is (= 0 (.-length (.querySelectorAll (.item rows 2) ".github-commit-titles")))
                         "An ordinary merge subject has no category tags")
-                    (is (= "Notes: body stays text"
-                           (last (string/split-lines
-                                   (.-textContent (.querySelector (.item rows 3) ".info"))))))))
+                    (is (= "keep https://example.com:4000/path"
+                           (.-textContent (.querySelector (.item rows 3) ".info"))))))
                 (finally
                   (support/unmount! root)
                   (.remove container))))))
@@ -396,6 +417,32 @@
                 (finally (support/unmount! root) (.remove container))))))
         (.catch #(is false (str %)))
         (.finally done))))
+
+(deftest overflowing-calendar-starts-at-latest-and-keeps-chronological-keyboard-order
+  (async done
+    (let [container (.createElement js/document "div")
+          days (mapv (fn [index]
+                       {:date (subs (.toISOString (js/Date. (+ (.UTC js/Date 2025 9 10) (* index 86400000)))) 0 10)
+                        :count 1
+                        :level 1}) (range 371))]
+      (.appendChild (.-body js/document) container)
+      (-> (go-promise
+            (await! (styles/acquire! :github))
+            (let [root (await! (support/create-root! container))]
+              (try
+                (doseq [width ["18rem" "40rem"]]
+                  (await! (support/render! root [:div {:style {:width width}} [activity/<calendar> days]]))
+                  (let [scroll (.querySelector container ".activity-calendar__scroll")
+                        latest (.querySelector container (str "[data-date='" (:date (last days)) "']"))
+                        visible (.getBoundingClientRect scroll)
+                        bounds (.getBoundingClientRect latest)]
+                    (is (<= (.-right bounds) (inc (.-right visible))))
+                    (is (>= (.-left bounds) (.-left visible)))
+                    (is (= "0" (.getAttribute latest "tabindex")))
+                    (is (= (:date (first days)) (.getAttribute (.querySelector container "[data-date]") "data-date")))))
+                (finally (support/unmount! root)))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (.remove container) (done)))))))
 
 (deftest cached-calendar-belongs-to-its-user-after-switching-back
   (async done

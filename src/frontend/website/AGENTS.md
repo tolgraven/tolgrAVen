@@ -701,9 +701,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - `ssr/return_worker.cljc` shares the module-owned isolation policy. GitHub's
   optional `/neovim/github/:user/:repo/:sha` views own cached revision reads and
   readonly native diffs. Crossing the isolation boundary uses document navigation;
-  disabled Neovim sites retain the basic viewer and no editor assets.
-  Commit rows retain native external/permalink links without nested anchors;
-  row intent dispatches the GitHub-owned document effect. Feed query resets keep
+  all sites retain inline patch details, with no editor assets on disabled sites.
+  Commit rows open an inline unified patch with independent old/new source
+  positions. Native external/permalink links stay independent; the full Neovim
+  workspace remains an explicit document link. Feed query resets keep
   immutable detail caches and separately keyed revision-viewer state independent.
 
 - Home's `<dynamic-page>` selects a published layout and `<layout>` renders typed
@@ -752,3 +753,25 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   with native-root `:appear`/`:exit`. Grid rows animate their intrinsic height;
   keep the styled input at its natural geometry during exit. Do not restore the
   old viewport max-height or nested closed-margin/border animation.
+
+- Activity calendar overflow starts at the newest/rightmost week through native
+  RTL scroll geometry; the grid and keyboard order remain chronological LTR.
+  The newest day owns the initial tab stop. GitHub list previews show only the
+  parsed subject; full original messages remain available in the tooltip/details.
+  Unified patch hunk headers reset old/new counters; additions/deletions advance
+  only their own side and newline notes advance neither. Missing patches stay
+  explicit. The existing lazy formatter's optional `:line-prefix` owns custom
+  source gutters in both plain loading output and highlighted rows.
+  GitHub events own commit selection; row clicks and route activation select
+  the same detail, including reactivating an unchanged permalink after closing.
+  Commit permalinks select that surface without rewriting the feed query.
+  Selection captures the list offset through its owned DOM coeffect before
+  every entry, including unchanged-route activation. The mounted scrollbox
+  resets on detail entry and restores that offset on return. GitHub uses the
+  shared component-target adapter's immediate mode to avoid waiting for unrelated
+  lazy images before revealing the destination; its tracking/cancellation remain
+  navigation-owned. Other component targets retain the default smooth policy.
+  Internal permalink clicks bubble to Reitit's document handler; the row ignores
+  link/button targets rather than stopping propagation and forcing a reload.
+  Changed-file metadata acquires bounded sequential pages; only the current
+  generation and expected page can append results or mark a detail complete.

@@ -30,6 +30,7 @@
    [:?wrap? :boolean]
    [:?line-numbers? :boolean]
    [:?line-props fn?]
+   [:?line-prefix fn?]
    [:?starting-line-number [:int {:min 1}]]
    [:?foldable? :boolean]
    [:?folded? :boolean]
@@ -94,7 +95,21 @@
         committed! (r/use-callback on-ready! [on-ready!])
         [formatter _] (r/use-state #(make-formatter committed!))
         args (into [code] (mapcat identity options))
-        fallback (if (:inline? options) [:code.code-highlight code] [:pre [:code code]])
+        lines (string/split code #"\n" -1)
+        fallback (if (:inline? options)
+                   [:code.code-highlight code]
+                   [:pre
+                    (if-let [prefix (:line-prefix options)]
+                      (into [:code]
+                            (map-indexed
+                              (fn [index text]
+                                (let [number (+ (or (:starting-line-number options) 1) index)]
+                                  ^{:key index}
+                                  [:span (when-let [props (:line-props options)] (props number))
+                                   (prefix number) text
+                                   (when (< index (dec (count lines))) "\n")]))
+                              lines))
+                      [:code code])])
         content (hydration/use-boundary
                   defer?
                   #(r/as-element

@@ -7,10 +7,12 @@
     [website.modules.github.message :as message]
     [website.modules.github.schema :as schema]
     [website.modules.github.diff :as diff]
+    [website.modules.github.patch :as patch]
+    [website.modules.highlight.code-block :as code-block]
+    [website.modules.markdown.interface :as markdown]
     [website.site :as site]
     [clojure.string :as string]
     [website.components.activity :as activity]
-    [website.components.ui.controls :as ui-controls]
     [website.components.ui.inputs :as ui-inputs]
     [website.components.ui.layout :as ui-layout]
     [website.components.ui.loading :as ui-loading]
@@ -18,69 +20,96 @@
     [website.util :as util :refer [at]]))
 
 
-(defc <commit> "Show a single commit with highlighted diff etc..."
+(defn- source-gutter [{:keys [old new kind]}]
+  [:span.github-patch__gutter {:aria-hidden true}
+   [:span.github-patch__number old]
+   [:span.github-patch__number new]
+   [:span.github-patch__sign (case kind :addition "+" :deletion "-" " ")]])
+
+(defn- number-width [hunks]
+  (let [positions (mapcat (juxt :old :new) (mapcat :rows hunks))
+        digits (apply max 3 (map #(count (str %)) (remove nil? positions)))]
+    (str (+ digits 2) "ch")))
+
+(defc ^:private <hunk>
+  [hunk :- patch/hunk-schema language]
+  (let [rows (:rows hunk)
+        source (string/join "\n" (map :text rows))
+        options {:language language
+                 :line-numbers? false
+                 :line-prefix #(source-gutter (nth rows (dec %)))
+                 :line-props (fn [number]
+                               (let [{:keys [kind old new]} (nth rows (dec number))]
+                                 {:class (str "github-patch__line github-patch__line--" (name kind))
+                                  :data-old-line old
+                                  :data-new-line new}))}]
+    [:div.github-patch__hunk
+     [:pre.github-patch__header (:header hunk)]
+     [code-block/<formatter> source options (constantly nil)]]))
+
+(defc <commit> "A unified diff with absolute old/new source line numbers."
   {:features [[:appear "zoom-y"]]}
   [sha :- :string close]
-  (let [commit @(r/subscribe [:github/commit sha])]
-     [:div.github-commit-full
+  (let [commit @(r/subscribe [:github/commit sha])
+        error @(r/subscribe [:github/commit-error sha])
+        pending? @(r/subscribe [:github/commit-pending? sha])
+        [user repo] @(r/subscribe [:github/get-from])
+        revision [user repo (:sha commit)]]
+    [:div.github-commit-full
      close
-     (for [file (:files commit)
-           :let [suffix (-> (:filename file)
-                            (string/split #"\.")
-                            last)]]
-       [:div
-        [:code
-         (:filename file)]
-        [:p
-         [:span {:style {:color "var(--green)"}}
-          (util/pluralize (:additions file) " addition")] ", "
-         [:span {:style {:color "var(--red)"}}
-          (util/pluralize (:deletions file) " deletion")] " = "
-         [:span {:style {:color "var(--orange)"}}
-          (util/pluralize (:changes file)   " change")] "."
-         (when (= 0 (:additions file) (:deletions file) (:changes file))
-           [:span {:style {:color "var(--blue)"}}
-            ".. word on the street has it the file IS the change!"])]
-        [:div
-         (let [hunks (some-> (:patch file)
-                             (string/split #"(?m)^@@.*@@")
-                             rest)
-               headers (some-> (:patch file)
-                               (string/replace #"(?m)(@@\n)(.|\n)*(^@@)?" "$1$3")
-                               (string/split-lines))]
-           (into [:<>]
-            (for [[hunk header] (partition 2 2 (interleave hunks headers))
-                  :let [diff (string/replace hunk #"(?m)(^.).*" "$1")
-                        added (map-indexed (fn [i line]
-                                             (case
-                                               (string/starts-with? "+" line) i))
-                                           (string/split-lines diff))
-                        deleted (map-indexed (fn [i line]
-                                             (case
-                                               (string/starts-with? "-" line) i))
-                                           (string/split-lines diff)) ]]
-
-             [:div
-              [:p header]
-              [:div.flex
-               [:pre.diff diff]
-               [:pre.linenum
-                (let [start  (->> (re-find #"-(\d*)," header)
-                                  second
-                                  js/parseInt)
-                      len (-> (string/split-lines hunk)
-                              count
-                              #_(- (count (filter some? deleted))))
-                      lines (->> (range start (+ start len))
-                                 (string/join "\n"))]
-                lines)]
-               [:pre
-                {:class (case suffix
-                          ("clj", "cljs") "clojure"
-                          "scss"          "css"
-                          "")}
-                (-> hunk
-                    (string/replace #"(?m)^." ""))]]])))]])]))
+     (cond
+       error [:div {:role "alert"}
+              [:p "The commit could not be loaded."]
+              [:button {:on-click #(r/dispatch [:github/fetch-commit user repo sha])} "Retry"]]
+       (nil? commit) [:p {:role "status"} "Loading commit diff…"]
+       :else
+       [:<>
+        [:div.github-patch__commit
+         [:h3 (first (string/split-lines (get-in commit [:commit :message] "")))]
+         [:div.github-patch__message
+          [markdown/<parse-markdown-components>
+           (string/join "\n" (rest (string/split-lines (get-in commit [:commit :message] ""))))
+           {:allow-raw? false
+            :allow-components? false
+            :allow-images? false}]]
+         [:dl.github-patch__metadata
+          [:dt "Commit"] [:dd [:code (:sha commit)]]
+          [:dt "Author"] [:dd (or (get-in commit [:commit :author :name]) (get-in commit [:author :login]) "Unknown")]
+          [:dt "Authored"] [:dd [:time {:date-time (get-in commit [:commit :author :date])}
+                                 (get-in commit [:commit :author :date])]]
+          [:dt "Committed"] [:dd [:time {:date-time (get-in commit [:commit :committer :date])}
+                                  (get-in commit [:commit :committer :date])]]
+          (when (seq (:parents commit))
+            [:<> [:dt "Parents"]
+             [:dd (for [{:keys [sha html_url]} (:parents commit)]
+                    ^{:key sha} [:a {:href html_url} [:code (subs sha 0 (min 7 (count sha)))]])]])]
+         [:p (util/pluralize (count (:files commit)) " changed file")
+          (when-let [stats (:stats commit)]
+            [:<> " · " [:span.github-patch__additions (util/pluralize (:additions stats) " addition")]
+             [:span.github-patch__deletions (util/pluralize (:deletions stats) " deletion")]])]
+         [:a {:href (:html_url commit)} "View commit on GitHub"]
+         (when (site/enabled? :neovim)
+           [:a {:href (diff/page-url revision), :data-document-navigation "true"}
+            "Open full before / after workspace"])]
+        (when pending? [:p {:role "status"} "Loading remaining changed files…"])
+        (when (empty? (:files commit)) [:p "This commit has no changed files."])
+        (for [{:keys [filename previous_filename status additions deletions] :as file} (:files commit)
+              :let [hunks (patch/hunks (:patch file))]]
+          ^{:key filename}
+          [:div.github-patch {:style {"--github-patch-number-width" (number-width hunks)}}
+           [:div.github-patch__file
+            [:h4 [:code filename]]
+            [:span.github-patch__status status]
+            (when previous_filename [:p "Renamed from " [:code previous_filename]])
+            [:span.github-patch__additions (util/pluralize additions " addition")]
+            [:span.github-patch__deletions (util/pluralize deletions " deletion")]]
+           (if (seq hunks)
+             [:div.github-patch__scroll {:tab-index 0, :aria-label (str "Diff for " filename)}
+              (for [[index hunk] (map-indexed vector hunks)]
+                ^{:key index} [<hunk> hunk (patch/language filename)])]
+             [:p.github-patch__unavailable
+              "No text patch is available for this file. "
+              [:a {:href (:html_url commit)} "View the change on GitHub"]])])])]))
 
 (defc <loading> "Lazy load more on scroll to bottom, with a button as fallback for the poors"
   {:features [[:on-seen (fn [user repo]
@@ -101,7 +130,7 @@
   {:args-schema [:cat schema/parsed-message [:? :?string]]}
   [[info subtitle title] & [full-message]]
   [:div.github-commit-message {:title (or full-message info)}
-   [:div.info info]
+   [:div.info (first (string/split-lines info))]
    (when subtitle
      [:div.github-commit-titles
       [:span {:class (if title "subtitle" "title")
@@ -124,26 +153,18 @@
 
 (defc ^:private <commit-row>
   {:features [[:appear "slide-in slow"]]}
-  [{:keys [from sha main-view-position view author date ts html_url sha7 commit]}]
-  (let [revision [(first @from) (second @from) sha]
-        href (when (site/enabled? :neovim) (diff/page-url revision))
+  [{:keys [sha author date ts html_url sha7 commit]}]
+  (let [open! #(r/dispatch [:github/select-commit sha])
         avatar [img/<picture> {:src (:avatar_url author)
                        :alt (str (:login author) " avatar")
                        :class "user-avatar center-content"}]]
     [:div.github-commit.flex
      {:id (str "github-commit-" sha)
-      :on-click #(if href
-                   (r/dispatch [:github/open-diff revision])
-                   (do (r/dispatch [:github/fetch-commit (first @from) (second @from) sha])
-                       (reset! main-view-position (.-scrollTop (util/elem-by-id "github-commits-box")))
-                       (reset! view sha)))}
-     (if href
-       [:a {:href href
-            :data-document-navigation "true"
-            :style {:display "contents"}
-            :aria-label (str "View diff for commit " sha7)
-            :on-click #(.stopPropagation %)} avatar]
-       avatar)
+      :on-click (fn [event]
+                  ;; Native links must reach Reitit's document handler. They do
+                  ;; not also trigger the row's local detail selection.
+                  (when-not (.closest (.-target event) "a, button") (open!)))}
+     avatar
          [:div.github-commit-details
           [:span.github-commit-time date]
           [:span.github-commit-time (util/local-time ts)]
@@ -151,13 +172,17 @@
            [:span.github-commit-sha sha7]]
           [:a.github-commit-permalink
            {:href @(r/subscribe [:href :github-commit {:sha sha}])
-            :on-click #(.stopPropagation %)
             :aria-label (str "Permalink to commit " sha7)}
            "Permalink"]
 
+          [:button.github-commit-open
+           {:type "button"
+            :on-click (fn [event] (.stopPropagation event) (open!))
+            :aria-label (str "View diff for commit " sha7)}
+           "View diff"]
           ;; Parse the provider text here too so restored, previously parsed
           ;; cache entries immediately use the current presentation rules.
-          [<commit-message> (message/parse-message (:message commit)) (:message commit)]]]))
+          [<commit-message> (message/parse-subject (:message commit)) (:message commit)]]]))
 
 (r/reg-sub :github/deployment (fn [db _] (get-in db [:module :github :deployment])))
 (r/reg-sub :github/activity
@@ -221,26 +246,26 @@
         amount (r/subscribe [:github/commit-count])
         complete? (r/subscribe [:github/archive-complete?])
         more? (r/subscribe [:github/more?])
-        view (r/atom :commits)
-        main-view-position (r/atom 0)
-        ref-fn #(when %
-                  (when-let [el (util/elem-by-id "github-commits-box")]
-                    (if (= @view :commits)
-                      (set! (.-scrollTop el) @main-view-position)
-                      (set! (.-scrollTop el) 0))))
+        view (r/subscribe [:github/commit-view])
+        main-view-position (r/subscribe [:state [:github :list-position]])
         url (r/subscribe [:github/website-url])]
    (fn [spec]
     (let [{:keys [sha path]} @(r/subscribe [:github/route-target])
-          search @(r/subscribe [:form-field [:github :search]])
-          selected? @(r/subscribe [:github/commit-listed? sha])
-          error (when sha @(r/subscribe [:github/commit-error sha]))]
+          active-view @view]
       (r/use-layout-effect
         (fn []
-          (when selected?
-            (reset! view :commits)
-            (r/dispatch [:scroll/component-target "github-commits" path]))
+          (r/dispatch-sync (if sha [:github/select-commit sha] [:github/close-commit]))
+          (when sha
+            (r/dispatch [:scroll/component-target "github-commits" path :instant]))
           nil)
-        [sha path (boolean selected?)])
+        [sha path])
+      ;; This mounted scrollbox switches content without replacing its native node.
+      (r/use-layout-effect
+        (fn []
+          (when-let [element (util/elem-by-id "github-commits-box")]
+            (set! (.-scrollTop element) (if (= active-view :commits) (or @main-view-position 0) 0)))
+          nil)
+        [active-view])
     [:<>
      [:section#github-commits.github-commits.covering-2
 
@@ -256,7 +281,8 @@
         [:button {:on-click #(r/dispatch [:github/refresh])} "Refresh indexed history"]])
 
      [:div#github-commits-box.github-commits-inner
-      [ui-inputs/<input-text> :id "github-commits-filter"
+      (when (= active-view :commits)
+       [ui-inputs/<input-text> :id "github-commits-filter"
        :input-type "input.search"
        :placeholder "Search commits"
        :width "100%"
@@ -265,16 +291,8 @@
        :attr {:id "github-commits-filter"
               :aria-label "Search commits"
               :maxLength 200}
-       :path [:form-field [:github :search]]]
-      (when (and sha (not selected?))
-        (if error
-          [:p {:role "alert"}
-           "This commit could not be loaded. "
-           [:button {:on-click #(r/dispatch [:github/fetch-commit (first @from) (second @from) sha])}
-            "Retry"]]
-          [:p {:role "status"} "Loading the requested commit…"]))
+       :path [:form-field [:github :search]]])
       [:div#github-commits-main
-       {:ref ref-fn} ; restore scroll when displaying details
        (when (= @view :commits)
         [:div {:style {:text-align "center"
                        :padding "1em"
@@ -284,13 +302,12 @@
       (if (= @view :commits)
        (for [{:keys [sha] :as item} @commits]
             ^{:key (str "github-commit-" sha)}
-        [<commit-row> (assoc item
-                            :from from
-                            :main-view-position main-view-position
-                            :view view)])
+        [<commit-row> item])
 
           [:div
-            [<commit> @view [ui-controls/<close> #(reset! view :commits)]]])
+            [<commit> @view
+             [:button.github-patch__back
+              {:type "button", :on-click #(r/dispatch [:github/close-commit])} "← Back to commits"]]])
 
      (when (and (= @view :commits) @more?)
       [<loading> (first @from) (second @from)])]]]

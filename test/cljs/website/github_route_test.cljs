@@ -9,6 +9,7 @@
             [website.events]
             [website.subs]
             [website.modules.github.events]
+            [website.navigation.scroll]
             [website.modules.github.subs]
             [website.modules.github.model :as model]
             [website.navigation.routes :as routes]
@@ -65,24 +66,27 @@
             (r/dispatch-sync [:github/init])
             (await! (support/settle!))
             (is (= 2 (count @*requests)) "Pending direct lookup and archive requests are deduplicated")
-            (is (not-any? #(get-in % [:url-params :page]) @*requests)
+            (is (not-any? #(and (= "/api/github/commits" (:uri %))
+                                 (get-in % [:url-params :page])) @*requests)
                 "No latest-30 page is needed for a deep commit")
             (let [request (first (filter #(string/ends-with? (:uri %) prefix) @*requests))]
               (is (some? request))
               (is (= (str "/api/github/commits/" prefix) (:uri request)))
-              (is (= {:user "route-user", :repo "repo"} (:url-params request)))
+              (is (= {:user "route-user", :repo "repo", :page 1} (:url-params request)))
               (r/dispatch-sync (conj (:on-success request) item)))
             (await! (support/settle!))
-            (is (= prefix (await! (support/subscription-value! [:form-field [:github :search]]))))
+            (is (not= prefix (await! (support/subscription-value! [:form-field [:github :search]])))
+                "A permalink selects detail without changing the archive query")
             (is (= [full] (mapv :sha (await! (support/subscription-value! [:github/filter-by])))))
             (is (not (contains? (first (await! (support/subscription-value! [:github/commits]))) :files))
                 "The list cache does not duplicate the full diff")
-            (is (= item (await! (support/subscription-value! [:github/commit full]))))
+            (is (= (assoc item :files-complete? true)
+                   (await! (support/subscription-value! [:github/commit full]))))
             (r/dispatch-sync [:github/fetch-commit "route-user" "repo" full])
             (await! (support/settle!))
             (is (= 2 (count @*requests)) "A short SHA lookup also populates its canonical detail cache")
             (let [archive (first (filter #(= "/api/github/commits" (:uri %)) @*requests))]
-              (is (= prefix (get-in archive [:url-params :q])))
+              (is (= "" (get-in archive [:url-params :q])))
               (r/dispatch-sync (conj (:on-success archive) {:commits [item], :total 1, :complete true})))
             (await! (support/settle!))
             (is (= [full] (mapv :sha (await! (support/subscription-value! [:github/commits])))))
@@ -135,3 +139,94 @@
   (is (not (model/matches? {:sha "bbbbbbb", :commit {:message "mentions abc1234"}} "abc1234"))
       "A SHA destination selects the commit, rather than other commits mentioning it")
   (is (not (model/matches? {:sha "abc1234", :commit {:message "fix: plain"}} ".*"))))
+
+(deftest permalink-preserves-an-existing-feed-query-and-its-rows
+  (async done
+    (let [restore! (r/make-restore-fn)
+          *requests (atom [])
+          prefix "aaaaaaa"
+          full (apply str (repeat 40 "a"))
+          listed {:sha (apply str (repeat 40 "b")), :commit {:message "fix: layout spacing"}}]
+      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            (r/dispatch-sync [:component-data/install [:module :github :configuration]
+                              {:settings {:user "route-user", :repo "repo"}}])
+            (r/dispatch-sync [:state [:form-field :github :search] "layout"])
+            (r/dispatch-sync [:github/init])
+            (await! (support/settle!))
+            (r/dispatch-sync (conj (:on-success (first @*requests))
+                                   {:commits [listed], :total 1, :complete true}))
+            (await! (support/settle!))
+            (r/dispatch-sync [:component-data/install [:common/route] (match prefix)])
+            (r/dispatch-sync [:github/navigate-commit prefix])
+            (await! (support/settle!))
+            (is (= 2 (count @*requests)) "Selecting detail only adds its immutable lookup")
+            (r/dispatch-sync (conj (:on-success (last @*requests))
+                                   {:sha full, :commit {:message "unrelated change"}, :files []}))
+            (await! (support/settle!))
+            (is (= "layout" (await! (support/subscription-value! [:form-field [:github :search]]))))
+            (is (= [(:sha listed)] (mapv :sha (await! (support/subscription-value! [:github/commits])))))
+            (is (= "unrelated change" (:message (:commit (await! (support/subscription-value! [:github/commit prefix])))))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
+
+(deftest legacy-first-page-cache-reacquires-complete-details-once
+  (async done
+    (let [restore! (r/make-restore-fn)
+          *requests (atom [])
+          sha (apply str (repeat 40 "a"))]
+      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            (r/dispatch-sync [:state [:github] {:target ["u" "r"], :generation 1, :commits-fetched [sha]}])
+            (r/dispatch-sync [:component-data/install [:content :github :commit sha] {:sha sha, :files []}])
+            (r/dispatch-sync [:github/fetch-commit "u" "r" sha])
+            (await! (support/settle!))
+            (is (= 1 (count @*requests)) "Old completed lookups may have cached only the first file page")
+            (r/dispatch-sync (conj (:on-success (first @*requests)) {:sha sha, :files []}))
+            (await! (support/settle!))
+            (is (:files-complete? (await! (support/subscription-value! [:github/commit sha]))))
+            (r/dispatch-sync [:github/fetch-commit "u" "r" sha])
+            (await! (support/settle!))
+            (is (= 1 (count @*requests)) "A current complete detail stays cached"))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))
+
+(deftest the-same-permalink-reopens-after-returning-to-the-list
+  (async done
+    (let [restore! (r/make-restore-fn)
+          sha "abcdef123456"
+          *position (atom 12.5)
+          *landings (atom [])]
+      (r/reg-fx :scroll/component-target #(swap! *landings conj %))
+      (r/reg-fx :http-xhrio (fn [_]))
+      (r/reg-cofx :github/list-position #(assoc % :github/list-position @*position))
+      (-> (go-promise
+            (r/dispatch-sync [:init/app-db])
+            (r/dispatch-sync [:component-data/install [:module :github :configuration]
+                              {:settings {:user "u", :repo "r"}}])
+            (r/dispatch-sync [:component-data/install [:common/route] (match sha)])
+            (r/dispatch-sync [:github/navigate-commit sha])
+            (await! (support/settle!))
+            (is (= sha (await! (support/subscription-value! [:github/commit-view]))))
+            (r/dispatch-sync [:github/close-commit])
+            (await! (support/settle!))
+            (is (= :commits (await! (support/subscription-value! [:github/commit-view]))))
+            (reset! *position 68.25)
+            (r/dispatch-sync [:github/navigate-commit sha])
+            (await! (support/settle!))
+            (is (= 68.25 (await! (support/state-at! [:state :github :list-position])))
+                "An unchanged permalink captures the current list position before selecting detail")
+            (is (= ["github-commits" :instant] (last @*landings)))
+            (is (= 2 (count @*landings)) "Each permalink activation requests its owned landing")
+            (r/dispatch-sync [:github/close-commit])
+            (r/dispatch-sync [:github/search "layout"])
+            (await! (support/settle!))
+            (is (= :commits (await! (support/subscription-value! [:github/commit-view])))
+                "Editing the feed query does not reopen a closed permalink")
+            (r/dispatch-sync [:github/navigate-commit sha])
+            (await! (support/settle!))
+            (is (= sha (await! (support/subscription-value! [:github/commit-view])))))
+          (.catch #(is false (str %)))
+          (.finally (fn [] (restore!) (done)))))))

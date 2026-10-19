@@ -334,8 +334,9 @@
             (take-while some? (iterate #(.-parentElement %) element)))))
 
 (defn restore-anchor!
-  "Follow a committed component while ancestor rows, code or fonts settle."
-  [id]
+  "Follow a committed component while layout settles. Immediate destinations
+   also position during acquisition; smooth destinations retain their gate."
+  [id & [behavior]]
   (let [root (.getElementById js/document "app")
         pending? (and root (.hasAttribute root "data-document-pending")
                       (= id (.getAttribute root "data-document-target")))
@@ -350,7 +351,7 @@
                      (= id (.getAttribute root "data-document-positioned")))
             (.removeAttribute root "data-document-positioned"))
           (anchor-position id))
-        "smooth"
+        (or behavior "smooth")
         #(when-let [target (.getElementById js/document id)] (anchor-animations target))))))
 
 (defn use-ready!

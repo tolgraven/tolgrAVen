@@ -157,76 +157,86 @@
 
 .github-commit-full {
   position: relative;
-  overflow: hidden;
-
-
-  > div {
-    overflow: scroll;
-
-    > code, p {
-      padding-left: 1em;
-    }
+  min-width: 0;
+  > .github-patch__back {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: .5rem 1rem;
+    background: var(--bg-3);
   }
-  pre {
-    flex: 1 0 auto;
-    background: none;
-    overflow: visible;
+}
 
-    &.linenum, &.diff {
-      margin-right: 0.0em;
-      flex: 0 0 auto;
-    }
-    &.linenum {
-      text-align: right;
-      background: var(--bg-2-2);
-      padding: 1em;
-      padding-left: 1.5em;
-      padding-right: 0.4em;
-      border-right: var(--line-width-sm) solid var(--bg-1);
-    }
+.github-patch {
+  margin-block: 1rem;
+  min-width: 0;
+  border: var(--line-width-sm) solid var(--bg-6);
 
-    &:last-of-type {
-      background-color: hsla(var(--hue-3), 70%, 15%, 0.125);
-      margin-left: 0;
-    }
+  &__commit { padding: 1rem; overflow-wrap: anywhere; }
+  &__commit a { display: inline-block; margin-inline-end: 1rem; }
+  &__message {
+    margin-block: 1rem;
+    line-height: 1.5;
+    p, ul, ol, blockquote, pre, table { margin-block: .75em; }
+    ul, ol { padding-inline-start: 1.5em; }
+    ul { list-style: disc; }
+    ol { list-style: decimal; }
+    li { display: list-item; list-style: inherit; }
+    blockquote { border-inline-start: .2rem solid var(--bg-6); padding-inline-start: 1em; }
+    pre { overflow-x: auto; }
+    .code-snippet > code { display: inline; }
+    table { border-collapse: collapse; }
+    th, td { padding: .35em .6em; border: var(--line-width-sm) solid var(--bg-6); }
   }
-  .diff {
-      background: var(--bg-3-2);
+  &__metadata { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .35rem 1rem; }
+  &__metadata dt { color: var(--fg-5); }
+  &__metadata dd { margin: 0; overflow-wrap: anywhere; }
+  &__status { display: inline-block; margin-inline-end: 1rem; color: var(--fg-5); }
+  &__commit pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  &__file { padding: .75rem 1rem; background: var(--bg-4); }
+  &__file h4 { margin: 0 0 .5rem; overflow-wrap: anywhere; }
+  &__file p { margin: .25rem 0; }
+  &__additions { color: var(--green); margin-inline-end: 1rem; }
+  &__deletions { color: var(--red); }
+  &__scroll { overflow-x: auto; }
+  &__scroll pre {
+    margin: 0;
+    padding: 0;
+    width: max-content;
+    min-width: 100%;
+    font-size: .85rem;
+    line-height: 1.6;
+    tab-size: 4;
   }
-  .hljs-deletion, .hljs-addition {
-    position: relative;
-    color: black;
-    overflow: visible;
-    font-size: 0.80em;
-    z-index: 0;
-    pointer-events: none;
-
-    &:after {
-      position: absolute;
-      left: 0;
-      top: 0;
-      content: "";
-      // width: 100%;
-      // width: calc(100vw - 2 * var(--space-sides) - var(--space));
-      width: 90em;
-      height: 1.50em;
-      opacity: 15%;
-    }
+  &__header {
+    box-sizing: border-box;
+    padding: .35rem .75rem !important;
+    color: var(--blue);
+    background: var(--bg-4) !important;
   }
-  
-  .hljs-deletion {
-    &:after {
-      // background-color: var(--red);
-      background-color: var(--red);
-    }
+  &__line { display: block; min-height: 1.6em; padding-inline-end: 1rem; }
+  &__line--addition { background: color-mix(in srgb, var(--green) 13%, transparent); }
+  &__line--deletion { background: color-mix(in srgb, var(--red) 13%, transparent); }
+  &__line--note { color: var(--fg-5); font-style: italic; }
+  &__gutter {
+    position: sticky;
+    left: 0;
+    display: inline-block;
+    color: var(--fg-5);
+    background: var(--bg-3);
+    margin-inline-end: .75rem;
+    user-select: none;
+    font-style: normal;
   }
-  .hljs-addition {
-    &:after {
-      background-color: var(--green);
-    }
-  }
+  &__number { display: inline-block; width: var(--github-patch-number-width, 5ch); padding-inline: .5ch; text-align: right; }
+  &__sign { display: inline-block; width: 2ch; text-align: center; }
+  &__line--addition &__sign { color: var(--green); }
+  &__line--deletion &__sign { color: var(--red); }
+  &__unavailable { padding: .75rem 1rem; }
 }
 
 .github-deployment { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; padding: 0.75rem; margin-bottom: 1rem; background: var(--bg-4); border-radius: 0.4rem; font-size: 0.9rem; }
 .github-repository-owner { text-align: center; color: var(--fg-5); }
 .github-activity { padding: 1.25rem; background: var(--bg-3); min-width: 0; h2 { font-size: 1.25rem; } }
+
+.github-commit-open { font-size: .8em; padding: .2em .45em; margin-inline-start: .5em; }

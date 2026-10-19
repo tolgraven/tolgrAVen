@@ -13,14 +13,19 @@
   ;; Feed queries reset their page state; immutable detail and revision viewers
   ;; retain their independent caches while the managed configuration initializes.
   (let [same-target? (= target (get-in db [:state :github :target]))
+        view (or (when same-target? (get-in db [:state :github :commit-view]))
+                 (:sha (model/route-target (:common/route db)))
+                 :commits)
         cached (merge (select-keys (get-in db [:content :github]) [:diff-view])
                       (when same-target? (select-keys (get-in db [:content :github]) [:commit :commit-errors])))]
     (-> db
         (assoc-in [:state :github]
                   (merge (select-keys (get-in db [:state :github]) [:diff-view :diff-attempt])
+                         (when same-target? (select-keys (get-in db [:state :github]) [:list-position]))
                          {:target target
                           :generation (inc (get-in db [:state :github :generation] 0))
                           :query query
+                          :commit-view view
                           :commits-fetched (if same-target? (get-in db [:state :github :commits-fetched] []) [])}))
         (assoc-in [:content :github] cached))))
 
@@ -28,7 +33,30 @@
   {:args [:tuple routes/commit-sha]}
   (fn [{:keys [db]} [_ sha]]
     (when (= (string/lower-case sha) (:sha (model/route-target (:common/route db))))
-      {:dispatch [:github/init]})))
+      {:dispatch-n [[:github/init]
+                    [:github/select-commit sha]
+                    [:scroll/component-target "github-commits" (get-in db [:common/route :path]) :instant]]})))
+
+(r/reg-cofx :github/list-position
+  (fn [coeffects]
+    (assoc coeffects :github/list-position
+           (when (exists? js/document)
+             (some-> (.getElementById js/document "github-commits-box") .-scrollTop)))))
+
+(r/reg-event-fx :github/select-commit
+  {:args [:tuple routes/commit-sha]}
+  [(r/inject-cofx :github/list-position)]
+  (fn [{:keys [db] :as coeffects} [_ sha]]
+    (let [[user repo] (get-in db [:state :github :target])
+          position (:github/list-position coeffects)
+          db' (cond-> (assoc-in db [:state :github :commit-view] sha)
+                (and (number? position) (= :commits (get-in db [:state :github :commit-view] :commits)))
+                (assoc-in [:state :github :list-position] position))]
+      (cond-> {:db db'}
+        (and user repo) (assoc :dispatch [:github/fetch-commit user repo sha])))))
+
+(r/reg-event-db :github/close-commit
+  (fn [db _] (assoc-in db [:state :github :commit-view] :commits)))
 
 (r/reg-event-fx :github/open-diff
   {:args [:tuple diff/revision-schema]}
@@ -45,11 +73,11 @@
     (let [{:keys [user repo]} (get-in db [:module :github :configuration :settings])
           target [user repo]
           focus (model/route-target (:common/route db))
-          query (or (:sha focus) (get-in db [:state :form-field :github :search]) "")
+          query (or (get-in db [:state :form-field :github :search]) "")
           state (get-in db [:state :github])
-          db' (cond-> (if (and (= target (:target state)) (= query (:query state))) db
-                         (begin-query db target query))
-                focus (assoc-in [:state :form-field :github :search] query))]
+          db' (if (and (= target (:target state)) (= query (:query state)))
+                db
+                (begin-query db target query))]
       (when (and (seq user) (seq repo))
         {:db db'
          :dispatch-n [[:github/fetch-commits user repo 1 (get-in db' [:state :github :generation])]
@@ -119,30 +147,57 @@
   (fn [{:keys [db]} [_ user repo sha]]
     (when (and (= [user repo] (get-in db [:state :github :target])) sha
                (not (contains? (get-in db [:state :github :commits-pending]) sha))
-               (not (some #{sha} (get-in db [:state :github :commits-fetched]))))
+               (not (and (some #{sha} (get-in db [:state :github :commits-fetched]))
+                         (get-in db [:content :github :commit sha :files-complete?]))))
       {:db (-> db
                (update-in [:state :github :commits-pending] (fnil conj #{}) sha)
+               (assoc-in [:state :github :commit-pages-pending sha] 1)
                (update-in [:content :github :commit-errors] (fnil dissoc {}) sha))
        :dispatch [:http/get {:uri (str "/api/github/commits/" sha)
-                            :url-params {:user user, :repo repo}}
-                  [:github/save-commit user repo (get-in db [:state :github :generation]) sha]
+                            :url-params {:user user, :repo repo, :page 1}}
+                  [:github/save-commit-page user repo (get-in db [:state :github :generation]) sha 1]
                   [:github/request-failed user repo (get-in db [:state :github :generation]) :commit sha]]})))
+
+(defn save-commit-effects [db user repo generation sha page data]
+  (when (and (current-request? db user repo generation)
+             (contains? (get-in db [:state :github :commits-pending]) sha)
+             (= page (get-in db [:state :github :commit-pages-pending sha] 1)))
+    (if (and (map? data) (string? (:sha data))
+             (string/starts-with? (string/lower-case (:sha data)) (string/lower-case sha)))
+      (let [more? (and (= 100 (count (:files data))) (< page 30))
+            commit (if (= page 1)
+                     data
+                     (update data :files #(vec (concat (get-in db [:content :github :commit sha :files]) %))))
+            commit' (assoc commit :files-complete? (not more?))
+            db' (-> db
+                    (assoc-in [:content :github :commit sha] commit')
+                    (assoc-in [:content :github :commit (:sha data)] commit')
+                    (update-in [:content :github :commits]
+                               (fn [commits]
+                                 (if (model/matches? data (get-in db [:state :github :query]))
+                                   (model/merge-commits commits [(model/normalize-commit data)])
+                                   commits))))]
+        (if more?
+          {:db (assoc-in db' [:state :github :commit-pages-pending sha] (inc page))
+           :dispatch [:http/get {:uri (str "/api/github/commits/" sha)
+                                :url-params {:user user, :repo repo, :page (inc page)}}
+                      [:github/save-commit-page user repo generation sha (inc page)]
+                      [:github/request-failed user repo generation :commit sha]]}
+          {:db (-> db'
+                   (update-in [:state :github :commits-pending] disj sha)
+                   (update-in [:state :github :commit-pages-pending] dissoc sha)
+                   (update-in [:state :github :commits-fetched]
+                              #(vec (distinct (conj % sha (:sha data))))))}))
+      {:dispatch [:github/request-failed user repo generation :commit sha
+                  {:status 502, :status-text "GitHub returned an invalid commit"}]})))
 
 (r/reg-event-fx :github/save-commit
   (fn [{:keys [db]} [_ user repo generation sha data]]
-    (when (and (current-request? db user repo generation)
-               (contains? (get-in db [:state :github :commits-pending]) sha))
-      (if (and (map? data) (string? (:sha data))
-               (string/starts-with? (string/lower-case (:sha data)) (string/lower-case sha)))
-        {:db (-> db
-                 (assoc-in [:content :github :commit sha] data)
-                 (assoc-in [:content :github :commit (:sha data)] data)
-                 (update-in [:content :github :commits] model/merge-commits [(model/normalize-commit data)])
-                 (update-in [:state :github :commits-pending] disj sha)
-                 (update-in [:state :github :commits-fetched]
-                            #(vec (distinct (conj % sha (:sha data))))))}
-        {:dispatch [:github/request-failed user repo generation :commit sha
-                    {:status 502, :status-text "GitHub returned an invalid commit"}]}))))
+    (save-commit-effects db user repo generation sha 1 data)))
+
+(r/reg-event-fx :github/save-commit-page
+  (fn [{:keys [db]} [_ user repo generation sha page data]]
+    (save-commit-effects db user repo generation sha page data)))
 
 (r/reg-event-fx :github/request-failed
   (fn [{:keys [db]} [_ user repo generation kind id error]]
@@ -150,5 +205,6 @@
       {:db (cond-> (assoc-in db [:content :github :errors] error)
              (= kind :page) (update-in [:state :github :pages-pending] disj id)
              (= kind :commit) (update-in [:state :github :commits-pending] disj id)
+             (= kind :commit) (update-in [:state :github :commit-pages-pending] dissoc id)
              (= kind :commit) (assoc-in [:content :github :commit-errors id] error))
        :dispatch [:default-http-error error]})))

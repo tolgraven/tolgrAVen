@@ -142,6 +142,8 @@
       (is (.querySelector container ".code-snippet .code-copy[aria-label='Copy code']"))
       (is (.querySelector container ".code-snippet code span[style]"))
       (is (not (.querySelector container ".code-snippet pre, .code-snippet .react-syntax-highlighter-line-number")))
+      (is (= "inline" (.. container (querySelector ".code-snippet code") -style -display)))
+      (is (= "transparent" (.. container (querySelector ".code-snippet code") -style -background)))
       (is (= "echo \"hello\"" (.-textContent (.querySelector container ".code-snippet code")))))))
 
 (deftest code-options-share-map-and-keyword-contracts
@@ -221,3 +223,20 @@
         (doseq [number numbers] (.remove number))
         (is (= source (.-textContent code)) "Multiline tokens retain every whitespace/codepoint")
         (is (string/includes? html "color:#908682") "Comment tokens retain Bruvbox")))))
+
+(deftest custom-source-gutters-retain-highlighted-lines-and-safe-text
+  (let [container (.createElement js/document "div")
+        source "(def value \"<script>\")\n(inc 2)"
+        markup (r/render-to-static-markup
+                 [highlight-view/<formatted-code> source
+                  :language "clojure"
+                  :line-numbers? false
+                  :line-prefix (fn [number] [:span.source-gutter {:data-line number} (str number)])
+                  :line-props (fn [number] {:class "source-row", :data-line number})])]
+    (set! (.-innerHTML container) markup)
+    (let [rows (array-seq (.querySelectorAll container ".source-row"))]
+      (is (= ["1" "2"] (mapv #(.getAttribute % "data-line") rows)))
+      (is (= 2 (.-length (.querySelectorAll container ".source-gutter"))))
+      (is (string/includes? (.-textContent container) "<script>"))
+      (is (nil? (.querySelector container "script")))
+      (is (pos? (.-length (.querySelectorAll container ".source-row span[style]")))))))
