@@ -34,7 +34,8 @@
                       (reset! port connected-port)
                       (is (= (str connected-port) (slurp file)))
                       (with-open [connection (nrepl/connect :host host :port connected-port)]
-                        (let [client (nrepl/client connection 5000)
+                        (let [;; The first CIDER evaluation can initialize lazily on a bounded cold JVM.
+                              client (nrepl/client connection 30000)
                               responses (doall (nrepl/message client {:op "eval", :code "(+ 20 22)"}))
                               description (nrepl/combine-responses (nrepl/message client {:op "describe"}))]
                           (is (some #(= "42" (:value %)) responses))
