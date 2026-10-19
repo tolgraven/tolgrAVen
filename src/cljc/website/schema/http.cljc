@@ -36,7 +36,8 @@
 
 (when-enabled :user nil
   (def upload
-    [:map {:swagger/type "file"}
+    [:map {:swagger {:type "file"}
+           :json-schema {:type "string" :format "binary"}}
      [:filename :string] [:content-type :string] [:size [:int {:min 0}]]
      [:tempfile #?(:clj [:fn {:error/message "must be an uploaded file"}
                          #(instance? java.io.File %)] :cljs :any)]]))

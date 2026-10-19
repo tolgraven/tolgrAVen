@@ -53,6 +53,8 @@ implementation in `src/frontend/website/modules/<module>/`, also on the JVM sour
   in handlers/controllers and use the same schemas for accepted/rejected fixtures.
   Upstream service path allowlists require full-string matches before credentials
   or transport are acquired; Malli `:re` alone matches substrings.
+  Upload values remain validated maps; description metadata represents them as
+  Swagger file parameters and OpenAPI binary strings.
   Its JVM adapter supports API documentation; CLJS uses the smaller page coercion
   adapter. Shared schema composition emits native Malli `[:merge ...]` data,
   without importing the interpreter into the production browser shell.

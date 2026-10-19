@@ -25,6 +25,12 @@
       (is (= "object" (get post-schema "type")))
       (is (= #{"x" "y"} (set (get post-schema "required"))))
       (is (= ["math"] (get-in modern ["paths" "/api/math/plus" "get" "tags"])))
+      (doseq [path ["/api/supabase/avatar" "/api/supabase/media" "/api/supabase/comment-media"]
+              :when (contains? (get modern "paths") path)]
+        (is (= {"type" "string" "format" "binary"}
+               (get-in modern ["paths" path "post" "requestBody" "content" "multipart/form-data" "schema" "properties" "file"])))
+        (is (= "file" (get (first (filter #(= "file" (get % "name"))
+                                                        (get-in legacy ["paths" path "post" "parameters"]))) "type"))))
       (is (= "binary" (get-in modern ["paths" "/api/files/download" "get" "responses" "200" "content" "image/png" "schema" "format"])))
       (is (not (contains? (get modern "paths") "/api/openapi.json")))
       (let [response (handler (-> (mock/request :get "/api/math/plus?x=2&y=3")
