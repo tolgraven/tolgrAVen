@@ -9,6 +9,7 @@
             [website.loader :as loader]
             [website.loader.activation :as activation]
             [website.loader.styles :as styles]
+            [website.components.shell :as shell]
             [website.component.restore :as restore]
             [website.dev-console.capture :as capture]
             [website.render-context :as context]
@@ -531,5 +532,62 @@
                     (.remove element)
                     ((:restore! transport))
                     ((:restore! observers))))))))
+        (.catch #(is false (str %)))
+        (.finally done))))
+
+(deftest header-search-retains-first-click-and-control-through-code-arrival
+  (async done
+    (-> (go-promise
+          (let [module :search
+                element (.createElement js/document "div")
+                root (await! (support/create-root! element))
+                original-state (await! (support/state-at! [:state :search]))
+                original-loader (await! (support/state-at! [:loader]))
+                original-init (await! (support/state-at! [:state :init :scope module]))
+                original-loads @loader/*loads
+                original-code @loader/*code-loads
+                original-installed @loader/*installed
+                observers (observer-fixture!)
+                transport (transport-fixture! module {:id module :view {:view <target>}})]
+            (.appendChild (.-body js/document) element)
+            (try
+              (swap! loader/*loads dissoc module)
+              (swap! loader/*code-loads dissoc module)
+              (r/dispatch [:component-data/remove [:loader :requested module]])
+              (r/dispatch [:component-data/remove [:loader :code-ready module]])
+              (r/dispatch [:state [:search :open?] false])
+              (await! (support/render! root [shell/<header> {:menu {}}]))
+              (let [button (.querySelector element "button.search-ui-btn")]
+                (.focus button)
+                (await! (support/settle!))
+                (is (empty? @(:started transport)) "Focus keeps Search cold and the native click target mounted")
+                (is (identical? button (.querySelector element "button.search-ui-btn")))
+                (.click button)
+                (await! (support/wait-for! #(= "true" (.getAttribute button "aria-busy"))))
+                (is (= "true" (.getAttribute button "aria-expanded")))
+                (is (identical? button (.querySelector element "button.search-ui-btn")))
+                (is (nil? (.querySelector element ".module-load-placeholder")))
+                ((:code! transport))
+                (await! (support/settle!))
+                (is (= "true" (.getAttribute button "aria-busy")) "Code alone cannot release the CSS gate")
+                ((:css! transport))
+                (await! (support/wait-for! #(= "false" (.getAttribute button "aria-busy"))))
+                (is (identical? button (.querySelector element "button.search-ui-btn")))
+                (is (= "true" (.getAttribute button "aria-expanded")) "The first click remains open after acquisition"))
+              (finally
+                (support/unmount! root)
+                (await! (drain-transport! module transport))
+                ((:restore! transport))
+                ((:restore! observers))
+                (reset! loader/*loads original-loads)
+                (reset! loader/*code-loads original-code)
+                (reset! loader/*installed original-installed)
+                (doseq [[path value] [[[:loader] original-loader]
+                                      [[:state :search] original-state]
+                                      [[:state :init :scope module] original-init]]]
+                  (r/dispatch (if (nil? value)
+                                [:component-data/remove path]
+                                [:component-data/install path value])))
+                (.remove element)))))
         (.catch #(is false (str %)))
         (.finally done))))

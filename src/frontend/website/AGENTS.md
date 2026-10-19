@@ -728,3 +728,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Settings host. Search's `:results` export stays outside that sticky area;
   inline Search retains its combined controls/results. Settings owns keyed
   `:presence`/`:exit` children so closing its query does not unmount the host.
+
+- Search retains its native header button while acquiring code and CSS. Header
+  panel triggers expose pending acquisition with an absolute circular indicator;
+  panel boundaries use empty loading fragments so opening motion begins only
+  with the ready native view. Keep intent in re-frame while loading, including
+  closing before acquisition finishes; focus alone must not replace the trigger.

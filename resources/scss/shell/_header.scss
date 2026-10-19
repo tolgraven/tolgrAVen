@@ -418,3 +418,32 @@ menu > nav > .nav-section:last-of-type > .nav-links {
 }
 
 header.hide ~ .menu-panels { top: 0; }
+
+// Pending panels keep their native trigger and reserve no panel-shaped fallback.
+.header-icons [data-module-loading="true"] {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1.8em;
+    height: 1.8em;
+    margin: -.9em 0 0 -.9em;
+    box-sizing: border-box;
+    border: .1em solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: module-action-spin .8s linear infinite;
+  }
+}
+
+@keyframes module-action-spin {
+  to { transform: rotate(1turn); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-icons [data-module-loading="true"]::after { animation: none; }
+}
