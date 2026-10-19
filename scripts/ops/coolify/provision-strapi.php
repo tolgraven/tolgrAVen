@@ -11,6 +11,11 @@ function cmsEnv($resource,$key,$value,$preview=false) {
     if ($resource instanceof App\Models\Application) $fields+=['is_buildtime'=>in_array($key,['STRAPI_URL','STRAPI_READ_TOKEN'],true),'is_runtime'=>true];
     $relation->updateOrCreate(['key'=>$key,'is_preview'=>$preview],$fields);
 }
+function cmsDomains($current, $url) {
+    return collect(explode(',', $current ?? ''))
+        ->filter(fn($domain) => $domain && getFqdnWithoutPort($domain) !== $url)
+        ->prepend($url.':1337')->unique()->implode(',');
+}
 // Coolify's interactive User::createToken reads the session's current team.
 // This SSH adapter uses the same Sanctum relation/format with an explicit team.
 function cmsDeployCredential($service, $team, $actionName) {
@@ -162,8 +167,7 @@ try {
         cmsEnv($service,'SERVICE_URL_CMS',$url);
         cmsEnv($service,'SERVICE_FQDN_CMS',parse_url($url,PHP_URL_HOST));
         $cms=$service->applications()->where('name','cms')->firstOrFail();
-        $cms->fqdn=collect(explode(',', $cms->fqdn ?? ''))
-            ->prepend($url.':1337')->filter()->unique()->implode(',');
+        $cms->fqdn=cmsDomains($cms->fqdn,$url);
         $cms->save();
         $service->parse();
     }
