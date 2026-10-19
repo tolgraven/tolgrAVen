@@ -181,7 +181,7 @@
     ul, ol { padding-inline-start: 1.5em; }
     ul { list-style: disc; }
     ol { list-style: decimal; }
-    li { display: list-item; }
+    li { display: list-item; list-style: inherit; }
     blockquote { border-inline-start: .2rem solid var(--bg-6); padding-inline-start: 1em; }
     pre { overflow-x: auto; }
     .code-snippet > code { display: inline; }
