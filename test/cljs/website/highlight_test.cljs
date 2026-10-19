@@ -64,7 +64,11 @@
   (is (= "clojure" (some-> (highlight-view/code-tree "(defn greet [x] (inc x))" nil nil) .-data .-language)))
   (is (= "clojure" (some-> (highlight-view/code-tree "42" nil "clojure") .-data .-language)))
   (is (nil? (some-> (highlight-view/code-tree "42" nil nil) .-data .-language)))
-  (is (= "clojure" (some-> (highlight-view/code-tree "(inc 1)" "unknown-tag" "clojure") .-data .-language))))
+  (is (= "clojure" (some-> (highlight-view/code-tree "(inc 1)" "unknown-tag" "clojure") .-data .-language)))
+  (is (= "properties" (some-> (highlight-view/code-tree "42" "properties" nil) .-data .-language))
+      "Explicit Properties remains supported")
+  (is (= "properties" (some-> (highlight-view/code-tree "42" nil nil ["properties"]) .-data .-language))
+      "An owner can explicitly opt Properties into detection"))
 
 (deftest untagged-blocks-and-inline-snippets-render-highlighted-during-ssr
   (binding [context/*server?* true
@@ -179,20 +183,21 @@
       (is (.querySelector container ".react-syntax-highlighter-line-number")))))
 
 (deftest native-token-rendering-preserves-multiline-text-and-numbered-attributes
-  (let [source "/* first\n  second <script>& */\nconst x = \"λ\";"
-        html (r/render-to-string
-               [highlight-view/<formatted-code> source
-                :language "javascript"
-                :line-numbers? true
-                :starting-line-number 9
-                :line-props (fn [number] {:data-line number})])
-        container (.createElement js/document "div")]
-    (set! (.-innerHTML container) html)
-    (let [code (.querySelector container "pre > code")
-          numbers (array-seq (.querySelectorAll code ".react-syntax-highlighter-line-number"))]
-      (is (= ["9" "10" "11"] (mapv #(.-textContent %) numbers)))
-      (is (= 3 (.-length (.querySelectorAll code "[data-line]"))))
-      (is (nil? (.querySelector code "script")) "Code text cannot become raw HTML")
-      (doseq [number numbers] (.remove number))
-      (is (= source (.-textContent code)) "Multiline tokens retain every whitespace/codepoint")
-      (is (string/includes? html "color:#908682") "Comment tokens retain Bruvbox"))))
+  (binding [context/*server?* true]
+    (let [source "/* first\n  second <script>& */\nconst x = \"λ\";"
+          html (r/render-to-string
+                 [highlight-view/<formatted-code> source
+                  :language "javascript"
+                  :line-numbers? true
+                  :starting-line-number 9
+                  :line-props (fn [number] {:data-line number})])
+          container (.createElement js/document "div")]
+      (set! (.-innerHTML container) html)
+      (let [code (.querySelector container "pre > code")
+            numbers (array-seq (.querySelectorAll code ".react-syntax-highlighter-line-number"))]
+        (is (= ["9" "10" "11"] (mapv #(.-textContent %) numbers)))
+        (is (= 3 (.-length (.querySelectorAll code "[data-line]"))))
+        (is (nil? (.querySelector code "script")) "Code text cannot become raw HTML")
+        (doseq [number numbers] (.remove number))
+        (is (= source (.-textContent code)) "Multiline tokens retain every whitespace/codepoint")
+        (is (string/includes? html "color:#908682") "Comment tokens retain Bruvbox")))))

@@ -24,6 +24,11 @@
 
 (def highlighter (.createLowlight lowlight (.-all lowlight)))
 
+(def detection-languages
+  ;; Highlight.js 11 treats any bare value (including "42") as a Properties
+  ;; key. Keep neutral snippets neutral; explicit tags/owner subsets retain it.
+  (into-array (remove #{"properties"} (array-seq (.listLanguages highlighter)))))
+
 (def language-aliases
   ;; These fence tags share Clojure's grammar. Authoring retains the original tag.
   {"auto" nil
@@ -46,8 +51,9 @@
                    (try (.highlight highlighter language' code)
                         (catch :default _ nil)))
         detected (or explicit (.highlightAuto highlighter code
-                                           (when auto-languages'
-                                             #js {:subset (into-array auto-languages')})))]
+                                           (if auto-languages'
+                                             #js {:subset (into-array auto-languages')}
+                                             #js {:subset detection-languages})))]
     (if (and (nil? (some-> detected .-data .-language)) default-language')
       (.highlight highlighter default-language' code)
       detected)))
