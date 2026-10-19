@@ -9,9 +9,13 @@
     (with-redefs [prototype/query (fn [query] (swap! queries conj (honey/format query)) [])]
       (is (= [] (prototype/get-all-2)))
       (prototype/get-blog 42)
+      (prototype/get-from [:blog] [:id :title])
+      (prototype/get-from [[:blog :b]] [[:b.title :title]])
       (prototype/get-from :blog :* :where [:= :user_name "name' OR 1=1"] :order-by [[:id :desc]])
       (is (= [["SELECT * FROM blog"]
               ["SELECT * FROM blog WHERE id = ?" 42]
+              ["SELECT id, title FROM blog"]
+              ["SELECT b.title AS title FROM blog AS b"]
               ["SELECT * FROM blog WHERE user_name = ? ORDER BY id DESC" "name' OR 1=1"]]
              @queries)))))
 
@@ -27,6 +31,10 @@
           (prototype/create-post ["fixture" "First" "Body"])
           (prototype/insert :blog {:user_name "other" :title "Second" :text "Body 2"})
           (is (= ["First" "Second"] (mapv :title (prototype/get-all-2))))
+          (is (= [{:id 1 :title "First"} {:id 2 :title "Second"}]
+                 (prototype/get-from [:blog] [:id :title])))
+          (is (= ["First" "Second"]
+                 (mapv :title (prototype/get-from [[:blog :b]] [[:b.title :title]]))))
           (is (= "First" (:title (first (prototype/get-blog 1)))))
           (is (= ["Second"] (mapv :title (prototype/get-from :blog :* :where [:= :user_name "other"]))))
           (is (= ["Second" "First"] (mapv :title (prototype/get-from :blog :* :order-by [[:id :desc]])))))

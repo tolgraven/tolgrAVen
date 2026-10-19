@@ -124,8 +124,8 @@
        (into [])))
 
 (defn get-from [from select & args]
-  (->> (merge (helpers/from from)
-              (helpers/select select)
+  (->> (merge {:from (if (coll? from) from [from])
+               :select (if (coll? select) select [select])}
               (apply hash-map args))
        query
        (into [])))
