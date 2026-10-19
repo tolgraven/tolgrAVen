@@ -95,22 +95,14 @@
      :data-module-loading pending?}))
 
 (defc ^:private <search-button> []
-  (let [open? @(r/subscribe [:state [:search :open?]])
-        ready? @(r/subscribe [:loader/code-ready :search])]
+  (let [open? (true? @(r/subscribe [:state [:search :open?]]))]
     [:button.search-ui-btn.noborder.nomargin
      (merge (module-loading-attrs :search open?)
             {:type "button"
              :name "Search"
              :title "Search site"
-             :aria-expanded (boolean open?)
-             :on-click (fn [_]
-                         ;; Keep the native control mounted through acquisition:
-                         ;; focus must not replace it before its click arrives.
-                         (r/dispatch (if ready?
-                                       [:search/state [:open?] (not open?)]
-                                       [:state [:search :open?] (not open?)]))
-                         (when-not open?
-                           (r/dispatch [:loader/activate {:module :search}])))})
+             :aria-expanded open?
+             :on-click #(r/dispatch [:search/state [:open?] (not open?)])})
      [img/<picture> {:src "svg/search-ico.svg"
                     :alt "Search"
                     :style {:width "1.2em"
@@ -195,8 +187,7 @@
                :title "Settings"})
        [:i.settings-btn {:class "fa fa-cog"}]])
 
-      (when-enabled :search nil
-       [<search-button>])
+      (when-enabled :search nil [<search-button>])
       (when-enabled :user nil
        ;; Only the avatar is lazy. The native account button retains focus and
        ;; click intent for anonymous and authenticated users alike.

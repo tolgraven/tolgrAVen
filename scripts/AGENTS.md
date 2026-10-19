@@ -142,8 +142,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   establish Storage/codec publication or production session authorization.
 
 - `dev/cleanup.py` defaults to a report. Applied worktree retirement requires an
-  exact merged PR head, no open follow-up, clean source and no process using the
-  target. Preserve the main checkout and detached/ambiguous work; archive ignored
+  exact merged PR head or recorded merge commit in `origin/master`, no open
+  follow-up on its branch, clean source and no process using the target. Preserve the main checkout and detached/ambiguous work; archive ignored
   private files and review records before ordinary, non-forced worktree removal.
   Never infer browser ownership or close browsers from a Git hook. Agents close
   their own verification tabs and servers when finished; the script preserves

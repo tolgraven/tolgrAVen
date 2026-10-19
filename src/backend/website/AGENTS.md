@@ -273,3 +273,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   The existing owned refresh
   worker warms module headings after readiness; a failed heading retains its
   last good value and cannot block healthy headings or unrelated routes.
+
+- Development CSS freshness belongs to `website.dev.styles`: one supervised
+  watcher plus startup/compile/request checks. Only HTML/CSS/direct browser chunks
+  wait; failure returns 503, and the verified revision invalidates Optimus delivery.
+  Production retains its prepared inventory without runtime compilers.

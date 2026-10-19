@@ -88,9 +88,10 @@ sessions' tabs and restore any borrowed tab when finished.
   verification records; archive the latter before removing the worktree.
 - From another checkout, run `bb cleanup --worktree <task-path> --remove-worktree`
   to inspect the plan, then add `--apply`. The command requires a clean registered
-  feature worktree, an exact merged PR head present in `origin/master`, no open
-  follow-up PR and no processes, build reservations or container mounts using its
-  directory (including cache-disabled and older builds). It archives ignored task data
+  feature worktree whose HEAD matches the head or exact merge commit of a merged
+  PR in `origin/master`, no open follow-up PR, and no processes, build reservations
+  or container mounts using its directory (including cache-disabled and older builds).
+  It archives ignored task data
   under the primary checkout's `.local-wip/task-archives`, preserves branch refs,
   and uses ordinary `git worktree remove` without force. Detached or ambiguous
   worktrees require manual investigation; age or ahead/behind counts are not proof.
@@ -231,8 +232,11 @@ sessions' tabs and restore any borrowed tab when finished.
   `target/production`; local prod loads those resources before shared assets and
   preflights the release browser manifest and both document bootstrap scripts
   before initialization logging/asset loading. See `doc/testing.md`.
-- `lein repl`: check/rebuild stale CSS before opening HTTP and the Clojure REPL;
-  current SSR/browser markup must not paint against sheets from an older checkout.
+- `lein repl` checks/rebuilds CSS before HTTP and owns one supervised Sass/PostCSS
+  watcher. Development browser compilation and HTML/CSS/chunk delivery recheck
+  source/output digests; failures return 503 rather than stale CSS. CSS writers
+  share the kernel lock and atomic output publication. `(stop)`/JVM exit stop only
+  the owned watcher. See `doc/styles.md`; `npm run dev` is optional standalone use.
   Deferred Shadow watches compile
   sequentially without blocking REPL acknowledgement. The standalone `:document`
   target releases first (no HMR); document/bootstrap requests await only that

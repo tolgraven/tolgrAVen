@@ -719,17 +719,24 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   claim the visit in app-db before scheduling, and guard delayed effects by mount
   generation. The demo returns to its measured starting scroll position.
 
-- The account trigger is a stable native header button; only its avatar is lazy. Its existing
-  User request events update the query; the page owns lazy panel acquisition.
-  Focusing the trigger must retain its node and focus without replacing a fallback. Loaded account controls retain native Space/Enter activation too.
+- The account trigger is a stable native header button; only its avatar is lazy.
+  Its existing User request events update the query; the page owns lazy panel
+  acquisition. Focusing the trigger retains its node and focus without replacing
+  a fallback. Loaded account controls retain native Space/Enter activation too.
 
 - The shell's sticky `.menu-panels` owns Search controls and the persistent lazy
   Settings host. Search's `:results` export stays outside that sticky area;
   inline Search retains its combined controls/results. Settings owns keyed
   `:presence`/`:exit` children so closing its query does not unmount the host.
 
-- Search retains its native header button while acquiring code and CSS. Header
-  panel triggers expose pending acquisition with an absolute circular indicator;
-  panel boundaries use empty loading fragments so opening motion begins only
-  with the ready native view. Keep intent in re-frame while loading, including
+- SPA history keeps the page opacity crossfade while restoring component state;
+  only document returns suppress all initial clocks. Explicitly opened User and
+  Settings panels opt out of restoration via `:appear {:restore? false}` and parent
+  viewport ownership. The shell owns a stable Search button; its eager events
+  activate lazy Search code without replacing/replaying the first intent.
+
+- Header panel triggers expose pending acquisition with an absolute circular
+  indicator; panel boundaries use empty loading fragments so opening motion begins
+  only with the ready native view. Keep intent in re-frame while loading, including
   closing before acquisition finishes; focus alone must not replace the trigger.
+

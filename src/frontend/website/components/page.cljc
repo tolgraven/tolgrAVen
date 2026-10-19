@@ -98,7 +98,7 @@
                  (when page [(component/resolve-view page)])
                  (when previous [(component/resolve-view previous)])
                  route @(r/subscribe [:common/route :last])
-                 (and (not ext-back?) (get-in commit [:completion :fallback?]))
+                 (get-in commit [:completion :fallback?])
                  (get-in commit [:completion :transition-id])
                  (get-in commit [:completion :outgoing-top]))]
   [:<>
