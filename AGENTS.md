@@ -299,6 +299,9 @@ sessions' tabs and restore any borrowed tab when finished.
 - `bb videos:responsive`: rebuild the opt-in video catalog's mobile renditions.
 - `bb fonts:icons`: regenerate icon SVGs, selectors and backend glyph selection
   with optional Python authoring tools; see `doc/styles.md`.
+- `bb dev:setup` prepares pinned local Python icon tools in ignored `.local-wip/python`;
+  development `user/start` runs it before HTTP/CMS startup. Backend development and
+  `bb fonts:icons` use that interpreter without shell activation; production uses prefab tools.
 - `npm run init`: bootstrap CSS output, locked local npm tools, and the vendored SDK.
 - `make hooks`: install the tracked pre-commit hook; staged public JPG/PNG images
   generate staged WebP/AVIF variants without including unstaged source edits.

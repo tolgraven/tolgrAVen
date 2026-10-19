@@ -5,7 +5,8 @@
             [clojure.string :as string]
             [website.middleware.asset-manifest :as manifest]
             [website.content.icons :as content-icons]
-            [website.validation :as validation])
+            [website.validation :as validation]
+            [website.config :as config])
   (:import [java.io ByteArrayInputStream]
            [java.lang ProcessBuilder ProcessBuilder$Redirect]
            [java.nio.file Files]
@@ -64,8 +65,16 @@
   (io/resource (str "public/webfonts/" (parent-name kind) ".woff2")))
 
 (defn- run-subsetter! [directory]
-  (let [builder (ProcessBuilder. ^java.util.List
-                                ["python3" (str (io/file directory "subset.py")) (str directory)])]
+  (let [development? (:dev config/env)
+        python (if development?
+                 (.getAbsolutePath
+                   (io/file ".local-wip/python"
+                            (if (.startsWith (System/getProperty "os.name") "Windows")
+                              "Scripts/python.exe" "bin/python3")))
+                 "python3")
+        command (into (cond-> [python] development? (conj "-I"))
+                      [(str (io/file directory "subset.py")) (str directory)])
+        builder (ProcessBuilder. ^java.util.List command)]
     (.redirectOutput builder ProcessBuilder$Redirect/DISCARD)
     (.redirectError builder ProcessBuilder$Redirect/DISCARD)
     (let [process (.start builder)]

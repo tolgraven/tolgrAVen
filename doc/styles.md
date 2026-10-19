@@ -358,10 +358,21 @@ recreates the current selection; historical dynamic selections are not persisted
 Persistent historical versions must accompany the eventual CMS icon-field feature.
 
 The dependency prefab supplies Python/fontTools and Brotli in the compiler and
-runtime roots. Local backend development also requires these tools; for an isolated
-setup, install `fonttools==4.60.2` and `Brotli==1.2.0` in a virtual environment and
-start the backend with that environment on PATH. The packaged codec lives at
-`resources/fonts/subset.py`; no runtime repository checkout is needed.
+runtime roots. For local development, install Python 3 with `venv`/pip support
+(`python3-venv` on distributions that package it separately). `lein repl`, including
+`repl-classic`, runs `scripts/dev/python.py` before application startup. The script
+creates `.local-wip/python`, installs `fonttools==4.60.2` and `Brotli==1.2.0`, and
+checks both imports and package versions. Healthy environments need no network
+access; failed or partial installation is retried on the next setup. The first
+setup needs access to the Python package registry. Use `bb dev:setup` to run it
+explicitly. Setup failure stops development startup with a repair command before
+HTTP opens; it must not be reported as a CMS outage.
+
+Development backend subsets use that environment's interpreter directly, with
+Python isolated mode, so shell activation, global packages and `PYTHONPATH` cannot
+supply a different codec. `bb fonts:icons` prepares and uses the same environment.
+Production keeps the prefab's Python and `PYTHONPATH` wiring. The packaged codec
+lives at `resources/fonts/subset.py`; no runtime repository checkout is needed.
 
 Build CSS as UTF-8 without a byte-order marker (`charset: false` in Sass). The
 server also strips a leading marker before inlining third-party/optimized sheets;
