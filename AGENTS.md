@@ -330,6 +330,8 @@ maintain a duplicate handwritten variable catalog.
 - Provisioning uses next.jdbc with unqualified lower-case result keys. Schema apply joins
   its supplied transaction; standalone table imports retain atomic inserts and row defaults.
   Keep the retained java.jdbc SQL prototype in `:experiments`.
+- The retained SQL prototype uses HoneySQL 2 in `:experiments`; its focused tests
+  live in `test/experiments` and require that profile.
 - Keep Ring mocks in `:project/test`, prototype dependencies/source paths in `:experiments`, and the S3 wagon in `:s3-publish`.
 - The personal `deploy-private` alias uses `lein-shell` and AWS CLI with a seeded local Maven staging repository; see `doc/dependencies.md` and `doc/lein-profiles.clj`.
 - Review resolved Maven conflicts and both npm audit scopes on dependency upgrades. See `doc/dependencies.md`.
