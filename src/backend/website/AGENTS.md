@@ -280,3 +280,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   watcher plus startup/compile/request checks. Only HTML/CSS/direct browser chunks
   wait; failure returns 503, and the verified revision invalidates Optimus delivery.
   Production retains its prepared inventory without runtime compilers.
+
+- `website.core/http-server` owns the direct Undertow adapter lifecycle. Preserve
+  async streaming, WebSocket and native session options; startup/bind failures
+  propagate rather than returning a nil server.

@@ -28,7 +28,7 @@
                  [cheshire "6.2.0"] ; clj-http's :as :json / JSON request adapter
 
                  [luminus-transit "0.1.6"]
-                 [luminus-undertow "0.1.18"]
+                 [luminus/ring-undertow-adapter "1.3.1"]
 
                  [markdown-clj "1.12.10"]
 

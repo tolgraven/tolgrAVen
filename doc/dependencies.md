@@ -71,7 +71,10 @@ selects in the calling nREPL session; a failed background startup is logged and 
 Application stop/restart retains Shadow workers as before; Shadow owns their
 JVM shutdown lifecycle. Repeated starts share any pending startup task.
 
-`luminus-undertow` supplies the Ring HTTP server through its Undertow adapter.
+`luminus/ring-undertow-adapter` supplies the Ring HTTP server directly.
+`website.core/http-server` owns its Mount lifecycle and native Undertow instance.
+Bind/startup failures propagate to Mount and process startup; they must never
+be logged and converted to a successful nil state.
 Undertow's XNIO workers use JBoss Threads for execution. Managed Undertow 2.3.26
 and JBoss Threads 3.10.1 retain the adapter's 2.3 API family and replace the old
 executor's `sun.misc.Unsafe.objectFieldOffset` implementation. Align JBoss Logging
