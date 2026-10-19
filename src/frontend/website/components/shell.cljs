@@ -195,7 +195,8 @@
                :title "Settings"})
        [:i.settings-btn {:class "fa fa-cog"}]])
 
-      [<search-button>]
+      (when-enabled :search nil
+       [<search-button>])
       (when-enabled :user nil
        ;; Only the avatar is lazy. The native account button retains focus and
        ;; click intent for anonymous and authenticated users alike.
