@@ -53,7 +53,10 @@
   ([glass-output {:keys [uri]}]
     (if-let [file (try (route-file uri glass-output) (catch Exception _ nil))]
       (if (fs/regular-file? file)
-        (let [docs-fixture? (contains? (set (vals docs-fixtures)) file)]
+        (let [docs-fixture? (contains? (set (vals docs-fixtures)) file)
+              fixture-html (when (and (= "html" (fs/extension file))
+                                      (or (= uri "/") (str/starts-with? uri "/fixtures/")))
+                             (slurp (fs/file file)))]
           {:status 200
            :headers (merge {"content-type" (if docs-fixture? (get mime "html")
                                               (get mime (fs/extension file) "application/octet-stream"))
@@ -68,10 +71,9 @@
                    (and glass-output (= uri "/tests/"))
                    (str/replace (slurp (fs/file file)) "<head>"
                                 "<head><link rel=\"stylesheet\" href=\"/css/website/main.css\"><link rel=\"stylesheet\" href=\"/fixtures/icon-fonts.css\">")
-                   (and (= "html" (fs/extension file))
-                        (or (= uri "/") (str/starts-with? uri "/fixtures/")))
+                   (and fixture-html (str/includes? fixture-html "</head>"))
                    ;; Static component documents have no backend CMS/SSR head.
-                   (str/replace-first (slurp (fs/file file)) "</head>"
+                   (str/replace-first fixture-html "</head>"
                                       "<link rel=\"stylesheet\" href=\"/fixtures/icon-fonts.css\"></head>")
                    :else (fs/file file))})
         {:status 404 :body "Not found"})
