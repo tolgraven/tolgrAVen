@@ -160,7 +160,8 @@ Mount retains the existing `logger-timbre` state identity, while `website.log`
 owns namespace thresholds, info-level console output, pretty exceptions and
 10 MB rotating `log/website.log` output with five uncompressed numbered archives.
 File handlers are synchronous and retain the existing rate limits. Service stops retain the sinks for final shutdown diagnostics; reinitialization
-replaces/closes the owned handlers, and Telemere closes them at JVM exit.
+replaces/closes the owned handlers. Synchronous writes flush immediately;
+process exit releases remaining file descriptors.
 
 `clojure.tools.logging` uses Telemere's adapter; `telemere-slf4j` is the sole
 SLF4J 2 provider. Keep Throwables intact through both bridges. Explicit logger

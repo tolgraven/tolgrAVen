@@ -79,6 +79,7 @@
 
 ;; Retain the Mount identity used by existing REPL/lifecycle callers. Sinks
 ;; survive service stops so core/user can report stopped components afterward;
-;; reinitialization replaces/closes them and Telemere closes them at JVM exit.
+;; reinitialization replaces/closes them. Synchronous writes flush immediately;
+;; process exit releases remaining file descriptors.
 (defstate ^{:on-reload :noop} logger-timbre
   :start (init-logging))
