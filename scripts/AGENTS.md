@@ -104,7 +104,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   runs the packaged `resources/fonts/subset.py` codec; active CSS has no full-font fallback.
   SVG exports must retain complete outlines. Native font glyphs own original
   rasterization and fractional line metrics; do not substitute SVG masks in controls.
-  Commit declared SVGs, catalogs, generated SCSS and codepoint selection together; see `doc/styles.md`.
+  Commit declared SVGs, catalogs, generated SCSS, codepoint selection and fixture
+  font/CSS baselines together; see `doc/styles.md`.
 
 - `audit/middleware.clj` is a disposable Docker-only investigation reproducer.
   It may generate stand-in JavaScript only inside the CPU controller's snapshot;

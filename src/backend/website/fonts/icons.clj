@@ -4,6 +4,7 @@
             [clojure.java.io :as io]
             [clojure.string :as string]
             [website.middleware.asset-manifest :as manifest]
+            [website.content.icons :as content-icons]
             [website.validation :as validation])
   (:import [java.io ByteArrayInputStream]
            [java.lang ProcessBuilder ProcessBuilder$Redirect]
@@ -26,8 +27,27 @@
   (into {} (map (fn [[kind points]] [kind (set points)]))
         (json/read-str (slurp (io/resource "icon-subsets.json")) :key-fn keyword)))
 
+(def ^:private glyph-codes
+  (delay
+    (into {} (map (fn [[_ glyph code]] [glyph (Integer/parseInt code 16)]))
+          (re-seq #"\.fa-([a-z0-9-]+):before\s*\{\s*content:\s*[\"']\\([0-9a-f]+)"
+                  (slurp (io/resource "public/css/fontawesome.css"))))))
+
+(defn content-selection
+  "Resolve only declared icon-bearing content paths, never arbitrary prose or markup."
+  [sections]
+  (let [references (content-icons/references sections)]
+    (when (validation/explain content-icons/references-schema references)
+      (throw (ex-info "Invalid content icon references" {})))
+    (reduce (fn [selected reference]
+              (let [[family glyph] (string/split reference #"/" 2)]
+                (if-let [code (@glyph-codes glyph)]
+                  (update selected (keyword family) conj code)
+                  selected)))
+            {:solid #{}, :brands #{}} references)))
+
 (defn selection
-  "Union declared glyphs with validated dynamic references when the CMS gains them."
+  "Union source/seed glyphs with validated references from synchronized content."
   [additional]
   (when (validation/explain selection-schema additional)
     (throw (ex-info "Invalid icon glyph selection" {})))
@@ -89,8 +109,8 @@
          (string/join "," (map #(format "U+%X" %) (sort (conj points 32)))) ";}")))
 
 (defn prepare!
-  "Prepare before publishing CMS content. No CMS field currently declares icons;
-   the optional addition map is the boundary for future typed glyph references.
+  "Prepare before publishing CMS content. Existing seeded icon fields and future
+   editable fields extend the declared selection through content-selection.
    Failed updates leave every previously published font URL available."
   ([] (prepare! {}))
   ([additional]

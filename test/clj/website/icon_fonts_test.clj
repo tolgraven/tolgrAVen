@@ -63,3 +63,15 @@
       (is (= "wOF2" (String. ^bytes data 0 4 "US-ASCII"))))
     (is (< (alength ^bytes (:solid fonts)) 10000))
     (is (< (alength ^bytes (:brands fonts)) 5000))))
+
+(deftest existing-content-fields-supply-additional-glyphs-without-scanning-prose
+  (let [selected (icons/content-selection
+                   {:services {:categories [["Audio" "bullhorn" []] ["Web" "laptop" []]]}
+                    :cv {:cv {:timeline [{:icon "fas fa-solid fa-briefcase"}]}}
+                    :footer [{:links [{:icon "github"}]}]
+                    :story {:text "fa-bug and solid/film are prose, not references"}})]
+    (is (= #{61601 61705 61617} (:solid selected)))
+    (is (= #{61595} (:brands selected)))
+    (is (every? (:solid (icons/selection {})) (:solid selected)))
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (icons/content-selection {:services {:categories [["Bad" "../font" []]]}})))))

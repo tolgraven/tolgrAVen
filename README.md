@@ -11,6 +11,9 @@ You will need [Leiningen][1] 2.0 or above installed.
 ## Setup and development
 
 Use Java 21 or newer, Leiningen, Babashka 1.13.225 or newer, and Node.js 22.12 or newer.
+Backend icon preparation also requires Python 3 with `fonttools==4.60.2` and
+`Brotli==1.2.0` on its PATH; the dependency prefab includes these tools. See
+[icon font setup](doc/styles.md#icon-fonts) for local virtual-environment use.
 Install the lockfile and build CSS:
 
 ```sh

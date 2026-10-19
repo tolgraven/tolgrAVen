@@ -284,7 +284,7 @@
       (reset! content/*immediate nil)
       (with-redefs [content/settings (constantly {:url nil})
                     pages/immediate-keys (constantly [:document :footer])
-                    icons/prepare! (fn [] (if @fail? (throw (ex-info "codec failed" {}))
+                    icons/prepare! (fn [_] (if @fail? (throw (ex-info "codec failed" {}))
                                              {:css "ready-fonts"}))]
         (content/refresh-immediate! false)
         (is (= "ready-fonts" (content/icon-font-css)))

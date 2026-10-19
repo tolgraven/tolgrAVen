@@ -315,7 +315,7 @@ execute frontend code or create a runtime schema inventory.
 The deferred `icons.css` bundle contains generated glyph selectors and shared
 Font Awesome utilities. Font faces belong to backend CMS synchronization, rather
 than Optimus or a build-time font binary. `bb fonts:icons` writes the declared
-source/catalog codepoints to `resources/icon-subsets.json`; its SVG and selector
+source/catalog/seed codepoints to `resources/icon-subsets.json`; its SVG and selector
 authoring still uses the original vendored fonts. Retained legacy core font files
 and generated face SCSS are not referenced by production stylesheet entries.
 Standalone browser fixtures receive `test/browser/icon-fonts.css` from their
@@ -323,10 +323,14 @@ fixture server, using baseline core files regenerated with the same subset codec
 
 `website.fonts.icons/prepare!` combines the declared selection with an optional,
 validated per-family codepoint set, then runs the bounded Python/fontTools codec.
-The CMS currently has no icon fields, so refreshes and inline publications pass
-only the declared selection. When typed CMS icon fields are introduced, collect
-those references at this same synchronization boundary; do not scan arbitrary CMS
-text or acquire full fonts from the browser.
+The CMS currently exposes no icon-editing controls, but seeded Services categories,
+CV column classes and footer links already carry icon references. The shared
+`website.content.icons/references` reader follows those exact typed paths for both
+authoring and backend sync; it never scans arbitrary prose. The declared seed
+inventory covers initial documents and later SPA visits. Refreshes and inline
+publications add references from their current synchronized sections. New editable
+icon fields must extend this reader and publish updated font resources to open
+clients; do not restore full-font browser fallbacks.
 
 Preparation happens before CMS content publication, outside cache locks. Unchanged
 selections reuse the existing result. Both subsets must finish and validate their

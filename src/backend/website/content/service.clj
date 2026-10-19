@@ -93,7 +93,7 @@
                                           content)))))
                            (select-keys previous optional) optional))
          value (merge (select-keys previous ks) shell modules)
-         icon-fonts (icons/prepare!)]
+         icon-fonts (icons/prepare! (icons/content-selection value))]
      (when (.isInterrupted (Thread/currentThread))
        (throw (InterruptedException. "Module startup content refresh interrupted")))
      ;; An inline save can finish while the refresh is reading Strapi. Its
@@ -107,7 +107,8 @@
 (defn install-edited! [sections]
   (let [source (:url (settings))
         now (System/currentTimeMillis)
-        icon-fonts (icons/prepare!)]
+        icon-fonts (icons/prepare!
+                     (icons/content-selection (merge (:content @*immediate) sections)))]
     (locking *cache
       (swap! *cache update source
              #(reduce-kv (fn [entries k value] (assoc entries k {:at now, :value value}))

@@ -138,7 +138,13 @@ def main():
     if missing:
         raise ValueError(f"Dynamic icons absent from vendored CSS: {sorted(missing)}")
     definitions = icon_definitions()
+    command = ["bb", "--classpath", "src/cljc:resources", "-e",
+               "(require '[website.content.icons :as icons] '[cheshire.core :as json]) "
+               "(println (json/generate-string (icons/references "
+               "(json/parse-string (slurp \"resources/content-seed.json\") true))))"]
+    seed_icons = json.loads(subprocess.check_output(command, cwd=ROOT, text=True))
     names = set(dynamic)
+    names.update(icon.split("/")[1] for icon in seed_icons)
     names.update(icon.split("/")[1] for icons in definitions.values() for icon in icons)
     for source_root in [ROOT / "src/frontend", ROOT / "src/cljc", ROOT / "src/backend"]:
         for file in source_root.rglob("*.clj*"):

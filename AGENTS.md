@@ -287,8 +287,8 @@ sessions' tabs and restore any borrowed tab when finished.
   fingerprints each bundle separately. Production packaging prepares its inventory
   once; runtime imports the validated artifact without minification or image conversion.
   Literal component/module `:icons` export native font-glyph rules into the same
-  style inventory; backend CMS syncs prepare icon subsets and emit their faces in the SSR head. `bb fonts:icons` also retains
-  committed SVG exports. Preserve original glyph metrics and rasterization.
+  style inventory; backend CMS syncs prepare icon subsets and emit their faces in
+  the SSR head. `bb fonts:icons` also retains committed SVG exports. Preserve original glyph metrics and rasterization.
   Text faces stay consumer-scoped; `defc`'s `:font` feature owns controlled late
   upgrades independently of stylesheet/module readiness.
   Production asset preparation prunes unused selectors, custom properties,

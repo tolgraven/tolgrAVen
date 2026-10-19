@@ -155,8 +155,9 @@ server format handlers retain their native JVM Java-time support.
   metadata; private job/source/lease fields must not enter public projections.
 
 - `build/assets.clj` prepares the existing Optimus inventory after production
-  Shadow/CSS outputs. Keep asset transformations out of runtime startup and preserve
-  the CSS/font reference contract. Its explicit resource-root entry point also serves
+  Shadow/CSS outputs. Keep Optimus/image transformations out of runtime startup;
+  icon subsets have their separate backend CMS-sync owner. Preserve each owner's
+  CSS/font reference contract. Its explicit resource-root entry point also serves
   isolated local production output. Prune selected CSS against released browser
   chunks/document scripts and server markup before Optimus loads bytes; publish
   no manifest after pruning failure. See `doc/styles.md` and `doc/middleware.md`.
@@ -178,3 +179,7 @@ server format handlers retain their native JVM Java-time support.
   enabled default-view choices; CMS layout data never supplies executable code.
   Reserved module routes retain ownership. Layout edits use the existing publish
   snapshot so browser routes, server routes and SSR agree.
+
+- `content/icons.clj` reads only the existing Services category, CV column and
+  footer icon fields. Authoring and backend sync share it; do not scan arbitrary
+  content strings or maintain a second seed glyph list.
