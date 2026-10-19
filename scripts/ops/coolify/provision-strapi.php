@@ -79,6 +79,15 @@ function cmsWireActions($service, $web, $team, $overrides) {
     }
 }
 
+function cmsWireWeb($service, $web, $url) {
+    $web->settings()->update(['use_build_secrets'=>true,'disable_build_cache'=>false]);
+    foreach ([false,true] as $preview) {
+        cmsEnv($web,'STRAPI_URL',$url,$preview);
+        cmsEnv($web,'STRAPI_READ_TOKEN',$service->environment_variables()->where('key','CMS_READ_TOKEN')->firstOrFail()->value,$preview);
+        cmsEnv($web,'STRAPI_WRITE_TOKEN',$service->environment_variables()->where('key','CMS_WRITE_TOKEN')->firstOrFail()->value,$preview);
+    }
+}
+
 if (defined('PROVISION_STRAPI_FUNCTIONS_ONLY')) return;
 
 try {
@@ -153,17 +162,14 @@ try {
         cmsEnv($service,'SERVICE_URL_CMS',$url);
         cmsEnv($service,'SERVICE_FQDN_CMS',parse_url($url,PHP_URL_HOST));
         $cms=$service->applications()->where('name','cms')->firstOrFail();
-        $cms->fqdn=$url.':1337'; $cms->save();
+        $cms->fqdn=collect(explode(',', $cms->fqdn ?? ''))
+            ->prepend($url.':1337')->filter()->unique()->implode(',');
+        $cms->save();
         $service->parse();
     }
     $token=$service->environment_variables()->where('key','CMS_READ_TOKEN')->firstOrFail()->value;
     if ($input['action']==='wire') {
-        $web->settings()->update(['use_build_secrets'=>true,'disable_build_cache'=>true]);
-        foreach([false,true] as $preview) {
-            cmsEnv($web,'STRAPI_URL',$url,$preview);
-            cmsEnv($web,'STRAPI_READ_TOKEN',$token,$preview);
-            cmsEnv($web,'STRAPI_WRITE_TOKEN',$service->environment_variables()->where('key','CMS_WRITE_TOKEN')->firstOrFail()->value,$preview);
-        }
+        cmsWireWeb($service,$web,$url);
     }
     if ($input['action']==='start') App\Actions\Service\StartService::dispatch($service);
     if ($input['action']==='verify') {

@@ -139,7 +139,8 @@ try {
             if ($usesSupabase) {
             // Keep configuration stable across retries. Regenerating JWTs would invalidate users.
             $kong = $service->applications()->where('name', 'supabase-kong')->firstOrFail();
-            $kong->fqdn = $config['supabase_url'].':8000';
+            $kong->fqdn = collect(explode(',', $kong->fqdn ?? ''))
+                ->prepend($config['supabase_url'].':8000')->filter()->unique()->implode(',');
             $kong->save();
             setEnv($service, 'SERVICE_URL_SUPABASEKONG', $config['supabase_url']);
             setEnv($service, 'SERVICE_FQDN_SUPABASEKONG', parse_url($config['supabase_url'], PHP_URL_HOST));
