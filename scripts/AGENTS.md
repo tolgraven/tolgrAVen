@@ -19,7 +19,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   contain literal fences inside the payload. See `doc/visual-regressions.md`.
 
 - `build/styles.mjs` compiles shell, development inspector and module CSS entries
-  with locked Sass/PostCSS, compiles the separate icon sheet and vendors
+  with locked Sass Embedded/PostCSS, reuses one asynchronous compiler across each
+  build's sequential entries and disposes it on success/failure, compiles the separate icon sheet and vendors
   Leaflet images. Emit UTF-8 without a byte-order marker so the same sheets can
   be inlined safely. `--if-stale` verifies source/tool/font/icon-declaration inputs
   and every raw/minified output before skipping compilation; development startup
