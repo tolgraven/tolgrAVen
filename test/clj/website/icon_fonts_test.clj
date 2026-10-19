@@ -37,6 +37,9 @@
         (is (= first-snapshot (icons/prepare!)))
         (is (= 1 @calls))
         (is (= 2 (count paths)))
+        (is (= #{"fa-solid-900" "fa-brands-400"}
+               (set (map #(second (re-find #"/(fa-(?:solid|brands)-[0-9]+)-[a-f0-9]{64}\.woff2$" %))
+                         paths))))
         (is (= 200 (:status before)))
         (is (string/includes? (:css first-snapshot) "U+20"))
         (is (not (re-find #"fa-(?:solid|brands)-|fallback" (:css first-snapshot))))

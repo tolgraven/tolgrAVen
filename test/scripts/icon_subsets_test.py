@@ -29,6 +29,8 @@ class RuntimeSubsetTest(unittest.TestCase):
                 self.assertEqual(original["hhea"].ascent, subset["hhea"].ascent)
                 self.assertEqual(original["hhea"].descent, subset["hhea"].descent)
                 self.assertTrue(any(n.nameID == 0 for n in subset["name"].names))
+                self.assertIn(original["name"].getDebugName(1), subset["name"].getDebugName(10))
+                self.assertIn(source.name, subset["name"].getDebugName(10))
 
     def test_invalid_family_glyph_and_empty_selection_fail(self):
         source = ROOT / "resources/public/webfonts/fa-solid-900.woff2"

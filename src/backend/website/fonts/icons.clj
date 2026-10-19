@@ -57,8 +57,11 @@
       (throw (ex-info "Invalid declared icon glyph selection" {})))
     value))
 
+(defn- parent-name [kind]
+  (str "fa-" (name kind) "-" (:weight (families kind))))
+
 (defn- font-resource [kind]
-  (io/resource (str "public/webfonts/fa-" (name kind) "-" (:weight (families kind)) ".woff2")))
+  (io/resource (str "public/webfonts/" (parent-name kind) ".woff2")))
 
 (defn- run-subsetter! [directory]
   (let [builder (ProcessBuilder. ^java.util.List
@@ -81,7 +84,7 @@
     (try
       (doseq [[target resource] (concat [["subset.py" (io/resource "fonts/subset.py")]]
                                        (for [kind [:solid :brands]]
-                                         [(str "fa-" (name kind) "-" (:weight (families kind)) ".woff2")
+                                         [(str (parent-name kind) ".woff2")
                                           (font-resource kind)]))]
         (with-open [input (io/input-stream resource)
                     output (io/output-stream (io/file directory target))]
@@ -122,7 +125,7 @@
          (:snapshot @*prepared)
          (let [fonts (compile-subsets! selected)
                paths (into {} (for [[kind data] fonts]
-                                [kind (str "/webfonts/icons/"
+                                [kind (str "/webfonts/icons/" (parent-name kind) "-"
                                            (manifest/digest (ByteArrayInputStream. data)) ".woff2")]))
                assets (into {} (for [[kind data] fonts] [(paths kind) data]))
                snapshot {:css (apply str (for [kind [:solid :brands]]
@@ -141,7 +144,7 @@
            :headers {"Content-Type" "font/woff2"
                      "Content-Length" (str (alength ^bytes data))
                      "Cache-Control" "public, max-age=31536000, immutable"
-                     "ETag" (str "\"" (subs uri 16 (- (count uri) 6)) "\"")}
+                     "ETag" (str "\"" (re-find #"[a-f0-9]{64}(?=\.woff2$)" uri) "\"")}
            :body (when (= :get request-method) (ByteArrayInputStream. data))}
           {:status 404, :headers {"Cache-Control" "no-store"}, :body "Font unavailable"})
         {:status 405

@@ -10,6 +10,7 @@ from fontTools.pens.recordingPen import DecomposingRecordingPen
 
 def subset_font(source_file, points, kind):
     font = TTFont(source_file, recalcTimestamp=False, recalcBBoxes=False)
+    parent_family = font["name"].getDebugName(1)
     cmap = dict(font.getBestCmap())
     core = set(points)
     target = f"fa-{kind}-subset.woff2"
@@ -30,6 +31,9 @@ def subset_font(source_file, points, kind):
             if record.nameID == 6:
                 value = value.replace(" ", "")
             record.string = value.encode(record.getEncoding())
+    font["name"].setName(
+        f"tolgrAVen subset of {parent_family} ({Path(source_file).name}).",
+        10, 3, 1, 0x409)
     font.flavor = "woff2"
     data = io.BytesIO()
     font.save(data)

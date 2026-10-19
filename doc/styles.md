@@ -340,7 +340,10 @@ requires successful preparation. The existing refresh worker retries failures.
 
 SSR emits the prepared face CSS in the initial head, including error documents and
 local-return templates. Faces reference only content-addressed subset URLs under
-`/webfonts/icons/`; full originals are never CSS fallback sources. U+20 remains in
+`/webfonts/icons/fa-solid-900-<sha256>.woff2` and
+`/webfonts/icons/fa-brands-400-<sha256>.woff2`; full originals are never CSS fallback
+sources. Internal description metadata names the parent family and original font
+filename, while the subset retains its own distinct family/PostScript identities. U+20 remains in
 the CSS range to preserve original inline line-box metrics, without adding a glyph.
 Font family, weight, auto display policy and browser rasterization remain unchanged.
 The original full fonts stay available as codec inputs from the packaged
