@@ -154,6 +154,24 @@
   (is (not (m/validate (dsl/->malli code-block/args-schema) ["code" {:starting-line-number -1}])))
   (is (not (m/validate (dsl/->malli code-block/args-schema) ["code" :line-numbers? "true"]))))
 
+(deftest custom-styles-render-from-keyword-maps-and-native-javascript
+  (binding [context/*server?* true
+            context/*modules* {:highlight highlight/spec}]
+    (doseq [style [{:hljs {:color "red"}
+                   :hljs-number {:color "blue"}}
+                  #js {:hljs #js {:color "red"}
+                       :hljs-number #js {:color "blue"}}]]
+      (let [html (r/render-to-string
+                   [code-block/<code-block> "(+ 1 2)" :language "clojure" :style style])
+            container (.createElement js/document "div")]
+        (set! (.-innerHTML container) html)
+        (is (= "red" (.. container (querySelector "pre") -style -color)))
+        (is (= ["1" "2"]
+               (into [] (comp (filter #(= "blue" (.. % -style -color)))
+                              (map #(.-textContent %)))
+                     (array-seq (.querySelectorAll container "code span")))))
+        (is (= "(+ 1 2)" (.-textContent (.querySelector container "pre code"))))))))
+
 (deftest linked-inline-code-retains-navigation-without-nested-controls
   (binding [context/*server?* true
             context/*modules* {:highlight highlight/spec}]

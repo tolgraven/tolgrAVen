@@ -143,7 +143,7 @@
         display-code (if (and editable? (.endsWith code "\n")) (str code "\u200b") code)
         tree (r/use-memo #(code-tree display-code language' default-language auto-languages)
                          [display-code language' default-language auto-languages])
-        stylesheet (r/use-memo #(js->clj style :keywordize-keys false) [style])
+        stylesheet (r/use-memo #(js->clj (clj->js style) :keywordize-keys false) [style])
         selected-language (or (some-> tree .-data .-language) language' "text")
         contents (rendered-code tree stylesheet numbered? (or starting-line-number 1) line-props editable?)
         code-element (into [(if inline? :span :code)
