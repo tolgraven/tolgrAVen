@@ -29,7 +29,7 @@
                  "create table website_search_documents(id text primary key)"
                  "create table website_search_consumers(id text primary key)"
                  "create table website_search_jobs(consumer text references website_search_consumers(id), id text references website_search_documents(id))"
-                 "create table site_media(id text primary key, asset jsonb, metadata jsonb)"
+                 "create table site_media(id text primary key, source_url text, canonical_src text, status text, asset jsonb, metadata jsonb, updated_at timestamptz default now())"
                  "create table github_repositories(owner text, repo text, primary key(owner, repo))"
                  "create table github_commits(owner text, repo text, sha text, foreign key(owner, repo) references github_repositories(owner, repo))"
                  "create table user_documents(owner_id text references site_users(id), collection text, doc_id text, data jsonb, primary key(owner_id,collection,doc_id))"]]
