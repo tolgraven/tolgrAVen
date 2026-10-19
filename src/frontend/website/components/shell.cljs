@@ -117,7 +117,7 @@
                             :height "1.2em"
                             :filter "var(--light-to-dark)"}}]]))
 
-(defc ^:private <anonymous-user-button> []
+(defc ^:private <account-button> []
   (let [open? @(r/subscribe [:user/ui-open?])]
     [:button.user-btn.noborder
      (merge (module-loading-attrs :user open?)
@@ -125,7 +125,13 @@
              :on-click #(r/dispatch [(if open? :user/request-close-ui :user/request-open-ui)])
              :aria-label "User account"
              :title "User account"})
-     [:i.user-btn.fa.fa-user]]))
+     (if-let [user @(r/subscribe [:user/active-user])]
+       (m/<> {:module :user
+              :view :avatar
+              :load-on :immediate
+              :<loading> [:i.user-btn.fa.fa-user]}
+             (merge user {:no-zoom true}) "btn-img")
+       [:i.user-btn.fa.fa-user])]))
 
 (defn- use-restored-shell []
   (let [returned? (restore/document-return?)
@@ -191,13 +197,9 @@
 
       [<search-button>]
       (when-enabled :user nil
-       (if @(r/subscribe [:user/active-user])
-        (m/<> {:module :user
-               :view :btn
-               :<loading> <anonymous-user-button>})
-        ;; The panel owns code acquisition. Focusing this control must not
-        ;; replace it with a lazy view and lose the user's keyboard position.
-        [<anonymous-user-button>]))
+       ;; Only the avatar is lazy. The native account button retains focus and
+       ;; click intent for anonymous and authenticated users alike.
+       [<account-button>])
       [:label.burger {:for "nav-menu-open"}]]]
 
      [:div.fill-side-top
