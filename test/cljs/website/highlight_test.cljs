@@ -183,18 +183,20 @@
       (is (.querySelector container ".react-syntax-highlighter-line-number")))))
 
 (deftest native-token-rendering-preserves-multiline-text-and-numbered-attributes
-  (binding [context/*server?* true]
+  (binding [context/*server?* true
+            context/*modules* {:highlight highlight/spec}]
     (let [source "/* first\n  second <script>& */\nconst x = \"λ\";"
           html (r/render-to-string
-                 [highlight-view/<formatted-code> source
+                 [code-block/<code-block> source
                   :language "javascript"
                   :line-numbers? true
                   :starting-line-number 9
                   :line-props (fn [number] {:data-line number})])
           container (.createElement js/document "div")]
       (set! (.-innerHTML container) html)
-      (let [code (.querySelector container "pre > code")
-            numbers (array-seq (.querySelectorAll code ".react-syntax-highlighter-line-number"))]
+      (let [code (.querySelector container "pre code")
+            numbers (when code (array-seq (.querySelectorAll code ".react-syntax-highlighter-line-number")))]
+        (is code html)
         (is (= ["9" "10" "11"] (mapv #(.-textContent %) numbers)))
         (is (= 3 (.-length (.querySelectorAll code "[data-line]"))))
         (is (nil? (.querySelector code "script")) "Code text cannot become raw HTML")

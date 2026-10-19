@@ -70,6 +70,16 @@
           (token-runs (array-seq (.-children node)) stylesheet style))))
     nodes))
 
+(defn- coalesce-text [runs]
+  ;; The current emitter may split punctuation from adjacent plain text. Keep
+  ;; those in one shaping run, as with ordinary adjacent DOM text nodes.
+  (reduce
+    (fn [combined [style text :as run]]
+      (if (and (empty? style) (seq combined) (empty? (first (peek combined))))
+        (update-in combined [(dec (count combined)) 1] str text)
+        (conj combined run)))
+    [] runs))
+
 (defn- code-lines [runs]
   (reduce
     (fn [lines [style text]]
@@ -88,7 +98,7 @@
     (if (map? props) props (js->clj props :keywordize-keys true))))
 
 (defn- rendered-code [tree stylesheet numbered? starting-line-number line-props editable?]
-  (let [runs (token-runs (array-seq (.-children tree)) stylesheet {})
+  (let [runs (coalesce-text (token-runs (array-seq (.-children tree)) stylesheet {}))
         lines (code-lines runs)
         largest (+ starting-line-number (dec (count lines)))
         number-style (merge {:display "inline-block"
