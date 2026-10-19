@@ -26,10 +26,10 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 `doc/site-provisioning.md` for operating and configuration details.
 
 - The handler loads `website.log` before its other dependencies so Mount
-  initializes logging before application startup. It owns Timbre appenders,
+  initializes logging before application startup. It owns Telemere handlers,
   pretty exceptions and the default uncaught exception handler. Namespace loading
-  must not replace that handler; keep Throwable
-  objects intact through tools.logging and SLF4J. JBoss provider selection is a
+  must not replace that handler; keep Throwable objects intact through
+  tools.logging and the sole Telemere SLF4J provider. JBoss provider selection is a
   launch-time JVM option shared by Lein and Docker, before Undertow loads.
   See `doc/dependencies.md` for logging dependency ownership.
 
