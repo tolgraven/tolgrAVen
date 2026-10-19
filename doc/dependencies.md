@@ -234,3 +234,12 @@ server HTML does not include it. Phoenix 0.4.5 emits two npm JSDoc parse notices
 for TypeScript-style `@template [T=PresenceState]` comments. These do not change
 executable code; configuration audits still require zero CLJS compiler warnings
 and recognize only those specific upstream comment notices.
+
+## Sass compiler host
+
+CSS builds use the official `sass-embedded` host, pinned to Dart Sass 1.105.1.
+A single asynchronous compiler handles each build's sequential sheets and closes
+in `finally`, including failed watch rebuilds. npm selects its native binary for
+macOS development and Linux ARM64/AMD64 prefabs; retain optional dependencies
+when installing. PostCSS/Autoprefixer, style freshness and atomic publication keep
+their existing owners. See [Sass Embedded](https://sass-lang.com/blog/embedded-sass-is-live/).
