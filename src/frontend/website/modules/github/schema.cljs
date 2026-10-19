@@ -1,6 +1,7 @@
 (ns website.modules.github.schema
   "Consumed provider fields and UI state; provider extension fields remain open."
-  (:require [website.schema.common :as c]))
+  (:require [website.schema.common :as c]
+            [website.modules.github.detail-schema :as detail-schema]))
 
 (def return-state-keys
   ;; These identify the cached feed and its completed pages. Pending requests
@@ -26,6 +27,7 @@
                    :generation c/nonnegative
                    :pages-pending [:set :int]
                    :commits-pending [:set :string]
+                   :commit-pages-pending [:map-of :string [:int {:min 1, :max 30}]]
                    :headers-pending? :boolean
                    :query :string
                    :pages-fetched [:sequential :int]
@@ -52,7 +54,9 @@
                    :commit (c/optional-map {:message :string
                                             :author author
                                             :committer author})
-                   :parents [:vector (c/optional-map {:sha :string})]
+                   :parents [:vector (c/optional-map {:sha :string, :html_url :string})]
+                   :stats detail-schema/counts
+                   :files-complete? :boolean
                    :files [:sequential
                            (c/optional-map {:filename :string
                                             :status :string

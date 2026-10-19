@@ -702,8 +702,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   optional `/neovim/github/:user/:repo/:sha` views own cached revision reads and
   readonly native diffs. Crossing the isolation boundary uses document navigation;
   disabled Neovim sites retain the basic viewer and no editor assets.
-  Commit rows retain native external/permalink links without nested anchors;
-  row intent dispatches the GitHub-owned document effect. Feed query resets keep
+  Commit rows open an inline unified patch with independent old/new source
+  positions. Native external/permalink links stay independent; the full Neovim
+  workspace remains an explicit document link. Feed query resets keep
   immutable detail caches and separately keyed revision-viewer state independent.
 
 - Home's `<dynamic-page>` selects a published layout and `<layout>` renders typed
@@ -752,3 +753,19 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   with native-root `:appear`/`:exit`. Grid rows animate their intrinsic height;
   keep the styled input at its natural geometry during exit. Do not restore the
   old viewport max-height or nested closed-margin/border animation.
+
+- Activity calendar overflow starts at the newest/rightmost week through native
+  RTL scroll geometry; the grid and keyboard order remain chronological LTR.
+  The newest day owns the initial tab stop. GitHub list previews show only the
+  parsed subject; full original messages remain available in the tooltip/details.
+  Unified patch hunk headers reset old/new counters; additions/deletions advance
+  only their own side and newline notes advance neither. Missing patches stay
+  explicit. The existing lazy formatter's optional `:line-prefix` owns custom
+  source gutters in both plain loading output and highlighted rows.
+  Commit permalinks select that same detail surface without rewriting the feed
+  query. The mounted scrollbox resets on detail entry and restores the list's
+  prior offset on return; component-target scrolling remains navigation-owned.
+  Internal permalink clicks bubble to Reitit's document handler; the row ignores
+  link/button targets rather than stopping propagation and forcing a reload.
+  Changed-file metadata acquires bounded sequential pages; only the current
+  generation and expected page can append results or mark a detail complete.

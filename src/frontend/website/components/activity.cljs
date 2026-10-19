@@ -75,7 +75,7 @@
          [:span.activity-calendar__day {:role "listitem"
                                        :data-date date
                                        :data-level level
-                                       :tab-index (if (= date (or (:date active) (:date (first days)))) 0 -1)
+                                       :tab-index (if (= date (or (:date active) (:date (last days)))) 0 -1)
                                        :aria-describedby (when (= date (:date active)) tooltip-id)
                                        :on-pointer-enter #(reset! *active (anchor % day))
                                        :on-focus #(reset! *active (anchor % day))

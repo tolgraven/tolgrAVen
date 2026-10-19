@@ -75,3 +75,7 @@
   (fn [commits [_ sha]]
     (boolean (and sha (some #(string/starts-with? (:sha %) sha) commits)))))
 
+
+(r/reg-sub :github/commit-pending?
+  :<- [:state [:github :commits-pending]]
+  (fn [pending [_ sha]] (contains? pending sha)))

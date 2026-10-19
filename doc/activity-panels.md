@@ -5,8 +5,26 @@ commit browser, then the configured user's public GitHub contribution calendar.
 The separate `:codex-profile` module follows it in the landing layout.
 
 Commit category and subcategory labels share a right-hand column beside the
-message. Commit text is limited to three lines; hovering the message shows its
-complete original subject and body. Label clicks keep their category search.
+message. List previews show the parsed subject (up to three lines); hovering
+shows the complete original subject and body. Squash bodies and trailers remain
+in the expanded message rather than spilling into the feed preview.
+
+Pressing a commit or its View diff button opens its inline unified patch. Each
+hunk resets independent old/new source numbers; context advances both, additions
+advance only new, deletions only old, and newline notes advance neither. Source
+syntax uses the existing lazy formatter, with stable gutters during acquisition.
+Changed files acquire sequential metadata pages through GitHub's bounded API;
+partial acquisition remains explicit until complete. Files without a text patch
+expose a GitHub link rather than a fabricated diff.
+The full message body renders safe Markdown with author, timestamps, SHA, parents,
+file status and change counts beside the patches. Permalinks select this same
+surface without changing the feed's query; component navigation lands at GitHub.
+Back to commits restores the list's internal offset. When enabled, the full
+before/after Neovim workspace remains an explicit link.
+
+A narrow contribution calendar starts at its right edge to show the latest week.
+The native scroll container owns overflow; days remain chronological left to right,
+with the newest day as the initial tab stop. Home/End still select first/last day. Label clicks keep their category search.
 
 ## CMS ownership
 

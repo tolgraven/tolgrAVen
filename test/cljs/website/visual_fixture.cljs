@@ -62,7 +62,7 @@
                       :author {:name "Visual contributor"
                                :date (str "2026-10-" (- 14 index) "T12:30:00Z")}}}))
         (range 4)
-        ["fix(github): keep commit tags, timestamps and links aligned"
+        ["fix(github): keep commit tags, timestamps and links aligned\n\n### Changes\n\n- Preserve **source positions** in every hunk.\n- Keep long squash messages readable.\n\n`<script>` remains literal source.\n\nCodex-Session: visual-session"
          "scss: theme: preserve the original spacing and native colors"
          "Keep URLs intact: https://example.invalid/a/long/path?with=parameters"
          "feat(api): show a multiline commit message\n\nKeep the provider body below the subject."]))
@@ -108,7 +108,26 @@
                           :total (count rows)
                           :complete true
                           :next-cursor nil})
-                       (or (some #(when (= uri (str "/api/github/commits/" (subs (:sha %) 0 7))) %)
+                       (or (some (fn [commit]
+                                   (when (or (= uri (str "/api/github/commits/" (:sha commit)))
+                                             (= uri (str "/api/github/commits/" (subs (:sha commit) 0 7))))
+                                     (assoc commit
+                                            :parents [{:sha (apply str (repeat 40 "f"))
+                                                       :html_url "https://github.com/visual-user/visual-repo/commit/ffffffffffffffffffffffffffffffffffffffff"}]
+                                            :stats {:additions 3, :deletions 2, :total 5}
+                                            :commit (assoc (:commit commit) :committer {:date "2026-10-14T12:31:00Z"})
+                                            :files
+                                            [{:filename "src/example.cljs"
+                                              :status "modified"
+                                              :additions 3
+                                              :deletions 2
+                                              :changes 5
+                                              :patch "@@ -10,3 +20,4 @@ example\n (defn greet [name]\n-  (str \"Hello \" name))\n+  (str \"Hi \" name))\n+;; Keep <script> as source text\n \n@@ -100 +200 @@\n-(def old true)\n+(def current false)\n"}
+                                             {:filename "assets/logo.png"
+                                              :status "modified"
+                                              :additions 0
+                                              :deletions 0
+                                              :changes 0}])))
                                  github-commits)
                            (throw (js/Error. (str "Unexpected GitHub fixture request: " uri)))))]
         (when-not (= {:user "visual-user", :repo "visual-repo"}
