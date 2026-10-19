@@ -57,6 +57,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   them in the isolated test checkout, or reuse its standalone release output; see
   `doc/testing.md`. The full JVM suite also requires the compiled `:ssr` worker
   in that checkout for its actual Node protocol checks.
+- Pending header visual cases hold the existing module transport's CSS gate while
+  registered panel events expose each loading ring. Keep the native control and
+  its bounds; these disposable fixture documents do not release the owner.
+
 - Mount actual Reagent components, dereference subscriptions during render, dispatch
   real events, await lifecycle completion, and unmount in cleanup. Avoid direct
   app-db mutation, dangling subscriptions and forced React flushes.

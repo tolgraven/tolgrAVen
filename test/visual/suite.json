@@ -20,6 +20,66 @@
       "capture_assert": "const header = document.querySelector('header');\nconst open = document.querySelector('#nav-menu-open').checked;\nconst narrow = innerWidth === 400;\nif (!narrow && innerWidth !== 1440) throw new Error('Unsupported header reference viewport');\nconst near = (actual, expected, label) => { if (Math.abs(actual - expected) > 0.02) throw new Error('Native header differs from reference: ' + label + ' ' + actual + ' !== ' + expected); };\nconst pageLine = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--line-width'));\nnear(Number.parseFloat(getComputedStyle(header).marginRight), pageLine, 'active page right seam');\nnear(header.getBoundingClientRect().width, (narrow ? innerWidth : 0.7 * innerWidth) - pageLine, 'header width within page framing');\nfor (const [selector, glyph, user] of [['.blog-link-btn', '\\uf5ac', false], ['a.settings-btn', '\\uf013', false], ['button.user-btn', '\\uf007', true]]) {\n  const control = header.querySelector(selector);\n  if (!control || control.tagName !== (user ? 'BUTTON' : 'A') || control.querySelector('button, a') || (user && control.type !== 'button')) throw new Error('Missing single native header control: ' + selector);\n  const bounds = control.getBoundingClientRect();\n  near(bounds.width, narrow ? (open ? (user ? 28.2578125 : 30.9765625) : (user ? 21.90625 : 23.71875)) : (user ? 59.046875 : 61.046875), selector + ' width');\n  near(bounds.height, narrow ? (open ? 30.40625 : 22.40625) : 47.0625, selector + ' height');\n  const icon = control.querySelector('i.fa');\n  if (!icon || getComputedStyle(icon, '::before').content !== '\"' + glyph + '\"') throw new Error('Header glyph changed: ' + selector);\n}\nif (!open) {\n  const nav = header.querySelector('menu nav');\n  if (!nav) throw new Error('Native closed navigation frame is missing');\n  const headerBounds = header.getBoundingClientRect();\n  const navBounds = nav.getBoundingClientRect();\n  near(navBounds.width, narrow ? 23.0390625 : 112.6328125, 'closed navigation width');\n  near(navBounds.height, narrow ? 25.34375 : 38.71875, 'closed navigation height');\n  near(navBounds.left - headerBounds.left, narrow ? 173.25 : 341.7734375, 'closed navigation inline position');\n  near(navBounds.top - headerBounds.top, narrow ? 13.2421875 : 20.234375, 'closed navigation vertical position');\n  if (getComputedStyle(nav).backgroundImage !== 'linear-gradient(-77deg, rgb(19, 22, 22) -10%, rgba(31, 63, 71, 0.35) 80%)') throw new Error('Native closed navigation background changed');\n}\n"
     },
     {
+      "id": "header-search-pending-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=header&pending=search",
+      "action": "const control = document.querySelector(\"button.search-ui-btn\");\nif (!control) throw new Error('Missing native pending header control');\nwindow.pendingHeader = {control, bounds: control.getBoundingClientRect().toJSON()};\nwebsite.visual_fixture.panel_state_BANG_(\"search\");\nawait window.visualFixture.ready();",
+      "capture_assert": "const control = document.querySelector(\"button.search-ui-btn\");\nif (!control || control !== window.pendingHeader.control || control.getAttribute('aria-busy') !== 'true' || control.getAttribute('data-module-loading') !== 'true') throw new Error('Pending intent lost its native control or loading state');\nconst bounds = control.getBoundingClientRect();\nfor (const key of ['x', 'y', 'width', 'height']) if (bounds[key] !== window.pendingHeader.bounds[key]) throw new Error('Loading changed native control bounds: ' + key);\nconst ring = getComputedStyle(control, '::after');\nconst reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;\nif (ring.position !== 'absolute' || ring.pointerEvents !== 'none' || Number.parseFloat(ring.width) <= 0 || ring.borderRadius !== '50%' || ring.animationName !== (reduced ? 'none' : 'module-action-spin')) throw new Error('Pending control lost its circular loading indicator');\nif (document.querySelector('header .module-load-placeholder, header .component-skeleton')) throw new Error('Pending control acquired a layout placeholder');"
+    },
+    {
+      "id": "header-search-pending-narrow",
+      "viewport": [
+        400,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=header&pending=search",
+      "action": "const control = document.querySelector(\"button.search-ui-btn\");\nif (!control) throw new Error('Missing native pending header control');\nwindow.pendingHeader = {control, bounds: control.getBoundingClientRect().toJSON()};\nwebsite.visual_fixture.panel_state_BANG_(\"search\");\nawait window.visualFixture.ready();",
+      "capture_assert": "const control = document.querySelector(\"button.search-ui-btn\");\nif (!control || control !== window.pendingHeader.control || control.getAttribute('aria-busy') !== 'true' || control.getAttribute('data-module-loading') !== 'true') throw new Error('Pending intent lost its native control or loading state');\nconst bounds = control.getBoundingClientRect();\nfor (const key of ['x', 'y', 'width', 'height']) if (bounds[key] !== window.pendingHeader.bounds[key]) throw new Error('Loading changed native control bounds: ' + key);\nconst ring = getComputedStyle(control, '::after');\nconst reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;\nif (ring.position !== 'absolute' || ring.pointerEvents !== 'none' || Number.parseFloat(ring.width) <= 0 || ring.borderRadius !== '50%' || ring.animationName !== (reduced ? 'none' : 'module-action-spin')) throw new Error('Pending control lost its circular loading indicator');\nif (document.querySelector('header .module-load-placeholder, header .component-skeleton')) throw new Error('Pending control acquired a layout placeholder');"
+    },
+    {
+      "id": "header-settings-pending-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=header&pending=settings",
+      "action": "const control = document.querySelector(\"a.settings-btn\");\nif (!control) throw new Error('Missing native pending header control');\nwindow.pendingHeader = {control, bounds: control.getBoundingClientRect().toJSON()};\nwebsite.visual_fixture.panel_state_BANG_(\"settings\");\nawait window.visualFixture.ready();",
+      "capture_assert": "const control = document.querySelector(\"a.settings-btn\");\nif (!control || control !== window.pendingHeader.control || control.getAttribute('aria-busy') !== 'true' || control.getAttribute('data-module-loading') !== 'true') throw new Error('Pending intent lost its native control or loading state');\nconst bounds = control.getBoundingClientRect();\nfor (const key of ['x', 'y', 'width', 'height']) if (bounds[key] !== window.pendingHeader.bounds[key]) throw new Error('Loading changed native control bounds: ' + key);\nconst ring = getComputedStyle(control, '::after');\nconst reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;\nif (ring.position !== 'absolute' || ring.pointerEvents !== 'none' || Number.parseFloat(ring.width) <= 0 || ring.borderRadius !== '50%' || ring.animationName !== (reduced ? 'none' : 'module-action-spin')) throw new Error('Pending control lost its circular loading indicator');\nif (document.querySelector('header .module-load-placeholder, header .component-skeleton')) throw new Error('Pending control acquired a layout placeholder');"
+    },
+    {
+      "id": "header-settings-pending-narrow",
+      "viewport": [
+        400,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=header&pending=settings",
+      "action": "const control = document.querySelector(\"a.settings-btn\");\nif (!control) throw new Error('Missing native pending header control');\nwindow.pendingHeader = {control, bounds: control.getBoundingClientRect().toJSON()};\nwebsite.visual_fixture.panel_state_BANG_(\"settings\");\nawait window.visualFixture.ready();",
+      "capture_assert": "const control = document.querySelector(\"a.settings-btn\");\nif (!control || control !== window.pendingHeader.control || control.getAttribute('aria-busy') !== 'true' || control.getAttribute('data-module-loading') !== 'true') throw new Error('Pending intent lost its native control or loading state');\nconst bounds = control.getBoundingClientRect();\nfor (const key of ['x', 'y', 'width', 'height']) if (bounds[key] !== window.pendingHeader.bounds[key]) throw new Error('Loading changed native control bounds: ' + key);\nconst ring = getComputedStyle(control, '::after');\nconst reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;\nif (ring.position !== 'absolute' || ring.pointerEvents !== 'none' || Number.parseFloat(ring.width) <= 0 || ring.borderRadius !== '50%' || ring.animationName !== (reduced ? 'none' : 'module-action-spin')) throw new Error('Pending control lost its circular loading indicator');\nif (document.querySelector('header .module-load-placeholder, header .component-skeleton')) throw new Error('Pending control acquired a layout placeholder');"
+    },
+    {
+      "id": "header-user-pending-wide",
+      "viewport": [
+        1440,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=header&pending=user",
+      "action": "const control = document.querySelector(\"button.user-btn\");\nif (!control) throw new Error('Missing native pending header control');\nwindow.pendingHeader = {control, bounds: control.getBoundingClientRect().toJSON()};\nwebsite.visual_fixture.panel_state_BANG_(\"login\");\nawait window.visualFixture.ready();",
+      "capture_assert": "const control = document.querySelector(\"button.user-btn\");\nif (!control || control !== window.pendingHeader.control || control.getAttribute('aria-busy') !== 'true' || control.getAttribute('data-module-loading') !== 'true') throw new Error('Pending intent lost its native control or loading state');\nconst bounds = control.getBoundingClientRect();\nfor (const key of ['x', 'y', 'width', 'height']) if (bounds[key] !== window.pendingHeader.bounds[key]) throw new Error('Loading changed native control bounds: ' + key);\nconst ring = getComputedStyle(control, '::after');\nconst reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;\nif (ring.position !== 'absolute' || ring.pointerEvents !== 'none' || Number.parseFloat(ring.width) <= 0 || ring.borderRadius !== '50%' || ring.animationName !== (reduced ? 'none' : 'module-action-spin')) throw new Error('Pending control lost its circular loading indicator');\nif (document.querySelector('header .module-load-placeholder, header .component-skeleton')) throw new Error('Pending control acquired a layout placeholder');"
+    },
+    {
+      "id": "header-user-pending-narrow",
+      "viewport": [
+        400,
+        1000
+      ],
+      "path": "/fixtures/visual.html?component=header&pending=user",
+      "action": "const control = document.querySelector(\"button.user-btn\");\nif (!control) throw new Error('Missing native pending header control');\nwindow.pendingHeader = {control, bounds: control.getBoundingClientRect().toJSON()};\nwebsite.visual_fixture.panel_state_BANG_(\"login\");\nawait window.visualFixture.ready();",
+      "capture_assert": "const control = document.querySelector(\"button.user-btn\");\nif (!control || control !== window.pendingHeader.control || control.getAttribute('aria-busy') !== 'true' || control.getAttribute('data-module-loading') !== 'true') throw new Error('Pending intent lost its native control or loading state');\nconst bounds = control.getBoundingClientRect();\nfor (const key of ['x', 'y', 'width', 'height']) if (bounds[key] !== window.pendingHeader.bounds[key]) throw new Error('Loading changed native control bounds: ' + key);\nconst ring = getComputedStyle(control, '::after');\nconst reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;\nif (ring.position !== 'absolute' || ring.pointerEvents !== 'none' || Number.parseFloat(ring.width) <= 0 || ring.borderRadius !== '50%' || ring.animationName !== (reduced ? 'none' : 'module-action-spin')) throw new Error('Pending control lost its circular loading indicator');\nif (document.querySelector('header .module-load-placeholder, header .component-skeleton')) throw new Error('Pending control acquired a layout placeholder');"
+    },
+    {
       "id": "footer-wide",
       "viewport": [
         1440,

@@ -719,9 +719,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   claim the visit in app-db before scheduling, and guard delayed effects by mount
   generation. The demo returns to its measured starting scroll position.
 
-- The anonymous account trigger is a stable native header button. Its existing
-  User request events update the query; the page owns lazy panel acquisition.
-  Focusing the trigger must retain its node and focus without acquiring/replacing
+- The account trigger is a stable native header button; only its avatar is lazy.
+  Its existing User request events update the query; the page owns lazy panel
+  acquisition. Focusing the trigger retains its node and focus without replacing
   a fallback. Loaded account controls retain native Space/Enter activation too.
 
 - The shell's sticky `.menu-panels` owns Search controls and the persistent lazy
@@ -734,6 +734,11 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Settings panels opt out of restoration via `:appear {:restore? false}` and parent
   viewport ownership. The shell owns a stable Search button; its eager events
   activate lazy Search code without replacing/replaying the first intent.
+
+- Header panel triggers expose pending acquisition with an absolute circular
+  indicator; panel boundaries use empty loading fragments so opening motion begins
+  only with the ready native view. Keep intent in re-frame while loading, including
+  closing before acquisition finishes; focus alone must not replace the trigger.
 
 - Highlight owns the direct Lowlight instance and pure HAST-to-Hiccup renderer.
   Coalesce adjacent plain text to retain font shaping. Keep code as text nodes,
