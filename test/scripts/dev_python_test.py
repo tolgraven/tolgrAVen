@@ -38,6 +38,7 @@ class DevelopmentPythonTest(unittest.TestCase):
             self.assertIn("fonttools==4.60.2", install)
             self.assertIn("Brotli==1.2.0", install)
             self.assertIn("--no-deps", install)
+            self.assertIn("--force-reinstall", install)
 
     def test_execution_uses_isolated_interpreter_and_preserves_arguments_and_exit(self):
         with patch.object(setup, "prepare", return_value=Path("/local/python")), \

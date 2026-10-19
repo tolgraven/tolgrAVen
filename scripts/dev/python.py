@@ -30,7 +30,7 @@ def prepare():
         print("Preparing local Python icon tools…", file=sys.stderr, flush=True)
         venv.EnvBuilder(with_pip=True).create(ENVIRONMENT)
         subprocess.run([str(python), "-I", "-m", "pip", "install",
-                        "--disable-pip-version-check", "--no-deps",
+                        "--disable-pip-version-check", "--no-deps", "--force-reinstall",
                         *(f"{name}=={version}" for name, version in PACKAGES.items())],
                        check=True)
         subprocess.run([str(python), "-I", "-c", PROBE], check=True)
