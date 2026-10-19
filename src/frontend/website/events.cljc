@@ -16,6 +16,7 @@
     [website.util :as util]
     [website.listener]
     #?(:module/user [website.modules.user.events])
+    #?(:module/search [website.modules.search.events])
     #?(:module/contact [website.modules.contact.events])
     #?(:module/user [website.modules.user.subs])
     [website.loader :as l]

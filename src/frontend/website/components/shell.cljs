@@ -89,17 +89,19 @@
 
 ;; Keep lazy fallbacks stable across route/header updates. Render-local functions
 ;; leave discarded Reagent instances subscribed during concurrent page work.
-(defc ^:private <pending-search-button> []
-  [:button.search-ui-btn.noborder.nomargin
-   {:name "Search"
-    :title "Search site"
-    ;; Preserve intent before the lazy module's events are installed.
-    :on-click #(r/dispatch [:state [:search :open?] true])}
-   [img/<picture> {:src "svg/search-ico.svg"
-                  :alt "Search"
-                  :style {:width "1.2em"
-                          :height "1.2em"
-                          :filter "var(--light-to-dark)"}}]])
+(defc ^:private <search-button> []
+  (let [open? (true? @(r/subscribe [:state [:search :open?]]))]
+   [:button.search-ui-btn.noborder.nomargin
+    {:name "Search"
+     :title "Search site"
+     :aria-expanded open?
+     :on-click #(r/dispatch [:search/state [:open?] (not open?)])}
+    [img/<picture> {:src "svg/search-ico.svg"
+                   :alt "Search"
+                   :style {:width "1.2em"
+                           :height "1.2em"
+                           :filter "var(--light-to-dark)"}}]]))
+
 
 (defc ^:private <anonymous-user-button> []
   (let [open? @(r/subscribe [:user/ui-open?])]
@@ -171,9 +173,7 @@
         :title "Settings"}
        [:i.settings-btn {:class "fa fa-cog"}]])
 
-      (m/<> {:module :search
-             :view :button
-             :<before> <pending-search-button>})
+      (when-enabled :search nil [<search-button>])
       (when-enabled :user nil
        (if @(r/subscribe [:user/active-user])
         (m/<> :user/btn)

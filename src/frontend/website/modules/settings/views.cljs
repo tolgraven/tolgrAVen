@@ -2,6 +2,8 @@
   (:require [website.component.registry]
             [website.macros :refer-macros [defc]]
             [website.react :as r]
+            [website.component.restore :as restore]
+            [website.render-context :as context]
             [clojure.string :as string]))
 
 (defc <theme-switch> []
@@ -14,7 +16,7 @@
      (if dark? "On" "Off")]))
 
 (defc <panel> "Settings panel for theme and stuff"
-  {:features [[:appear {:class "settings-motion", :viewport? false}] [:exit {:retain-layout? true}]]}
+  {:features [[:appear {:class "settings-motion", :viewport? false, :restore? false}] [:exit {:retain-layout? true}]]}
   []
   (r/use-effect (fn [] (r/dispatch [:settings/read-css-vars])
                        (r/dispatch [:settings/read-theme]) nil) [])
@@ -57,9 +59,14 @@
 (defc <settings>
   {:features [:error-boundary :presence]}
   []
-  [:div.settings-host
-   (when @(r/subscribe [:state [:settings :panel-open]])
-     ^{:key :settings-panel} [<panel>])])
+  (let [hydrating? (r/use-context restore/hydrating-context)
+        document? (or context/*server?* hydrating? (restore/initial-hydration?))]
+    [:div.settings-host
+     (when @(r/subscribe [:state [:settings :panel-open]])
+       ^{:key :settings-panel}
+       [<panel> {:features [[:appear {:class "settings-motion"
+                                    :viewport? false
+                                    :restore? document?}]]}])]))
 
 (def appearance-numbers
   {:line-width {:unit "px", :min 0, :max 15}

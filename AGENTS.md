@@ -232,8 +232,11 @@ sessions' tabs and restore any borrowed tab when finished.
   `target/production`; local prod loads those resources before shared assets and
   preflights the release browser manifest and both document bootstrap scripts
   before initialization logging/asset loading. See `doc/testing.md`.
-- `lein repl`: check/rebuild stale CSS before opening HTTP and the Clojure REPL;
-  current SSR/browser markup must not paint against sheets from an older checkout.
+- `lein repl` checks/rebuilds CSS before HTTP and owns one supervised Sass/PostCSS
+  watcher. Development browser compilation and HTML/CSS/chunk delivery recheck
+  source/output digests; failures return 503 rather than stale CSS. CSS writers
+  share the kernel lock and atomic output publication. `(stop)`/JVM exit stop only
+  the owned watcher. See `doc/styles.md`; `npm run dev` is optional standalone use.
   Deferred Shadow watches compile
   sequentially without blocking REPL acknowledgement. The standalone `:document`
   target releases first (no HMR); document/bootstrap requests await only that

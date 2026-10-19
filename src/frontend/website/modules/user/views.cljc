@@ -2,6 +2,8 @@
   #?(:cljs (:require
     [website.supabase.schema :as schema]
     [website.component.registry]
+    [website.component.restore :as restore]
+    [website.render-context :as context]
     [website.react :as r]
 
     [website.component]
@@ -264,7 +266,7 @@
      [component user])])
 
 (defc <user-panel>
-  {:features [[:appear nil] [:exit {:timeout-ms 1000}]]}
+  {:features [[:appear {:viewport? false, :restore? false}] [:exit {:timeout-ms 1000}]]}
   [{:keys [section user] :as spec}]
   [:div.user-section-wrapper.stick-up.hi-z
    [:div.user-section
@@ -280,12 +282,16 @@
        :none)]]])
 
 (defc <user-section> {:features [:error-boundary :presence]} []
-  (let [sections @(r/subscribe [:user/active-section])
+  (let [hydrating? (r/use-context restore/hydrating-context)
+        document? (or context/*server?* hydrating? (restore/initial-hydration?))
+        sections @(r/subscribe [:user/active-section])
         user @(r/subscribe [:user/active-user])]
     [:<>
      (when (and (seq sections) (not (some #{:closed} sections)))
        ;; Presence retains these inputs while closing, so the outgoing panel
        ;; keeps its contents without a second app-db transition or timer event.
-       ^{:key :user-panel} [<user-panel> {:section (last sections) :user user}])]))
+       ^{:key :user-panel} [<user-panel> {:section (last sections)
+                                            :user user
+                                            :features [[:appear {:viewport? false, :restore? document?}]]}])]))
 
 ))
