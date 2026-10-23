@@ -173,6 +173,12 @@ across later renames, missing local sessions and edits from another machine.
 Unavailable metadata leaves the resume command usable. History absent from local
 records or earlier footers cannot be reconstructed.
 
+When CLI authentication is unavailable but connected GitHub tools work, use those
+tools to publish the PR. Generate its footer with `dev.pr/append-footer`, passing
+the previous description when editing and the current/contributing session IDs.
+Preserve existing ownership and contributor history exactly as `bb pr` does;
+connector access does not require replacing or exposing CLI credentials.
+
 ```sh
 bb hooks
 bb pr create --draft --title "Describe the change" --body-file /path/to/body.md
