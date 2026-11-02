@@ -284,6 +284,8 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   inside the installed Coolify container with helper, CMS UUID and web UUID arguments.
   They roll back all credential/environment writes and never trigger deployments.
 
+- Linux CPU-control tests exercise real `/proc` birth/executable identity, process
+  exit and guardian handshakes with inherited locks; native monitoring stays macOS-only.
 - CPU-control tests use disposable owned burners for native identity, STOP/CONT,
   watchdog death/stall and already-stopped preservation. Keep image/browser timing
   benchmarks separate from these probes and record active resource quotas.

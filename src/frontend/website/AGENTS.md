@@ -385,8 +385,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Markdown code, including untagged blocks and inline snippets, shares the deferred
   formatter boundary. Node SSR renders Bruvbox-highlighted tokens immediately;
   browser acquisition waits for the existing after-page gate. The blog supplies
-  its Clojure fallback and detection set; untagged inline snippets use Bash unless
-  their owner specifies `:inline-language`. Explicit tags take precedence.
+  its Clojure fallback and detection set; untagged inline snippets also use detection
+  unless their owner specifies `:inline-language`. Explicit tags take precedence.
+  No-match detection preserves the source as plain text when no owner fallback exists.
   Copy gestures and optional folding belong to the outer component; selection and
   multi-click cancel copying, as do drag, pointer exit/cancellation during the press
   and interactive controls. Movement after release preserves the completed tap.
@@ -398,6 +399,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Copy the source, excluding line numbers/buttons. Markdown passes `:code-options` through
   the shared component contract; line numbers are opt-in and rendered by SSR too.
   Bruvbox palette/token ownership lives in `modules/highlight/theme.cljs`.
+- HUD and log diagnostic values use the shared deferred formatter inside their
+  existing pre layout, with Clojure detection/fallback for `pr-str` source. Keep
+  notice acceptance/close actions and plain-text acquisition fallback intact.
 - Pretty data and expanded error details live in `:data-inspector`; keep pprint
   out of initial browser code. Rendered Markdown uses ReactMarkdown in its module; keep
   unused Markdown-clj imports out of the shell. Shared numeric display uses native fixed decimal

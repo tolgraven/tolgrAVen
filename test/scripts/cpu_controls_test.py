@@ -16,6 +16,63 @@ cpu = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cpu)
 
 
+@unittest.skipUnless(sys.platform == 'linux', 'Linux /proc process identity')
+class LinuxProcessTests(unittest.TestCase):
+    def test_native_modes_fail_before_spawning_or_acquiring_a_slot(self):
+        for action in ('run', 'runtime'):
+            args = mock.Mock(action=action, mode='host', command=['true'])
+            with mock.patch.object(cpu.subprocess, 'Popen') as spawn, \
+                 mock.patch.object(cpu, 'build_lock') as acquire:
+                with self.assertRaisesRegex(RuntimeError, 'Native host controls require macOS'):
+                    cpu.run(args)
+                spawn.assert_not_called()
+                acquire.assert_not_called()
+
+    def test_live_identity_detects_exit_and_rejects_changed_birth(self):
+        proc = cpu.LinuxProcesses()
+        child = subprocess.Popen([sys.executable, '-c', 'import sys;sys.stdin.read()'], stdin=subprocess.PIPE)
+        try:
+            record = proc.identity(child.pid)
+            self.assertIsNotNone(record)
+            self.assertEqual(record['uid'], os.getuid())
+            self.assertTrue(proc.same(record))
+            self.assertFalse(proc.same(dict(record, start=[0, 0])))
+            self.assertIn(sys.executable, proc.argv(child.pid))
+            self.assertEqual(proc.cwd(child.pid), Path.cwd())
+        finally:
+            child.stdin.close()
+            child.wait(timeout=3)
+        self.assertFalse(proc.same(record))
+
+    def test_state_directory_honors_xdg_without_changing_macos_locks(self):
+        with mock.patch.dict(os.environ, {'XDG_STATE_HOME': '/fixture/state'}):
+            self.assertEqual(cpu.state_directory(), Path('/fixture/state/tolgraven/cpu-controls'))
+            with mock.patch.object(sys, 'platform', 'darwin'):
+                self.assertEqual(cpu.state_directory(), Path.home() / 'Library/Application Support/tolgraven/cpu-controls')
+
+    def test_real_guardian_acknowledges_identity_and_inherits_locks(self):
+        proc = cpu.LinuxProcesses()
+        guard = None
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'slot.lock'
+            with path.open('w') as slot, tempfile.TemporaryFile() as cache:
+                cpu.fcntl.flock(slot, cpu.fcntl.LOCK_EX)
+                try:
+                    guard, identity = cpu.start_docker_guardian(proc.identity(os.getpid()),
+                        'unused-linux-guardian-fixture', 'fixture-token', 'unix:///var/run/docker.sock', slot, (cache,))
+                    self.assertTrue(proc.same(identity))
+                    slot.close()
+                    with path.open('w') as contender:
+                        with self.assertRaises(BlockingIOError):
+                            cpu.fcntl.flock(contender, cpu.fcntl.LOCK_EX | cpu.fcntl.LOCK_NB)
+                finally:
+                    if guard is not None:
+                        guard.terminate()
+                        guard.wait(timeout=3)
+            with path.open('w') as contender:
+                cpu.fcntl.flock(contender, cpu.fcntl.LOCK_EX | cpu.fcntl.LOCK_NB)
+
+
 class PolicyTests(unittest.TestCase):
     def test_build_defaults_double_memory_without_increasing_cpu_or_slots(self):
         with mock.patch.object(sys, 'argv', ['cpu-controls', 'run', '--', 'true']), \
@@ -137,6 +194,19 @@ class PolicyTests(unittest.TestCase):
                                     cwd=directory, capture_output=True, text=True, check=True)
             self.assertEqual(result.stdout, 'literal $value; argument with spaces\n')
             self.assertEqual(list(Path(directory).iterdir()), [])
+
+    def test_linux_bootstrap_returns_output_ownership_and_preserves_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            tool = Path(directory) / 'chown'
+            marker = Path(directory) / 'owner.txt'
+            tool.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$OWNER_MARKER"\n')
+            tool.chmod(0o755)
+            env = dict(os.environ, PATH=directory + os.pathsep + os.environ['PATH'], OWNER_MARKER=str(marker))
+            result = subprocess.run(['sh', '-c', cpu.docker_bootstrap('skip', (1000, 1001)),
+                                     'cpu-build', 'sh', '-c', 'exit 7'], env=env)
+            self.assertEqual(result.returncode, 7)
+            self.assertEqual(marker.read_text().splitlines(), ['-R', '1000:1001', '/workspace'])
+
 
     def test_default_node_bootstrap_preserves_prefab_reuse_and_install(self):
         bootstrap = cpu.docker_bootstrap('auto')
@@ -310,7 +380,7 @@ class PolicyTests(unittest.TestCase):
         with tempfile.TemporaryFile() as slot, tempfile.TemporaryFile() as cache, \
                 mock.patch.object(cpu.subprocess, 'Popen', return_value=fake) as spawn, \
                 mock.patch.object(cpu, 'packet_receive', return_value={'guardian': identity}), \
-                mock.patch.object(cpu, 'MacProcesses') as processes:
+                mock.patch.object(cpu, 'docker_processes') as processes:
             processes.return_value.same.return_value = True
             cpu.start_docker_guardian(owner, 'owned', 'token', 'unix:///fixture', slot, (cache,))
             descriptors = spawn.call_args.kwargs['pass_fds']

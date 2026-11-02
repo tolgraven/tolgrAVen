@@ -53,7 +53,7 @@
         [controls/<close> (fn [event]
                            (.stopPropagation event)
                            (r/dispatch [:diag/unhandled :remove id]))]]]
-      (when message [:pre (diagnostics/format-log-message message)])
+      (when message [diagnostics/<message> message])
       (when (seq other-buttons)
         [:div.hud-message-buttons
          (for [button other-buttons]

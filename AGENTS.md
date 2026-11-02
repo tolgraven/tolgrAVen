@@ -223,8 +223,10 @@ sessions' tabs and restore any borrowed tab when finished.
   constraints without logging raw values, credentials, or event arguments.
 
 ## Build, Test, and Development Commands
-- Agent Java/Lein builds use `tolgraven-cpu run -- <command>` (two shared build slots, isolated
-  Docker prefab, 1.5 CPUs/4 GiB per slot; 3 Docker CPUs combined). Dockerfile/prefab work uses
+- Agent Java/Lein builds use `tolgraven-cpu run -- <command>` (or `bb cpu run`
+  from a checkout, including Linux Docker builds; configure writable XDG state and
+  `--maven-repository` when needed). They retain two shared build slots, isolated
+  Docker prefab, 1.5 CPUs/4 GiB per slot and 3 Docker CPUs combined. Dockerfile/prefab work uses
   `tolgraven-cpu run --mode buildkit -- <command>` so BuildKit steps also have a quota.
   Increase a documented heap/memory limit only when required; avoid competing watched output.
   Fresh output snapshots reuse a separately locked worktree-scoped Shadow compiler disk

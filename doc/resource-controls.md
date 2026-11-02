@@ -6,6 +6,18 @@ using the existing prefab with **1.5 CPUs and 4 GiB RAM**. The combined Docker
 ceiling is **3 CPUs**. A third build waits for either inherited-lock slot.
 A smaller `--cpus` value is allowed; values above 1.5 are rejected so concurrent
 builds cannot exceed that ceiling.
+
+Docker builds also run on Linux. They retain the same slots, container limits,
+birth-checked guardian and isolated outputs; Linux uses `/proc` process identity
+and `${XDG_STATE_HOME:-~/.local/state}/tolgraven/cpu-controls` for runtime state.
+macOS retains its existing Application Support lock paths. Set `XDG_STATE_HOME`
+to a writable persistent directory in managed environments with a read-only home.
+Use `run --maven-repository /path/to/cache` when the shared Maven cache is outside
+`~/.m2/repository`; this mounts only dependency artifacts, never credentials.
+A private prefab still needs registry authentication. `--image` may instead select
+an explicitly prepared local Java/Node dependency image. Linux returns generated
+snapshot files to the invoking UID/GID before releasing the build. Native app monitoring,
+LaunchAgent installation and host mode remain macOS-only.
 JVMs see one logical processor, two JIT compiler threads, one parallel/concurrent
 GC worker each, and a 2 GiB heap. Run targets sequentially:
 

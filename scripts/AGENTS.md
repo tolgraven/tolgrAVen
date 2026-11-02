@@ -117,7 +117,11 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
 - `audit/middleware.clj` is a disposable Docker-only investigation reproducer.
   It may generate stand-in JavaScript only inside the CPU controller's snapshot;
   it must never overwrite watched application output. See `doc/middleware-optimus-audit.md`.
-- `dev/cpu_controls.py` is the macOS libproc/signal and Docker lifecycle adapter.
+- `dev/cpu_controls.py` owns macOS libproc/signal controls and macOS/Linux Docker
+  lifecycle adapters. Linux uses `/proc` birth/executable identity and XDG state;
+  preserve the existing macOS lock locations. `--maven-repository` selects only
+  the shared dependency directory. Linux returns generated snapshot ownership to
+  the caller before releasing its slot; do not follow dependency symlinks.
   Keep microsecond PID identity, exact project/app ownership, pre-stopped exclusion,
   independent CONT watchdog, container labels and two shared inherited-lock build slots intact.
   Each slot caps Docker at 1.5 CPUs and 4 GiB RAM with a 2 GiB JVM heap;
