@@ -227,9 +227,8 @@ sessions' tabs and restore any borrowed tab when finished.
   constraints without logging raw values, credentials, or event arguments.
 
 ## Build, Test, and Development Commands
-- Agent Java/Lein builds use `tolgraven-cpu run -- <command>` (or `bb cpu run`
-  from a checkout, including Linux Docker builds; configure writable XDG state and
-  `--maven-repository` when needed). They retain two shared build slots, isolated
+- MacBook agent Java/Lein builds use `tolgraven-cpu run -- <command>` (or `bb cpu run`
+  from a checkout). This local GUI-responsiveness policy retains two shared build slots, isolated
   Docker prefab, 1.5 CPUs/4 GiB per slot and 3 Docker CPUs combined. Dockerfile/prefab work uses
   `tolgraven-cpu run --mode buildkit -- <command>` so BuildKit steps also have a quota.
   Increase a documented heap/memory limit only when required; avoid competing watched output.
@@ -241,6 +240,10 @@ sessions' tabs and restore any borrowed tab when finished.
   backend/Shadow descendants remain unthrottled. Never issue ad
   hoc STOP/CONT or global process kills. See
   `doc/resource-controls.md` for scope, telemetry, recovery and explicit overrides.
+- Bux deployment/prefab builds have no artificial CPU, container-memory or
+  BuildKit step-parallelism limits. Build JVMs see the available processors and
+  size heaps from machine memory; Shadow compiles namespaces in parallel. Keep
+  the MacBook launcher/monitor limits separate from the server build policy.
 - `lein with-profile prod run` overlays `config/prod-local.edn` for local HTTP on
   loopback and local SSR/converter paths; packaged production keeps secure proxy
   defaults. `bb prod:build` releases separate `prod-local-*` Shadow targets into
@@ -371,30 +374,40 @@ maintain a duplicate handwritten variable catalog.
   caches through `scripts/build/compiler-cache.mjs`; fresh checkouts must retain
   unchanged macro timestamps. Changed AOT inputs rebuild the full graph. Keep
   cache invalidation and cold-build correctness; see `doc/docker-builds.md`.
-- The dependency prefab includes compiler tools, `node_modules`, Maven artifacts and
-  a clean runtime root with Java, Node, Babashka and upload codecs. Ordinary Docker
+  Finished Codox and all four Shadow releases also have bounded, digest-verified
+  output caches. Stylesheet byte edits rebuild CSS/assets without recompiling
+  unchanged code; stylesheet path changes still invalidate compiler inventories.
+- `Dockerfile.toolchain` owns the rarely changing infrastructure image: Java/Lein,
+  Node/npm, Babashka, system packages, codecs and the clean runtime root.
+  `Dockerfile.builder` adds only `node_modules`. Ordinary Docker
   builds use the exact multi-platform dependency hash pinned in Dockerfile; registry hosts need one
   existing Docker login, not per-deployment installation. `BUILDER_IMAGE=prefab`
   explicitly builds the matching fallback on a host without registry access.
 - Keep the Dockerfile-owned `m2` BuildKit cache at `/root/m2`, with locked access.
-  Resolve and snapshot dependencies before compiler stages; seed fresh
-  caches from the prefab. Do not replace this with image-layer-only or host-only caching.
-- Dependency inputs are `Dockerfile.builder`, `project.clj`, both npm manifests
-  and the bundled `scripts/media/images.clj`. The commit hook updates Dockerfile's
-  prefab pin from staged bytes, preserving unstaged edits. `bb docker pin` updates
-  it explicitly; `bb docker check-pin` also verifies the fallback recipe matches.
+  Mount it into every JVM build step; never bake/copy Maven repositories into
+  prefab/compiler layers. An empty cache downloads once; subsequent builds use it
+  in place. Local MacBook verification may bind its existing host repository.
+- Infrastructure identity comes only from `Dockerfile.toolchain`; npm identity
+  comes from its generated base pin, `Dockerfile.builder` and both npm manifests.
+  `project.clj`, converter scripts and ordinary source do not refresh either image.
+  The commit hook updates both pins from staged bytes, preserving unstaged edits.
+  `bb docker check-pin` also verifies both inline fallback recipes match.
 - Coolify owns `prefab-ready` and deployment sequencing through the managed
   prefab gate. Signed GitHub App events enter its durable queue; trusted PRs reuse
   or build exact ARM64/AMD64 hashes before native preview deployment. Master also
   advances compatibility aliases before native production deployment. GitHub only
   enforces the status; Actions must not build prefabs or relay Coolify deployments.
-  The gate executes recipes only inside its bounded BuildKit worker, never in its
-  Docker-socket-owning process. `make docker-prefab` remains the bounded manual path.
-- Keep the fallback `prefab` stage in `Dockerfile` aligned with `Dockerfile.builder`. Do not refresh the prefab for unrelated application-source edits.
-- All OS package installation and codec checks belong to the prefab recipe.
+  The gate executes recipes only inside its BuildKit worker, never in its
+  Docker-socket-owning process. Local MacBook prefab builds retain the separate
+  launcher limits; bux builds use the server's available resources.
+- Keep the fallback stages in `Dockerfile` aligned with their owned toolchain/Node recipes.
+  Bump `INFRA_REVISION` to deliberately refresh installed OS packages.
+- All OS package installation and native codec checks belong to the toolchain recipe.
   `media-tools` exports its clean runtime root; ordinary app builds must not install
   packages or pull separate Node/Java/Babashka base images. Keep Coolify build
   credentials out of dependency stages; source commits remain runtime metadata.
+  The application image copies its current converter script separately; the gate
+  exercises that script against the exported runtime without changing prefab pins.
 - See `doc/docker-builds.md` for registry setup and deployment recovery.
 
 ## Coding Style & Naming Conventions

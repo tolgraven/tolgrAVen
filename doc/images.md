@@ -219,6 +219,11 @@ bb videos
 
 # Force reconvert all videos
 bb videos --force
+
+# Refresh smaller AV1, VP9 and H.264 sources declared in the responsive catalog
+bb videos:responsive
+# Re-encode even current responsive variants after changing encoder settings
+bb videos:responsive --force
 ```
 
 Creates two WebM versions:
@@ -287,9 +292,13 @@ The poster is positioned absolutely over the video and hidden when playback star
 
 ### Encoding settings
 
-Current settings (in `convert-videos.sh`):
+Current settings (in `scripts/media/videos.clj`):
 - VP9: CRF 30, cpu-used 2 (balanced speed/quality)
 - AV1: CRF 35, preset 6 (fast encoding, good quality)
+- Responsive H.264: CRF 24, medium preset, YUV 4:2:0 and fast-start MP4
+
+Both commands skip current output files unless forced. They encode muted media
+and publish each variant atomically; commit the prepared variants before deploying.
 
 These work well for background/decorative videos. For higher quality needs, lower the CRF values (18-28).
 

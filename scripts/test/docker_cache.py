@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Prove portable Maven-cache reuse with real, network-disabled Docker builds.
+"""Prove existing Maven-cache reuse with real, network-disabled Docker builds.
 
-Run through tolgraven-cpu run --mode buildkit. Requires the freshly built prefab;
+Run through the MacBook launcher or directly on bux. Requires a populated m2 cache;
 never touches the application runtime or the watched output directories.
 """
 import argparse
@@ -24,28 +24,25 @@ def main():
     output = args.report.resolve()
     output.mkdir(parents=True, exist_ok=False)
     token = uuid.uuid4().hex[:12]
-    source = (ROOT / 'Dockerfile').read_text()
-    # Isolate this test's cache identity, retaining the real recipe and defaults.
-    source = source.replace('id=m2,', 'id=m2-check-' + token + ',')
-    # Cache IDs do not invalidate an existing RUN result. Force this seed to run.
-    source = source.replace('FROM dependencies AS dependency-cache\n',
-        'FROM dependencies AS dependency-cache\nRUN echo ' + token + ' > /tmp/cache-check-run\n')
-    version = re.search(r'\[org.clojure/clojure "([^"]+)"\]', (ROOT / 'project.clj').read_text()).group(1)
+    source = ('ARG BUILDER_IMAGE\nFROM ${BUILDER_IMAGE} AS dependency-check\n'
+        'WORKDIR /usr/src/app\nCOPY project.clj ./\nARG CACHE_CHECK_CASE\n'
+        'RUN --mount=type=cache,id=m2,target=/root/m2,sharing=locked '
+        'echo "$CACHE_CHECK_CASE" > /tmp/cache-check-run && '
+        "lein -o with-profile user,uberjar,provided update-in : assoc :prep-tasks '^:replace []' -- classpath > /tmp/classpath\n"
+        # No repository artifacts may remain in the resulting layer.
+        'RUN test ! -d /root/m2/org && test ! -d /root/.m2/repository/org\n')
     rows = []
     images = []
     try:
-        for name in ['cold', 'warm-without-baked-clojure']:
+        for name in ['fresh-application-layer', 'warm-persistent-m2']:
             recipe = source
-            if name.startswith('warm'):
-                # The second build must find this artifact in the persisted mount.
-                recipe = recipe.replace('FROM dependencies AS dependency-cache\n',
-                    'FROM dependencies AS dependency-cache\nRUN rm -rf /root/.m2/repository/org/clojure/clojure/' + version + '\n')
             file = output / (name + '.Dockerfile')
             file.write_text(recipe)
             image = 'tolgraven-m2-check:' + token + '-' + name
             images.append(image)
             command = ['docker', 'buildx', 'build', '--load', '--network=none',
-                '--target', 'dependency-cache',
+                '--target', 'dependency-check',
+                '--build-arg', 'CACHE_CHECK_CASE=' + token + '-' + name,
                 '--build-arg', 'BUILDER_IMAGE=' + args.image, '--progress=plain',
                 '-f', str(file), '-t', image, str(ROOT)]
             start = time.monotonic()

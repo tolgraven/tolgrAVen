@@ -88,7 +88,9 @@ whole catalog. Values below are file bytes, not timing measurements.
 
 `resources/responsive-videos.edn` opts local videos into smaller native media-query
 sources. `bb videos:responsive` generates AV1, VP9 and H.264 renditions atomically;
-commit them with the catalog. Full-size codec sources remain available for desktop.
+it skips current variants (`--force` re-encodes them). Commit them with the catalog.
+Full-size codec sources remain available for desktop. These FFmpeg authoring steps
+run before committing media; ordinary Docker deploys ship the prepared files.
 
 Runtime configuration is described in [config/README.md](../config/README.md).
 Unfinished project notes remain under `experiments/notes/`; prototype source remains

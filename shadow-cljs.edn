@@ -202,7 +202,7 @@
    :output-feature-set :es-next
    :pretty-print         false
    :infer-externs        true
-   :parallel-build       false
+   :parallel-build       true
    :closure-warnings     {:externs-validation :off
                           :non-standard-jsdoc :off}
    :recompile-dependents false

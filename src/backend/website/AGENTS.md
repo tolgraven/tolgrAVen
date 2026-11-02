@@ -227,7 +227,8 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
 
 - `media/pipeline.clj` owns the durable main-module media queue and complete immutable
   rendition publication. One mounted worker uses expiring database leases and
-  `media/image.clj`'s bounded codec/file owner. Originals stay private; ready assets
+  `media/image.clj`'s bounded codec/file owner. Let codecs use available processors
+  while retaining upload memory/disk/time bounds. Originals stay private; ready assets
   expose only typed URLs/dimensions/renditions. CMS intake and Markdown uploads share
   this owner; metadata updates and delete events preserve published pixels.
   See `doc/media-pipeline.md` for configuration and operator actions.

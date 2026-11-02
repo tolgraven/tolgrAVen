@@ -46,32 +46,28 @@ No additional Coolify API token or SSH key is created.
 
 ## Prefab builder
 
-`Dockerfile.builder` combines pinned Babashka 1.13.225, Node 22, Temurin Java 21, and Leiningen images,
-then installs ImageMagick and `cwebp`, exactly `package-lock.json`, and build and
-documentation Maven artifacts. Both the shared prefab and the self-contained
-fallback encode and decode WebP/AVIF fixtures during construction; a missing codec
-fails the build. ImageMagick defaults to one worker. Responsive catalog generation
-and real backend codec tests use this ordinary builder, with no separate test
-image or per-run tool installation.
-The prefab includes the complete project `node_modules` directory, including
-Sass, PostCSS, and Shadow CLI tools. npm scripts use these local executables;
-no global CSS-tool installs or compatibility symlinks are needed.
+There are two independently published images:
 
-`make docker-prefab` publishes the current native dependency-hash tag; Coolify advances compatibility aliases
-`registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v2` and `java21-node22-v1`.
-The v2 image also contains `/opt/tolgraven-runtime`: the clean runtime filesystem
-with Java, Node, Babashka and the tested upload codecs. Application images copy
-only that root, then the application artifacts; compiler tools, npm packages and
-Maven artifacts remain outside the final image. All OS package installs and base
-image composition happen during prefab construction.
-Refresh it when changing `project.clj`, either package manifest, the builder
-Dockerfile, or the bundled `scripts/media/images.clj`. Local builds
-check the dependency hash automatically and pull an existing hash before
-considering a build. `make docker-prefab` skips rebuilding and pushing when the
-published image and alias already match. Do not refresh it for ordinary source
-edits. This dependency-update rule is also recorded in `AGENTS.md`.
-A stale server prefab still supports
-changed dependencies, but needs to fetch them again during that build.
+- `Dockerfile.toolchain` produces `toolchain-<hash>` with pinned Java/Lein,
+  Node/npm, Babashka, OS packages, codecs and `/opt/tolgraven-runtime`. Its
+  identity depends only on that infrastructure recipe. Change tool versions or
+  installation commands there; bump `INFRA_REVISION` to refresh OS packages.
+- `Dockerfile.builder` produces `deps-<hash>` by adding the locked `node_modules`
+  to the pinned toolchain. npm manifest edits rebuild this overlay while reusing
+  the published infrastructure image. npm's download cache also stays in a
+  persistent BuildKit mount rather than the image.
+
+Maven artifacts belong only in the persistent `m2` cache. `project.clj`, ordinary
+source and application converter changes refresh neither prefab. The converter
+script ships separately with the application; runtime checks exercise its current
+version against the exported infrastructure tools.
+
+`bb docker pin` updates the overlay's infrastructure pin, then the application's
+Node-overlay pin. The commit hook reads staged bytes and preserves other working
+tree edits. Both inline local fallbacks are checked against their owned recipes.
+`make docker-prefab` reuses published images and builds missing native images;
+the Coolify gate assembles ARM64/AMD64 indexes and compatibility aliases. One
+initial infrastructure publication is required when adopting this split.
 
 The Dockerfile defaults to the exact published dependency hash in both production
 and staging. The reference resolves native ARM64/AMD64 images through one index.
@@ -82,18 +78,16 @@ builds can still override that ARG; `--build-arg BUILDER_IMAGE=prefab` explicitl
 builds the matching self-contained recipe when registry access is unavailable.
 
 Maven caching belongs to the Dockerfile, independently of Coolify or the Mac
-launcher. Both prefab construction and application dependency preparation mount
-`id=m2,target=/root/m2,sharing=locked`, retaining the original cache identity.
-An explicitly active user profile selects that repository. Both compiler and
-final packaging graphs are resolved: uberjar removes provided dependencies and
-can otherwise select additional runtime jar versions. Ephemeral prefab builders can
-seed it from the previous published native prefab (`MAVEN_SEED_IMAGE`); a cold
-builder uses an empty seed. Application preparation first
-seeds missing artifacts from the prefab, resolves the current manifests, then
-copies a repository snapshot into the compiler stages. A fresh host benefits
-from baked artifacts; a changed dependency downloads once into persistent cache.
-The mounted cache is an optimization, not a required build artifact. Private Maven
-settings and credentials are never copied from the host.
+launcher. Every JVM build step mounts `id=m2,target=/root/m2,sharing=locked`.
+The compiler's default repository path points to that mount. A populated cache
+supplies dependencies in place without contacting Clojars for already cached
+releases; an empty cache downloads needed artifacts once. No repository is
+copied into or out of compiler/image layers. The normal local MacBook launcher
+can still bind its existing host repository, without mounting Maven credentials.
+
+`python3 scripts/test/docker_cache.py --image <prefab> --report <new-directory>`
+proves that fresh application layers resolve classpaths offline from a populated
+`m2` cache and leave no Maven artifacts in their resulting image layers.
 
 Coolify provisioning reconciles new and existing Dockerfile apps: keep secret
 mode enabled for the explicit CMS mounts, disable automatic ARG injection and
@@ -141,15 +135,14 @@ verify the exported image's actual Java/Node/Babashka and WebP/AVIF conversions
 when changing that recipe. Uploads keep `/app/scripts/media/images.clj` and their
 existing Supabase Storage transport; see [upload storage](supabase-provisioning.md).
 
-The Shadow JVM defaults to a 1024 MB heap and two visible processors (`BUILD_JAVA_OPTIONS`), while the
-backend JVM defaults to 768 MB (`BUILD_CLJ_JAVA_OPTIONS`) and Codox to
-512 MB (`BUILD_DOCS_JAVA_OPTIONS`). These are
-build arguments; actual peak memory also includes Lein launchers, native memory
-and CSS tooling. Parallel compilation trades additional peak memory for elapsed
-time; adjust the build arguments to the builder's capacity. Parallel stages do
-not change npm or Maven dependencies. The corrected Codox configuration changes
-`project.clj`, which is part of the prefab hash; local build tooling will select
-the new hash even though its dependency contents are unchanged.
+Build JVMs use the machine's available processors and a heap sized with
+`-XX:MaxRAMPercentage=60`, rather than a fixed 512/768/1024 MiB maximum or a
+two-processor override. `BUILD_JAVA_OPTIONS`, `BUILD_CLJ_JAVA_OPTIONS` and
+`BUILD_DOCS_JAVA_OPTIONS` remain explicit tuning overrides. Shadow enables
+parallel namespace compilation for production releases. Development watch defaults
+retain their existing setting. Runtime JVM memory bounds are separate.
+The MacBook agent CPU launcher still applies its local GUI-responsiveness policy;
+it is not the policy for bux deployments.
 
 The final image contains the JRE and application jar,
 not source checkout, node_modules, Maven cache, or compiler tools. Runtime JVM
@@ -261,12 +254,12 @@ tolgraven-cpu run --mode buildkit -- python3 scripts/test/docker_cache.py \
   --report .local-wip/docker-cache-check
 ```
 
-It gives the real Dockerfile a fresh cache identity, builds with RUN networking
-unavailable, then removes baked Clojure from the second build. Both must succeed
-without repository downloads or OS installs; the second proves persistent cache
-reuse rather than reuse of an image layer. Reports retain the exact test recipes
-and logs. BuildKit may evict caches under its existing storage policy; fresh-cache
-seeding remains supported. The final `media-tools` image must contain functioning
+It gives two application layers different build inputs and disables RUN networking.
+Both must resolve their classpaths from the same already populated `m2` mount,
+without repository downloads or OS installs, and leave no Maven artifacts in
+their resulting image layers. Reports retain exact recipes and logs. An empty or
+evicted Maven cache needs one normal online resolution before this offline check.
+The final `media-tools` image must contain functioning
 Java/Node/Babashka and codecs, with no JDK compiler, Lein, npm dependencies or Maven
 repository. Verify actual staging and production builds select the published image.
 
@@ -289,9 +282,10 @@ For the current commit, the gate validates the staged/generated image pin, reuse
 published native hashes or builds missing ARM64/AMD64 images sequentially, then
 executes the clean runtime's Java/Node/Babashka/codec smoke checks. BuildKit's
 bundled emulator handles a foreign architecture; no privileged binfmt installer
-is required. The persistent worker has 1.5 CPUs, 4 GiB RAM, one build step at a time,
-a 6 GB cache target and a 20 GB free-space target. Maven caches are seeded from the
-previous native prefab and remain locked during updates.
+is required. The persistent bux worker uses all available host CPU and memory,
+with no container quota or BuildKit step-parallelism cap. It retains
+a 6 GB cache target and a 20 GB free-space target. Maven artifacts remain in
+the application builder's persistent cache and are never part of either prefab.
 
 After both runtimes pass, it publishes the multi-platform reference, reports
 `prefab-ready` through the Coolify GitHub App and invokes
@@ -356,6 +350,8 @@ reuse, source mutation and restoration across fresh Docker layers, and byte-iden
 optimized output between clean and incremental builds of matching code; run it through
 `tolgraven-cpu run --mode buildkit`, supplying the pinned prefab and a new report
 directory. Report compiler time separately from full deployment duration.
+The focused analysis benchmark uses `shadow-analysis` mode so it can observe
+Shadow's actual compiler counts independently of the finished-output cache.
 
 `--no-cache` (Coolify’s forced rebuild) also resets matching BuildKit cache
 mounts. It is a cold-cache recovery operation, not a compiler-reuse benchmark.
@@ -365,8 +361,30 @@ the build log. The frontend/backend steps print their cache boundary explicitly.
 
 Compiler stages form a dependency chain: backend AOT → Codox → frontend releases.
 Only one compiler JVM runs at a time, and Codox inherits the completed AOT classes.
-This avoids swap exhaustion on an 8 GB host co-located with the database/CMS
-services; merely bounding each of three concurrent heaps was insufficient.
+This preserves AOT reuse by Codox while parallel namespace work within Shadow
+uses the available processors. Bux has approximately 10 GiB of configured swap
+for transient peaks; swap does not grow automatically. ImageMagick also uses
+available processors without hardcoded thread limits in the image or converter.
+
+The Codox and Shadow cache mounts retain the three most recently used finished
+output snapshots, keyed by source, site capabilities, dependencies, command and
+compiler image/JVM options. Dependency identities include the resolved profile
+classpaths and actual JAR bytes from the Maven mount, so replacing a cached JAR
+invalidates compiler outputs without rebuilding either prefab. Extra source
+directories outside the standard roots contribute their contents too. Before
+reuse, every saved output is checked against its SHA-256 manifest.
+Missing/corrupt outputs rebuild; failed compilers never
+publish a snapshot. Shadow restores browser chunks, document scripts, the return
+worker and the complete Node SSR output together. Analysis caches remain available
+for actual code edits.
+
+Generated documentation/JavaScript/CSS are excluded from compiler inputs. Sass
+files and CMS CSS overrides contribute their paths to the compiler identity,
+while their bytes belong to the CSS/prepared-asset steps. Consequently CSS-only
+changes reuse AOT, documentation and finished JavaScript, then rebuild styles,
+prepared assets and the final jar. Adding/removing a stylesheet still invalidates
+module discovery. These caches never replace site configuration resolution or
+skip the final asset/package steps.
 
 Coolify provisioning sets **Disable build cache** off for both applications. Leaving
 it on adds `--no-cache` to every ordinary deployment and destroys Maven/compiler
@@ -375,6 +393,6 @@ snapshot; use Coolify’s forced rebuild when changing those build-time settings
 Ordinary CMS content is still acquired at runtime. Source changes acquire a new
 snapshot through the normal Docker source-stage invalidation.
 
-The 1 GiB Shadow default is verified with a fresh compiler cache against all four
-release targets and prepared assets. Keep enough host memory for the co-located
-services and the compiler’s native/metaspace overhead; heap size is not total RSS.
+Heap size is not total RSS: native/metaspace memory, co-located services and asset
+tools also use RAM. Build limits on the MacBook are deliberately kept in the local
+launcher, rather than imposing those responsiveness limits on the server.

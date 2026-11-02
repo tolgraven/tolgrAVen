@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Coolify-owned dependency prerequisite; native Coolify still deploys the site.
 
-Only signed events for trusted branches may build. Recipe code runs inside a
-bounded BuildKit worker, never in this Docker-socket-owning control process.
+Only signed events for trusted branches may build. Recipe code runs inside the
+BuildKit worker, never in this Docker-socket-owning control process.
 """
 import base64
 from contextlib import contextmanager
@@ -23,7 +23,9 @@ import uuid
 
 REPOSITORY = 'tolgraven/tolgrAVen'
 REGISTRY = 'registry.bux.tolgraven.se/tolgraven/builder'
-INPUTS = ['Dockerfile.builder', 'project.clj', 'package.json', 'package-lock.json', 'scripts/media/images.clj']
+INPUTS = ['Dockerfile.builder', 'package.json', 'package-lock.json']
+LEGACY_INPUTS = ['Dockerfile.builder', 'project.clj', 'package.json', 'package-lock.json', 'scripts/media/images.clj']
+TOOLCHAIN_INPUTS = ['Dockerfile.toolchain']
 BUILDER = 'tolgraven-prefab'
 ROOT = Path(os.environ.get('PREFAB_STATE', '/state'))
 SHA = re.compile(r'[0-9a-f]{40}')
@@ -123,23 +125,45 @@ def read_blob(checkout, path):
     return command(['git', 'show', 'HEAD:' + path], cwd=checkout)
 
 
-def checked_image(checkout):
-    for path in [*INPUTS, 'Dockerfile', '.dockerignore']:
-        if (Path(checkout) / path).is_symlink():
-            raise ValueError('Build control inputs must be regular checkout files')
+def input_hash(checkout, paths):
     digest = hashlib.sha256()
-    for path in INPUTS:
+    for path in paths:
         digest.update((path + '\0').encode())
         digest.update(read_blob(checkout, path))
-    image = REGISTRY + ':deps-' + digest.hexdigest()[:16]
+    return digest.hexdigest()[:16]
+
+
+def toolchain_image(checkout):
+    if (Path(checkout) / 'Dockerfile.toolchain').is_file():
+        return REGISTRY + ':toolchain-' + input_hash(checkout, TOOLCHAIN_INPUTS)
+    return None  # Older queued commits keep their original checked recipe.
+
+
+def checked_image(checkout):
+    for path in [*LEGACY_INPUTS, *TOOLCHAIN_INPUTS, 'Dockerfile', '.dockerignore']:
+        if (Path(checkout) / path).is_symlink():
+            raise ValueError('Build control inputs must be regular checkout files')
+    toolchain = toolchain_image(checkout)
+    image = REGISTRY + ':deps-' + input_hash(checkout, INPUTS if toolchain else LEGACY_INPUTS)
     recipe = read_blob(checkout, 'Dockerfile').decode()
     if re.findall(r'^ARG BUILDER_IMAGE=(.*)$', recipe, re.M) != [image]:
         raise ValueError('Stale Dockerfile prefab pin; run bb docker pin')
-    def normalize(text):
-        fragment = text.split('ARG MAVEN_SEED_IMAGE=', 1)[1].split('# Compile on the builder', 1)[0]
-        return re.sub(r' AS prefab(?=\n)', '', re.sub(r'--platform=\$(?:BUILD|TARGET)PLATFORM ', '', fragment)).strip()
-    if normalize(recipe) != normalize(read_blob(checkout, 'Dockerfile.builder').decode()):
-        raise ValueError('Fallback prefab recipe differs from Dockerfile.builder')
+    if toolchain:
+        builder = read_blob(checkout, 'Dockerfile.builder').decode()
+        if re.findall(r'^ARG TOOLCHAIN_IMAGE=(.*)$', builder, re.M) != [toolchain]:
+            raise ValueError('Stale infrastructure pin; run bb docker pin')
+        for label, path in [('TOOLCHAIN', 'Dockerfile.toolchain'), ('DEPENDENCY', 'Dockerfile.builder')]:
+            source = read_blob(checkout, path).decode()
+            start = re.search(r'^(?:ARG INFRA_REVISION=|FROM )', source, re.M)
+            fragment = re.search(r'# BEGIN ' + label + r' FALLBACK\n(.*?)# END ' + label + r' FALLBACK', recipe, re.S)
+            if not start or not fragment or source[start.start():].strip() != fragment[1].strip():
+                raise ValueError('Fallback recipe differs from ' + path)
+    else:
+        def normalize(text):
+            fragment = text.split('ARG MAVEN_SEED_IMAGE=', 1)[1].split('# Compile on the builder', 1)[0]
+            return re.sub(r' AS prefab(?=\n)', '', re.sub(r'--platform=\$(?:BUILD|TARGET)PLATFORM ', '', fragment)).strip()
+        if normalize(recipe) != normalize(read_blob(checkout, 'Dockerfile.builder').decode()):
+            raise ValueError('Fallback prefab recipe differs from Dockerfile.builder')
     return image
 
 
@@ -156,7 +180,6 @@ def ensure_builder(log):
     result = subprocess.run(['docker', 'buildx', 'inspect', BUILDER], capture_output=True, timeout=30)
     if result.returncode:
         command(['docker', 'buildx', 'create', '--name', BUILDER, '--driver', 'docker-container',
-                 '--driver-opt', 'cpu-period=100000,cpu-quota=150000,memory=4g,memory-swap=4g',
                  '--buildkitd-config', '/app/buildkitd.toml'], log=log)
     command(['docker', 'buildx', 'inspect', '--bootstrap', BUILDER], log=log)
 
@@ -170,7 +193,8 @@ def verify_runtime(checkout, image, arch, log):
              'mkdir /tmp/codecs; convert -size 16x16 xc:red /tmp/codecs/image.png; '
              'bb /app/scripts/media/images.clj /tmp/codecs/image.png; '
              'identify /tmp/codecs/image.webp /tmp/codecs/image.avif')
-    recipe = read_blob(checkout, 'Dockerfile') + ('\nFROM media-tools AS prefab-runtime-check\nRUN ' + smoke + '\n').encode()
+    recipe = read_blob(checkout, 'Dockerfile') + ('\nFROM media-tools AS prefab-runtime-check\n'
+        'COPY scripts/media/images.clj /app/scripts/media/images.clj\nRUN ' + smoke + '\n').encode()
     # A tracked symlink must never redirect a control-process write into /app.
     with tempfile.NamedTemporaryFile(prefix='runtime-', suffix='.Dockerfile', dir=ROOT) as file:
         file.write(recipe)
@@ -183,21 +207,33 @@ def verify_runtime(checkout, image, arch, log):
 
 def prefab(checkout, log):
     image = checked_image(checkout)
+    toolchain = toolchain_image(checkout)
     ensure_builder(log)
     for arch in ('arm64', 'amd64'):
         native = image + '-' + arch
+        base = toolchain + '-' + arch if toolchain else None
+        if base and not image_exists(base):
+            command(['docker', 'buildx', 'build', '--builder', BUILDER, '--platform', 'linux/' + arch,
+                     '--build-arg', 'BUILDPLATFORM=linux/' + arch, '-f', 'Dockerfile.toolchain',
+                     '--push', '--provenance=false', '--sbom=false', '-t', base, '--progress=plain', '.'],
+                    cwd=checkout, log=log, timeout=7200)
         if not image_exists(native):
-            previous = ROOT / 'last-image'
-            prior = previous.read_text().strip() if previous.exists() else os.environ.get('PREFAB_SEED_IMAGE')
-            seeds = ([prior + '-' + arch] if prior else []) + [REGISTRY + ':java21-node22-v2-' + arch]
-            seed = next((candidate for candidate in seeds if image_exists(candidate)), 'empty-maven-seed')
+            if base:
+                arguments = ['--build-arg', 'TOOLCHAIN_IMAGE=' + base]
+            else:
+                # New prefabs intentionally have no Maven repository to seed
+                # older recipes. Their persistent mount can resolve missing files.
+                arguments = ['--build-arg', 'MAVEN_SEED_IMAGE=empty-maven-seed']
             command(['docker', 'buildx', 'build', '--builder', BUILDER, '--platform', 'linux/' + arch,
                      '--build-arg', 'BUILDPLATFORM=linux/' + arch,
-                     '--build-arg', 'MAVEN_SEED_IMAGE=' + seed, '-f', 'Dockerfile.builder',
+                     *arguments, '-f', 'Dockerfile.builder',
                      '--push', '--provenance=false', '--sbom=false', '-t', native, '--progress=plain', '.'],
                     cwd=checkout, log=log, timeout=7200)
         verify_runtime(checkout, native, arch, log)
     # Also repair an incomplete index left by an interrupted/manual publication.
+    if toolchain:
+        command(['docker', 'buildx', 'imagetools', 'create', '-t', toolchain,
+                 toolchain + '-arm64', toolchain + '-amd64'], log=log)
     command(['docker', 'buildx', 'imagetools', 'create', '-t', image, image + '-arm64', image + '-amd64'], log=log)
     previous = ROOT / 'last-image.new'
     previous.write_text(image + '\n')

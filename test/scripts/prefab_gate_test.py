@@ -132,7 +132,7 @@ class GateFlow(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
             subprocess.run(['git', 'init', '-q', directory], check=True)
-            for file in [*gate.INPUTS, 'Dockerfile']:
+            for file in [*gate.INPUTS, *gate.TOOLCHAIN_INPUTS, 'project.clj', 'scripts/media/images.clj', 'Dockerfile']:
                 target = path / file
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes((ROOT / file).read_bytes())
@@ -149,6 +149,44 @@ class GateFlow(unittest.TestCase):
             (path / '.dockerignore').symlink_to(ROOT / 'Dockerfile')
             with self.assertRaisesRegex(ValueError, 'regular checkout files'):
                 gate.checked_image(directory)
+
+    def test_npm_overlay_reuses_both_published_infrastructure_architectures(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(gate, 'ROOT', Path(directory)), \
+                patch.object(gate, 'checked_image', return_value='registry/fixture:deps-new'), \
+                patch.object(gate, 'toolchain_image', return_value='registry/fixture:toolchain-old'), \
+                patch.object(gate, 'ensure_builder'), patch.object(gate, 'verify_runtime') as verify, \
+                patch.object(gate, 'image_exists', side_effect=lambda image: ':toolchain-' in image), \
+                patch.object(gate, 'command') as command:
+            self.assertEqual(gate.prefab(directory, None), 'registry/fixture:deps-new')
+            builds = [call.args[0] for call in command.call_args_list if call.args[0][:3] == ['docker','buildx','build']]
+            self.assertEqual(len(builds), 2)
+            for args, arch in zip(builds, ['arm64', 'amd64']):
+                self.assertEqual(args[args.index('-f') + 1], 'Dockerfile.builder')
+                self.assertIn('TOOLCHAIN_IMAGE=registry/fixture:toolchain-old-' + arch, args)
+                self.assertNotIn('MAVEN_SEED_IMAGE', ' '.join(args))
+            self.assertEqual(verify.call_count, 2)
+
+    def test_older_queued_commits_keep_their_original_pin_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            builder = 'ARG MAVEN_SEED_IMAGE=empty-maven-seed\nFROM scratch\n'
+            for name in gate.LEGACY_INPUTS:
+                file = root / name
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_text(builder if name == 'Dockerfile.builder' else '{}')
+            digest = hashlib.sha256()
+            for name in gate.LEGACY_INPUTS:
+                digest.update((name + '\0').encode())
+                digest.update((root / name).read_bytes())
+            image = gate.REGISTRY + ':deps-' + digest.hexdigest()[:16]
+            (root / 'Dockerfile').write_text('ARG BUILDER_IMAGE=' + image + '\n' + builder + '# Compile on the builder\n')
+            subprocess.run(['git', 'init', '-q', directory], check=True)
+            subprocess.run(['git', '-C', directory, 'add', '.'], check=True)
+            subprocess.run(['git', '-C', directory, '-c', 'core.hooksPath=/dev/null',
+                '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+                'commit', '-qm', 'legacy fixture'], check=True)
+            self.assertEqual(gate.checked_image(directory), image)
+            self.assertIsNone(gate.toolchain_image(directory))
 
 
 if __name__ == '__main__':

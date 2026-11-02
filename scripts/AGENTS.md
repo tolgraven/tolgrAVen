@@ -44,18 +44,21 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   assets into watched browser/SSR outputs. See `doc/testing.md`.
 - `build/`, `media/`, `dev/`, `test/`: local build, asset and verification tools.
   Prefer Babashka using its built-in libraries; Node owns SDK/zlib operations.
-- `build/docker.clj` hashes the dependency recipe/manifests and bundled runtime
-  converter and publishes the native compiler/runtime prefab. Coolify advances aliases from master. The staged
+- `build/docker.clj` independently hashes infrastructure (`Dockerfile.toolchain`)
+  and the Node overlay (`Dockerfile.builder` plus npm manifests). Maven artifacts
+  stay in the persistent `m2` mount; project/converter edits do not refresh prefabs.
+  Coolify advances aliases from master. The staged
   commit pin must use index bytes and preserve unstaged edits. PR readiness is
   checked by the Coolify gate against that exact hash on ARM64/AMD64 runtimes; missing/auth
   failures must not be treated as a successful cache hit or bypass the merge gate.
-  Keep the fallback recipe identical after normalizing stage names/platform flags.
+  Keep both marked fallback blocks identical to their owned recipe bodies.
   `provision-site.php` reconciles Docker build settings on existing applications:
   normal build caching, explicit CMS secrets, no automatic ARG injection, and
   runtime-only unrelated keys. Same-source CMS feature/CSS changes need a forced rebuild.
   Domain changes prepend the canonical origin and retain existing proxy aliases;
   CMS rewiring must preserve ordinary compiler caching and existing credentials.
-  Dockerfile owns the prefab default and persistent Maven cache on every host.
+  Dockerfile owns the prefab default and mounts persistent Maven storage into
+  every JVM step. Never copy that repository into an image layer.
 - `ops/entrypoint-supabase-provision.sh` runs the native CLI with the isolated
   `:provision` profile; its image supplies production environment sources/defaults.
 - `ops/`: isolated site provisioning and Coolify adapters. `ops/coolify/*.php`
@@ -72,6 +75,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   their local client assembly caches; preserve registry manifests and blobs.
   Preview dispatch must match the installed Coolify job constructor; association,
   repository and head trust checks remain in the adapter before native dispatch.
+  Its bux BuildKit worker has no CPU/container-memory quota or step-parallelism
+  cap. Keep these server defaults separate from the local MacBook CPU launcher.
 - `ops/host/`: installed server programs. Keep each program's declared host/service scope, recovery
   metadata, locks, graceful suspension and rollback protections intact. Relocation
   does not authorize running provisioning, seeding, deployment or installation.
@@ -80,6 +85,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   up private configuration and restores prior files on failure. See `doc/crawl-policy.md`.
 - `media/images.clj` also runs in the web runtime. Keep it standalone, bounded by
   the JVM upload adapter; Docker copies and smoke-tests it with pinned Babashka.
+  ImageMagick uses its available processors; do not hardcode one-thread codec
+  arguments or environment overrides in the images, scripts or JVM launcher.
   `--asset source-file manifest-file` emits a complete private rendition manifest;
   the durable backend owns publication only after every codec succeeds. Uploaded
   images use the same responsive cutoff as local rasters; smaller images still
@@ -93,7 +100,9 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   3×3 RGB pixels into three horizontal bands for initial SSR backgrounds; transparent
   pixels composite against white. `images:placeholders` refreshes only this metadata. Commit catalog and generated assets together.
 - `bb videos:responsive` atomically rebuilds cataloged mobile AV1/VP9/H.264
-  renditions with FFmpeg; keep the full-size video and codec fallbacks intact.
+  renditions with FFmpeg; skip current variants unless `--force` is passed. Keep
+  the full-size video and codec fallbacks intact. Prepare/commit video assets
+  before deployment rather than re-encoding unchanged media in Docker builds.
 - Hook conversion reads index blobs, handles NUL-delimited paths, checks all outputs
   before staging, and preserves unstaged source and variant edits. Test with real
   codecs in disposable Git repositories.
@@ -193,6 +202,15 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   a different timestamp. AOT reuse requires the complete input/toolchain/options
   identity and publishes only successful output. Never share writable compiler
   output with live watches or let failed/removed sources leave reusable classes.
+  Codox and Shadow modes retain three digest-verified finished-output snapshots;
+  include actual resolved profile classpaths/JAR bytes from the Maven mount and
+  any extra source directories in their dependency identities.
+  restore every owned output together, invalidate on site/toolchain/source changes,
+  and never publish partial/failed output. Generated docs/JS/CSS are outputs, not
+  compiler inputs. Sass/CMS CSS byte changes remain owned by style/asset builds;
+  retain stylesheet paths in compiler identities for module discovery.
+  `shadow-analysis` retains timestamp/analysis reuse without a finished-output
+  snapshot, for focused compiler measurements and partial-target commands.
 
   Warm deployment compiler measurements must not use Docker `--no-cache`: it
   clears matching cache mounts. Rerun normal build instructions and verify actual

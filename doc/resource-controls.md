@@ -1,5 +1,10 @@
 # CPU controls for agent work
 
+These budgets protect the MacBook's interactive GUI during local agent builds.
+Bux deployment/prefab workers have no artificial CPU, container-memory or
+BuildKit step-parallelism caps. Ordinary Docker build JVMs detect the machine's
+processors and size their heaps from available machine memory.
+
 Use `bb cpu run -- <command>` from a checkout, or the installed
 `~/.local/bin/tolgraven-cpu run -- <command>`. The default admits **two builds at once**, each in an isolated Docker snapshot
 using the existing prefab with **1.5 CPUs and 4 GiB RAM**. The combined Docker
@@ -39,8 +44,9 @@ memory limit before running multiple larger builds concurrently. OrbStack's
 allocated memory grows on demand. Do not restart the VM while unrelated builds
 or services are running.
 
-Shadow release/check/compile targets run sequentially in the installed CLI;
-`:parallel-build false` also disables parallel work within each target.
+Shadow release/check/compile targets run sequentially in the installed CLI.
+Production releases enable parallel namespace compilation; the local agent snapshot
+explicitly disables it under this responsiveness policy.
 
 Each invocation copies tracked working files plus nonignored untracked source
 into a new `.local-wip/cpu-builds/<id>` checkout. It excludes local private config,
@@ -143,10 +149,10 @@ launcher never writes a live checkout's `target` or public build files.
 Ordinary Docker builds bind the host `~/.m2/repository` at `/root/.m2/repository`
 read/write, sharing downloaded artifacts across worktrees and subsequent builds.
 Maven settings and credentials outside that directory are not mounted. This mount
-hides the prefab's repository; dependencies absent on the host download once into
-the shared cache. BuildKit image creation also bakes dependencies into the prefab
-for remote/fresh hosts. Dockerfile deployment builds separately retain the
-portable `m2` BuildKit cache and snapshot it before parallel compilation; they
+hides the compiler's repository path; dependencies absent on the host download once into
+the shared cache. Prefabs contain no application Maven repository. Dockerfile
+deployment builds separately mount the persistent
+`m2` BuildKit cache at `/root/m2` into every JVM step; they
 do not depend on this Mac-specific bind mount. Matching npm manifests use its locked
 `node_modules`; a changed lock installs within the capped container. This does
 not refresh/publish a prefab or deploy anything. An explicit `--image` can select

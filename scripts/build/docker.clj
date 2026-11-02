@@ -17,7 +17,8 @@
         ("amd64" "x86_64") "linux/amd64"
         (throw (ex-info "Set DOCKER_PLATFORM for this host architecture" {})))))
 (def server-registry "127.0.0.1:5005")
-(def manifests ["Dockerfile.builder" "project.clj" "package.json" "package-lock.json" "scripts/media/images.clj"])
+(def manifests ["Dockerfile.builder" "package.json" "package-lock.json"])
+(def toolchain-manifests ["Dockerfile.toolchain"])
 (defn run! [& args] (shell (vec args)))
 (defn output [& args] (str/trim (:out (shell {:out :string :err :string} (vec args)))))
 (defn shell-quote [value] (str "'" (str/replace (str value) "'" "'\"'\"'") "'"))
@@ -38,12 +39,21 @@
       (re-find #"(?i)manifest unknown|no such manifest" err) nil
       :else (throw (ex-info (str "Cannot inspect " image "; check docker login and registry connectivity. " err) {})))))
 
-(defn dependency-hash [read-file]
+(defn input-hash [read-file paths]
   (let [digest (MessageDigest/getInstance "SHA-256")]
-    (doseq [name manifests]
+    (doseq [name paths]
       (.update digest (.getBytes (str name "\u0000") "UTF-8"))
       (.update digest (.getBytes (read-file name) "UTF-8")))
     (subs (format "%064x" (java.math.BigInteger. 1 (.digest digest))) 0 16)))
+
+(defn dependency-hash [read-file] (input-hash read-file manifests))
+(defn toolchain-hash [read-file] (input-hash read-file toolchain-manifests))
+
+(defn toolchain-reference [hash]
+  (str registry "/tolgraven/builder:toolchain-" hash))
+
+(defn toolchain-tag []
+  (str (toolchain-reference (toolchain-hash slurp)) "-" (last (str/split platform #"/"))))
 
 (defn prefab-reference [hash]
   (str registry "/tolgraven/builder:deps-" hash))
@@ -56,61 +66,88 @@
     (throw (ex-info "Dockerfile must declare exactly one prefab default" {})))
   (str/replace source #"(?m)^ARG BUILDER_IMAGE=.*$" (str "ARG BUILDER_IMAGE=" image)))
 
+(defn pinned-toolchain [source image]
+  (when-not (= 1 (count (re-seq #"(?m)^ARG TOOLCHAIN_IMAGE=.*$" source)))
+    (throw (ex-info "Dockerfile.builder must declare exactly one infrastructure default" {})))
+  (str/replace source #"(?m)^ARG TOOLCHAIN_IMAGE=.*$" (str "ARG TOOLCHAIN_IMAGE=" image)))
+
+(defn- pin-file! [path read-file staged? update-pin]
+  (let [before (read-file path)
+        after (update-pin before)]
+    (when-not (= before after)
+      (if staged?
+        (let [blob (str/trim (:out (shell {:in after :out :string} ["git" "hash-object" "-w" "--stdin"])))]
+          (shell ["git" "update-index" "--cacheinfo" (str "100644," blob "," path)])
+          (spit path (update-pin (slurp path))))
+        (spit path after)))))
+
 (defn pin! [staged?]
   (let [read-file (if staged?
                     (fn [path] (:out (shell {:out :string :err :string} ["git" "show" (str ":" path)])))
                     slurp)
-        image (prefab-reference (dependency-hash read-file))
-        before (read-file "Dockerfile")
-        after (pinned-dockerfile before image)]
-    (when-not (= before after)
-      (if staged?
-        (let [blob (str/trim (:out (shell {:in after :out :string} ["git" "hash-object" "-w" "--stdin"])))]
-          (shell ["git" "update-index" "--cacheinfo" (str "100644," blob ",Dockerfile")])
-          ;; Preserve every unstaged edit; only the generated default is updated.
-          (spit "Dockerfile" (pinned-dockerfile (slurp "Dockerfile") image)))
-        (spit "Dockerfile" after))
-      (println "Pinned Dockerfile prefab:" image))
-    image))
+        toolchain (toolchain-reference (toolchain-hash read-file))]
+    ;; Update the base pin before hashing the Node layer. Staged reads observe
+    ;; the new index blob while working-tree edits outside both pins survive.
+    (pin-file! "Dockerfile.builder" read-file staged? #(pinned-toolchain % toolchain))
+    (let [image (prefab-reference (dependency-hash read-file))]
+      (pin-file! "Dockerfile" read-file staged? #(pinned-dockerfile % image))
+      image)))
 
 (defn pin-staged! []
   (let [paths (set (str/split (:out (shell {:out :string} ["git" "diff" "--cached" "--name-only" "-z"])) #"\u0000"))]
-    (when (some paths (conj manifests "Dockerfile")) (pin! true))))
+    (when (some paths (concat manifests toolchain-manifests ["Dockerfile"])) (pin! true))))
+
+(defn recipe-body [source]
+  (let [start (re-find #"(?m)^(?:ARG INFRA_REVISION=|FROM )" source)]
+    (when-not start (throw (ex-info "Docker recipe has no body" {})))
+    (str/trim (subs source (.indexOf source start)))))
 
 (defn check-prefab-recipe! []
-  (let [normalize (fn [source]
-                    (-> source
-                        (str/split #"ARG MAVEN_SEED_IMAGE=" 2) second
-                        (str/split #"# Compile on the builder" 2) first
-                        (str/replace #"--platform=\$(?:BUILD|TARGET)PLATFORM " "")
-                        (str/replace #" AS prefab(?=\n)" "")
-                        str/trim))]
-    (when-not (= (normalize (slurp "Dockerfile.builder")) (normalize (slurp "Dockerfile")))
-      (throw (ex-info "The Dockerfile fallback must match Dockerfile.builder" {})))))
+  (let [source (slurp "Dockerfile")]
+    (doseq [[label file] [["TOOLCHAIN" "Dockerfile.toolchain"] ["DEPENDENCY" "Dockerfile.builder"]]]
+      (let [pattern (re-pattern (str "(?s)# BEGIN " label " FALLBACK\\n(.*?)# END " label " FALLBACK"))
+            fragment (second (re-find pattern source))]
+        (when-not (= (some-> fragment str/trim) (recipe-body (slurp file)))
+          (throw (ex-info "Dockerfile fallback differs from its owned recipe" {:file file})))))))
 
 (defn check-pin! []
   (check-prefab-recipe!)
-  (let [image (prefab-reference (dependency-hash slurp))
+  (let [toolchain (toolchain-reference (toolchain-hash slurp))
+        image (prefab-reference (dependency-hash slurp))
         source (slurp "Dockerfile")]
+    (when-not (= (slurp "Dockerfile.builder") (pinned-toolchain (slurp "Dockerfile.builder") toolchain))
+      (throw (ex-info "Infrastructure changed: run bb docker pin and commit both Dockerfiles" {})))
     (when-not (= source (pinned-dockerfile source image))
       (throw (ex-info "Dependency inputs changed: run bb docker pin and commit Dockerfile" {})))
     image))
 
 (defn prefab! [publish?]
+  (check-pin!)
   (let [image (builder-tag)
+        toolchain (toolchain-tag)
         present? (zero? (:exit (shell {:out :string :err :string :continue true}
                                               ["docker" "image" "inspect" image])))]
     (when-not present?
       (if (remote-digest image)
         (run! "docker" "pull" image)
-        (let [seed (str registry "/tolgraven/builder:java21-node22-v2-" (last (str/split platform #"/")))
-              seed' (if (remote-digest seed) seed "empty-maven-seed")]
+        (do
+          (when-not (zero? (:exit (shell {:out :string :err :string :continue true}
+                                        ["docker" "image" "inspect" toolchain])))
+            (if (remote-digest toolchain)
+              (run! "docker" "pull" toolchain)
+              (run! "docker" "build" "--platform" platform "--progress=plain"
+                    "--build-arg" (str "BUILDPLATFORM=" platform)
+                    "-f" "Dockerfile.toolchain" "-t" toolchain ".")))
           (run! "docker" "build" "--platform" platform "--progress=plain"
-                "--build-arg" (str "MAVEN_SEED_IMAGE=" seed')
+                "--build-arg" (str "TOOLCHAIN_IMAGE=" toolchain)
                 "--build-arg" (str "BUILDPLATFORM=" platform)
                 "-f" "Dockerfile.builder" "-t" image "."))))
     (when publish?
       (registry-check!)
+      (when (zero? (:exit (shell {:out :string :err :string :continue true}
+                                ["docker" "image" "inspect" toolchain])))
+        (when-not (= (:Id (first (inspect toolchain))) (remote-digest toolchain))
+          (run! "docker" "push" toolchain)))
       (let [id (:Id (first (inspect image)))]
         (when-not (= id (remote-digest image)) (run! "docker" "push" image)))
       (println "Published native prefab; the Coolify prefab gate publishes the shared multi-platform reference."))
@@ -141,7 +178,8 @@
             in-use (when (seq containers) (str/split (apply output "docker" "inspect" "--format" "{{.Image}}" containers) #"\s+"))
             current (or current (when (fs/exists? ".local-wip/docker/last-image") (str/trim (slurp ".local-wip/docker/last-image"))))
             by-tag (into {} (for [image images, tag (:RepoTags image)] [tag (:Id image)]))
-            obsolete (cleanup-plan images in-use (by-tag (builder-tag)) (by-tag current))]
+            protected-use (cond-> (vec in-use) (by-tag (toolchain-tag)) (conj (by-tag (toolchain-tag))))
+            obsolete (cleanup-plan images protected-use (by-tag (builder-tag)) (by-tag current))]
         (if (seq obsolete)
           ;; No --force: Docker protects containers created after this snapshot.
           (shell {:continue true} (into ["docker" "image" "rm"] obsolete))
@@ -176,6 +214,7 @@
     "pin-staged" (pin-staged!)
     "check-pin" (println (check-pin!))
     "metadata" (println (json/generate-string {:image (prefab-reference (dependency-hash slurp))
+                                               :toolchain (toolchain-reference (toolchain-hash slurp))
                                                :native-image (builder-tag)}))
     "registry" (registry-check!)
     "clean" (do (prune!) (run! "docker" "image" "prune" "--force")
