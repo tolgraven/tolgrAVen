@@ -45,7 +45,7 @@ try {
                     action: $closed ? 'closed' : 'opened', pullRequestId: $pr,
                     pullRequestHtmlUrl: $pull['html_url'], pullRequestTitle: $pull['title'],
                     beforeSha: null, afterSha: $sha, commitSha: $sha,
-                    authorAssociation: $pull['author_association'], fullName: 'tolgraven/tolgrAVen',
+                    fullName: 'tolgraven/tolgrAVen',
                     isForkPullRequest: false,
                 );
                 return ['accepted' => true];
