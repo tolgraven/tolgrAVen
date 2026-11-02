@@ -394,8 +394,9 @@ maintain a duplicate handwritten variable catalog.
   or build exact ARM64/AMD64 hashes before native preview deployment. Master also
   advances compatibility aliases before native production deployment. GitHub only
   enforces the status; Actions must not build prefabs or relay Coolify deployments.
-  The gate executes recipes only inside its bounded BuildKit worker, never in its
-  Docker-socket-owning process. `make docker-prefab` remains the bounded manual path.
+  The gate executes recipes only inside its BuildKit worker, never in its
+  Docker-socket-owning process. Local MacBook prefab builds retain the separate
+  launcher limits; bux builds use the server's available resources.
 - Keep the fallback `prefab` stage in `Dockerfile` aligned with `Dockerfile.builder`. Do not refresh the prefab for unrelated application-source edits.
 - All OS package installation and codec checks belong to the prefab recipe.
   `media-tools` exports its clean runtime root; ordinary app builds must not install
