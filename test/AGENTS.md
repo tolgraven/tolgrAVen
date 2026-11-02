@@ -40,6 +40,11 @@
 
 Keep this guide and `doc/testing.md` current when test/build entry points change.
 
+- Late-highlight reveal checks hold the real formatter acquisition, commit its
+  plain-text fallback, then release it. Inspect native opacity/scale/blur/shadow
+  progression, settled geometry, control-update identity and reduced motion;
+  already-highlighted SSR/hydration and editors must stay settled.
+
 - `node test/scripts/styles_test.mjs` checks fresh CSS skips, stale inputs,
   overwritten/missing outputs, CMS override edits/removal/errors and
   declaration/tool/font revisions, concurrent builders, watcher output repair and

@@ -388,6 +388,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   its Clojure fallback and detection set; untagged inline snippets also use detection
   unless their owner specifies `:inline-language`. Explicit tags take precedence.
   No-match detection preserves the source as plain text when no owner fallback exists.
+  A committed plain-text formatter fallback opts its eventual read-only tokens into
+  the CSS sharpening reveal on the existing font-text surface. SSR/retained tokens
+  and editable surfaces remain settled; reduced motion disables that reveal.
   Copy gestures and optional folding belong to the outer component; selection and
   multi-click cancel copying, as do drag, pointer exit/cancellation during the press
   and interactive controls. Movement after release preserves the completed tap.

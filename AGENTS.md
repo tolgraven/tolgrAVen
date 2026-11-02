@@ -171,6 +171,8 @@ sessions' tabs and restore any borrowed tab when finished.
   The formatter uses direct Lowlight HAST and native Reagent tokens; retain
   complete language support, owner-specific detection and numbered/editable rows.
   Bruvbox palette/token ownership lives in `modules/highlight/theme.cljs`.
+  Only a committed plain-code fallback opts read-only tokens into the sharpening
+  reveal; completed SSR and editable surfaces remain settled.
 
 ## Project Structure & Module Organization
 - Application namespaces use `website.*` across CLJ, CLJC and CLJS. Standalone
