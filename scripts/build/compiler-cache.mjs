@@ -15,8 +15,8 @@ const generatedRoots = ['resources/docs/codox', 'resources/public/css/website', 
   'resources/public/js/compiled', 'resources/public/js/return', 'resources/public/js/document'];
 const generatedFiles = new Set(['resources/public/vendor/neovim/workspace.json',
   'resources/public/vendor/neovim/profile.json']);
-if (!['shadow', 'aot', 'docs'].includes(mode) || !cache || !command.length) {
-  throw new Error('Usage: compiler-cache.mjs <shadow|docs> <cache> <command...> OR aot <cache> <classpath-file> <command...>');
+if (!['shadow', 'shadow-analysis', 'aot', 'docs'].includes(mode) || !cache || !command.length) {
+  throw new Error('Usage: compiler-cache.mjs <shadow|shadow-analysis|docs> <cache> <command...> OR aot <cache> <classpath-file> <command...>');
 }
 async function files(directory) {
   let entries;

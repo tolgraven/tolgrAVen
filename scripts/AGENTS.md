@@ -44,18 +44,21 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   assets into watched browser/SSR outputs. See `doc/testing.md`.
 - `build/`, `media/`, `dev/`, `test/`: local build, asset and verification tools.
   Prefer Babashka using its built-in libraries; Node owns SDK/zlib operations.
-- `build/docker.clj` hashes the dependency recipe/manifests and bundled runtime
-  converter and publishes the native compiler/runtime prefab. Coolify advances aliases from master. The staged
+- `build/docker.clj` independently hashes infrastructure (`Dockerfile.toolchain`)
+  and the Node overlay (`Dockerfile.builder` plus npm manifests). Maven artifacts
+  stay in the persistent `m2` mount; project/converter edits do not refresh prefabs.
+  Coolify advances aliases from master. The staged
   commit pin must use index bytes and preserve unstaged edits. PR readiness is
   checked by the Coolify gate against that exact hash on ARM64/AMD64 runtimes; missing/auth
   failures must not be treated as a successful cache hit or bypass the merge gate.
-  Keep the fallback recipe identical after normalizing stage names/platform flags.
+  Keep both marked fallback blocks identical to their owned recipe bodies.
   `provision-site.php` reconciles Docker build settings on existing applications:
   normal build caching, explicit CMS secrets, no automatic ARG injection, and
   runtime-only unrelated keys. Same-source CMS feature/CSS changes need a forced rebuild.
   Domain changes prepend the canonical origin and retain existing proxy aliases;
   CMS rewiring must preserve ordinary compiler caching and existing credentials.
-  Dockerfile owns the prefab default and persistent Maven cache on every host.
+  Dockerfile owns the prefab default and mounts persistent Maven storage into
+  every JVM step. Never copy that repository into an image layer.
 - `ops/entrypoint-supabase-provision.sh` runs the native CLI with the isolated
   `:provision` profile; its image supplies production environment sources/defaults.
 - `ops/`: isolated site provisioning and Coolify adapters. `ops/coolify/*.php`
@@ -200,6 +203,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   and never publish partial/failed output. Generated docs/JS/CSS are outputs, not
   compiler inputs. Sass/CMS CSS byte changes remain owned by style/asset builds;
   retain stylesheet paths in compiler identities for module discovery.
+  `shadow-analysis` retains timestamp/analysis reuse without a finished-output
+  snapshot, for focused compiler measurements and partial-target commands.
 
   Warm deployment compiler measurements must not use Docker `--no-cache`: it
   clears matching cache mounts. Rerun normal build instructions and verify actual

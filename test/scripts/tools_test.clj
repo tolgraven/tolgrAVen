@@ -12,7 +12,7 @@
 (deftest dependency-hash-excludes-application-source
   (let [directory (fs/create-temp-dir)]
     (try
-      (let [manifests (mapv #(str (fs/path directory %)) ["Dockerfile.builder" "project.clj" "package.json" "package-lock.json"])]
+      (let [manifests (mapv #(str (fs/path directory %)) ["Dockerfile.builder" "package.json" "package-lock.json"])]
         (doseq [file manifests] (spit file file))
         (with-redefs [docker/manifests manifests]
           (let [before (docker/builder-tag)]

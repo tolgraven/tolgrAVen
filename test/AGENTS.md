@@ -381,8 +381,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 
 - `scripts/test/docker_cache.py --image <fresh-prefab> --report <new-directory>`
   runs real offline Docker dependency builds under the CPU launcher's BuildKit
-  mode. The cold case seeds a fresh cache from the prefab; the warm case removes
-  baked Clojure and must recover it from that same persisted mount. Retain logs
+  mode or directly on bux, using a populated persistent `m2` cache. Fresh application
+  layers must resolve classpaths offline from that mount and leave no Maven
+  artifacts in their image layers. Retain logs
   and fail on repository downloads or OS installs. Its temporary image tags are
   removed; it does not deploy or touch watched application output.
 - `test/scripts/docker_build_wiring_test.php <helper>` checks the actual Coolify
@@ -392,6 +393,10 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   branch/fork trust, stale jobs and verification failure. The actual Coolify
   adapter additionally checks preview state under a shared lock through the native
   lifecycle job; verify a stale close against an open task PR preserves its preview.
+  Pin tests must prove npm changes retain infrastructure identity, JVM/converter
+  edits change neither image, infrastructure edits change both pins, and staged
+  pins preserve working-tree edits. Gate builds must reuse published base images
+  and retain legacy validation for older queued commits.
 
 - Deployment compiler-cache checks cover fresh checkout timestamps, macro/resource
   edits, removed classes and failed compilation. Real release checks must prove

@@ -377,18 +377,21 @@ maintain a duplicate handwritten variable catalog.
   Finished Codox and all four Shadow releases also have bounded, digest-verified
   output caches. Stylesheet byte edits rebuild CSS/assets without recompiling
   unchanged code; stylesheet path changes still invalidate compiler inventories.
-- The dependency prefab includes compiler tools, `node_modules`, Maven artifacts and
-  a clean runtime root with Java, Node, Babashka and upload codecs. Ordinary Docker
+- `Dockerfile.toolchain` owns the rarely changing infrastructure image: Java/Lein,
+  Node/npm, Babashka, system packages, codecs and the clean runtime root.
+  `Dockerfile.builder` adds only `node_modules`. Ordinary Docker
   builds use the exact multi-platform dependency hash pinned in Dockerfile; registry hosts need one
   existing Docker login, not per-deployment installation. `BUILDER_IMAGE=prefab`
   explicitly builds the matching fallback on a host without registry access.
 - Keep the Dockerfile-owned `m2` BuildKit cache at `/root/m2`, with locked access.
-  Resolve and snapshot dependencies before compiler stages; seed fresh
-  caches from the prefab. Do not replace this with image-layer-only or host-only caching.
-- Dependency inputs are `Dockerfile.builder`, `project.clj`, both npm manifests
-  and the bundled `scripts/media/images.clj`. The commit hook updates Dockerfile's
-  prefab pin from staged bytes, preserving unstaged edits. `bb docker pin` updates
-  it explicitly; `bb docker check-pin` also verifies the fallback recipe matches.
+  Mount it into every JVM build step; never bake/copy Maven repositories into
+  prefab/compiler layers. An empty cache downloads once; subsequent builds use it
+  in place. Local MacBook verification may bind its existing host repository.
+- Infrastructure identity comes only from `Dockerfile.toolchain`; npm identity
+  comes from its generated base pin, `Dockerfile.builder` and both npm manifests.
+  `project.clj`, converter scripts and ordinary source do not refresh either image.
+  The commit hook updates both pins from staged bytes, preserving unstaged edits.
+  `bb docker check-pin` also verifies both inline fallback recipes match.
 - Coolify owns `prefab-ready` and deployment sequencing through the managed
   prefab gate. Signed GitHub App events enter its durable queue; trusted PRs reuse
   or build exact ARM64/AMD64 hashes before native preview deployment. Master also
@@ -397,11 +400,14 @@ maintain a duplicate handwritten variable catalog.
   The gate executes recipes only inside its BuildKit worker, never in its
   Docker-socket-owning process. Local MacBook prefab builds retain the separate
   launcher limits; bux builds use the server's available resources.
-- Keep the fallback `prefab` stage in `Dockerfile` aligned with `Dockerfile.builder`. Do not refresh the prefab for unrelated application-source edits.
-- All OS package installation and codec checks belong to the prefab recipe.
+- Keep the fallback stages in `Dockerfile` aligned with their owned toolchain/Node recipes.
+  Bump `INFRA_REVISION` to deliberately refresh installed OS packages.
+- All OS package installation and native codec checks belong to the toolchain recipe.
   `media-tools` exports its clean runtime root; ordinary app builds must not install
   packages or pull separate Node/Java/Babashka base images. Keep Coolify build
   credentials out of dependency stages; source commits remain runtime metadata.
+  The application image copies its current converter script separately; the gate
+  exercises that script against the exported runtime without changing prefab pins.
 - See `doc/docker-builds.md` for registry setup and deployment recovery.
 
 ## Coding Style & Naming Conventions

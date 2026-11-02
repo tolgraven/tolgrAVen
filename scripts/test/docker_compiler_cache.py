@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify release compiler reuse on fresh Docker layers; use the capped BuildKit runner."""
+"""Verify release analysis reuse on fresh Docker layers with a populated m2 cache."""
 import argparse
 import json
 from pathlib import Path
@@ -23,10 +23,11 @@ COPY . .
 ARG SAMPLE
 RUN if [ "${SAMPLE#changed}" != "$SAMPLE" ]; then printf '\\n(set! (.-compilerCacheMarker js/globalThis) "cache-invalidation-proof")\\n' >> src/frontend/bootstrap/entrance.cljs; fi \\
  && touch src/frontend/bootstrap/entrance.cljs
-RUN --mount=type=cache,id=''' + cache + ''',target=/compiler-cache,sharing=locked \\
-    JAVA_TOOL_OPTIONS="-Xms64m -Xmx1536m -XX:ActiveProcessorCount=2" \\
+RUN --mount=type=cache,id=m2,target=/root/m2,sharing=locked \\
+    --mount=type=cache,id=''' + cache + ''',target=/compiler-cache,sharing=locked \\
+    JAVA_TOOL_OPTIONS="-Xms128m -XX:MaxRAMPercentage=60" \\
     SHADOW_CLJS='{:cache-root "/compiler-cache/shadow"}' \\
-    node scripts/build/compiler-cache.mjs shadow /compiler-cache \\
+    node scripts/build/compiler-cache.mjs shadow-analysis /compiler-cache \\
     lein with-profile prod,provided run -m shadow.cljs.devtools.cli release document
 RUN test -s resources/public/js/document/entrance.js \\
  && if [ "${SAMPLE#changed}" != "$SAMPLE" ]; then grep -q cache-invalidation-proof resources/public/js/document/entrance.js; \\

@@ -1,0 +1,58 @@
+# syntax=docker/dockerfile:1
+# Infrastructure only: no application dependency manifests or Maven artifacts.
+ARG INFRA_REVISION=1
+FROM --platform=$BUILDPLATFORM babashka/babashka:1.13.225@sha256:0dd6985b8492b3bde9defbd95a7e7daf7d6fcb08102df9de4f07337f99d000a2 AS babashka
+FROM --platform=$BUILDPLATFORM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS node
+# Runtime executables follow the target even when the compiler is native.
+FROM --platform=$TARGETPLATFORM babashka/babashka:1.13.225@sha256:0dd6985b8492b3bde9defbd95a7e7daf7d6fcb08102df9de4f07337f99d000a2 AS runtime-babashka
+FROM --platform=$TARGETPLATFORM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS runtime-node
+FROM --platform=$TARGETPLATFORM eclipse-temurin:21-jre-jammy@sha256:f04fb34e053148344e83317976114ec3f37e4b830ec8bdab5a2fe3cecd7d010b AS runtime-dependencies
+ENV MAGICK_THREAD_LIMIT=1 PYTHONPATH=/opt/fonttools
+ARG INFRA_REVISION
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends imagemagick webp python3-pip \
+ && python3 -m pip install --no-cache-dir --no-deps --target /opt/fonttools fonttools==4.60.2 Brotli==1.2.0 \
+ && python3 -c "from fontTools import subset; import brotli" \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=runtime-babashka /usr/local/bin/bb /usr/local/bin/bb
+COPY --from=runtime-node /usr/local/bin/node /usr/local/bin/node
+RUN mkdir /tmp/image-codec-check \
+ && convert -size 16x16 xc:red /tmp/image-codec-check/image.png \
+ && cwebp -quiet /tmp/image-codec-check/image.png -o /tmp/image-codec-check/image.webp \
+ && convert /tmp/image-codec-check/image.png /tmp/image-codec-check/image.avif \
+ && identify /tmp/image-codec-check/image.webp /tmp/image-codec-check/image.avif \
+ && rm -rf /tmp/image-codec-check
+
+FROM --platform=$BUILDPLATFORM clojure:temurin-21-lein-bookworm-slim@sha256:12d1d3d51f3aa9b4f1c643a084b6e13180caa3b83176423ad839a3b1ac493bb2 AS toolchain
+COPY --from=babashka /usr/local/bin/bb /usr/local/bin/bb
+RUN bb --version
+# Media generation and backend codec tests use the ordinary dependency prefab.
+ENV MAGICK_THREAD_LIMIT=1 PYTHONPATH=/opt/fonttools
+ARG INFRA_REVISION
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends imagemagick webp python3-pip \
+ && python3 -m pip install --no-cache-dir --no-deps --target /opt/fonttools fonttools==4.60.2 Brotli==1.2.0 \
+ && python3 -c "from fontTools import subset; import brotli" \
+ && rm -rf /var/lib/apt/lists/* \
+ && mkdir /tmp/image-codec-check \
+ && convert -size 16x16 xc:red /tmp/image-codec-check/image.png \
+ && cwebp -quiet /tmp/image-codec-check/image.png -o /tmp/image-codec-check/image.webp \
+ && convert /tmp/image-codec-check/image.png /tmp/image-codec-check/image.avif \
+ && convert /tmp/image-codec-check/image.webp /tmp/image-codec-check/image.avif null: \
+ && rm -rf /tmp/image-codec-check
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+ && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+WORKDIR /usr/src/app
+ENV LEIN_ROOT=1
+# Maven artifacts belong only in the persistent BuildKit m2 mount.
+RUN mkdir -p /root/.m2 \
+ && rm -rf /root/.m2/repository \
+ && ln -s /root/m2 /root/.m2/repository
+# The infrastructure image carries the tools and the clean runtime root.
+# Keep separately changing runtime tools in separately reusable upload layers.
+COPY --from=runtime-dependencies --exclude=usr --exclude=opt / /opt/tolgraven-runtime/
+COPY --from=runtime-dependencies /opt/ /opt/tolgraven-runtime/opt/
+COPY --from=runtime-dependencies --exclude=local /usr/ /opt/tolgraven-runtime/usr/
+COPY --from=runtime-dependencies /usr/local/ /opt/tolgraven-runtime/usr/local/
