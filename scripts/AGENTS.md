@@ -72,6 +72,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   their local client assembly caches; preserve registry manifests and blobs.
   Preview dispatch must match the installed Coolify job constructor; association,
   repository and head trust checks remain in the adapter before native dispatch.
+  Its bux BuildKit worker has no CPU/container-memory quota or step-parallelism
+  cap. Keep these server defaults separate from the local MacBook CPU launcher.
 - `ops/host/`: installed server programs. Keep each program's declared host/service scope, recovery
   metadata, locks, graceful suspension and rollback protections intact. Relocation
   does not authorize running provisioning, seeding, deployment or installation.

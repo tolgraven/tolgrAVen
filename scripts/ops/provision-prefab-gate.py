@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Install the trusted control service, then switch the existing GitHub App hook.
 
-Uses the user's persistent SSH transport. Build/push happens on bux with a bounded
+Uses the user's persistent SSH transport. Build/push happens on bux with its
 BuildKit worker; site builds still belong to Coolify's native deployment queue.
 """
 import argparse
@@ -47,7 +47,6 @@ def main():
         # This builder is separate from application builds and retains its cache.
         remote(['sh', '-ec', 'docker buildx inspect tolgraven-prefab >/dev/null 2>&1 || '
                 'docker buildx create --name tolgraven-prefab --driver docker-container '
-                '--driver-opt cpu-period=100000,cpu-quota=150000,memory=4g,memory-swap=4g '
                 '--buildkitd-config /data/coolify/prefab-gate/build/buildkitd.toml'])
         remote(['docker', 'buildx', 'build', '--builder', 'tolgraven-prefab', '--push',
                 '--provenance=false', '--sbom=false', '-t', image, '/data/coolify/prefab-gate/build'])

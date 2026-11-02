@@ -102,7 +102,7 @@ RUN --mount=type=secret,id=STRAPI_URL,env=STRAPI_URL \
 # Codox reuses AOT classes; Shadow keeps its separate output and cache paths.
 FROM source AS backend
 # Keep AOT compilation bounded; later stages reuse these classes.
-ARG BUILD_CLJ_JAVA_OPTIONS="-Xms64m -Xmx768m -XX:ReservedCodeCacheSize=96m"
+ARG BUILD_CLJ_JAVA_OPTIONS="-Xms128m -XX:MaxRAMPercentage=60 -XX:ReservedCodeCacheSize=256m"
 ARG BUILDER_IMAGE
 RUN --mount=type=cache,id=tolgraven-aot-release-v1,target=/compiler-cache,sharing=locked \
     echo "Checking the complete AOT compiler input cache" \
@@ -112,7 +112,7 @@ RUN --mount=type=cache,id=tolgraven-aot-release-v1,target=/compiler-cache,sharin
     node scripts/build/compiler-cache.mjs aot /compiler-cache /tmp/aot-classpath "$@" compile
 
 FROM backend AS docs
-ARG BUILD_DOCS_JAVA_OPTIONS="-Xms64m -Xmx512m -XX:ReservedCodeCacheSize=96m"
+ARG BUILD_DOCS_JAVA_OPTIONS="-Xms128m -XX:MaxRAMPercentage=60 -XX:ReservedCodeCacheSize=256m"
 RUN --mount=type=cache,id=tolgraven-docs-release-v1,target=/compiler-cache,sharing=locked \
     COMPILER_IMAGE="${BUILDER_IMAGE}" JAVA_TOOL_OPTIONS="${BUILD_DOCS_JAVA_OPTIONS}" \
     node scripts/build/compiler-cache.mjs docs /compiler-cache \
@@ -120,7 +120,7 @@ RUN --mount=type=cache,id=tolgraven-docs-release-v1,target=/compiler-cache,shari
 
 FROM docs AS frontend
 RUN mkdir -p resources/public/css/website && npm run build
-ARG BUILD_JAVA_OPTIONS="-Xms64m -Xmx1024m -XX:ReservedCodeCacheSize=128m -XX:ActiveProcessorCount=2"
+ARG BUILD_JAVA_OPTIONS="-Xms256m -XX:MaxRAMPercentage=60 -XX:ReservedCodeCacheSize=256m"
 RUN --mount=type=cache,id=tolgraven-shadow-release-v2,target=/compiler-cache,sharing=locked \
     echo "Building optimized releases with persistent compiler analysis" \
  && COMPILER_IMAGE="${BUILDER_IMAGE}" JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \

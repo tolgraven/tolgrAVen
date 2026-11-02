@@ -225,9 +225,8 @@ sessions' tabs and restore any borrowed tab when finished.
   constraints without logging raw values, credentials, or event arguments.
 
 ## Build, Test, and Development Commands
-- Agent Java/Lein builds use `tolgraven-cpu run -- <command>` (or `bb cpu run`
-  from a checkout, including Linux Docker builds; configure writable XDG state and
-  `--maven-repository` when needed). They retain two shared build slots, isolated
+- MacBook agent Java/Lein builds use `tolgraven-cpu run -- <command>` (or `bb cpu run`
+  from a checkout). This local GUI-responsiveness policy retains two shared build slots, isolated
   Docker prefab, 1.5 CPUs/4 GiB per slot and 3 Docker CPUs combined. Dockerfile/prefab work uses
   `tolgraven-cpu run --mode buildkit -- <command>` so BuildKit steps also have a quota.
   Increase a documented heap/memory limit only when required; avoid competing watched output.
@@ -239,6 +238,10 @@ sessions' tabs and restore any borrowed tab when finished.
   backend/Shadow descendants remain unthrottled. Never issue ad
   hoc STOP/CONT or global process kills. See
   `doc/resource-controls.md` for scope, telemetry, recovery and explicit overrides.
+- Bux deployment/prefab builds have no artificial CPU, container-memory or
+  BuildKit step-parallelism limits. Build JVMs see the available processors and
+  size heaps from machine memory; Shadow compiles namespaces in parallel. Keep
+  the MacBook launcher/monitor limits separate from the server build policy.
 - `lein with-profile prod run` overlays `config/prod-local.edn` for local HTTP on
   loopback and local SSR/converter paths; packaged production keeps secure proxy
   defaults. `bb prod:build` releases separate `prod-local-*` Shadow targets into

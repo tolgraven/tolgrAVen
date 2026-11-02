@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Coolify-owned dependency prerequisite; native Coolify still deploys the site.
 
-Only signed events for trusted branches may build. Recipe code runs inside a
-bounded BuildKit worker, never in this Docker-socket-owning control process.
+Only signed events for trusted branches may build. Recipe code runs inside the
+BuildKit worker, never in this Docker-socket-owning control process.
 """
 import base64
 from contextlib import contextmanager
@@ -156,7 +156,6 @@ def ensure_builder(log):
     result = subprocess.run(['docker', 'buildx', 'inspect', BUILDER], capture_output=True, timeout=30)
     if result.returncode:
         command(['docker', 'buildx', 'create', '--name', BUILDER, '--driver', 'docker-container',
-                 '--driver-opt', 'cpu-period=100000,cpu-quota=150000,memory=4g,memory-swap=4g',
                  '--buildkitd-config', '/app/buildkitd.toml'], log=log)
     command(['docker', 'buildx', 'inspect', '--bootstrap', BUILDER], log=log)
 

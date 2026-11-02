@@ -1,5 +1,10 @@
 # CPU controls for agent work
 
+These budgets protect the MacBook's interactive GUI during local agent builds.
+Bux deployment/prefab workers have no artificial CPU, container-memory or
+BuildKit step-parallelism caps. Ordinary Docker build JVMs detect the machine's
+processors and size their heaps from available machine memory.
+
 Use `bb cpu run -- <command>` from a checkout, or the installed
 `~/.local/bin/tolgraven-cpu run -- <command>`. The default admits **two builds at once**, each in an isolated Docker snapshot
 using the existing prefab with **1.5 CPUs and 4 GiB RAM**. The combined Docker
@@ -39,8 +44,9 @@ memory limit before running multiple larger builds concurrently. OrbStack's
 allocated memory grows on demand. Do not restart the VM while unrelated builds
 or services are running.
 
-Shadow release/check/compile targets run sequentially in the installed CLI;
-`:parallel-build false` also disables parallel work within each target.
+Shadow release/check/compile targets run sequentially in the installed CLI.
+The application enables parallel namespace compilation; the local agent snapshot
+explicitly disables it under this responsiveness policy.
 
 Each invocation copies tracked working files plus nonignored untracked source
 into a new `.local-wip/cpu-builds/<id>` checkout. It excludes local private config,

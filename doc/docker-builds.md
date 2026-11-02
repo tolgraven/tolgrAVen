@@ -141,15 +141,13 @@ verify the exported image's actual Java/Node/Babashka and WebP/AVIF conversions
 when changing that recipe. Uploads keep `/app/scripts/media/images.clj` and their
 existing Supabase Storage transport; see [upload storage](supabase-provisioning.md).
 
-The Shadow JVM defaults to a 1024 MB heap and two visible processors (`BUILD_JAVA_OPTIONS`), while the
-backend JVM defaults to 768 MB (`BUILD_CLJ_JAVA_OPTIONS`) and Codox to
-512 MB (`BUILD_DOCS_JAVA_OPTIONS`). These are
-build arguments; actual peak memory also includes Lein launchers, native memory
-and CSS tooling. Parallel compilation trades additional peak memory for elapsed
-time; adjust the build arguments to the builder's capacity. Parallel stages do
-not change npm or Maven dependencies. The corrected Codox configuration changes
-`project.clj`, which is part of the prefab hash; local build tooling will select
-the new hash even though its dependency contents are unchanged.
+Build JVMs use the machine's available processors and a heap sized with
+`-XX:MaxRAMPercentage=60`, rather than a fixed 512/768/1024 MiB maximum or a
+two-processor override. `BUILD_JAVA_OPTIONS`, `BUILD_CLJ_JAVA_OPTIONS` and
+`BUILD_DOCS_JAVA_OPTIONS` remain explicit tuning overrides. Shadow enables
+parallel namespace compilation. Runtime JVM memory bounds are separate.
+The MacBook agent CPU launcher still applies its local GUI-responsiveness policy;
+it is not the policy for bux deployments.
 
 The final image contains the JRE and application jar,
 not source checkout, node_modules, Maven cache, or compiler tools. Runtime JVM
@@ -289,7 +287,8 @@ For the current commit, the gate validates the staged/generated image pin, reuse
 published native hashes or builds missing ARM64/AMD64 images sequentially, then
 executes the clean runtime's Java/Node/Babashka/codec smoke checks. BuildKit's
 bundled emulator handles a foreign architecture; no privileged binfmt installer
-is required. The persistent worker has 1.5 CPUs, 4 GiB RAM, one build step at a time,
+is required. The persistent bux worker uses all available host CPU and memory,
+with no container quota or BuildKit step-parallelism cap. It retains
 a 6 GB cache target and a 20 GB free-space target. Maven caches are seeded from the
 previous native prefab and remain locked during updates.
 
@@ -365,8 +364,9 @@ the build log. The frontend/backend steps print their cache boundary explicitly.
 
 Compiler stages form a dependency chain: backend AOT → Codox → frontend releases.
 Only one compiler JVM runs at a time, and Codox inherits the completed AOT classes.
-This avoids swap exhaustion on an 8 GB host co-located with the database/CMS
-services; merely bounding each of three concurrent heaps was insufficient.
+This preserves AOT reuse by Codox while parallel namespace work within Shadow
+uses the available processors. Bux has approximately 10 GiB of configured swap
+for transient peaks; swap does not grow automatically.
 
 The Codox and Shadow cache mounts retain the three most recently used finished
 output snapshots, keyed by source, site capabilities, dependencies, command and
@@ -391,6 +391,6 @@ snapshot; use Coolify’s forced rebuild when changing those build-time settings
 Ordinary CMS content is still acquired at runtime. Source changes acquire a new
 snapshot through the normal Docker source-stage invalidation.
 
-The 1 GiB Shadow default is verified with a fresh compiler cache against all four
-release targets and prepared assets. Keep enough host memory for the co-located
-services and the compiler’s native/metaspace overhead; heap size is not total RSS.
+Heap size is not total RSS: native/metaspace memory, co-located services and asset
+tools also use RAM. Build limits on the MacBook are deliberately kept in the local
+launcher, rather than imposing those responsiveness limits on the server.
