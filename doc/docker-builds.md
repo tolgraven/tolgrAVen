@@ -139,7 +139,8 @@ Build JVMs use the machine's available processors and a heap sized with
 `-XX:MaxRAMPercentage=60`, rather than a fixed 512/768/1024 MiB maximum or a
 two-processor override. `BUILD_JAVA_OPTIONS`, `BUILD_CLJ_JAVA_OPTIONS` and
 `BUILD_DOCS_JAVA_OPTIONS` remain explicit tuning overrides. Shadow enables
-parallel namespace compilation. Runtime JVM memory bounds are separate.
+parallel namespace compilation for production releases. Development watch defaults
+retain their existing setting. Runtime JVM memory bounds are separate.
 The MacBook agent CPU launcher still applies its local GUI-responsiveness policy;
 it is not the policy for bux deployments.
 

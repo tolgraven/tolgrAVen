@@ -45,7 +45,7 @@ allocated memory grows on demand. Do not restart the VM while unrelated builds
 or services are running.
 
 Shadow release/check/compile targets run sequentially in the installed CLI.
-The application enables parallel namespace compilation; the local agent snapshot
+Production releases enable parallel namespace compilation; the local agent snapshot
 explicitly disables it under this responsiveness policy.
 
 Each invocation copies tracked working files plus nonignored untracked source

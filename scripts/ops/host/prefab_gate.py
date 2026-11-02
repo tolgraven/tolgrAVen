@@ -221,11 +221,9 @@ def prefab(checkout, log):
             if base:
                 arguments = ['--build-arg', 'TOOLCHAIN_IMAGE=' + base]
             else:
-                previous = ROOT / 'last-image'
-                prior = previous.read_text().strip() if previous.exists() else os.environ.get('PREFAB_SEED_IMAGE')
-                seeds = ([prior + '-' + arch] if prior else []) + [REGISTRY + ':java21-node22-v2-' + arch]
-                seed = next((candidate for candidate in seeds if image_exists(candidate)), 'empty-maven-seed')
-                arguments = ['--build-arg', 'MAVEN_SEED_IMAGE=' + seed]
+                # New prefabs intentionally have no Maven repository to seed
+                # older recipes. Their persistent mount can resolve missing files.
+                arguments = ['--build-arg', 'MAVEN_SEED_IMAGE=empty-maven-seed']
             command(['docker', 'buildx', 'build', '--builder', BUILDER, '--platform', 'linux/' + arch,
                      '--build-arg', 'BUILDPLATFORM=linux/' + arch,
                      *arguments, '-f', 'Dockerfile.builder',
