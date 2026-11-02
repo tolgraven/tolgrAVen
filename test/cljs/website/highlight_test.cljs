@@ -12,6 +12,8 @@
             [website.modules.markdown.views :as code]
             [website.modules.markdown.interface :as markdown]
             [website.modules.blog.presentation :as blog]
+            [website.components.ui.diagnostics :as diagnostics]
+            [website.components.ui.notifications :as notifications]
             [website.component.restore :as restore]
             [website.test-support :as support]
             [website.render-context :as context]))
@@ -123,14 +125,58 @@
         (is (= "42" (.-textContent container)))
         (is (.querySelector container ".language-text"))))))
 
+(def cookie-message
+  {:what "This website may use cookies"
+   :why "To track whether you've agreed to the use of cookies"
+   :how {:by-closing-or-pressing-ok "You agree to not only cookies"
+         :but "also milk"}})
+
+(def cookie-notice
+  {:id :cookie-notice :level :info :title "Cookie notice" :message cookie-message
+   :actions [[:cookie/accept-notice true]]
+   :buttons [{:id :accept :text "OK" :action [:cookie/accept-notice true]}]})
+
 (deftest cookie-notice-data-retains-clojure-tokens
   (binding [context/*server?* true
             context/*modules* {:highlight highlight/spec}]
-    (let [source "{:what \"This website may use cookies\"\n :why \"To track whether you've agreed to the use of cookies\"\n :how {:by-closing-or-pressing-ok \"You agree to not only cookies\"\n       :but \"also milk\"}}"
-          html (r/render-to-string [code-block/<code-block> source {:language "clojure"}])]
-      (is (string/includes? html "language-clojure"))
-      (is (string/includes? html "color:#b4b88d"))
-      (is (string/includes? html ":what")))))
+    (let [html (r/render-to-string [notifications/<hud-message> cookie-notice])
+          container (.createElement js/document "div")]
+      (set! (.-innerHTML container) html)
+      (is (.querySelector container ".hud-message pre .language-clojure span[style*=color]"))
+      (is (= (diagnostics/format-log-message cookie-message)
+             (some-> container (.querySelector ".hud-message pre") .-textContent)))
+      (is (= "OK" (some-> container (.querySelector ".hud-message-button") .-textContent)))
+      (is (nil? (.querySelector container ".code-copy, .code-wrap")))
+      (is (string/includes? html "color:#b4b88d")))))
+
+(deftest mounted-cookie-notice-highlights-without-changing-accept-actions
+  (async done
+    (let [container (.createElement js/document "div")
+          before @restore/*context
+          dispatch (r/dispatch-function)
+          *events (atom [])
+          *root (atom nil)]
+      (reset! restore/*context {:hydrate? false})
+      (-> (go-promise
+            (reset! *root (await! (support/create-root! container)))
+            (await! (support/render! @*root [notifications/<hud-message> cookie-notice]))
+            (await! (support/wait-for! #(.querySelector container "pre .language-clojure span[style*=color]")))
+            (is (= (diagnostics/format-log-message cookie-message)
+                   (some-> container (.querySelector "pre code.code-highlight") .-textContent)))
+            (r/set-dispatch-function! #(swap! *events conj %))
+            (.click (.querySelector container ".hud-message-button"))
+            (is (= [[:cookie/accept-notice true]] @*events)
+                "The accept button stops propagation instead of accepting twice")
+            (reset! *events [])
+            (.click (.querySelector container "pre code"))
+            (is (= [[:cookie/accept-notice true]] @*events)
+                "Highlighted code preserves the notice's existing click action"))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @*root (support/unmount! @*root))
+                      (r/set-dispatch-function! dispatch)
+                      (reset! restore/*context before)
+                      (done)))))))
 
 (deftest explicit-nil-options-preserve-the-neutral-markdown-api
   (binding [context/*server?* true]

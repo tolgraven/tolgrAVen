@@ -399,6 +399,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Copy the source, excluding line numbers/buttons. Markdown passes `:code-options` through
   the shared component contract; line numbers are opt-in and rendered by SSR too.
   Bruvbox palette/token ownership lives in `modules/highlight/theme.cljs`.
+- HUD and log diagnostic values use the shared deferred formatter inside their
+  existing pre layout, with Clojure detection/fallback for `pr-str` source. Keep
+  notice acceptance/close actions and plain-text acquisition fallback intact.
 - Pretty data and expanded error details live in `:data-inspector`; keep pprint
   out of initial browser code. Rendered Markdown uses ReactMarkdown in its module; keep
   unused Markdown-clj imports out of the shell. Shared numeric display uses native fixed decimal

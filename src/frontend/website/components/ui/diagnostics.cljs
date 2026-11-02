@@ -3,25 +3,27 @@
             [website.react :as r]
             [website.util :as util :refer [at]]
             [website.macros :as m :include-macros true]
-            [website.components.ui.controls :as controls]))
+            [website.components.ui.controls :as controls]
+            [website.modules.highlight.code-block :as code]))
 
 
-(defn format-log-message
+(defn format-log-message [message]
+  (pr-str message))
+
+(m/defc <message>
+  "Preserve diagnostic source/layout while the shared formatter acquires tokens."
   [message]
-  ; (with-out-str (pprint/pprint message)) ;XXX temp.
-  (str (pr-str message))
-  ; (pprint/write message :stream nil) ;XXX temp.
-  ; (cond
-  ;   (string? message) message
-  ;   (object? message) (-> message js->clj :message str))
-  )
+  [:pre
+   [code/<formatter> (format-log-message message)
+    {:inline? true :default-language "clojure" :auto-languages ["clojure"]}
+    (constantly nil)]])
 
 (m/defc ^:private <log-line> [{:keys [time level title message]}]
   [:tr.log-messages
    [:td.log-time (util/unix->ts time)]
    [:td.log-level {:class (name level)} (name level)]
    [:td.log-title title]
-   [:td.log-message [:pre (format-log-message message)]]])
+   [:td.log-message [<message> message]]])
 
 (m/defc <log>
   "Show an expandable log/feed, following new messages after the first render."
