@@ -162,7 +162,7 @@
             (await! (support/render! @*root [notifications/<hud-message> cookie-notice]))
             (await! (support/wait-for! #(.querySelector container "pre .language-clojure span[style*=color]")))
             (is (= (diagnostics/format-log-message cookie-message)
-                   (some-> container (.querySelector "pre code.code-highlight") .-textContent)))
+                   (some-> container (.querySelector "pre .language-clojure") .-textContent)))
             (r/set-dispatch-function! #(swap! *events conj %))
             (.click (.querySelector container ".hud-message-button"))
             (is (= [[:cookie/accept-notice true]] @*events)
