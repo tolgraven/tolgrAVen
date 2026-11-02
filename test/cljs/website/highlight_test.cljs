@@ -55,7 +55,16 @@
                  [code-block/<code-block> "(defn hello [] :world)" :language "clojure"])]
       (is (.includes html "<code"))
       (is (.includes html "<span"))
+      (is (not (.includes html "code-highlight-reveal"))
+          "Immediately highlighted SSR never starts a delayed reveal")
       (is (.includes html "defn")))))
+
+(deftest editable-code-never-reveals-over-the-caret
+  (binding [context/*server?* true]
+    (let [html (r/render-to-string
+                 [highlight-view/<formatted-code> "(inc 1)" :language "clojure" :editable? true :reveal? true])]
+      (is (not (string/includes? html "code-highlight-reveal")))
+      (is (string/includes? html "language-clojure")))))
 
 (deftest language-selection-preserves-tags-and-keeps-fallback-local
   (doseq [tag ["clj" "cljs" "cljc" "clojurescript"]]

@@ -67,16 +67,24 @@
       (string/replace #"\r\n?" "\n")
       (string/replace #"[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u00ad\u061c\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]" "")))
 
-(defc <formatted> [component args committed!]
+(defc ^:private <pending> [fallback *waited?]
+  ;; Only a committed fallback counts as waiting. Speculative renders and
+  ;; already-highlighted SSR/hydration must not replay a text entrance.
+  (r/use-layout-effect (fn [] (reset! *waited? true) nil) [])
+  fallback)
+
+(defc <formatted> [component args committed! reveal? :- :boolean]
   (r/use-layout-effect (fn [] (committed!)) [])
-  (into [component] args))
+  (into [component] (concat args [:reveal? reveal?])))
 
 (defn- make-formatter [committed!]
   ;; Construction is pure. The owned effect releases this gate; only then can
   ;; React.lazy acquire code through the existing parallel CSS/JS loader.
   (let [*release (atom nil)
+        *waited? (atom false)
         gate (js/Promise. (fn [resolve _] (reset! *release resolve)))]
     {:release! #(@*release nil)
+     :waited? *waited?
      :view (r/lazy
              (fn []
                (-> gate
@@ -86,7 +94,7 @@
                                   component (if (var? component) @component component)]
                               #js {:default (r/reactify-component
                                               (fn [{:keys [args]}]
-                                                [<formatted> component args committed!]))}))))))}))
+                                                [<formatted> component args committed! @*waited?]))}))))))}))
 
 (defc <formatter> [code options on-ready!]
   (let [inherited-hydration? (r/use-context restore/hydrating-context)
@@ -113,7 +121,7 @@
         content (hydration/use-boundary
                   defer?
                   #(r/as-element
-                     [r/suspense {:fallback (r/as-element fallback)}
+                     [r/suspense {:fallback (r/as-element [<pending> fallback (:waited? formatter)])}
                       (if context/*server?*
                         (view/form :highlight :formatted-code args fallback)
                         ;; Keep Clojure arguments opaque at this React boundary.

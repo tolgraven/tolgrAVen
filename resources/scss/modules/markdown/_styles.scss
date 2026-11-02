@@ -144,6 +144,38 @@ div > pre[class*="language-"] {
   margin: 0.125em 0.5em;
 }
 
+// Animate the existing font text surface, leaving the pre, controls and source
+// geometry steady. No extra text copy or permanently promoted layer is needed.
+.code-highlight-reveal > .font-text-stack {
+  transform-origin: 35% 50%;
+  animation: code-highlight-sharpen 720ms cubic-bezier(0.16, 0.72, 0.2, 1) backwards;
+}
+
+@keyframes code-highlight-sharpen {
+  0% {
+    opacity: 0.08;
+    transform: scale(1.035);
+    filter: blur(0.42em);
+    text-shadow: 0 0 1.2em currentColor, 0 0 0.55em currentColor;
+  }
+  38% {
+    opacity: 0.62;
+    transform: scale(1.012);
+    filter: blur(0.13em);
+    text-shadow: 0 0 0.48em currentColor, 0 0 0.18em currentColor;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+    text-shadow: 0 0 0 transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .code-highlight-reveal > .font-text-stack { animation: none; }
+}
+
 .code-block-controls {
   position: absolute;
   z-index: 2;
