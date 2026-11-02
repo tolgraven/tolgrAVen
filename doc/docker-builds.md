@@ -367,7 +367,11 @@ for transient peaks; swap does not grow automatically.
 
 The Codox and Shadow cache mounts retain the three most recently used finished
 output snapshots, keyed by source, site capabilities, dependencies, command and
-compiler image/JVM options. Before reuse, every saved output is checked against
+compiler image/JVM options. Dependency identities include the resolved profile
+classpaths and actual JAR bytes from the Maven mount, so replacing a cached JAR
+invalidates compiler outputs without rebuilding either prefab. Extra source
+directories outside the standard roots contribute their contents too. Before
+reuse, every saved output is checked against
 its SHA-256 manifest. Missing/corrupt outputs rebuild; failed compilers never
 publish a snapshot. Shadow restores browser chunks, document scripts, the return
 worker and the complete Node SSR output together. Analysis caches remain available

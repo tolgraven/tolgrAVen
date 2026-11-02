@@ -406,5 +406,6 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   of the same edited source.
   Finished-output cache checks also cover CSS-only reuse, interleaved site
   configurations, corrupt/missing SSR output, compiler failure, toolchain changes,
+  replaced Maven JARs and extra source directories across profile classpaths,
   bounded retention and documentation restoration. Real builds must still prove
   that a warm hit ships complete browser, document, return-worker and SSR output.

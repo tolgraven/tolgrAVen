@@ -167,6 +167,40 @@ test('documentation cache restores published docs and rejects a successful comma
   } finally { await fs.rm(root, {recursive: true, force: true}); }
 });
 
+test('finished outputs follow actual Maven jars and extra source directories across profile classpaths', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'release-classpaths-'));
+  try {
+    for (const directory of ['src', 'dependencies', 'extra-source']) {
+      await fs.mkdir(path.join(root, directory));
+    }
+    for (const file of ['project.clj', 'package.json', 'package-lock.json', 'shadow-cljs.edn']) {
+      await fs.writeFile(path.join(root, file), '{}');
+    }
+    const jar = path.join(root, 'dependencies/codox.jar');
+    const source = path.join(root, 'extra-source/macro.clj');
+    const classpath = path.join(root, 'classpaths');
+    await fs.writeFile(jar, 'release-v1');
+    await fs.writeFile(source, 'macro-v1');
+    await fs.writeFile(classpath, [path.join(root, 'src'),
+      [jar, path.dirname(source)].join(path.delimiter)].join('\n'));
+    const command = `const f=require('fs');f.appendFileSync('runs','x');
+      f.mkdirSync('resources/docs/codox',{recursive:true});
+      f.writeFileSync('resources/docs/codox/index.html',f.readFileSync(${JSON.stringify(jar)}));`;
+    const run = () => spawnSync(process.execPath, [wrapper, 'docs', path.join(root, 'cache'),
+      process.execPath, '-e', command], {cwd: root, encoding: 'utf8',
+      env: {...process.env, COMPILER_CLASSPATH_FILE: classpath}});
+    assert.equal(run().status, 0);
+    assert.match(run().stdout, /compiler skipped/);
+    await fs.writeFile(jar, 'release-v2');
+    assert.equal(run().status, 0);
+    assert.equal(await fs.readFile(path.join(root, 'resources/docs/codox/index.html'), 'utf8'), 'release-v2');
+    await fs.writeFile(source, 'macro-v2');
+    assert.equal(run().status, 0);
+    assert.match(run().stdout, /compiler skipped/);
+    assert.equal(await fs.readFile(path.join(root, 'runs'), 'utf8'), 'xxx');
+  } finally { await fs.rm(root, {recursive: true, force: true}); }
+});
+
 test('focused analysis commands run without requiring a complete application release', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'analysis-cache-'));
   try {

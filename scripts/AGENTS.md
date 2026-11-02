@@ -199,6 +199,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   identity and publishes only successful output. Never share writable compiler
   output with live watches or let failed/removed sources leave reusable classes.
   Codox and Shadow modes retain three digest-verified finished-output snapshots;
+  include actual resolved profile classpaths/JAR bytes from the Maven mount and
+  any extra source directories in their dependency identities.
   restore every owned output together, invalidate on site/toolchain/source changes,
   and never publish partial/failed output. Generated docs/JS/CSS are outputs, not
   compiler inputs. Sass/CMS CSS byte changes remain owned by style/asset builds;

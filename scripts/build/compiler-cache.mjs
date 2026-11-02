@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 
 const [mode, cache, ...arguments_] = process.argv.slice(2);
-const classpathFile = mode === 'aot' ? arguments_.shift() : null;
+const classpathFile = mode === 'aot' ? arguments_.shift() : process.env.COMPILER_CLASSPATH_FILE;
 const command = arguments_;
 const sourceRoots = ['src', 'env/prod', 'resources', 'scripts/build'];
 const classes = 'target/uberjar+provided/classes';
@@ -62,7 +62,7 @@ await fs.rename(manifestFile + '.new', manifestFile);
 const classpath = classpathFile ? (await fs.readFile(classpathFile, 'utf8')).trim() : '';
 const dependencies = {};
 let reusable = true;
-for (const file of classpath.split(path.delimiter).filter(Boolean)) {
+for (const file of new Set(classpath.split(/\r?\n/).flatMap(line => line.split(path.delimiter)).filter(Boolean))) {
   if (file.endsWith('.jar')) {
     dependencies[file] = crypto.createHash('sha256').update(await fs.readFile(file)).digest('hex');
   } else {
@@ -72,7 +72,12 @@ for (const file of classpath.split(path.delimiter).filter(Boolean)) {
     const absolute = path.resolve(file);
     const captured = sourceRoots.some(root => absolute === path.resolve(root)
       || absolute.startsWith(path.resolve(root) + path.sep));
-    if (stat.isDirectory() && absolute !== path.resolve(classes) && !captured) reusable = false;
+    if (stat.isDirectory() && absolute !== path.resolve(classes) && !captured) {
+      if (mode === 'aot') reusable = false;
+      else for (const input of await files(file)) {
+        dependencies[input] = crypto.createHash('sha256').update(await fs.readFile(input)).digest('hex');
+      }
+    }
   }
 }
 if (!reusable) console.log('AOT cache: classpath directory outside captured inputs; compiling fresh.');
