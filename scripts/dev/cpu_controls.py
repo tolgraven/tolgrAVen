@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded macOS CPU ownership adapter and isolated, capped prefab build launcher."""
+"""Bounded native macOS controls and isolated, capped Docker builds on macOS/Linux."""
 import argparse
 from contextlib import contextmanager
 import ctypes
@@ -20,7 +20,13 @@ import shlex
 import time
 import uuid
 
-STATE = Path.home() / 'Library/Application Support/tolgraven/cpu-controls'
+def state_directory():
+    if sys.platform == 'darwin':
+        return Path.home() / 'Library/Application Support/tolgraven/cpu-controls'
+    return Path(os.environ.get('XDG_STATE_HOME', Path.home() / '.local/state')) / 'tolgraven/cpu-controls'
+
+
+STATE = state_directory()
 BUILD_SLOTS = 2
 BUILD_CPUS = 1.5  # Two kernel-capped workers share a maximum of three Docker cores.
 JVM_POOLS = '-XX:ActiveProcessorCount=1 -XX:CICompilerCount=2 -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1'
@@ -132,8 +138,43 @@ def ancestry(pid, processes):
     return chain
 
 
+class LinuxProcesses:
+    """Kernel birth ticks and executable identity for Docker owners/guardians."""
+    def identity(self, pid):
+        try:
+            root = Path('/proc') / str(pid)
+            # comm may contain spaces and closing parentheses; stat fields
+            # after its final parenthesis start at field 3 (process state).
+            fields = (root / 'stat').read_text().rsplit(')', 1)[1].split()
+            uid = root.stat().st_uid
+            if uid != os.getuid() or fields[0] == 'Z':
+                return None
+            return {'pid': int(pid), 'start': [int(fields[19]), 0], 'uid': uid,
+                    'ppid': int(fields[1]), 'pgid': int(fields[2]),
+                    'path': os.readlink(root / 'exe')}
+        except (OSError, ValueError, IndexError):
+            return None
+
+    def same(self, record):
+        now = self.identity(record['pid'])
+        return bool(now and all(now[k] == record[k] for k in ('pid', 'start', 'uid', 'path')))
+
+    def argv(self, pid):
+        return [os.fsdecode(arg) for arg in (Path('/proc') / str(pid) / 'cmdline').read_bytes().split(b'\0') if arg]
+
+    def cwd(self, pid):
+        try:
+            return Path(os.readlink(Path('/proc') / str(pid) / 'cwd'))
+        except OSError:
+            return None
+
+
+def docker_processes():
+    return LinuxProcesses() if sys.platform == 'linux' else MacProcesses()
+
+
 def cwd(pid):
-    return MacProcesses().cwd(pid)
+    return docker_processes().cwd(pid)
 
 
 def within(path, roots):
@@ -466,7 +507,7 @@ def docker_endpoint():
         context = os.environ.get('DOCKER_CONTEXT') or subprocess.check_output(['docker', 'context', 'show'], text=True).strip()
         endpoint = subprocess.check_output(['docker', 'context', 'inspect', context, '--format', '{{.Endpoints.docker.Host}}'], text=True).strip()
     if not endpoint.startswith('unix://'):
-        raise RuntimeError('CPU builds require an explicit local Unix Docker endpoint on this Mac.')
+        raise RuntimeError('CPU builds require an explicit local Unix Docker endpoint.')
     return endpoint
 
 
@@ -524,7 +565,7 @@ def guardian_protocol(argv, record):
 
 
 def recover_build(args):
-    proc = MacProcesses()
+    proc = docker_processes()
     records = [(path, record) for path, record in build_records()
                if not args.name or record.get('name') == args.name]
     if len(records) != 1:
@@ -564,7 +605,7 @@ def repair_legacy_reservation(proc, owner, name, token, endpoint):
 
 
 def docker_watchdog(owner, name, token, endpoint=None, ready_fd=None):
-    proc = MacProcesses()
+    proc = docker_processes()
     endpoint = endpoint or docker_endpoint()
     if ready_fd is not None:
         ready = socket.socket(fileno=ready_fd)
@@ -600,7 +641,7 @@ def start_docker_guardian(owner, name, token, endpoint, lock, extra_locks=()):
     child.close()
     try:
         identity = packet_receive(parent)['guardian']
-        if not identity or identity['pid'] != guard.pid or identity['path'] != owner['path'] or not MacProcesses().same(identity):
+        if not identity or identity['pid'] != guard.pid or identity['path'] != owner['path'] or not docker_processes().same(identity):
             raise RuntimeError('Docker guardian did not acknowledge its stable interpreter identity.')
         return guard, identity
     finally:
@@ -939,7 +980,7 @@ def buildkit_run(args, command, lock):
     builder = 'tolgraven-cpu-' + hashlib.sha256(policy.encode()).hexdigest()[:12]
     name = 'buildx_buildkit_' + builder + '0'
     prefix = ['docker', '--host', endpoint]
-    owner = MacProcesses().identity(os.getpid())
+    owner = docker_processes().identity(os.getpid())
     record = {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint,
               'token': builder}
     save_json(reservation_path(name), record)
@@ -987,6 +1028,17 @@ def buildkit_run(args, command, lock):
         print('BuildKit budget:', args.cpus, 'cores /', args.memory, 'builder', builder, flush=True)
         environment = {'DOCKER_CONTEXT': None, 'DOCKER_HOST': endpoint,
                        'BUILDX_BUILDER': builder, 'DOCKER_BUILDKIT': '1'}
+        if sys.platform == 'linux':
+            # Build work runs in the already capped, guarded daemon; this is
+            # only its Docker CLI client, with no native macOS monitor to own.
+            client_environment = dict(os.environ)
+            for key, value in environment.items():
+                if value is None:
+                    client_environment.pop(key, None)
+                else:
+                    client_environment[key] = value
+            return subprocess.call(['nice', '-n', '10', *command], cwd=args.checkout,
+                                   env=client_environment)
         return host_run(args, command, lock, environment)
     finally:
         confirmed = False
@@ -1010,13 +1062,19 @@ def parse_memory(value):
     return int(match[1]) * {'': 1, 'b': 1, 'k': 1024, 'm': 1024 ** 2, 'g': 1024 ** 3}[match[2]]
 
 
-def docker_bootstrap(node_deps):
-    if node_deps == 'skip':
-        return 'exec "$@"'
-    return ('cpu_deps_started=$(date +%s); if cmp -s package-lock.json /opt/prefab-package-lock.json; then '
-            'ln -s /usr/src/app/node_modules node_modules; else npm ci --no-audit --no-fund; fi; '
-            'printf "Dependency setup: %ss\\n" "$(( $(date +%s) - cpu_deps_started ))"; '
-            'exec "$@"')
+def docker_bootstrap(node_deps, output_owner=None):
+    setup = '' if node_deps == 'skip' else (
+        'cpu_deps_started=$(date +%s); if cmp -s package-lock.json /opt/prefab-package-lock.json; then '
+        'ln -s /usr/src/app/node_modules node_modules; else npm ci --no-audit --no-fund; fi; '
+        'printf "Dependency setup: %ss\\n" "$(( $(date +%s) - cpu_deps_started ))"; ')
+    if output_owner is None:
+        return setup + 'exec "$@"'
+    uid, gid = map(int, output_owner)
+    # Linux Docker writes as root in the snapshot. Return its files (including
+    # this invocation's locked compiler cache) to the caller before releasing it.
+    # chown does not follow dependency symlinks out of the isolated checkout.
+    return (setup + '"$@"; cpu_result=$?; '
+            f'chown -R {uid}:{gid} /workspace || exit $?; exit "$cpu_result"')
 
 
 def run(args):
@@ -1050,17 +1108,17 @@ def run(args):
 
 
 def docker_run(args, command, lock, output, endpoint, cache):
-    maven_repository = Path.home() / '.m2/repository'
+    maven_repository = Path(args.maven_repository).expanduser().resolve()
     maven_repository.mkdir(parents=True, exist_ok=True)
     name = 'tolgraven-cpu-' + output.name
     token = uuid.uuid4().hex
-    owner = MacProcesses().identity(os.getpid())
+    owner = docker_processes().identity(os.getpid())
     save_json(reservation_path(name), {'owner': owner, 'cpus': args.cpus, 'name': name, 'endpoint': endpoint, 'token': token})
     guardian, guardian_identity = start_docker_guardian(owner, name, token, endpoint, lock, (cache[1],) if cache else ())
     save_json(reservation_path(name), {'owner': owner, 'guardian': guardian_identity, 'cpus': args.cpus, 'name': name,
                                        'endpoint': endpoint, 'token': token, 'checkout': str(Path(args.checkout).resolve()),
                                        'output': str(output)})
-    bootstrap = docker_bootstrap(args.node_deps)
+    bootstrap = docker_bootstrap(args.node_deps, (os.getuid(), os.getgid()) if sys.platform == 'linux' else None)
     image = cache[2] if cache else args.image
     cache_mount = ['--mount', f'type=bind,source={cache[0]},target=/workspace/.shadow-cljs/builds'] if cache else []
     cmd = ['docker', '--host', endpoint, 'run', '--rm', '--init', '--name', name, '--cpus', str(args.cpus),
@@ -1155,6 +1213,8 @@ def main():
     runner.add_argument('--cpus', type=positive, default=BUILD_CPUS)
     runner.add_argument('--memory', default='4g')
     runner.add_argument('--image', default='registry.bux.tolgraven.se/tolgraven/builder:java21-node22-v1')
+    runner.add_argument('--maven-repository', default=str(Path.home() / '.m2/repository'),
+                        help='Host Maven repository to share with isolated builds (no credentials).')
     runner.add_argument('--node-deps', choices=['auto', 'skip'], default='auto',
                         help='Use skip only for non-Node tasks in custom images, such as media codecs.')
     runner.add_argument('--shadow-cache', choices=['reuse', 'off', 'refresh'], default='reuse',
