@@ -17,6 +17,47 @@
             [website.components.ui.action :as action]
             [website.test-support :as support]))
 
+(deftest delayed-highlighting-reveals-once-after-a-real-fallback
+  (async done
+    (let [old-acquire loader/acquire-code!
+          before @restore/*context
+          *release (atom nil)
+          pending (js/Promise. (fn [resolve _] (reset! *release resolve)))
+          element (.createElement js/document "div")
+          *root (atom nil)]
+      (reset! restore/*context {:hydrate? false})
+      (set! loader/acquire-code! (fn [_] pending))
+      (-> (go-promise
+            (reset! *root (await! (support/create-root! element)))
+            (await! (support/render! @*root [code/<code-block> "(inc 1)" :language "clojure"]))
+            (await! (support/wait-for! #(.querySelector element "pre code")))
+            (is (nil? (.querySelector element ".code-highlight-reveal"))
+                "Source remains readable while acquisition is pending")
+            (@*release highlight/spec)
+            (await! (support/wait-for! #(.querySelector element ".code-highlight-reveal > .font-text-stack")))
+            (let [pre (.querySelector element "pre")
+                  surface (.querySelector element ".code-highlight-reveal > .font-text-stack")]
+              (is (.querySelector pre ".language-clojure span[style*=color]"))
+              (.click (.querySelector element ".code-wrap"))
+              (await! (support/wait-for! #(.querySelector element ".code-block-wrapped")))
+              (is (identical? surface (.querySelector element ".code-highlight-reveal > .font-text-stack")))
+              (await! (support/render! @*root [code/<code-block> "(inc 2)" :language "clojure"]))
+              (is (identical? pre (.querySelector element "pre")))
+              (is (identical? surface (.querySelector element ".code-highlight-reveal > .font-text-stack")))
+              (is (= "(inc 2)" (.-textContent (.querySelector element ".language-clojure"))))
+              (.dispatchEvent surface (js/AnimationEvent. "animationend"
+                                        #js {:bubbles true :animationName "code-highlight-sharpen"}))
+              (await! (support/wait-for! #(nil? (.querySelector element ".code-highlight-reveal"))))
+              (await! (support/render! @*root [code/<code-block> "(inc 3)" :language "clojure"]))
+              (is (nil? (.querySelector element ".code-highlight-reveal"))
+                  "Settled code updates do not restart the entrance")))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @*root (support/unmount! @*root))
+                      (set! loader/acquire-code! old-acquire)
+                      (reset! restore/*context before)
+                      (done)))))))
+
 (deftest spa-code-acquires-immediately-and-controls-preserve-content
   (async done
     (let [restore! (r/make-restore-fn)
@@ -474,3 +515,26 @@
                       (reset! restore/*context before)
                       (restore!)
                       (done)))))))
+
+(defn mount-reveal-fixture!
+  "Controlled real formatter for native motion/layout inspection, without provider I/O."
+  [element]
+  (let [old-acquire loader/acquire-code!
+        before @restore/*context
+        *release (atom nil)
+        *root (atom nil)
+        pending (js/Promise. (fn [resolve _] (reset! *release resolve)))
+        form (fn [source] [code/<code-block> source :language "clojure"])]
+    (reset! restore/*context {:hydrate? false})
+    (set! loader/acquire-code! (fn [_] pending))
+    (-> (support/create-root! element)
+        (.then (fn [root]
+                 (reset! *root root)
+                 (support/render! root (form "(defn greet [name]\n  (str \"Hello, \" name))"))))
+        (.then (fn [_]
+                 #js {:release (fn [] (@*release highlight/spec))
+                      :update (fn [text] (support/render! @*root (form text)))
+                      :dispose (fn []
+                                 (when @*root (support/unmount! @*root))
+                                 (set! loader/acquire-code! old-acquire)
+                                 (reset! restore/*context before))})))))

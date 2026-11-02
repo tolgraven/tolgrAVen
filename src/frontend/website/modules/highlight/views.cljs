@@ -3,6 +3,7 @@
     [clojure.string :as string]
     [website.component.registry]
     [website.component.font :as font]
+    [website.component.motion :as motion]
     [website.macros :refer-macros [defc]]
     [website.react :as r]
 
@@ -140,10 +141,11 @@
 (defc <formatted-code>
   "Full language support and Bruvbox are acquired only by code consumers."
   [code & {:keys [language default-language auto-languages style basic? inline? inline-language
-                 line-numbers? starting-line-number line-props line-prefix editable?]
+                 line-numbers? starting-line-number line-props line-prefix editable? reveal?]
            :or {basic? true
                 style theme/bruvbox}}]
-  (let [language' (or language (when inline? inline-language))
+  (let [[revealing? set-revealing!] (r/use-state #(and reveal? (not editable?) (not (motion/reduced-motion?))))
+        language' (or language (when inline? inline-language))
         numbered? (and (not inline?) (if (nil? line-numbers?) (not basic?) line-numbers?))
         ;; Retain the editable caret line without modifying authored source.
         display-code (if (and editable? (.endsWith code "\n")) (str code "\u200b") code)
@@ -154,13 +156,19 @@
         contents (rendered-code tree stylesheet numbered? (or starting-line-number 1) line-props line-prefix editable?)
         code-element (into [(if inline? :span :code)
                             {:class (str "language-" selected-language)
-                             :style {:whiteSpace "pre"}}] contents)
-        attrs {:style (cond-> (get stylesheet "hljs")
+                             :style {:whiteSpace "pre" :color "inherit"}}] contents)
+        attrs {:className (when revealing? "code-highlight-reveal")
+               :on-animation-end
+               (fn [event]
+                 (when (and (= "code-highlight-sharpen" (.-animationName event))
+                            (identical? (.-parentElement (.-target event)) (.-currentTarget event)))
+                   (set-revealing! false)))
+               :style (cond-> (get stylesheet "hljs")
                         inline? (merge {"display" "inline"
                                         "padding" 0
                                         "background" "transparent"}))
                :children (r/as-element code-element)}]
     (cond
-      inline? [<font-inline> (assoc attrs :className "code-highlight")]
+      inline? [<font-inline> (update attrs :className #(str "code-highlight" (when % (str " " %))))]
       editable? [:pre (dissoc attrs :children) code-element]
       :else [<font-pre> attrs])))

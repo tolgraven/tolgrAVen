@@ -370,6 +370,8 @@
               (doseq [{:keys [release!]} @*after-page] (release!))
               ((:release! acquisition) :highlight)
               (await! (support/wait-for! #(some #{"(inc 1)"} @*formatter-commits)))
+              (is (nil? (.querySelector element "[data-owned-code='retained'] .code-highlight-reveal"))
+                  "Retained highlighted SSR stays settled when its formatter hydrates")
               (is (not (some #{"(dec 2)"} @*formatter-commits)))
               (is (not (some #{second-id} @*commits)))
               (reset! *value "After formatter commit")
