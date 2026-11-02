@@ -360,7 +360,9 @@ The Dockerfile separately limits the Leiningen/compiler JVM heap to 1536 MiB.
 Avoid overlapping builds on the same small host; both production and staging
 can otherwise build a preview of the same pull request.
 
-On bux, `/swapfile` supplies 4 GiB of swap and is persisted in `/etc/fstab`.
+On bux, `/swapfile` and `/swapfile-extra` supply approximately 10 GiB of swap
+(4 GiB plus 6 GiB), both persisted in `/etc/fstab`. Linux can allocate swap
+within that configured capacity; swap files do not grow automatically.
 Swap absorbs brief peaks; it does not replace JVM and container memory bounds.
 
 ### One production and one staging runtime

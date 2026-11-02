@@ -113,17 +113,17 @@ RUN --mount=type=cache,id=tolgraven-aot-release-v1,target=/compiler-cache,sharin
 
 FROM backend AS docs
 ARG BUILD_DOCS_JAVA_OPTIONS="-Xms64m -Xmx512m -XX:ReservedCodeCacheSize=96m"
-RUN JAVA_TOOL_OPTIONS="${BUILD_DOCS_JAVA_OPTIONS}" \
-    lein with-profile uberjar,provided update-in : assoc :target-path '"target/uberjar"' :compile-path '"target/uberjar+provided/classes"' :prep-tasks '^:replace []' -- docs > /tmp/codox.log 2>&1; \
-    result=$?; cat /tmp/codox.log; \
-    test "$result" -eq 0 && ! grep -q 'Could not generate' /tmp/codox.log
+RUN --mount=type=cache,id=tolgraven-docs-release-v1,target=/compiler-cache,sharing=locked \
+    COMPILER_IMAGE="${BUILDER_IMAGE}" JAVA_TOOL_OPTIONS="${BUILD_DOCS_JAVA_OPTIONS}" \
+    node scripts/build/compiler-cache.mjs docs /compiler-cache \
+    sh -c 'lein with-profile uberjar,provided update-in : assoc :target-path '\''"target/uberjar"'\'' :compile-path '\''"target/uberjar+provided/classes"'\'' :prep-tasks '\''^:replace []'\'' -- docs > /tmp/codox.log 2>&1; result=$?; cat /tmp/codox.log; test "$result" -eq 0 && ! grep -q "Could not generate" /tmp/codox.log'
 
 FROM docs AS frontend
 RUN mkdir -p resources/public/css/website && npm run build
 ARG BUILD_JAVA_OPTIONS="-Xms64m -Xmx1024m -XX:ReservedCodeCacheSize=128m -XX:ActiveProcessorCount=2"
 RUN --mount=type=cache,id=tolgraven-shadow-release-v2,target=/compiler-cache,sharing=locked \
     echo "Building optimized releases with persistent compiler analysis" \
- && JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \
+ && COMPILER_IMAGE="${BUILDER_IMAGE}" JAVA_TOOL_OPTIONS="${BUILD_JAVA_OPTIONS}" \
     SHADOW_CLJS='{:cache-root "/compiler-cache/shadow"}' \
     node scripts/build/compiler-cache.mjs shadow /compiler-cache \
     lein with-profile prod,provided run -m shadow.cljs.devtools.cli release app ssr return-worker document

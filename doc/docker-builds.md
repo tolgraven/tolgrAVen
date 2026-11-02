@@ -368,6 +368,22 @@ Only one compiler JVM runs at a time, and Codox inherits the completed AOT class
 This avoids swap exhaustion on an 8 GB host co-located with the database/CMS
 services; merely bounding each of three concurrent heaps was insufficient.
 
+The Codox and Shadow cache mounts retain the three most recently used finished
+output snapshots, keyed by source, site capabilities, dependencies, command and
+compiler image/JVM options. Before reuse, every saved output is checked against
+its SHA-256 manifest. Missing/corrupt outputs rebuild; failed compilers never
+publish a snapshot. Shadow restores browser chunks, document scripts, the return
+worker and the complete Node SSR output together. Analysis caches remain available
+for actual code edits.
+
+Generated documentation/JavaScript/CSS are excluded from compiler inputs. Sass
+files and CMS CSS overrides contribute their paths to the compiler identity,
+while their bytes belong to the CSS/prepared-asset steps. Consequently CSS-only
+changes reuse AOT, documentation and finished JavaScript, then rebuild styles,
+prepared assets and the final jar. Adding/removing a stylesheet still invalidates
+module discovery. These caches never replace site configuration resolution or
+skip the final asset/package steps.
+
 Coolify provisioning sets **Disable build cache** off for both applications. Leaving
 it on adds `--no-cache` to every ordinary deployment and destroys Maven/compiler
 mount reuse. A same-source redeploy can reuse its existing CMS feature/CSS build

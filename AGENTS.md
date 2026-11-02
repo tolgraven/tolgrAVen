@@ -369,6 +369,9 @@ maintain a duplicate handwritten variable catalog.
   caches through `scripts/build/compiler-cache.mjs`; fresh checkouts must retain
   unchanged macro timestamps. Changed AOT inputs rebuild the full graph. Keep
   cache invalidation and cold-build correctness; see `doc/docker-builds.md`.
+  Finished Codox and all four Shadow releases also have bounded, digest-verified
+  output caches. Stylesheet byte edits rebuild CSS/assets without recompiling
+  unchanged code; stylesheet path changes still invalidate compiler inventories.
 - The dependency prefab includes compiler tools, `node_modules`, Maven artifacts and
   a clean runtime root with Java, Node, Babashka and upload codecs. Ordinary Docker
   builds use the exact multi-platform dependency hash pinned in Dockerfile; registry hosts need one
