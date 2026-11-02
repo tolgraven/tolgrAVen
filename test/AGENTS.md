@@ -241,6 +241,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
   ordering. Browser avatar fixtures test modern-source failure and direct PNG retry;
   they do not establish live Storage behavior. Hook tests use disposable Git indices:
   `bb test:scripts`.
+- Video pipeline checks use a disposable source/catalog and real FFmpeg/ffprobe
+  to verify AV1/VP9/H.264 dimensions, unchanged/missing/stale/forced renditions and
+  atomic preservation after encoder failure. Deploys ship prepared video files.
 
 - Icon SVG checks cover literal/reader-safe declarations, shared/module ownership,
   original glyph geometry/baseline and native font-glyph rules. Every exported outline
