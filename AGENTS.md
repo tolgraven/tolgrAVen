@@ -162,6 +162,8 @@ sessions' tabs and restore any borrowed tab when finished.
   rebuilt for each document.
 - The standalone `:document` CLJS target supplies parser-blocking head return policy
   and body SSR entrance/image readiness before hydration; build it for deployment.
+  Keep the authored `resources/public/js/page-render-worker.js` transport in the
+  Docker context; generated browser JavaScript remains excluded and rebuilt.
 - Local returns and reloads may use a service-worker document pairing rendered HTML with exact EDN state/content; install that state before hydration. The `:return-worker` build is part of the deployment.
 - Read `src/frontend/website/AGENTS.md`, `src/cljc/website/AGENTS.md`, `src/backend/website/AGENTS.md`, and `test/AGENTS.md` when touching those areas.
 - Markdown code, including untagged blocks and inline snippets, shares the deferred
