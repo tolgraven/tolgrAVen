@@ -25,6 +25,15 @@ def pull_request(action='synchronize'):
 
 
 class GateFlow(unittest.TestCase):
+    def test_failed_promotion_discards_only_the_local_manifest_assembly(self):
+        with patch.object(gate, 'command', side_effect=[None, RuntimeError('push failed')]), \
+                patch.object(gate.subprocess, 'run') as cleanup:
+            with self.assertRaisesRegex(RuntimeError, 'push failed'):
+                gate.promote(gate.REGISTRY + ':fixture', None)
+            cleanup.assert_called_once_with(
+                ['docker', 'manifest', 'rm', gate.REGISTRY + ':java21-node22-v2'],
+                capture_output=True, timeout=30)
+
     def test_tracked_symlink_cannot_redirect_the_generated_smoke_recipe(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

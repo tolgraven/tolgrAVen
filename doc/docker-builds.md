@@ -295,7 +295,15 @@ After both runtimes pass, it publishes the multi-platform reference, reports
 the existing native Coolify deployment handler. PRs go to staging; master pushes
 go to production and advance compatibility aliases. It rechecks the GitHub head
 before publication of aliases and dispatch, so obsolete events cannot release an
-old application revision. GitHub branch protection requires `prefab-ready` from
+old application revision. Compatibility aliases are platform indexes (one
+platform for native aliases), published with `docker manifest` so existing Docker
+schema tags can accept OCI-built images in Registry 3 without deleting registry
+data. The client discards each assembled list after publication or failure.
+An isolated Registry 3 regression covers legacy-tag replacement and repeated
+promotion: pull `registry:3`, then run
+`RUN_PREFAB_REGISTRY_TEST=1 python3 test/scripts/prefab_registry_test.py` against
+the local Docker socket. It creates and removes only its own loopback registry.
+GitHub branch protection requires `prefab-ready` from
 this App. GitHub Actions performs source validation only (the preserved legacy
 CapRover job remains explicitly opt-in); it has no registry credentials or
 Coolify relay. Coolify's ordinary Deploy button remains a manual recovery path,

@@ -207,12 +207,22 @@ def prefab(checkout, log):
 
 def promote(image, log):
     # Called only after checking the current master again, after a long build.
-    command(['docker', 'buildx', 'imagetools', 'create', '-t', REGISTRY + ':java21-node22-v2', image], log=log)
-    for arch in ('arm64', 'amd64'):
-        command(['docker', 'buildx', 'imagetools', 'create', '--prefer-index=false',
-                 '-t', REGISTRY + ':java21-node22-v2-' + arch, image + '-' + arch], log=log)
-    command(['docker', 'buildx', 'imagetools', 'create', '--prefer-index=false',
-             '-t', REGISTRY + ':java21-node22-v1', image + '-arm64'], log=log)
+    # Buildx's OCI-only HEAD rejects existing Docker-schema aliases in Registry 3.
+    # Docker's manifest client negotiates both formats and retains exact platforms.
+    aliases = [('java21-node22-v2', ('arm64', 'amd64')),
+               ('java21-node22-v2-arm64', ('arm64',)),
+               ('java21-node22-v2-amd64', ('amd64',)),
+               ('java21-node22-v1', ('arm64',))]
+    for name, arches in aliases:
+        alias = REGISTRY + ':' + name
+        try:
+            command(['docker', 'manifest', 'create', alias,
+                     *(image + '-' + arch for arch in arches)], log=log)
+            command(['docker', 'manifest', 'push', alias], log=log)
+        finally:
+            # This removes only the client's assembled list, never registry data.
+            # Do not amend a cached list: a retry must not retain older platforms.
+            subprocess.run(['docker', 'manifest', 'rm', alias], capture_output=True, timeout=30)
 
 
 def forward(event, body, manual=False, require_accepted=True):
