@@ -68,6 +68,10 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   head checks and independent close-event handling. Only BuildKit may execute PR
   recipes. The App identity stays in the Laravel adapter; no Actions deployment
   relay or registry credential copy belongs in GitHub. See `doc/docker-builds.md`.
+  Promote compatibility aliases through Docker's manifest client and remove only
+  their local client assembly caches; preserve registry manifests and blobs.
+  Preview dispatch must match the installed Coolify job constructor; association,
+  repository and head trust checks remain in the adapter before native dispatch.
 - `ops/host/`: installed server programs. Keep each program's declared host/service scope, recovery
   metadata, locks, graceful suspension and rollback protections intact. Relocation
   does not authorize running provisioning, seeding, deployment or installation.
