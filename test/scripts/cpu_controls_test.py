@@ -18,6 +18,16 @@ spec.loader.exec_module(cpu)
 
 @unittest.skipUnless(sys.platform == 'linux', 'Linux /proc process identity')
 class LinuxProcessTests(unittest.TestCase):
+    def test_native_modes_fail_before_spawning_or_acquiring_a_slot(self):
+        for action in ('run', 'runtime'):
+            args = mock.Mock(action=action, mode='host', command=['true'])
+            with mock.patch.object(cpu.subprocess, 'Popen') as spawn, \
+                 mock.patch.object(cpu, 'build_lock') as acquire:
+                with self.assertRaisesRegex(RuntimeError, 'Native host controls require macOS'):
+                    cpu.run(args)
+                spawn.assert_not_called()
+                acquire.assert_not_called()
+
     def test_live_identity_detects_exit_and_rejects_changed_birth(self):
         proc = cpu.LinuxProcesses()
         child = subprocess.Popen([sys.executable, '-c', 'import sys;sys.stdin.read()'], stdin=subprocess.PIPE)

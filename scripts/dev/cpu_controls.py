@@ -1083,6 +1083,8 @@ def run(args):
         command = command[1:]
     if not command:
         raise RuntimeError('Pass a command after --.')
+    if sys.platform != 'darwin' and (args.action == 'runtime' or args.mode == 'host'):
+        raise RuntimeError('Native host controls require macOS; use run --mode docker on Linux.')
     if args.action == 'runtime':
         return host_run(args, command, None)
     if args.cpus > BUILD_CPUS:
