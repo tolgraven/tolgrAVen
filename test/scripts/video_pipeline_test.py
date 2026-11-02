@@ -21,7 +21,8 @@ class VideoPipeline(unittest.TestCase):
             source = root / 'resources/public/media/clip.mp4'
             source.parent.mkdir(parents=True)
             subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-f', 'lavfi',
-                '-i', 'color=c=red:s=256x144:r=10:d=0.2', '-c:v', 'libx264',
+                '-i', 'color=c=red:s=256x144:r=10:d=0.2', '-f', 'lavfi',
+                '-i', 'sine=frequency=440:duration=0.2', '-shortest', '-c:v', 'libx264',
                 '-pix_fmt', 'yuv420p', str(source)], check=True)
             (root / 'resources/responsive-videos.edn').write_text(
                 '{"media/clip.mp4" {:width 128 :media "(max-width: 600px)"}}')
