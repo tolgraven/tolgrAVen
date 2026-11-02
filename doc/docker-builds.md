@@ -235,6 +235,9 @@ building. Docker's context excludes that generated manifest (and the ignore file
 itself), so deployment metadata and documentation/tooling-only changes do not
 invalidate `COPY . .` and force a new application compilation. Application source
 changes still compile normally.
+The authored `resources/public/js/page-render-worker.js` is retained by an exact
+ignore-rule exception so it enters the packaged resources. Generated browser
+JavaScript and private runtime configuration remain excluded from the context.
 
 ## PR preview cleanup
 
