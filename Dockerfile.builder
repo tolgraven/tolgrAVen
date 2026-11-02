@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Node dependencies reuse a separately pinned infrastructure image.
-ARG TOOLCHAIN_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:toolchain-428766cdbbfd6952
+ARG TOOLCHAIN_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:toolchain-10a21ee6505af181
 FROM --platform=$BUILDPLATFORM ${TOOLCHAIN_IMAGE} AS prefab
 WORKDIR /usr/src/app
 COPY package.json package-lock.json ./

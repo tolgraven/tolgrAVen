@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Ordinary builds use the finished dependencies; BUILDER_IMAGE=prefab builds locally.
-ARG BUILDER_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:deps-567bd28d7f988bc6
+ARG BUILDER_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:deps-04c0a05f90ed22fe
 ARG TOOLCHAIN_IMAGE=toolchain
 # BEGIN TOOLCHAIN FALLBACK
 ARG INFRA_REVISION=1
@@ -10,7 +10,7 @@ FROM --platform=$BUILDPLATFORM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746
 FROM --platform=$TARGETPLATFORM babashka/babashka:1.13.225@sha256:0dd6985b8492b3bde9defbd95a7e7daf7d6fcb08102df9de4f07337f99d000a2 AS runtime-babashka
 FROM --platform=$TARGETPLATFORM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS runtime-node
 FROM --platform=$TARGETPLATFORM eclipse-temurin:21-jre-jammy@sha256:f04fb34e053148344e83317976114ec3f37e4b830ec8bdab5a2fe3cecd7d010b AS runtime-dependencies
-ENV MAGICK_THREAD_LIMIT=1 PYTHONPATH=/opt/fonttools
+ENV PYTHONPATH=/opt/fonttools
 ARG INFRA_REVISION
 RUN apt-get update \
  && apt-get install -y --no-install-recommends imagemagick webp python3-pip \
@@ -30,7 +30,7 @@ FROM --platform=$BUILDPLATFORM clojure:temurin-21-lein-bookworm-slim@sha256:12d1
 COPY --from=babashka /usr/local/bin/bb /usr/local/bin/bb
 RUN bb --version
 # Media generation and backend codec tests use the ordinary dependency prefab.
-ENV MAGICK_THREAD_LIMIT=1 PYTHONPATH=/opt/fonttools
+ENV PYTHONPATH=/opt/fonttools
 ARG INFRA_REVISION
 RUN apt-get update \
  && apt-get install -y --no-install-recommends imagemagick webp python3-pip \
@@ -151,7 +151,6 @@ ENV JAVA_HOME=/opt/java/openjdk \
     LANG=en_US.UTF-8 \
     LANGUAGE=en_US:en \
     LC_ALL=en_US.UTF-8 \
-    MAGICK_THREAD_LIMIT=1 \
     PYTHONPATH=/opt/fonttools
 
 FROM media-tools AS runtime

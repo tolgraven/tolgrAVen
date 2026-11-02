@@ -16,7 +16,7 @@ class ImageHookTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="tolgraven-image-hook-test-")
         self.addCleanup(self.temp.cleanup)
         self.repo = Path(self.temp.name)
-        for name in ("scripts/media/images.clj", "scripts/media/staged.clj", ".githooks/pre-commit"):
+        for name in ("scripts/media/images.clj", "scripts/media/staged.clj", "scripts/build/docker.clj", "scripts/util/process.clj", ".githooks/pre-commit"):
             target = self.repo / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(ROOT / name, target)

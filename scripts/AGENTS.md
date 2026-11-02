@@ -85,6 +85,8 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   up private configuration and restores prior files on failure. See `doc/crawl-policy.md`.
 - `media/images.clj` also runs in the web runtime. Keep it standalone, bounded by
   the JVM upload adapter; Docker copies and smoke-tests it with pinned Babashka.
+  ImageMagick uses its available processors; do not hardcode one-thread codec
+  arguments or environment overrides in the images, scripts or JVM launcher.
   `--asset source-file manifest-file` emits a complete private rendition manifest;
   the durable backend owns publication only after every codec succeeds. Uploaded
   images use the same responsive cutoff as local rasters; smaller images still
@@ -98,7 +100,9 @@ when moving tools; tasks accept argument vectors, never interpolate a local shel
   3×3 RGB pixels into three horizontal bands for initial SSR backgrounds; transparent
   pixels composite against white. `images:placeholders` refreshes only this metadata. Commit catalog and generated assets together.
 - `bb videos:responsive` atomically rebuilds cataloged mobile AV1/VP9/H.264
-  renditions with FFmpeg; keep the full-size video and codec fallbacks intact.
+  renditions with FFmpeg; skip current variants unless `--force` is passed. Keep
+  the full-size video and codec fallbacks intact. Prepare/commit video assets
+  before deployment rather than re-encoding unchanged media in Docker builds.
 - Hook conversion reads index blobs, handles NUL-delimited paths, checks all outputs
   before staging, and preserves unstaged source and variant edits. Test with real
   codecs in disposable Git repositories.

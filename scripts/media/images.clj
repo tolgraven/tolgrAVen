@@ -131,8 +131,8 @@
     bands))
 
 (defn placeholder! [file]
-  (let [output (:out (process/shell {:out :string :extra-env {"MAGICK_THREAD_LIMIT" "1"}}
-                                   (imagemagick) "-limit" "thread" "1" (str file)
+  (let [output (:out (process/shell {:out :string}
+                                   (imagemagick) (str file)
                                    "-auto-orient" "-background" "white" "-alpha" "remove" "-alpha" "off"
                                    "-colorspace" "sRGB" "-resize" "3x3!" "-depth" "8" "-type" "TrueColor" "txt:-"))
         pixels (mapv (fn [[_ hex]]
@@ -208,8 +208,8 @@
       (let [temporary (fs/create-temp-file {:dir (fs/parent target)
                                             :prefix (str (fs/file-name target) ".")})]
         (try
-          (apply process/shell {:extra-env {"MAGICK_THREAD_LIMIT" "1"}}
-                 (concat [(imagemagick) "-limit" "thread" "1" (str file)]
+          (apply process/shell
+                 (concat [(imagemagick) (str file)]
                          (when size ["-resize" (str size "x>")])
                          ["-strip" "-quality" (if (= format "avif") "60" "80")
                           (str format ":" temporary)]))
@@ -288,8 +288,7 @@
         format (if (#{"jpg" "jpeg"} (str/lower-case (fs/extension file))) "jpeg" "png")
         original (fs/path (fs/parent file) (str "original." (if (= format "jpeg") "jpg" "png")))]
     ;; Re-encode rather than publish user profiles or unvalidated original bytes.
-    (process/shell {:extra-env {"MAGICK_THREAD_LIMIT" "1"}}
-                   (imagemagick) "-limit" "thread" "1" (str file)
+    (process/shell (imagemagick) (str file)
                    "-auto-orient" "-strip" "-quality" "90" (str original))
     (let [normalized (image-metadata! original)
           sizes' (if (responsive-eligible? normalized)

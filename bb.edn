@@ -32,8 +32,8 @@
                             :task (images/responsive-verify!)}
   videos {:doc "Convert MP4 to muted VP9/AV1 WebM [--force] [files...]"
           :task (apply videos/-main *command-line-args*)}
-  videos:responsive {:doc "Rebuild the opt-in responsive video catalog's renditions"
-                     :task (videos/responsive!)}
+  videos:responsive {:doc "Refresh changed responsive video renditions [--force]"
+                     :task (apply videos/responsive! *command-line-args*)}
   dev:setup {:doc "Prepare pinned checkout-local Python icon tools"
              :task (process/shell "python3" "scripts/dev/python.py")}
   fonts:icons {:doc "Regenerate declared SVG icons, selectors and backend glyph selection with Python/fontTools (see doc/styles.md)"

@@ -60,8 +60,7 @@
          arguments (if manifest ["--asset" (str file) (str manifest)] ["--force" "--" (str file)])
          builder (ProcessBuilder. ^java.util.List (into ["nice" "-n" "10" "bb" script] arguments))]
      ;; Only our owned file path reaches the codec, never a supplied filename.
-     (doseq [[key value] {"MAGICK_THREAD_LIMIT" "1"
-                         "MAGICK_MEMORY_LIMIT" "128MiB"
+     (doseq [[key value] {"MAGICK_MEMORY_LIMIT" "128MiB"
                          "MAGICK_MAP_LIMIT" "256MiB"
                          "MAGICK_DISK_LIMIT" "256MiB"
                          "MAGICK_TEMPORARY_PATH" (str (.getParentFile ^java.io.File file))}]
