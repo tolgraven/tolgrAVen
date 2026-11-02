@@ -15,39 +15,46 @@
    :url (str "/api/oembed?url=" (js/encodeURIComponent url))
    :ttl-ms 60000})
 
-(m/defc ^:private <loading> [_ placeholder]
+(m/defc ^:private <loading> [_ placeholder & _]
   (or placeholder [:p "Loading player…"]))
 
-(m/defc ^:private <player> [result :- schema/result]
+(m/defc ^:private <player> [result :- schema/result compact?]
   ;; Arbitrary markup stays opaque. Recognized cross-origin players need their
   ;; own origin for storage/API requests, and never receive the provider HTML.
   (let [source (schema/player-url (:player-src result))
+        compact-url (when (and compact? source)
+                      (let [url (js/URL. source)]
+                        (when (= "w.soundcloud.com" (.-hostname url))
+                          (.set (.-searchParams url) "visual" "false")
+                          (.-href url))))
         attrs {:title (:title result)
                :referrer-policy "no-referrer"
                :style {:width "100%"
                        :border "none"
-                       :height (str (max 5 (min 40 (/ (:height result) 16))) "rem")}}]
+                       :height (if compact-url
+                                 "6.25rem"
+                                 (str (max 5 (min 40 (/ (:height result) 16))) "rem"))}}]
     [:iframe.oembed-inner
      (if source
        (assoc attrs :sandbox "allow-scripts allow-same-origin"
                     :allow "autoplay; encrypted-media; fullscreen"
-                    :src source)
+                    :src (or compact-url source))
        (assoc attrs :sandbox "allow-scripts"
                     :src-doc (str "<!doctype html><html><head><meta name='viewport' content='width=device-width'>"
                                   "<style>body{margin:0}iframe{display:block;width:100%;border:0}</style>"
                                   "</head><body>" (:html result) "</body></html>")))]))
 
 (m/defc <oembed-view>
-  {:depends (fn [url _] [(dependency url)])
+  {:depends (fn [url & _] [(dependency url)])
    :loading <loading>}
-  [url :- :string placeholder]
+  [url :- :string placeholder & [compact?] :- [:maybe :boolean]]
   :let [*hovered? (r/atom false)]
   (let [result (:value (data/snapshot (dependency url)))]
-    [:div.oembed.parallax-sm
-     {:class (when @*hovered? "hovered")
+    [:div.oembed
+     {:class [(when-not compact? "parallax-sm") (when @*hovered? "hovered")]
       :on-mouse-enter #(reset! *hovered? true)
       :on-mouse-leave #(reset! *hovered? false)}
-     [<player> result]]))
+     [<player> result compact?]]))
 
 ;; Unfinished React-player alternative; oEmbed remains the active player.
 (m/defc <remote-player>
@@ -75,13 +82,13 @@
         url      (str base-url artist "/" song)]
     [:div (if @(r/subscribe [:booted? :soundcloud])
        [ui-boundary/<safe> :player
-        [<oembed-view> url [<soundcloud-loading> artist song]]]
+        [<oembed-view> url [<soundcloud-loading> artist song] true]]
        [<soundcloud-loading> artist song])]))
 
 (m/defc <soundcloud> "Soundcloud feed, plus selected tunes. Bonus if can do anything fun with it"
   []
   (let [{:keys [artist tunes]} @(r/subscribe [:content [:soundcloud]])]
     [:section#soundcloud.soundcloud.fullwide.covering-3
-     [:div.soundcloud-players.parallax-wrapper
+     [:div.soundcloud-players
       (m/for [tune tunes]
              [<soundcloud-player> artist tune])]]))

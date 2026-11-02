@@ -6,6 +6,36 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const wrapper = path.resolve('scripts/build/compiler-cache.mjs');
+test('Docker context retains the authored render worker without generated JS or private config', async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'worker-context-'));
+  const env = {...process.env, BUILDX_CONFIG: path.join(root, 'buildx')};
+  for (const key of ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_TLS', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) delete env[key];
+  const docker = ['--host=unix:///var/run/docker.sock'];
+  try {
+    const available = spawnSync('docker', [...docker, 'info', '--format', '{{.ServerVersion}}'], {env, timeout: 10000});
+    if (available.status !== 0) return t.skip('Local Docker socket is unavailable');
+    const context = path.join(root, 'context');
+    const output = path.join(root, 'output');
+    const worker = 'resources/public/js/page-render-worker.js';
+    for (const directory of ['resources/public/js/compiled/out', 'resources/public/css/website', 'env/dev/resources']) {
+      await fs.mkdir(path.join(context, directory), {recursive: true});
+    }
+    await fs.copyFile('.dockerignore', path.join(context, '.dockerignore'));
+    await fs.copyFile(worker, path.join(context, worker));
+    for (const file of ['resources/public/js/compiled/out/stale.js', 'resources/public/css/website/stale.css', 'env/dev/resources/config.edn', '.env']) {
+      await fs.writeFile(path.join(context, file), 'excluded fixture');
+    }
+    const built = spawnSync('docker', [...docker, 'build', '-f', '-', '--output', `type=local,dest=${output}`, context], {
+      env, input: 'FROM scratch\nCOPY . /\n', encoding: 'utf8', timeout: 30000,
+    });
+    assert.equal(built.status, 0, built.stderr);
+    assert.equal(await fs.readFile(path.join(output, worker), 'utf8'), await fs.readFile(worker, 'utf8'));
+    for (const file of ['resources/public/js/compiled/out/stale.js', 'resources/public/css/website/stale.css', 'env/dev/resources/config.edn', '.env']) {
+      await assert.rejects(fs.stat(path.join(output, file)), {code: 'ENOENT'});
+    }
+  } finally { await fs.rm(root, {recursive: true, force: true}); }
+});
+
 test('compiler cache survives fresh checkouts and invalidates changes, deletion and failures', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'compiler-cache-'));
   try {
