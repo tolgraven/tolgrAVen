@@ -385,8 +385,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
 - Markdown code, including untagged blocks and inline snippets, shares the deferred
   formatter boundary. Node SSR renders Bruvbox-highlighted tokens immediately;
   browser acquisition waits for the existing after-page gate. The blog supplies
-  its Clojure fallback and detection set; untagged inline snippets use Bash unless
-  their owner specifies `:inline-language`. Explicit tags take precedence.
+  its Clojure fallback and detection set; untagged inline snippets also use detection
+  unless their owner specifies `:inline-language`. Explicit tags take precedence.
+  No-match detection preserves the source as plain text when no owner fallback exists.
   Copy gestures and optional folding belong to the outer component; selection and
   multi-click cancel copying, as do drag, pointer exit/cancellation during the press
   and interactive controls. Movement after release preserves the completed tap.

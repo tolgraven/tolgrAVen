@@ -54,9 +54,14 @@
                                            (if auto-languages'
                                              #js {:subset (into-array auto-languages')}
                                              #js {:subset detection-languages})))]
-    (if (and (nil? (some-> detected .-data .-language)) default-language')
-      (.highlight highlighter default-language' code)
-      detected)))
+    (if (some-> detected .-data .-language)
+      detected
+      (if default-language'
+        (.highlight highlighter default-language' code)
+        ;; Lowlight's no-match result has no children. Preserve the source when
+        ;; there is no owner fallback, without claiming a detected language.
+        (doto detected
+          (aset "children" #js [#js {:type "text" :value code}]))))))
 
 (defn- token-runs
   "Flatten HAST spans into styled text runs without interpreting source HTML."
@@ -138,7 +143,7 @@
                  line-numbers? starting-line-number line-props line-prefix editable?]
            :or {basic? true
                 style theme/bruvbox}}]
-  (let [language' (or language (when inline? (or inline-language "bash")))
+  (let [language' (or language (when inline? inline-language))
         numbered? (and (not inline?) (if (nil? line-numbers?) (not basic?) line-numbers?))
         ;; Retain the editable caret line without modifying authored source.
         display-code (if (and editable? (.endsWith code "\n")) (str code "\u200b") code)

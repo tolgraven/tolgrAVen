@@ -93,6 +93,45 @@
     (is (= "elixir" (some-> (highlight-view/code-tree "def hello, do: :world" "elixir" "clojure" blog/code-languages) .-data .-language))
         "An explicit tag can still select a language outside the detection subset")))
 
+(deftest no-match-detection-preserves-source
+  (doseq [source ["42" "" "   " "\n42\n"]
+          subset [nil []]]
+    (let [tree (highlight-view/code-tree source nil nil subset)]
+      (is (nil? (some-> tree .-data .-language)))
+      (is (= source (apply str (map #(.-value %) (array-seq (.-children tree)))))))))
+
+(deftest untagged-inline-code-uses-inference-and-owner-fallback
+  (binding [context/*server?* true]
+    (doseq [[source options language] [["(inc 1)" {} "clojure"]
+                                     ["42" {:default-language "clojure"} "clojure"]
+                                     ["echo $HOME" {:inline-language "bash"} "bash"]
+                                     ["(inc 1)" {:language "clojure" :inline-language "bash"} "clojure"]]]
+      (let [html (r/render-to-string
+                   (into [highlight-view/<formatted-code> source]
+                         (mapcat identity (assoc options :inline? true))))
+            container (.createElement js/document "div")]
+        (set! (.-innerHTML container) html)
+        (is (string/includes? html (str "language-" language)))
+        (is (.querySelector container ".code-highlight span[style*=color]"))))))
+
+(deftest neutral-snippets-remain-visible-during-ssr
+  (binding [context/*server?* true]
+    (doseq [inline? [false true]]
+      (let [html (r/render-to-string [highlight-view/<formatted-code> "42" :inline? inline?])
+            container (.createElement js/document "div")]
+        (set! (.-innerHTML container) html)
+        (is (= "42" (.-textContent container)))
+        (is (.querySelector container ".language-text"))))))
+
+(deftest cookie-notice-data-retains-clojure-tokens
+  (binding [context/*server?* true
+            context/*modules* {:highlight highlight/spec}]
+    (let [source "{:what \"This website may use cookies\"\n :why \"To track whether you've agreed to the use of cookies\"\n :how {:by-closing-or-pressing-ok \"You agree to not only cookies\"\n       :but \"also milk\"}}"
+          html (r/render-to-string [code-block/<code-block> source {:language "clojure"}])]
+      (is (string/includes? html "language-clojure"))
+      (is (string/includes? html "color:#b4b88d"))
+      (is (string/includes? html ":what")))))
+
 (deftest explicit-nil-options-preserve-the-neutral-markdown-api
   (binding [context/*server?* true]
     (doseq [options [nil {:code-options nil}]]
