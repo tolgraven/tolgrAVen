@@ -166,3 +166,19 @@ test('documentation cache restores published docs and rejects a successful comma
     assert.notEqual(run('process.exit(0)').status, 0);
   } finally { await fs.rm(root, {recursive: true, force: true}); }
 });
+
+test('focused analysis commands run without requiring a complete application release', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'analysis-cache-'));
+  try {
+    await fs.mkdir(path.join(root, 'src'));
+    for (const file of ['project.clj', 'package.json', 'package-lock.json', 'shadow-cljs.edn']) {
+      await fs.writeFile(path.join(root, file), '{}');
+    }
+    const command = "require('fs').appendFileSync('runs','x')";
+    const run = () => spawnSync(process.execPath, [wrapper, 'shadow-analysis', path.join(root, 'cache'),
+      process.execPath, '-e', command], {cwd: root, encoding: 'utf8'});
+    assert.equal(run().status, 0);
+    assert.equal(run().status, 0);
+    assert.equal(await fs.readFile(path.join(root, 'runs'), 'utf8'), 'xx');
+  } finally { await fs.rm(root, {recursive: true, force: true}); }
+});
