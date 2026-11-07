@@ -5,8 +5,8 @@
             [clojure.data.json :as json]
             [website.build.modules :as modules]))
 
-(def sdk-version "4.3.3")
-(def entry-hash "f626a48218f8c489d1642290a8755bff83425203b54d3af799d40b45133cf253")
+(def sdk-version "4.3.4")
+(def entry-hash "55e018f6ab7130a4736652dc3211e01541d5cc2b8da0748c68f562b1d5d1c44e")
 (def generated-root "target/generated-sdk")
 (def generated-package "@site/mdxeditor")
 (def gurx-exports #{"useCellValue" "useCellValues" "usePublisher" "useRealm"})

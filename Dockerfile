@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Ordinary builds use the finished dependencies; BUILDER_IMAGE=prefab builds locally.
-ARG BUILDER_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:deps-04c0a05f90ed22fe
+ARG BUILDER_IMAGE=registry.bux.tolgraven.se/tolgraven/builder:deps-9dbf55997d92a9c5
 ARG TOOLCHAIN_IMAGE=toolchain
 # BEGIN TOOLCHAIN FALLBACK
 ARG INFRA_REVISION=1
