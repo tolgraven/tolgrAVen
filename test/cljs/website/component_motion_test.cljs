@@ -704,3 +704,25 @@
                   (.setAttribute document-root attribute value)))
               (restore-db!)
               (done)))))))
+
+(deftest history-settles-an-already-mounted-offscreen-entrance
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture))
+                before @restore/*context]
+            (try
+              (reset! restore/*context {})
+              (await! (render! root [<appear> {:props {:style {:position "fixed", :top "200vh"}}}]))
+              (await! (tick! 120))
+              (let [node (.-firstElementChild element)]
+                (is (not (.contains (.-classList node) "appeared")))
+                (restore/begin! {:back? true})
+                (await! (support/wait-for! #(.contains (.-classList node) "appeared")))
+                (is (identical? node (.-firstElementChild element)))
+                (reset! restore/*context {})
+                (await! (tick! 120))
+                (is (.contains (.-classList node) "appeared")
+                    "Releasing restoration cannot replay a retained entrance"))
+              (finally (close!) (reset! restore/*context before)))))
+        (.catch #(is false (str %)))
+        (.finally done))))

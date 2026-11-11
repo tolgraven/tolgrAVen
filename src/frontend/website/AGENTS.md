@@ -300,7 +300,8 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   readiness/fade events for a late face. Own the font CSS in its consumer module;
   use an optional initial face plus a separately named ready face to prevent an
   uncontrolled browser swap. Font phases are transient, never persisted. Reduced
-  motion and local returns bypass fades. See `doc/styles.md` and `doc/components.md`.
+  motion and history/local returns bypass fades. Cached ready faces render their
+  final family on the first remount render without a fallback or reveal. See `doc/styles.md` and `doc/components.md`.
 - A module `:install` hook may restore browser-local caches after code acquisition.
   The loader shares/awaits it before publishing code readiness; ordinary `:init`
   still owns data activation. SSR adapters must not install disk caches or watches.
@@ -629,8 +630,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   reduced-motion and unnoticeable (opening scale <=2/3) finals settle directly.
   External departure/history returns use final-only policy from shared restore
   context; early head classification suppresses lazy preview discovery before JS.
-  Paired SSR emits final-only markup. SPA navigation, including query/history
-  destinations, clears that image policy while retaining the existing document clock.
+  Paired SSR emits final-only markup. Ordinary SPA navigation, including query
+  destinations, clears that image policy. Back/Forward reinstalls final-only
+  images and settles the initial document clock before destination acquisition.
   Native decode/source completion and ref cleanup remain exact-node/currentSrc guarded.
   Shared `restore/document-form` preserves three React document slots in Node/local
   SSR and hydration so native image useId tokens match. `src/frontend/bootstrap/`
@@ -739,8 +741,12 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   inline Search retains its combined controls/results. Settings owns keyed
   `:presence`/`:exit` children so closing its query does not unmount the host.
 
-- SPA history keeps the page opacity crossfade while restoring component state;
-  only document returns suppress all initial clocks. Explicitly opened User and
+- SPA Back/Forward and document returns restore a finished view with no page
+  crossfade, font/highlight reveal, image upgrade or component entrance. The
+  head popstate listener installs the shared settling guard before routing; the
+  history event installs restoration context before code/data acquisition. Retained
+  offscreen appearance owners settle too; releasing the input guard must not
+  revive their observer or a cancelled syntax-highlight reveal. Explicitly opened User and
   Settings panels opt out of restoration via `:appear {:restore? false}` and parent
   viewport ownership. The shell owns a stable Search button; its eager events
   activate lazy Search code without replacing/replaying the first intent.

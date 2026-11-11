@@ -112,6 +112,18 @@ test('departure and BFCache resume share one owned input guard without changing 
   f.window.dispatchEvent(new Event('keydown'));
   for (const type of ['pointerdown','keydown','wheel','touchstart','click']) assert.equal(f.window.listeners.get(type),0);
 });
+test('SPA Back and Forward settle before routing and rearm the shared input guard',()=>{
+  const f=fixture(), root=f.document.documentElement;
+  for (let traversal=0; traversal<2; traversal++) {
+    f.window.dispatchEvent(new Event('popstate'));
+    assert.equal(root.getAttribute('data-document-return'),'true');
+    assert.equal(root.getAttribute('data-image-direct'),'true');
+    assert.equal(root.getAttribute('data-return-settling'),'true');
+    f.window.dispatchEvent(new Event('pointerdown'));
+    assert.equal(root.hasAttribute('data-return-settling'),false);
+    for (const type of ['pointerdown','keydown','wheel','touchstart','click']) assert.equal(f.window.listeners.get(type),0);
+  }
+});
 test('cold target reveals before smooth scrolling and waits for mounted text and fonts',async()=>{
   const f=fixture({target:true,targetMounted:false,fontsLoading:true});
   await f.load(f.preview);await f.frame();await f.frame();

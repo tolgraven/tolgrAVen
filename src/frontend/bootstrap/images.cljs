@@ -26,5 +26,8 @@
                   (identical? 2 (some-> js/performance .-navigation .-type)))
           (returned!)))
       (.addEventListener js/window "pagehide" returned!)
+      ;; Same-document Back/Forward needs the same policy before the router
+      ;; commits, including Safari's native swipe history traversal.
+      (.addEventListener js/window "popstate" returned!)
       (.addEventListener js/window "pageshow"
                          (fn [^js event] (when (.-persisted event) (returned!)))))))

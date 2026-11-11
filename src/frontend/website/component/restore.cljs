@@ -111,10 +111,10 @@
       (when other-page?
         (reset! *context {})))))
 (defn spa-back! []
-  ;; SPA history keeps page Back motion, but is not an external document return.
-  ;; Same-path query pops retain the initial document's native entrance clock.
-  (when-not (document-enter?) (begin! {:back? true}))
-  (swap! *context assoc :direct-images? false))
+  ;; History restores a finished view even for the initial route/query. Install
+  ;; this before acquisition so late module children inherit the same policy.
+  (begin! {:back? true})
+  (direct-images!))
 (defn back-navigation? []
   (or (= "back_forward" (some-> js/performance (.getEntriesByType "navigation") (aget 0) .-type))
       (= 2 (some-> js/performance .-navigation .-type))))

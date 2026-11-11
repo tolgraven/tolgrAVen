@@ -220,7 +220,9 @@ Keep this guide and `doc/testing.md` current when test/build entry points change
 - Font checks mount native roots, gate the load effect, then release the actual
   FontFaceSet request. Verify shared acquisition, visible fallback, replacement
   only while transparent, native node identity and fallback dimensions. Include
-  failure/stale completion, disabled intent, reduced motion and local returns.
+  failure/stale completion, disabled intent, cached remounts, reduced motion and
+  history/local returns. Back/Forward must skip native and fallback page fades,
+  final-image upgrades and cached or delayed syntax-highlight reveals.
 - Live drivers share the test-origin reset adapter: close the outgoing frame,
   then clear saved documents through the worker's serialized protocol before
   deleting only IndexedDB `tolgraven-component-cache` and clearing small browser

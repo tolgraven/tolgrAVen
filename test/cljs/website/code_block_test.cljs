@@ -538,3 +538,32 @@
                                  (when @*root (support/unmount! @*root))
                                  (set! loader/acquire-code! old-acquire)
                                  (reset! restore/*context before))})))))
+
+(deftest cached-history-highlighting-never-mounts-a-plain-fallback
+  (async done
+    (let [before @restore/*context
+          old-code-spec loader/code-spec
+          old-acquire loader/acquire-code!
+          element (.createElement js/document "div")
+          *root (atom nil)]
+      (restore/begin! {:back? true})
+      (set! loader/code-spec (fn [id] (if (= id :highlight) highlight/spec (old-code-spec id))))
+      (set! loader/acquire-code! (fn [_] (throw (js/Error. "Cached formatter must render synchronously"))))
+      (-> (go-promise
+            (reset! *root (await! (support/create-root! element)))
+            (await! (support/render! @*root [code/<code-block> "(inc 1)" :language "clojure"]))
+            (is (.querySelector element ".language-clojure span[style*=color]"))
+            (is (nil? (.querySelector element ".code-highlight-reveal")))
+            (await! (support/render! @*root nil))
+            ;; Even genuinely delayed highlighting on a restored page stays final.
+            (await! (support/render! @*root [highlighter/<formatted-code> "(inc 2)"
+                                            :language "clojure" :reveal? true]))
+            (is (.querySelector element ".language-clojure"))
+            (is (nil? (.querySelector element ".code-highlight-reveal"))))
+          (.catch #(is false (str %)))
+          (.finally (fn []
+                      (when @*root (support/unmount! @*root))
+                      (set! loader/code-spec old-code-spec)
+                      (set! loader/acquire-code! old-acquire)
+                      (reset! restore/*context before)
+                      (done)))))))

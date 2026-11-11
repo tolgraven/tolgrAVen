@@ -162,6 +162,9 @@
 
 (defn- commit-motion! [state element options]
   (ensure-media! state options)
+  (when (and (restore/back-document?)
+             (not= false (:restore? (config (or (:seen options) (:appear options))))))
+    (reset! (:returned? state) true))
   (when (and element (:appear options) (nil? @(:viewport-enter? state)))
     ;; Preserve first-screen document timing and settled local/history returns.
     ;; A new offscreen entrance uses the existing observer path, once visible.
@@ -198,7 +201,8 @@
         reduced? @(:reduced? state)
         ;; Ready first-screen SSR remains visible. Offscreen :seen owners still
         ;; observe the viewport after hydration and enter when scrolled into view.
-        skip? (or @(:settled-offscreen? state)
+        skip? (or @(:returned? state)
+                  @(:settled-offscreen? state)
                   (and (:skip-enter? state) (restore/document-return?))
                   (and (:skip-enter? state) (not (:observe-document? state)) (not automatic?)))
         signature [element (boolean seen) (boolean (:appear options)) thresholds once? margin reduced? skip? (:force appearance)]]
@@ -272,6 +276,7 @@
                                       (not (restore/document-return?))
                                       (not (:remembered? options)))
                :visible? (r/atom skip?)
+               :returned? (r/atom false)
                :viewport-enter? (atom nil)
                :settled-offscreen? (r/atom false)
                :settling-offscreen? (r/atom false)
@@ -291,7 +296,12 @@
                (throw (js/Error. "Motion features require a native DOM root; they never add a wrapper.")))
              (let [appearance (config (or (:seen options) (:appear options)))
                    exiting? (= :exiting (get-in options [:presence :phase]))
-                   visible? (if state @(:visible? state) (skip-enter? options))
+                   ;; Same-page/query history can retain a pending entrance's
+                   ;; owner. Settle it now and keep that decision after input.
+                   returned? (and (not= false (:restore? appearance))
+                                  (or (restore/back-document?)
+                                      (and state @(:returned? state))))
+                   visible? (or returned? (if state @(:visible? state) (skip-enter? options)))
                    reduced? (boolean (and state @(:reduced? state)))
                    settling? (boolean (and state @(:settling-offscreen? state)))
                    document-phase (when state @(:document-phase state))

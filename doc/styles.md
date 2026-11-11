@@ -251,7 +251,8 @@ Reagent font root, so crossfading does not mount a second formatter.
 Readiness and phases are re-frame events; Reagent animation completion and a
 bounded `:dispatch-later` deadline remove the old layer. Already loaded initial
 faces retain the browser's first-paint choice without animation. Reduced motion
-and local-return documents use one layer and skip the fade. Failure or the
+and history/local-return documents use one layer and skip the fade. Cached ready
+faces render directly on remount, without a fallback frame or another fade. Failure or the
 ten-second load deadline leaves readable fallback text; stale completions cannot
 revive an expired attempt or an unmounted owner.
 Font loading never blocks hydration or the page-ready gate.
