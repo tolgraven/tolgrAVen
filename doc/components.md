@@ -808,7 +808,12 @@ The sticky footer has its own opaque, unanimated native snapshot layer above the
 page; ordinary DOM stacking cannot place it above the native transition overlay.
 Only the new footer snapshot is shown, avoiding the browser default crossfade.
 The crossfade timing remains
-250 ms linear in both paths. Do not introduce permanent absolute page layout.
+250 ms linear in both paths for ordinary link navigation. Browser Back/Forward
+skips both paths and commits the finished destination, with the same settled
+font, highlighting, image and component policy as external document returns.
+The head popstate listener arms the shared settling guard before routing; first
+user input releases that temporary guard so controls remain interactive.
+Do not introduce permanent absolute page layout.
 
 The main page also provides a readiness context. Mounted data/code lifecycles
 register pending layout work and release it after their ready or terminal-error

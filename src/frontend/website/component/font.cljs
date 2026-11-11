@@ -43,12 +43,15 @@
 
 (r/reg-sub :font/instance
   (fn [db [_ owner]] (get-in db [:fonts :instances owner])))
+(r/reg-sub :font/ready?
+  (fn [db [_ options]] (= :ready (get-in db [:fonts :faces (request options) :status]))))
 (r/reg-fx :font/probe
   (fn [[owner options]]
     (r/dispatch [:font/probed owner
                   (native-ready? options)
                   (boolean (seq (faces (:family options))))
-                  (boolean (or (motion/reduced-motion?) (restore/local-document?)))])))
+                  (boolean (or (motion/reduced-motion?) (restore/local-document?)
+                               (restore/skip-enter?)))])))
 (r/reg-fx :font/load
   (fn [[options token]]
     (let [key (request options)]
@@ -61,7 +64,10 @@
 
 (r/reg-event-fx :font/attach
   (fn [{:keys [db]} [_ owner options]]
-    {:db (assoc-in db [:fonts :instances owner] {:options options, :phase :initial})
+    {:db (assoc-in db [:fonts :instances owner]
+                  {:options options
+                   :phase (if (= :ready (get-in db [:fonts :faces (request options) :status]))
+                            :ready :initial)})
      :font/probe [owner options]}))
 (r/reg-event-db :font/detach
   (fn [db [_ owner]]
@@ -79,18 +85,18 @@
       (let [options (:options instance)
             key (request options)
             status (get-in db [:fonts :faces key :status])
-            instance (assoc instance :reduced? reduced?)
+            instance' (assoc instance :reduced? reduced?)
             token (random-uuid)]
         (cond
-          (or native? (not supported?))
-          {:db (assoc-in db [:fonts :instances owner] (assoc instance :phase :native))}
           (= :ready status)
-          {:db (assoc-in db [:fonts :instances owner] (ready-instance instance))}
+          {:db (assoc-in db [:fonts :instances owner] (assoc instance' :phase :ready))}
+          (or native? (not supported?))
+          {:db (assoc-in db [:fonts :instances owner] (assoc instance' :phase :native))}
           :else
-          (cond-> {:db (assoc-in db [:fonts :instances owner] (assoc instance :phase :fallback))}
+          (cond-> {:db (assoc-in db [:fonts :instances owner] (assoc instance' :phase :fallback))}
             (not= :loading status)
             (assoc :db (-> db
-                           (assoc-in [:fonts :instances owner] (assoc instance :phase :fallback))
+                           (assoc-in [:fonts :instances owner] (assoc instance' :phase :fallback))
                            (assoc-in [:fonts :faces key] {:status :loading, :token token}))
                    :font/load [options token]
                    :dispatch-later [{:ms load-timeout-ms
@@ -179,7 +185,10 @@
              ;; subscription. The owner appears only after its committed setup.
              (let [owner (:owner state)
                    instance (when (and owner form) @(r/subscribe [:font/instance owner]))
-                   phase (get instance :phase :initial)]
+                   ;; Cached faces are final on the very first render, before
+                   ;; attach/probe effects. Never repaint fallback on remount.
+                   ready? (and form @(r/subscribe [:font/ready? options]))
+                   phase (get instance :phase (if ready? :ready :initial))]
                {:form (when form (render-font form options owner phase))
                 :commit! (when state
                            (fn [_]

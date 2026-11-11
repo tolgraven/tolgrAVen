@@ -102,6 +102,12 @@
                                      (or inherited-hydration? (restore/initial-hydration?))))
         committed! (r/use-callback on-ready! [on-ready!])
         [formatter _] (r/use-state #(make-formatter committed!))
+        ;; A mounted formatter already in memory needs no lazy Promise/fallback
+        ;; cycle on a subsequent visit. Preserve the deferred hydration boundary.
+        [ready-view _] (r/use-state #(when-not (or defer? context/*server?*)
+                                      (let [component (get-in (loader/code-spec :highlight)
+                                                              [:view :formatted-code])]
+                                        (if (var? component) @component component))))
         args (into [code] (mapcat identity options))
         lines (string/split code #"\n" -1)
         fallback (if (:inline? options)
@@ -122,11 +128,13 @@
                   defer?
                   #(r/as-element
                      [r/suspense {:fallback (r/as-element [<pending> fallback (:waited? formatter)])}
-                      (if context/*server?*
-                        (view/form :highlight :formatted-code args fallback)
+                      (cond
+                        context/*server?* (view/form :highlight :formatted-code args fallback)
+                        ready-view [<formatted> ready-view args committed! false]
+                        :else
                         ;; Keep Clojure arguments opaque at this React boundary.
                         (r/create-element (:view formatter) #js {:args args}))])
-                  [context/*server?* args fallback formatter])]
+                  [context/*server?* args fallback formatter ready-view])]
     (r/use-effect
       (fn []
         (if defer?

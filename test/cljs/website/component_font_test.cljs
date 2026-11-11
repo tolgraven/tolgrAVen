@@ -166,7 +166,15 @@
                     (is (= "rgb(10, 20, 30)" (.-color (.-style node))))
                     (is (pos? @*ended) "The root's existing animation handler remains active")
                     (await! (until! (second nodes) "ready"))
-                    (is (= 1 (count @loads))))))
+                    (is (= 1 (count @loads)))
+                    (await! (support/render! root nil))
+                    (await! (support/render! root [<sample> opts {}]))
+                    (let [returned (.querySelector element "pre")]
+                      (is (= "ready" (phase returned)) "A cached face is final at remount")
+                      (is (nil? (.querySelector returned ".font-text-next")))
+                      (is (.includes (.-fontFamily (js/getComputedStyle (.querySelector returned "code")))
+                                     (:family opts)))
+                      (is (= 1 (count @loads)) "No second acquisition or reveal")))))
               (finally (close!) (restore!)
                        (.delete (.-fonts js/document) face) (.remove sheet) (.remove monospace)))))
         (.catch (fn [error] (is false (str error))))
@@ -300,4 +308,29 @@
                   (is (= "re-frame" (.-value input)))))
               (finally (close!) (restore!) (.delete (.-fonts js/document) face) (.remove sheet)))))
         (.catch (fn [error] (is false (str error))))
+        (.finally done))))
+
+(deftest history-font-completion-skips-the-reveal
+  (async done
+    (-> (go-promise
+          (let [{:keys [root element close!]} (await! (fixture!))
+                {:keys [loads restore!]} (capture-loads!)
+                before @restore/*context
+                opts (options)
+                face (js/FontFace. (:family opts) "url('/webfonts/FiraCode-Retina.woff2')")]
+            (.add (.-fonts js/document) face)
+            (restore/begin! {:back? true})
+            (try
+              (await! (support/render! root [<sample> opts {}]))
+              (let [node (.querySelector element "pre")]
+                (await! (until! node "fallback"))
+                (let [[loaded-options token] (first @loads)]
+                  (r/dispatch [:font/loaded (font/request loaded-options) token true]))
+                (await! (until! node "ready"))
+                (is (nil? (.querySelector node ".font-text-next")))
+                (is (= 1 (.-length (.querySelectorAll node ".font-text-stack > span")))))
+              (finally (close!) (restore!)
+                       (reset! restore/*context before)
+                       (.delete (.-fonts js/document) face)))))
+        (.catch #(is false (str %)))
         (.finally done))))

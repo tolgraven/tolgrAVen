@@ -773,7 +773,7 @@
                           (before)
                           (done))))))
       (.catch (fn [error] (is false (str error)) (done))))))
-(deftest native-history-crossfade-hints-only-the-current-page-layers
+(deftest native-link-crossfade-hints-only-the-current-page-layers
   (async done
     (-> (go-promise
           (let [original-start (.-startViewTransition js/document)
@@ -792,7 +792,7 @@
               (reset! page-transition/*transition nil)
               (set! (.-startViewTransition js/document) (fn [_] transition))
               (set! (.-getAnimations js/document) (fn [] #js [outgoing incoming unrelated]))
-              (page-transition/navigate! {:path "/frame-rate"} true true)
+              (page-transition/navigate! {:path "/frame-rate"} true false)
               (await! (.-ready transition))
               (is (= "highest" (.-frameRate outgoing)))
               (is (= "highest" (.-frameRate incoming)))
@@ -962,17 +962,32 @@
 (deftest history-navigation-declares-restoration-before-page-commit
   (let [before @restore/*context
         native-start (.-startViewTransition js/document)
+        root (.-documentElement js/document)
+        direct (.getAttribute root "data-image-direct")
+        settling (.getAttribute root "data-return-settling")
         *events (atom [])]
     (try (set! (.-startViewTransition js/document) nil)
          (r/with-framework-bindings [r/dispatch #(swap! *events conj %)]
            (page-transition/navigate! {:path (restore/page-key)} true true))
-         (is (true? (get-in @*events [0 2 :fallback?]))
-             "SPA history retains its page crossfade despite restored component entrances")
+         (is (false? (get-in @*events [0 2 :fallback?]))
+             "History commits the finished view without a fallback crossfade")
          (is (restore/skip-enter?))
          (is (not (restore/document-enter?)))
+         (.setAttribute root "data-return-settling" "true")
          (restore/navigate! "/another-page")
          (is (not (restore/skip-enter?)) "Ordinary navigation enables motion again")
+         (is (not (.hasAttribute root "data-return-settling"))
+             "Programmatic ordinary navigation also releases the temporary guard")
+         (set! (.-startViewTransition js/document)
+               (fn [_] (throw (js/Error. "History must not start a native view transition"))))
+         (r/with-framework-bindings [r/dispatch #(swap! *events conj %)]
+           (page-transition/navigate! {:path (restore/page-key)} true true))
+         (is (= 2 (count @*events)) "Both native-capable and fallback browsers commit directly")
          (finally (set! (.-startViewTransition js/document) native-start)
+                  (if direct (.setAttribute root "data-image-direct" direct)
+                             (.removeAttribute root "data-image-direct"))
+                  (if settling (.setAttribute root "data-return-settling" settling)
+                               (.removeAttribute root "data-return-settling"))
                   (reset! restore/*context before)))))
 (deftest client-restored-content-requests-layout-aware-scroll-restoration
   (is (= {:scroll/restore-position 499}
@@ -1927,17 +1942,18 @@
       (.replaceState js/history history-state "" url)
       (restore/navigate! (.-pathname js/location))
       (restore/spa-back!)
-      (is (not (restore/direct-images?)) "SPA query Back cannot revive the policy")
-      (is (restore/document-enter?) "SPA query Back preserves the original clock")
+      (is (restore/direct-images?) "SPA query Back restores final images")
+      (is (not (restore/document-enter?)) "SPA query Back settles the original clock")
       (restore/begin! {:back? true})
       (restore/direct-images!)
       (.replaceState js/history history-state "" (str (.-pathname js/location) "?image-query-proof=back"))
       (restore/navigate! (.-pathname js/location))
       (is (not (restore/direct-images?)) "Back policy also ends on ordinary query navigation")
+      (is (not (restore/back-document?)) "New query intent releases the shared history policy")
       (is (not (restore/document-enter?)) "A settled return does not start an SSR entrance")
       (restore/spa-back!)
-      (is (restore/skip-enter?) "SPA Back still retains its page-motion contract")
-      (is (not (restore/direct-images?)) "SPA Back uses the ordinary destination image lifecycle")
+      (is (restore/skip-enter?) "SPA Back suppresses component entrances")
+      (is (restore/direct-images?) "SPA Back uses the same final images as external Back")
       (finally
         (.replaceState js/history history-state "" url)
         (reset! restore/*context before)

@@ -235,7 +235,7 @@
     (control-browser-anchor!))
   (when back? (restore/spa-back!))
   (let [generation (swap! *generation inc)
-        animate?' (and animate? (not (motion/reduced-motion?)))
+        animate?' (and animate? (not back?) (not (motion/reduced-motion?)))
         native? (and animate?' (exists? js/document) (fn? (.-startViewTransition js/document)))
         outgoing-top (when (and animate?' (exists? js/document))
                        (some-> (.querySelector js/document "#main > .page-root") .getBoundingClientRect .-top))

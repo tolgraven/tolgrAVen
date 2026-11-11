@@ -10,6 +10,7 @@
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
     [website.component.legacy-storage :as localstore]
     [website.component.storage :as storage]
+    [website.component.restore :as restore]
     [website.ssr.return-contract :as return-contract]
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
@@ -155,10 +156,10 @@
       (assoc :dispatch [:loader/activate {:module scope- :args args}]))))
 
 (r/reg-event-fx :history/popped
-  (fn [{:keys [db]} [_ e]]
-    (let [nav-action? true  #_(.-isNavigation e)] ; by fact we getting the event heh
-      (if nav-action?  ; bona fide back (or fwd??) event! ; set a flag affecting next common/navigate event
-        {:db (assoc-in db [:state :browser-nav :got-nav] true)}))))
+  (fn [{:keys [db]} _]
+    {:db (assoc-in db [:state :browser-nav :got-nav] true)
+     :history/restore nil}))
+(r/reg-fx :history/restore (fn [_] (restore/spa-back!)))
 
 (r/reg-event-fx :history/set-referrer
   (fn [{:keys [db]} [_ referrer nav-type]]

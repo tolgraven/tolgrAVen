@@ -4,6 +4,7 @@
     [website.component.registry]
     [website.component.font :as font]
     [website.component.motion :as motion]
+    [website.component.restore :as restore]
     [website.macros :refer-macros [defc]]
     [website.react :as r]
 
@@ -144,7 +145,11 @@
                  line-numbers? starting-line-number line-props line-prefix editable? reveal?]
            :or {basic? true
                 style theme/bruvbox}}]
-  (let [[revealing? set-revealing!] (r/use-state #(and reveal? (not editable?) (not (motion/reduced-motion?))))
+  (let [returned? (or (restore/back-document?) (restore/local-document?))
+        [revealing? set-revealing!] (r/use-state #(and reveal? (not editable?)
+                                                        (not (motion/reduced-motion?))
+                                                        (not (restore/skip-enter?))
+                                                        (not returned?)))
         language' (or language (when inline? inline-language))
         numbered? (and (not inline?) (if (nil? line-numbers?) (not basic?) line-numbers?))
         ;; Retain the editable caret line without modifying authored source.
@@ -157,7 +162,7 @@
         code-element (into [(if inline? :span :code)
                             {:class (str "language-" selected-language)
                              :style {:whiteSpace "pre" :color "inherit"}}] contents)
-        attrs {:className (when revealing? "code-highlight-reveal")
+        attrs {:className (when (and revealing? (not returned?)) "code-highlight-reveal")
                :on-animation-end
                (fn [event]
                  (when (and (= "code-highlight-sharpen" (.-animationName event))
@@ -168,6 +173,11 @@
                                         "padding" 0
                                         "background" "transparent"}))
                :children (r/as-element code-element)}]
+    ;; Query history can retain this mounted formatter. Retire its reveal too,
+    ;; so releasing the document's input guard cannot restart a cancelled clock.
+    (r/use-layout-effect
+      (fn [] (when (and returned? revealing?) (set-revealing! false)) nil)
+      [returned? revealing?])
     (cond
       inline? [<font-inline> (update attrs :className #(str "code-highlight" (when % (str " " %))))]
       editable? [:pre (dissoc attrs :children) code-element]

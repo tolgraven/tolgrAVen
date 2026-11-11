@@ -627,13 +627,14 @@ document.querySelector('#run').onclick = async () => {
     await settleLayout(doc().querySelector('main'));
     const backFrames = await sample(() => frame.contentWindow.history.back(), readPageMotion, 1800);
     check(doc() === before, 'SPA Back retains the existing document');
-    check(backFrames.some(value => value.path === '/' && (value.opacity < .95 || value.nativeFade)),
-          'SPA Back uses the same page opacity fade');
-    check(backFrames.some(value => value.oldProgress > .05 && value.oldProgress < .95 &&
-                                  value.newProgress > .05 && value.newProgress < .95) ||
-          backFrames.some(value => value.outgoing > .05 && value.outgoing < .95 &&
-                                  value.opacity > .05 && value.opacity < .95),
-          'SPA Back crossfades both pages simultaneously');
+    check(backFrames.some(value => value.path === '/'), 'SPA Back commits the saved destination');
+    check(backFrames.filter(value => value.path === '/').every(value => value.opacity === 1 && !value.nativeFade),
+          'SPA Back restores an opaque finished page without another fade');
+    const forwardFrames = await sample(() => frame.contentWindow.history.forward(), readPageMotion, 1800);
+    check(doc() === before && forwardFrames.some(value => value.path === '/blog'),
+          'SPA Forward retains the document and commits the saved destination');
+    check(forwardFrames.filter(value => value.path === '/blog').every(value => value.opacity === 1 && !value.nativeFade),
+          'SPA Forward also restores the finished page without a fade');
     check(true, 'MOTION CHECKS PASSED');
   } catch (error) {
     const diagnostics = {
