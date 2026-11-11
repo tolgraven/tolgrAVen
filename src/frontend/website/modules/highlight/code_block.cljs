@@ -105,7 +105,9 @@
         ;; A mounted formatter already in memory needs no lazy Promise/fallback
         ;; cycle on a subsequent visit. Preserve the deferred hydration boundary.
         [ready-view _] (r/use-state #(when-not (or defer? context/*server?*)
-                                      (get-in (loader/code-spec :highlight) [:view :formatted-code])))
+                                      (let [component (get-in (loader/code-spec :highlight)
+                                                              [:view :formatted-code])]
+                                        (if (var? component) @component component))))
         args (into [code] (mapcat identity options))
         lines (string/split code #"\n" -1)
         fallback (if (:inline? options)

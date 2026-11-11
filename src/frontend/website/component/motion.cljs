@@ -201,7 +201,7 @@
         reduced? @(:reduced? state)
         ;; Ready first-screen SSR remains visible. Offscreen :seen owners still
         ;; observe the viewport after hydration and enter when scrolled into view.
-        skip? (or @(:returned? state)
+        skip? (or (and @(:returned? state) (not= false (:restore? appearance)))
                   @(:settled-offscreen? state)
                   (and (:skip-enter? state) (restore/document-return?))
                   (and (:skip-enter? state) (not (:observe-document? state)) (not automatic?)))

@@ -104,10 +104,13 @@
     (let [other-page? (not= (pathname path) (pathname page))]
       (when (or other-page? (not= page (page-key)))
         (when (exists? js/document)
-          (.removeAttribute (.-documentElement js/document) "data-image-direct"))
+          (.removeAttribute (.-documentElement js/document) "data-image-direct")
+          ;; Programmatic link intent may have no pointer/key event to release
+          ;; the native return guard. Ordinary navigation still resumes motion.
+          (.removeAttribute (.-documentElement js/document) "data-return-settling"))
         ;; Explicit false prevents returning to the initial query from reviving
         ;; the departure policy. The existing document entrance keeps its clock.
-        (swap! *context assoc :direct-images? false))
+        (swap! *context assoc :direct-images? false :back? false))
       (when other-page?
         (reset! *context {})))))
 (defn spa-back! []
