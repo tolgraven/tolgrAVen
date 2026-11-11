@@ -729,7 +729,8 @@
         1000
       ],
       "path": "/fixtures/visual.html?component=docs-index",
-      "action": "const deadline = performance.now() + 10000; while (!document.querySelector('.docs .codox .namespace-index')) { if (performance.now() > deadline) throw new Error('Native generated Codox document did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (!document.querySelector('.docs .codox .sidebar.primary') || [...document.querySelectorAll('.codox a[href]')].some(link => /^(?:\\.\\/)?[A-Za-z0-9_.-]+\\.html(?:[?#].*)?$/.test(link.getAttribute('href')))) throw new Error('Codox framing or native route links were lost');"
+      "action": "const deadline = performance.now() + 10000; while (!document.querySelector('.docs .codox .namespace-index')) { if (performance.now() > deadline) throw new Error('Native generated Codox document did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (!document.querySelector('.docs .codox .sidebar.primary') || [...document.querySelectorAll('.codox a[href]')].some(link => /^(?:\\.\\/)?[A-Za-z0-9_.-]+\\.html(?:[?#].*)?$/.test(link.getAttribute('href')))) throw new Error('Codox framing or native route links were lost');",
+      "capture_assert": "const links = [...document.querySelectorAll('.codox .topics a')];\nif (!links.length || links.some(link => getComputedStyle(link).fontStyle !== 'italic')) throw new Error('Docs links lost their production styling on a direct visit');\nif (document.querySelector('link[href*=\"/modules/test.\"]')) throw new Error('Docs styling must not depend on visiting the Test page');"
     },
     {
       "id": "docs-index-narrow",
@@ -738,7 +739,8 @@
         800
       ],
       "path": "/fixtures/visual.html?component=docs-index",
-      "action": "const deadline = performance.now() + 10000; while (!document.querySelector('.docs .codox .namespace-index')) { if (performance.now() > deadline) throw new Error('Native generated Codox document did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (!document.querySelector('.docs .codox .sidebar.primary') || [...document.querySelectorAll('.codox a[href]')].some(link => /^(?:\\.\\/)?[A-Za-z0-9_.-]+\\.html(?:[?#].*)?$/.test(link.getAttribute('href')))) throw new Error('Codox framing or native route links were lost');"
+      "action": "const deadline = performance.now() + 10000; while (!document.querySelector('.docs .codox .namespace-index')) { if (performance.now() > deadline) throw new Error('Native generated Codox document did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (!document.querySelector('.docs .codox .sidebar.primary') || [...document.querySelectorAll('.codox a[href]')].some(link => /^(?:\\.\\/)?[A-Za-z0-9_.-]+\\.html(?:[?#].*)?$/.test(link.getAttribute('href')))) throw new Error('Codox framing or native route links were lost');",
+      "capture_assert": "const links = [...document.querySelectorAll('.codox .topics a')];\nif (!links.length || links.some(link => getComputedStyle(link).fontStyle !== 'italic')) throw new Error('Docs links lost their production styling on a direct visit');\nif (document.querySelector('link[href*=\"/modules/test.\"]')) throw new Error('Docs styling must not depend on visiting the Test page');"
     },
     {
       "id": "docs-topic-wide",
