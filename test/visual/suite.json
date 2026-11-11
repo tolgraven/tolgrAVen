@@ -372,6 +372,15 @@
       "action": "document.querySelector('.blog-comment-collapsed-placeholder').click()"
     },
     {
+      "id": "comments-mount-offscreen",
+      "viewport": [
+        1440,
+        250
+      ],
+      "path": "/fixtures/visual.html?component=comments-edge",
+      "capture_assert": "const section = document.querySelector('.blog-comments');\nif (!section || section.getBoundingClientRect().top <= innerHeight) throw new Error('Comment mount case must start below the viewport');\nif (!section.classList.contains('appeared') || getComputedStyle(section).transform !== 'none') throw new Error('Comment section waited for scrolling instead of entering on mount');\nif (section.querySelector('.blog-comments-inner > .blog-comment-around.appear-wrapper')) throw new Error('Root comments acquired an extra entrance animation');"
+    },
+    {
       "id": "comments-owner-controls-wide",
       "viewport": [
         1440,

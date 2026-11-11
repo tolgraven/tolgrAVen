@@ -297,33 +297,36 @@
         transition-delay: 0ms;
       }
 
-      > .blog-comment-reply-body {
+      > .blog-comment-reply-clip {
         min-height: 0;
         overflow: hidden;
       }
 
-      &.reply-height:not(.appeared) > .blog-comment-reply-body {
+      // Slide against the full content height, as the production wrapper did.
+      // Only the outer clip shrinks with the grid track during the entrance.
+
+      &.reply-height:not(.appeared) > .blog-comment-reply-clip > .blog-comment-reply-body {
         opacity: 0.5;
         transform: translateY(-80%) scaleY(0.4);
       }
 
-      > .blog-comment-reply-body {
+      > .blog-comment-reply-clip > .blog-comment-reply-body {
         transition: opacity 120ms,
                     transform var(--comment-reveal-duration, 350ms) ease;
         transition-delay: var(--comment-reveal-delay, 0ms);
       }
 
-      &.collapsed > .blog-comment-reply-body {
+      &.collapsed > .blog-comment-reply-clip > .blog-comment-reply-body {
         opacity: 0.5;
         transform: translateY(-80%) scaleY(0.4);
         transition-duration: 400ms;
         transition-delay: 0ms;
       }
 
-      &[data-appear-settling] > .blog-comment-reply-body { transition: none; }
+      &[data-appear-settling] > .blog-comment-reply-clip > .blog-comment-reply-body { transition: none; }
 
       @media (prefers-reduced-motion: reduce) {
-        &, > .blog-comment-reply-body { transition: none; }
+        &, > .blog-comment-reply-clip > .blog-comment-reply-body { transition: none; }
       }
     }
     .blog-comment-actions {

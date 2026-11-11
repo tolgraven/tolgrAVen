@@ -335,7 +335,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Blog comments retain production's mount-triggered section zoom, without
   individual root zooms. Replies enter together with the original slide-behind
   transform/opacity and 350ms timing; keep intrinsic height per row and the 400ms
-  collapse inside the content-retention window, without a large parent max-height. Layout entrances opt into
+  collapse inside the content-retention window, without a large parent max-height.
+  Keep the grid clip separate from the slide's full-height content so transform
+  percentages do not change as the row opens. Layout entrances opt into
   `:settle-offscreen?` so hidden rows retain height without waiting on visibility.
   Unactivated module placeholders and departing skeletons have no shimmer animation.
   Appearance classes merge onto native roots; `appear-wrapper` is only a CSS

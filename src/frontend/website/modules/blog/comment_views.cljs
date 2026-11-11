@@ -109,7 +109,8 @@
    {:class (when-not expanded? "collapsed")
     :aria-hidden (not expanded?)
     :inert (not expanded?)}
-   (into [:div.blog-comment-reply-body] children)])
+   [:div.blog-comment-reply-clip
+    (into [:div.blog-comment-reply-body] children)]])
 
 (defc <comment-fade> {:features [:props [:appear "opacity"]]} [spec]
   [:div.fade-to-black.bottom {:style {:z-index "0"}}])

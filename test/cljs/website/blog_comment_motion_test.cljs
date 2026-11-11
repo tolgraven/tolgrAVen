@@ -27,6 +27,8 @@
                         placeholder-root (some-> placeholder (.closest ".blog-comment-reply"))
                         samples' (conj samples {:time elapsed
                                                 :heights (heights element)
+                                                :body-heights (mapv #(.-offsetHeight %)
+                                                                (array-seq (.querySelectorAll element ".blog-comment-reply-body")))
                                                 :placeholder? (some? placeholder)
                                                 :placeholder-exiting? (boolean (some-> placeholder-root .-classList (.contains "exiting")))
                                                 :native-exit? (boolean
@@ -287,6 +289,9 @@
                 (is (some #(let [height (first (:heights %))]
                              (< 1 height (- final 1))) samples)
                     "The first arriving reply has intermediate layout heights, not a size jump")
+                (is (every? #(every? (fn [height] (<= (js/Math.abs (- final height)) 1))
+                                    (:body-heights %)) samples)
+                    "The slide uses full content height while the layout clip opens")
                 (is (every? #(<= (js/Math.abs (- final %)) 1) (heights element))))
               (let [row (.querySelector element ".blog-comment-reply-row")]
                 (reset! *expanded? false)
