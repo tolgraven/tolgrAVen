@@ -378,7 +378,8 @@
         1000
       ],
       "path": "/fixtures/visual.html?component=comments-auth",
-      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})"
+      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})",
+      "capture_assert": "const actions = [...document.querySelector('.blog-comment-actions').children];\nconst bounds = actions.map(action => action.getBoundingClientRect());\nconst fonts = actions.map(action => getComputedStyle(action).fontSize);\nif (bounds.some(box => Math.abs(box.width - bounds[0].width) > 0.1 || Math.abs(box.height - bounds[0].height) > 0.1) || fonts.some(size => size !== fonts[0])) throw new Error('Comment links and buttons lost their shared size');\nfor (let index = 0; index < actions.length; index++) {\n  const box = bounds[index], icon = actions[index].querySelector('i').getBoundingClientRect();\n  if (Math.abs(icon.x + icon.width / 2 - box.x - box.width / 2) > 0.1 || Math.abs(icon.y + icon.height / 2 - box.y - box.height / 2) > 0.1) throw new Error('Comment action icon is off center');\n}\nif (document.querySelector('.blog-comments-inner > .blog-comment-around.appear-wrapper')) throw new Error('Root comments acquired an extra entrance animation');"
     },
     {
       "id": "comments-owner-controls-narrow",
@@ -387,7 +388,8 @@
         800
       ],
       "path": "/fixtures/visual.html?component=comments-auth",
-      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})"
+      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})",
+      "capture_assert": "const actions = [...document.querySelector('.blog-comment-actions').children];\nconst bounds = actions.map(action => action.getBoundingClientRect());\nconst fonts = actions.map(action => getComputedStyle(action).fontSize);\nif (bounds.some(box => Math.abs(box.width - bounds[0].width) > 0.1 || Math.abs(box.height - bounds[0].height) > 0.1) || fonts.some(size => size !== fonts[0])) throw new Error('Comment links and buttons lost their shared size');\nfor (let index = 0; index < actions.length; index++) {\n  const box = bounds[index], icon = actions[index].querySelector('i').getBoundingClientRect();\n  if (Math.abs(icon.x + icon.width / 2 - box.x - box.width / 2) > 0.1 || Math.abs(icon.y + icon.height / 2 - box.y - box.height / 2) > 0.1) throw new Error('Comment action icon is off center');\n}\nif (document.querySelector('.blog-comments-inner > .blog-comment-around.appear-wrapper')) throw new Error('Root comments acquired an extra entrance animation');"
     },
     {
       "id": "comments-standalone-narrow",
@@ -422,7 +424,8 @@
         1000
       ],
       "path": "/fixtures/visual.html?component=comments-reader",
-      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Reply\"]').focus({preventScroll:true})"
+      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Reply\"]').focus({preventScroll:true})",
+      "capture_assert": "const actions = [...document.querySelector('.blog-comment-actions').children];\nconst bounds = actions.map(action => action.getBoundingClientRect());\nconst fonts = actions.map(action => getComputedStyle(action).fontSize);\nif (bounds.some(box => Math.abs(box.width - bounds[0].width) > 0.1 || Math.abs(box.height - bounds[0].height) > 0.1) || fonts.some(size => size !== fonts[0])) throw new Error('Comment links and buttons lost their shared size');\nfor (let index = 0; index < actions.length; index++) {\n  const box = bounds[index], icon = actions[index].querySelector('i').getBoundingClientRect();\n  if (Math.abs(icon.x + icon.width / 2 - box.x - box.width / 2) > 0.1 || Math.abs(icon.y + icon.height / 2 - box.y - box.height / 2) > 0.1) throw new Error('Comment action icon is off center');\n}\nif (document.querySelector('.blog-comments-inner > .blog-comment-around.appear-wrapper')) throw new Error('Root comments acquired an extra entrance animation');"
     },
     {
       "id": "comments-reader-controls-narrow",
@@ -431,7 +434,8 @@
         800
       ],
       "path": "/fixtures/visual.html?component=comments-reader",
-      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Reply\"]').focus({preventScroll:true})"
+      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Reply\"]').focus({preventScroll:true})",
+      "capture_assert": "const actions = [...document.querySelector('.blog-comment-actions').children];\nconst bounds = actions.map(action => action.getBoundingClientRect());\nconst fonts = actions.map(action => getComputedStyle(action).fontSize);\nif (bounds.some(box => Math.abs(box.width - bounds[0].width) > 0.1 || Math.abs(box.height - bounds[0].height) > 0.1) || fonts.some(size => size !== fonts[0])) throw new Error('Comment links and buttons lost their shared size');\nfor (let index = 0; index < actions.length; index++) {\n  const box = bounds[index], icon = actions[index].querySelector('i').getBoundingClientRect();\n  if (Math.abs(icon.x + icon.width / 2 - box.x - box.width / 2) > 0.1 || Math.abs(icon.y + icon.height / 2 - box.y - box.height / 2) > 0.1) throw new Error('Comment action icon is off center');\n}\nif (document.querySelector('.blog-comments-inner > .blog-comment-around.appear-wrapper')) throw new Error('Root comments acquired an extra entrance animation');"
     },
     {
       "id": "comments-label-above-short",

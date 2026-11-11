@@ -71,8 +71,3 @@
    {:id :authors :depends [:replies :children]
     :queries (fn [{:keys [replies children]}]
                (mapv query/profile-query (sort (distinct (keep :user (concat replies children))))))}])
-
-(defn reveal-duration-ms [count]
-  ;; A short thread should finish quickly; large branches get a little more
-  ;; room without accumulating a full transition at every nesting level.
-  (+ 120 (* 20 (min 8 (max 1 count)))))

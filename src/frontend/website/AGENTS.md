@@ -332,8 +332,10 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   Reply placeholders opt into `:retain-layout? true` to retain their shared grid
   footprint through the bounded CSS exit window. A hidden or partly entered root
   can reverse before arriving rows paint; ordinary exits follow native clocks.
-  Blog replies animate intrinsic height per row with their entrance stagger;
-  do not reintroduce a large parent max-height. Layout entrances opt into
+  Blog comments retain production's mount-triggered section zoom, without
+  individual root zooms. Replies enter together with the original slide-behind
+  transform/opacity and 350ms timing; keep intrinsic height per row and the 400ms
+  collapse inside the content-retention window, without a large parent max-height. Layout entrances opt into
   `:settle-offscreen?` so hidden rows retain height without waiting on visibility.
   Unactivated module placeholders and departing skeletons have no shimmer animation.
   Appearance classes merge onto native roots; `appear-wrapper` is only a CSS

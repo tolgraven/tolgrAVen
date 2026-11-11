@@ -60,9 +60,7 @@
     (plan/evaluate comments/reveal-plan
                    {:path path :expanded {path true (conj path "reply") false}} read!)
     (is (not (some #{(comments/thread-query 42 "reply")} @requested))
-        "An explicit child fold prevents the second read")
-    (is (< (comments/reveal-duration-ms 1) (comments/reveal-duration-ms 8)))
-    (is (= 280 (comments/reveal-duration-ms 100)))))
+        "An explicit child fold prevents the second read")))
 
 (deftest scoped-blog-plans-filter-at-the-database
   (is (= [{:seed-key :blog_posts :table "blog_posts"

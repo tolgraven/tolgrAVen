@@ -79,13 +79,12 @@
   (let [expanded? @*expanded?]
   [:section.blog-comments
    [:div.blog-comments-inner
-    [:div.blog-comment-reply {:style {"--comment-reveal-duration" "200ms"}}
+    [:div.blog-comment-reply
      (for [index @*rows]
        ^{:key index}
        [comment-views/<reply-row>
         {:expanded? expanded?
-         :appear {:class "reply-height", :settle-offscreen? true, :restore? false}
-         :props {:style {"--comment-reveal-delay" (str (* 48 index) "ms")}}
+         :appear {:class "reply-height", :viewport? false, :settle-offscreen? true, :restore? false}
          :children [[:div {:style {:height "4rem"}} (str "Reply " index)]]}])]]]))
 
 (defn- <thread-handoff> [*ready? *expanded? & [delay-ms]]
@@ -263,7 +262,7 @@
         (.catch #(is false (str %)))
         (.finally done))))
 
-(deftest late-replies-grow-layout-in-their-entrance-order-and-reverse-on-reentry
+(deftest late-replies-grow-together-and-reverse-on-reentry
   (async done
     (-> (go-promise
           (let [{:keys [root element close!]} (await! (fixture!))
@@ -283,7 +282,8 @@
                                     (:time (first (filter #(> (nth (:heights %) index 0) 1) samples))))
                                   (range 3))]
                 (is (every? number? started))
-                (is (apply < started) "Each reply starts growing after the preceding reply")
+                (is (<= (- (apply max started) (apply min started)) 20)
+                    "Production replies start together, without an index-based stagger")
                 (is (some #(let [height (first (:heights %))]
                              (< 1 height (- final 1))) samples)
                     "The first arriving reply has intermediate layout heights, not a size jump")
@@ -302,7 +302,7 @@
                 (reset! *expanded? false)
                 (r/flush)
                 (await! (support/settle!))
-                (await! (tick! 210))
+                (await! (tick! 430))
                 (is (every? #(< % 1) (heights element)) "Collapse finishes within comment retention"))
               (finally (close!) (reset! restore/*context context)))))
         (.catch #(is false (str %)))
