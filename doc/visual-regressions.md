@@ -525,6 +525,12 @@ Captured candidates are **not approved design baselines**. Compare against
 not approve current broken UI to turn the gate green. Inspect both widths and
 every edge of controls/text before accepting images and geometry.
 
+Before replacing the pre-agent production deployment, retain an immutable,
+reachable deployment of its exact running commit and built assets. Record its
+commit SHA and reference URL in the deployment record, and use that deployment
+for subsequent appearance and motion comparisons. Do not assume the latest
+branch or a similar historical commit is the deployed reference.
+
 Case and supplemental-tile JSON may be stored losslessly as `.json.gz`; each stem
 must have exactly one plain or compressed record. Keep `capture.json` and PNGs
 unchanged. Capture still writes plain JSON. Use gzip without timestamps or original

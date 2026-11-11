@@ -103,13 +103,14 @@
 
 (defc <reply-row>
   "One intrinsic-height row per reply; the same entrance grows its layout box."
-  {:features [:props [:appear {:class "reply-height", :settle-offscreen? true}]]}
+  {:features [:props [:appear {:class "reply-height", :viewport? false, :settle-offscreen? true}]]}
   [{:keys [expanded? children] :as spec} :- schema/reply-row-spec]
   [:div.blog-comment-reply-row
    {:class (when-not expanded? "collapsed")
     :aria-hidden (not expanded?)
     :inert (not expanded?)}
-   (into [:div.blog-comment-reply-body] children)])
+   [:div.blog-comment-reply-clip
+    (into [:div.blog-comment-reply-body] children)]])
 
 (defc <comment-fade> {:features [:props [:appear "opacity"]]} [spec]
   [:div.fade-to-black.bottom {:style {:z-index "0"}}])
@@ -174,7 +175,7 @@
         *element (r/use-ref nil)
         route @(r/subscribe [:common/route])
         focused? (and (:focused-id spec) (= (str id) (str (:focused-id spec))))
-        showing? (timer/use-delayed-visible? (or (nil? visible?) @visible?) 250)
+        showing? (timer/use-delayed-visible? (or (nil? visible?) @visible?) 450)
         is-preview? (= [:new-comment] path)
         *expanded? (r/subscribe [:comments/thread-expanded? path])
         *comments (when-not is-preview?
@@ -210,20 +211,14 @@
             *comments (or *comments (r/atom nil))
             replies? (or (seq @*comments) (pos? (:reply-count post 0)))]
           [:<>
-           [<comment-frame> {:appear {:class (or (:appear spec) "zoom-y fast")
-                                      ;; The parent owns reply visibility. A slide-behind
-                                      ;; root starts outside its clipping container, so
-                                      ;; observing that transformed root would deadlock.
-                                      :viewport? (nil? visible?)
-                                      :restore? (not (:enter? spec))
-                                      :remember-key (when (nil? visible?) [:blog/comment path])}
-                            :features (if (or focused? (false? (:appear spec))) [[:appear false]] [])
+           [<comment-frame> {:appear {:class (:appear spec)
+                                      :viewport? false
+                                      :restore? (not (:enter? spec))}
+                            ;; Production animates the section once, not each root.
+                            :features (if (or focused? (not (:appear spec))) [[:appear false]] [])
                             :props {:id (when-not (or is-preview? (:quote? spec)) (str "blog-comment-" id))
                                     :class "link-anchor"
-                                    :ref (fn [element] (set! (.-current *element) element) nil)
-                                    :style {:transition-delay (str (or (:stagger-ms spec) 0) "ms")
-                                            "--comment-reveal-duration" (str (or (:motion-ms spec) 180) "ms")
-                                            "--comment-reveal-delay" (str (or (:stagger-ms spec) 0) "ms")}}
+                                    :ref (fn [element] (set! (.-current *element) element) nil)}
                             :children [
             [:div.blog-comment-border
              {:style {:cursor (if (and @*expanded? replies?)
@@ -305,15 +300,14 @@
            (when replies? ;replies
              [<reply-thread>
               [^{:key :replies} [:div.blog-comment-reply
-               {:style {"--comment-reveal-duration" (str (comments/reveal-duration-ms (count @*comments)) "ms")}}
-               (doall (for [[index post] (map-indexed vector (sort-by :ts (vals @*comments)))]
+               (doall (for [post (sort-by :ts (vals @*comments))]
                         ^{:key (get-id-str (conj path (:id post)))}
                         [<reply-row>
                          {:expanded? @*expanded?
                           :appear {:class "reply-height"
+                                   :viewport? false
                                    :settle-offscreen? true
                                    :restore? (not (or (:enter? spec) @*interacted?))}
-                          :props {:style {"--comment-reveal-delay" (str (min 384 (* 48 index)) "ms")}}
                           :children [[<comment-post> {:path (conj path (:id post))
                                                       :comment post
                                                       :focused-id (:focused-id spec)
@@ -349,7 +343,7 @@
        [:a {:href @(r/subscribe [:href :blog-comment {:comment-id id}])} "Open it on its own"]])))
 
 (defc <comments-section> "Comments section!"
-  {:features [[:appear "zoom-y"]]}
+  {:features [[:appear {:class "zoom-y", :viewport? false}]]}
   [{{:keys [id] :as post} :post :as spec} :- schema/post-spec]
   (let [{:keys [records loading? more?]} @(r/subscribe [:comments/root-page id])
         route @(r/subscribe [:common/route])
@@ -368,11 +362,10 @@
      (when focused-id [<comment-focus> id])
      (when (seq comments)
        [:div.blog-comments-inner
-        (doall (for [[index comment] (map-indexed vector comments) :let [path [id (:id comment)]]]
+        (doall (for [comment comments :let [path [id (:id comment)]]]
                  ^{:key (get-id-str path)}
                  [<comment-post> {:path path :comment comment
-                                  :focused-id focused-id
-                                  :stagger-ms (min 48 (* 12 index))}]))])
+                                  :focused-id focused-id}]))])
      (when (and expanded? more?)
        [:button.blog-btn.blog-load-more
         {:disabled loading? :on-click #(r/dispatch [:blog/load-more-comments id])}

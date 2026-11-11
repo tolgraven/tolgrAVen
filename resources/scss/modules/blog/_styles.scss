@@ -277,53 +277,56 @@
       .blog-comment-around {
         border-top: unset;
         &.slide-behind {
-          transition: opacity 0.1s, transform var(--comment-reveal-duration, 180ms) ease;
+          transition: opacity 0.1s, transform var(--comment-reveal-duration, 350ms) ease;
         }
       }
       .blog-info.appear-wrapper {
-        transition: opacity 0.1s, transform var(--comment-reveal-duration, 180ms) ease;
+        transition: opacity 0.1s, transform var(--comment-reveal-duration, 350ms) ease;
       }
     }
     .blog-comment-reply-row {
       display: grid;
       grid-template-rows: 0fr;
-      transition: grid-template-rows var(--comment-reveal-duration, 180ms) ease;
+      transition: grid-template-rows var(--comment-reveal-duration, 350ms) ease;
       transition-delay: var(--comment-reveal-delay, 0ms);
 
       &.appeared { grid-template-rows: 1fr; }
       &.collapsed {
         grid-template-rows: 0fr;
-        transition-duration: 180ms;
+        transition-duration: 400ms;
         transition-delay: 0ms;
       }
 
-      > .blog-comment-reply-body {
+      > .blog-comment-reply-clip {
         min-height: 0;
         overflow: hidden;
       }
 
-      &.reply-height:not(.appeared) > .blog-comment-reply-body {
-        opacity: 0;
-        transform: translateY(-0.75em);
+      // Slide against the full content height, as the production wrapper did.
+      // Only the outer clip shrinks with the grid track during the entrance.
+
+      &.reply-height:not(.appeared) > .blog-comment-reply-clip > .blog-comment-reply-body {
+        opacity: 0.5;
+        transform: translateY(-80%) scaleY(0.4);
       }
 
-      > .blog-comment-reply-body {
-        transition: opacity var(--comment-reveal-duration, 180ms) ease,
-                    transform var(--comment-reveal-duration, 180ms) ease;
+      > .blog-comment-reply-clip > .blog-comment-reply-body {
+        transition: opacity 120ms,
+                    transform var(--comment-reveal-duration, 350ms) ease;
         transition-delay: var(--comment-reveal-delay, 0ms);
       }
 
-      &.collapsed > .blog-comment-reply-body {
-        opacity: 0;
-        transform: translateY(-0.75em);
-        transition-duration: 180ms;
+      &.collapsed > .blog-comment-reply-clip > .blog-comment-reply-body {
+        opacity: 0.5;
+        transform: translateY(-80%) scaleY(0.4);
+        transition-duration: 400ms;
         transition-delay: 0ms;
       }
 
-      &[data-appear-settling] > .blog-comment-reply-body { transition: none; }
+      &[data-appear-settling] > .blog-comment-reply-clip > .blog-comment-reply-body { transition: none; }
 
       @media (prefers-reduced-motion: reduce) {
-        &, > .blog-comment-reply-body { transition: none; }
+        &, > .blog-comment-reply-clip > .blog-comment-reply-body { transition: none; }
       }
     }
     .blog-comment-actions {
@@ -334,6 +337,7 @@
       // Keep Reply/Edit in their original corner column. Links share the same
       // hover group alongside it without adding a line to the comment body.
       grid-template-rows: repeat(2, auto);
+      grid-auto-columns: 1fr;
       grid-auto-flow: column;
       right: calc(0.5 * var(--space));
       top: calc(0.5 * var(--space));
@@ -510,7 +514,9 @@
     align-items: center;
     justify-content: center;
     margin: 0;
+    font-family: inherit;
     font-size: 0.8em;
+    line-height: 1;
     text-decoration: none;
 
     &:focus-visible {
