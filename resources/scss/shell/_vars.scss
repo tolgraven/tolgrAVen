@@ -4,7 +4,14 @@
 
 $line-width-base: 2.0px; // Retain the original fixed border baseline.
 
-/* Normalize the menu clip's zero without changing legacy border consumers. */
+/* Normalize both menu clip offsets: unitless zero is valid for borders but
+   invalid when subtracted from a length in the cover's polygon. */
+@property --menu-line-width {
+  syntax: '<length-percentage>';
+  inherits: true;
+  initial-value: 0%;
+}
+
 @property --menu-border-width {
   syntax: '<length-percentage>';
   inherits: true;
@@ -52,10 +59,11 @@ $line-width-base: 2.0px; // Retain the original fixed border baseline.
   --section-rounded:   0%;
   
   --fiddle-multiplier: 1; /* was 3. works with line-width and header pixel dispair chrome+safari desktop. 2 would be the assumed correct tho... */
+  --menu-line-width: calc(var(--line-width));
   --left-marker:       calc(100% *
                             ((1 - var(--menu-width-fraction)) / 2) +
                             0.75 * var(--space) -
-                            var(--fiddle-multiplier) * var(--line-width));
+                            var(--fiddle-multiplier) * var(--menu-line-width));
   --menu-border-width: calc(var(--line-width-vert));
   --right-marker:       calc(100% -
                              1.5 * var(--menu-border-width) -
