@@ -130,8 +130,8 @@
     --space-lg: 1.0rem;
   }
   
-  button {
-    // --around: var(--space) var(--space) !important;
+  button, :where(.button) {
+    // Navigation actions use the same responsive sizing as native buttons.
     font-size: 105% !important;
   }
 }

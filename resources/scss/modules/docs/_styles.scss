@@ -568,4 +568,32 @@ pre.deps {
 
 }
 
+/* DOCS SECTION */
+section.docs {
+  a {
+    color: var(--blue-2);
+    font-style: italic;
+  }
+
+  p.title {
+    border-top: var(--line-width-sm) solid currentColor;
+    background: linear-gradient(to right, var(--bg-2) 85%, var(--bg-1));
+    margin: 1.7em 0.5em 1em;
+    font-size: 1.4em;
+    font-weight: 600;
+    width: 50%;
+  }
+
+  .bs-callout {
+    margin-top: 2rem;
+    padding: var(--space);
+    background-color: var(--bg-2);
+
+    h4 {
+      font-size: 1.1em;
+      margin-bottom: 0.75em;
+    }
+  }
+}
+
 /*! purgecss end ignore */
