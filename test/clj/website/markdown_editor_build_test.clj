@@ -33,3 +33,20 @@
   (is (nil? (build/require-current-exports! #{"MDXEditor"} #{"MDXEditor"})))
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Restart this Shadow watch"
                        (build/require-current-exports! #{"MDXEditor"} #{"MDXEditor" "InsertTable"}))))
+
+(deftest installed-sdk-satisfies-the-reviewed-entry-contract
+  (let [manifest (json/read-str (slurp "package.json"))
+        lockfile (json/read-str (slurp "package-lock.json"))
+        exports (build/prepare!)
+        generated (slurp (str build/generated-root "/" build/generated-package "/entry.js"))]
+    ;; Dependency bots update both npm manifests without reviewing our adapter.
+    ;; Exercise the real installed entry, not only the synthetic parser fixture.
+    (is (= build/sdk-version
+           (get-in manifest ["dependencies" "@mdxeditor/editor"])
+           (get-in lockfile ["packages" "" "dependencies" "@mdxeditor/editor"])
+           (get-in lockfile ["packages" "node_modules/@mdxeditor/editor" "version"])))
+    (is (contains? exports "MDXEditor"))
+    (is (contains? exports "markdownShortcutPlugin"))
+    (is (not (re-find #"codemirror|diff-source|@lezer|export \*" generated)))
+    (is (= exports (build/prepare!)))
+    (is (= generated (slurp (str build/generated-root "/" build/generated-package "/entry.js"))))))
