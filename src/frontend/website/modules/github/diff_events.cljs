@@ -1,7 +1,6 @@
 (ns website.modules.github.diff-events
   "GitHub reads use the shared HTTP effects; all request states remain inspectable."
   (:require [website.react :as r]
-            [ajax.core :as ajax]
             [website.modules.github.diff :as diff]))
 
 (defn state-path [revision & keys] (into [:state :github :diff-view (diff/key-for revision)] keys))
@@ -86,7 +85,7 @@
                                  :background? true
                                  :timeout 20000
                                  :headers {"Accept" "text/plain"}
-                                 :response-format (ajax/text-response-format)}
+                                 :response-format :text}
                       [:github/diff-patch revision]
                       [:github/diff-failed revision [:patch]]]}
           (nil? file) nil

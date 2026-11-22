@@ -1,6 +1,5 @@
 (ns website.modules.contact.events
-  (:require [website.react :as r]
-            [ajax.core :as ajax]))
+  (:require [website.react :as r]))
 
 (def debug (when ^boolean goog.DEBUG r/debug))
 
@@ -9,7 +8,7 @@
    (let [{:keys [name email title message]} (get-in db [:state :form-field :contact])]
      {:dispatch-n [[:http/post {:uri "/api/send-contact-email"
                                 :params {:name name :email email :title title :message message}
-                                :response-format (ajax/json-response-format {:keywords? true})}
+                                :response-format :json}
                     [:contact/request-sent]]]})))
 
 (r/reg-event-fx :contact/request-sent [debug]

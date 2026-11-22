@@ -213,7 +213,7 @@
   (reset! *segment-reads 0)
   ;; The native init, fetch, result events and subscriptions remain unchanged.
   ;; Only the existing HTTP transport effect is scoped to these disposable cases.
-  (r/reg-fx :http-xhrio
+  (r/reg-fx :http/fetch
     (fn [{:keys [method uri url-params on-success]}]
       (when-not (= :get method)
         (throw (js/Error. "Strava visual fixtures reject provider writes")))

@@ -28,8 +28,8 @@
 (deftest ordinary-production-effects-and-unused-cache-entries-are-allowed
   (let [state {:mode :release
                :build-sources [:http]
-               :sources {:http {:ns 'day8.re-frame.http-fx
-                                :resource-name "day8/re_frame/http_fx.cljs"}
+               :sources {:http {:ns 'website.http
+                                :resource-name "website/http.cljs"}
                          :old {:ns 'day8.re-frame-10x}}}]
     (is (identical? state (policy/no-debug-tools state)))))
 

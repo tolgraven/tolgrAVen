@@ -4,7 +4,8 @@
   (:require-macros [website.test-async :refer [go-promise await!]])
   (:require
     [cljs.core.async]
-    [ajax.core :as ajax]
+    [website.http :as http]
+    [website.async :as a]
     [website.modules.docs.pages :as docs-pages]
     [website.test-support :as support]
     [cljs.test :refer-macros [deftest is testing async use-fixtures]]
@@ -599,8 +600,8 @@
   (let [handler (website.events/get-http-fn :get)
         effects (handler {:db {}} [:http/get {:uri "/api/supabase/settings", :background? true}])]
     (is (not (contains? effects :dispatch)))
-    (is (nil? (get-in effects [:http-xhrio :on-success 2])))
-    (is (not (contains? (:http-xhrio effects) :background?)))))
+    (is (nil? (get-in effects [:http/fetch :on-success 2])))
+    (is (not (contains? (:http/fetch effects) :background?)))))
 (deftest subscription-preload-releases-only-its-own-owner
   (async
     done
@@ -1854,13 +1855,13 @@
                 root (await! (support/create-root! element))
                 page (str "docs-test-" (random-uuid))
                 html "<h1>Backend documentation</h1>"
-                original-get ajax/GET
+                original-get http/request!
                 *calls (atom []) *respond (atom nil)]
             (.appendChild (.-body js/document) element)
             (try
-              (set! ajax/GET (fn [url & [options]]
-                              (swap! *calls conj url)
-                              (reset! *respond (:handler options))))
+              (set! http/request! (fn [{:keys [uri]}]
+                                    (swap! *calls conj uri)
+                                    (a/create (fn [resolve _] (reset! *respond resolve)))))
               ;; Route/controller event and two mounted views use the same source.
               (r/dispatch [:docs/get page])
               (await! (support/render! root [:div [docs-view/<doc-page> page]
@@ -1876,7 +1877,7 @@
               (is (= "Backend documentation" (.-textContent element)))
               (finally
                 (support/unmount! root) (.remove element)
-                (set! ajax/GET original-get)
+                (set! http/request! original-get)
                 (r/dispatch [:component-data/remove [:docs page]])
                 (data/invalidate! #{(docs-pages/document-dependency page)
                                     (:load (docs-pages/document-dependency page))})))))

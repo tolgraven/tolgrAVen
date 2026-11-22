@@ -88,7 +88,7 @@
                       :fields {}}
         handlers (mapv (fn [[kind id]] [kind id (r/get-handler kind id)])
                        [[:fx :content-editor/request] [:fx :content-editor/upload]
-                        [:fx :supabase/request] [:fx :http-xhrio] [:fx :ls] [:cofx :ls]])
+                        [:fx :supabase/request] [:fx :http/fetch] [:fx :ls] [:cofx :ls]])
         original-ensure-code! supabase/ensure-code!
         *saved (atom {})
         *disposed? (atom false)
@@ -127,7 +127,7 @@
             (reject-account-effect! :write))))
       (r/reg-fx :content-editor/upload (fn [_] (reject-account-effect! :write)))
       (r/reg-fx :supabase/request (fn [_] (reject-account-effect! :provider)))
-      (r/reg-fx :http-xhrio (fn [_] (reject-account-effect! :http)))
+      (r/reg-fx :http/fetch (fn [_] (reject-account-effect! :http)))
       ;; Native input blur persists through :ls/store-val. Keep this disposable
       ;; draft transport in memory, never in the shared browser's localStorage.
       (r/reg-cofx :ls #(assoc % :ls @*saved))
@@ -216,7 +216,7 @@
           (reject-cms-effect! :write))))
     (r/reg-fx :content-editor/upload (fn [_] (reject-cms-effect! :write)))
     (r/reg-fx :supabase/request (fn [_] (reject-cms-effect! :provider)))
-    (r/reg-fx :http-xhrio (fn [_] (reject-cms-effect! :http)))
+    (r/reg-fx :http/fetch (fn [_] (reject-cms-effect! :http)))
     ;; cv/<cv> always records its visit through this existing event/effect.
     ;; Keep its native mounted demo, but never read or persist a user's storage.
     (r/reg-cofx :ls #(assoc % :ls {}))

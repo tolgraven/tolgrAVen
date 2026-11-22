@@ -17,7 +17,7 @@
           *retry (atom nil)
           *initialized (atom 0)
           *consumer (atom nil)]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (status/recover! :supabase-init)
       (r/reg-fx :dispatch-later #(when-let [retry (first (filter (fn [item] (= :supabase/fetch-settings (first (:dispatch item)))) %))]
                                    (reset! *retry retry)))

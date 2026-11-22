@@ -5,8 +5,8 @@
 
     [website.react :as r]
 
-    [ajax.core :as ajax]
-    [day8.re-frame.http-fx]
+    [website.async :as a]
+    [website.http :as http]
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
     [website.component.legacy-storage :as localstore]
     [website.component.storage :as storage]
@@ -647,42 +647,29 @@
  (fn [db [_ path & args]]
   (apply update-in db path args)))
 
-(defn get-http-fn "Return fn used for http-get/post"
-  [kind & [extra-defaults]]
-  (fn http-fn [{:keys [db]} [_ opts & [on-success on-error]]]
+(r/reg-fx :http/fetch
+  (fn [{:keys [on-success on-failure] :as request}]
+    (a/then (http/request! request)
+           #(r/dispatch (conj on-success %))
+           #(r/dispatch (conj on-failure (http/error-data %))))))
+
+(defn get-http-fn [method & [defaults]]
+  (fn [_ [_ opts on-success on-error]]
     (let [id (get opts :loading-id (random-uuid))
-          loading-key (get opts :loading kind)
-          background? (:background? opts)
-          cleanup (when-not background? [:loading/off loading-key id])] ; set something to indicate request is underway
-      (cond-> {:http-xhrio
-       (merge
-        {:method          kind
-         :timeout         8000                                           ;; optional see API docs
-         :response-format (ajax/transit-response-format)  ;; IMPORTANT!: You must provide this.
-         :on-success      [:http-result-wrapper
-                           (or on-success [:default-http-result]) cleanup]
-         :on-failure      [:http-result-wrapper
-                           (or on-error   [:default-http-error]) cleanup]}
-        extra-defaults
-        (dissoc opts :background?))}
-        (not background?) (assoc :dispatch [:loading/on loading-key id])))))
+          loading-key (get opts :loading method)
+          foreground? (not (:background? opts))
+          cleanup (when foreground? [:loading/off loading-key id])
+          request (merge {:method method :timeout 8000 :response-format :transit
+                          :on-success [:http-result-wrapper (or on-success [:default-http-result]) cleanup]
+                          :on-failure [:http-result-wrapper (or on-error [:default-http-error]) cleanup]}
+                         defaults (dissoc opts :background?))]
+      (cond-> {:http/fetch request}
+        foreground? (assoc :dispatch [:loading/on loading-key id])))))
 
-(r/reg-event-fx :http/get-internal
-  (get-http-fn :get))
-
-(r/reg-event-fx :http/get
-  (get-http-fn :get
-               {:response-format (ajax/json-response-format {:keywords? true})}))
-
-(r/reg-event-fx :http/post [debug]
-  (get-http-fn :post
-               {:format (ajax/json-request-format)
-                :response-format (ajax/json-response-format {:keywords? true})}))
-
-(r/reg-event-fx :http/put [debug]
-  (get-http-fn :put
-               {:multipart-params :something})) ;file upload..
-
+(r/reg-event-fx :http/get-internal (get-http-fn :get))
+(r/reg-event-fx :http/get (get-http-fn :get {:response-format :json}))
+(r/reg-event-fx :http/post [debug] (get-http-fn :post {:response-format :json}))
+(r/reg-event-fx :http/put [debug] (get-http-fn :put {:format :transit}))
 
 (r/reg-event-fx :default-http-result
  (fn [db [_ res]]

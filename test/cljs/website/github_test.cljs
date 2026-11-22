@@ -188,7 +188,7 @@
   (async done
     (let [restore! (r/make-restore-fn)
           *requests (atom [])]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (r/dispatch-sync [:component-data/install [:module :github :configuration]
@@ -216,7 +216,7 @@
           *requests (atom [])
           commits [{:sha "abcdef1234567"
                     :message ["Preserved repository result" nil nil]}]]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (-> (go-promise
             (doseq [query ["" "theme"]]
               (reset! *requests [])
@@ -286,7 +286,7 @@
                                 {:value @*disk-fields})))
       (r/reg-fx :ls (fn [_]))
       (r/reg-fx :ls/track (fn [_]))
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (-> (go-promise
             (doseq [query ["" "theme"]
                     disk-source [:legacy :envelope]]
@@ -340,7 +340,7 @@
   (async done
     (let [restore! (r/make-restore-fn)
           *requests (atom [])]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (r/dispatch-sync [:component-data/install [:module :github :configuration]
@@ -371,7 +371,7 @@
   (async done
     (let [restore! (r/make-restore-fn)
           *requests (atom [])]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (doseq [user ["generation-a" "generation-b" "generation-a"]]
@@ -533,7 +533,7 @@
     (let [restore! (r/make-restore-fn)
           *requests (atom [])
           *delayed (atom [])]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (r/reg-fx :dispatch-later #(swap! *delayed into %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])

@@ -5,8 +5,7 @@
    ; [day8.re-frame.tracing :refer-macros [fn-traced]]
    [website.util :as util]
    [website.supabase.runtime :as supabase]
-   [clojure.walk :as walk]
-   [ajax.core :as ajax]))
+   [clojure.walk :as walk]))
 
 (def debug (when ^boolean goog.DEBUG r/debug))
 

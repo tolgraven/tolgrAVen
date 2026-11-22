@@ -96,7 +96,7 @@
     (throw (js/Error. "Dispose the previous messaging fixture before installing another")))
   (let [values (queries-for component)
         handlers (mapv (fn [[kind id]] [kind id (r/get-handler kind id)])
-                       [[:sub :store/on-snapshot] [:fx :http-xhrio] [:fx :supabase/request]])
+                       [[:sub :store/on-snapshot] [:fx :http/fetch] [:fx :supabase/request]])
         old-ensure-code! supabase/ensure-code!
         *disposed? (atom false)
         reject! (fn [& _]
@@ -132,7 +132,7 @@
         (r/dispatch-sync [:component-data/install [:content :codex-profile]
                           (if (= component "codex-unavailable")
                             (dissoc codex-profile :days) codex-profile)]))
-      (r/reg-fx :http-xhrio reject!)
+      (r/reg-fx :http/fetch reject!)
       (r/reg-fx :supabase/request reject!)
       (set! supabase/ensure-code! reject!)
       (.addEventListener js/window "pagehide" cleanup! #js {:once true})

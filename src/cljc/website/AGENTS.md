@@ -115,7 +115,7 @@ implementation in `src/frontend/website/modules/<module>/`, also on the JVM sour
   and Node graphs. Public validation issue maps remain value-redacting; bounded
   development details may use metadata without changing transport contracts.
 
-The thin `ajax/time.cljc` Shadow adapter lives beside its browser consumer and
+The thin `http/time.cljc` Shadow adapter lives beside its browser consumer and
 retains Java-time Transit codecs only under `:dev`. Production uses standard Transit;
 server format handlers retain their native JVM Java-time support.
 

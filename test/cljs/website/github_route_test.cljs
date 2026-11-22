@@ -52,7 +52,7 @@
                 :commit {:message "fix: An old [literal] commit"
                          :author {:date "2001-01-01T12:00:00Z"}}
                 :files [{:filename "old.clj", :patch "+ old code"}]}]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (r/dispatch-sync [:component-data/install [:common/route] (match prefix)])
@@ -111,7 +111,7 @@
   (async done
     (let [restore! (r/make-restore-fn)
           *requests (atom [])]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (r/dispatch-sync [:component-data/install [:module :github :configuration]
@@ -147,7 +147,7 @@
           prefix "aaaaaaa"
           full (apply str (repeat 40 "a"))
           listed {:sha (apply str (repeat 40 "b")), :commit {:message "fix: layout spacing"}}]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (r/dispatch-sync [:component-data/install [:module :github :configuration]
@@ -176,7 +176,7 @@
     (let [restore! (r/make-restore-fn)
           *requests (atom [])
           sha (apply str (repeat 40 "a"))]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (r/dispatch-sync [:state [:github] {:target ["u" "r"], :generation 1, :commits-fetched [sha]}])
@@ -200,7 +200,7 @@
           *position (atom 12.5)
           *landings (atom [])]
       (r/reg-fx :scroll/component-target #(swap! *landings conj %))
-      (r/reg-fx :http-xhrio (fn [_]))
+      (r/reg-fx :http/fetch (fn [_]))
       (r/reg-cofx :github/list-position #(assoc % :github/list-position @*position))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])

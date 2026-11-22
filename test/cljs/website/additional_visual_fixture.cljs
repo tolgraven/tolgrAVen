@@ -65,7 +65,7 @@
   (reset! *reads [])
   (reset! *rejected 0)
   (let [handlers (mapv (fn [[kind id]] [kind id (r/get-handler kind id)])
-                       [[:sub :store/on-snapshot] [:fx :http-xhrio] [:fx :supabase/request]
+                       [[:sub :store/on-snapshot] [:fx :http/fetch] [:fx :supabase/request]
                         [:cofx :ls] [:fx :ls]
                         [:sub :search/query] [:sub :search/response] [:sub :search/pending?]
                         [:sub :search/error] [:sub :search/selected] [:sub :search/get]])
@@ -81,7 +81,7 @@
                      (set! supabase/ensure-code! original-ensure!)
                      (reset! *cleanup nil)))]
     (try
-      (r/reg-fx :http-xhrio reject!)
+      (r/reg-fx :http/fetch reject!)
       (r/reg-fx :supabase/request reject!)
       (set! supabase/ensure-code! reject!)
       ;; Authored preference controls must never write the shared profile's disk.

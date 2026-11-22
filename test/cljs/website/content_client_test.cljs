@@ -6,7 +6,7 @@
             [website.react :as r]
 
             [website.test-support :refer [subscription-value!]]
-            [ajax.core :as ajax]
+            [website.http :as http]
             [website.service-status :as status]
             [website.content.client :as content]
             [website.events]
@@ -79,7 +79,7 @@
       (go-promise
         (let [before @r/*app-db
               failures @status/*failures
-              original-get ajax/GET
+              original-get http/request!
               original-dispatch (r/dispatch-function)
               events (atom [])
               succeed? (atom false)
@@ -91,13 +91,12 @@
           (reset! content/*pending {})
           (reset! r/*app-db {:content {:cv {:title "Keep me"}}})
           (r/set-dispatch-function! #(swap! events conj %))
-          (set! ajax/GET
-                (fn [_ & [options]]
-                  (if (= true @succeed?)
-                    ((:handler options) {:version 1, :content {:story {:title "Recovered"}}})
-                    (if (= :invalid @succeed?)
-                      ((:handler options) {:version 999, :content {}})
-                      ((:error-handler options) {:status 503})))))
+          (set! http/request!
+                (fn ^:async response [_]
+                  (case @succeed?
+                    true {:version 1 :content {:story {:title "Recovered"}}}
+                    :invalid {:version 999 :content {}}
+                    (throw (ex-info "Unavailable" {:status 503})))))
           (-> (rejected! (content/ensure! [:story]))
               (.then (fn []
                        (is (empty? @content/*pending))
@@ -114,7 +113,7 @@
                        (is (= "Recovered" (get-in @r/*app-db [:content :story :title])))))
               (.catch #(is false (str %)))
               (.finally (fn []
-                          (set! ajax/GET original-get)
+                          (set! http/request! original-get)
                           (r/set-dispatch-function! original-dispatch)
                           (reset! status/*failures failures)
                           (reset! r/*app-db before)

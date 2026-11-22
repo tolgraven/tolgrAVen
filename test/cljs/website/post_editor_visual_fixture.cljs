@@ -75,7 +75,7 @@
             (r/dispatch (conj on-success library))
             (throw (js/Error. "Unexpected post editor fixture read")))
           (reject-write! :provider-request))))
-    (r/reg-fx :http-xhrio
+    (r/reg-fx :http/fetch
       (fn [{:keys [method]}]
         (if (= :get method)
           (throw (js/Error. "Unexpected HTTP read in post editor visual fixture"))

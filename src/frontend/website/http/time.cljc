@@ -1,4 +1,4 @@
-(ns website.ajax.time
+(ns website.http.time
   "Legacy Java-time codecs for development prototypes; production uses standard Transit."
   #?(:dev (:require [luminus-transit.time :as time])))
 

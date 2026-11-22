@@ -98,7 +98,7 @@
                            :repositories 1
                            :restricted 0}}
                   (throw (js/Error. (str "Unexpected GitHub fixture resource: " url))))))})
-  (r/reg-fx :http-xhrio
+  (r/reg-fx :http/fetch
     (fn [{:keys [method uri url-params on-success]}]
       (when-not (= :get method)
         (throw (js/Error. "GitHub visual fixtures only provide reads")))
@@ -229,7 +229,7 @@
         queries (into {archive-data/summaries-query (response archive-summaries)}
                       (map (fn [post] [(archive-data/post-query (:id post)) (response [post])]) archive-posts))
         handlers (mapv (fn [[kind id]] [kind id (r/get-handler kind id)])
-                       [[:sub :store/on-snapshot] [:fx :http-xhrio] [:fx :supabase/request]])
+                       [[:sub :store/on-snapshot] [:fx :http/fetch] [:fx :supabase/request]])
         old-ensure-code! supabase/ensure-code!
         *disposed? (atom false)
         reject! (fn [& _]
@@ -259,7 +259,7 @@
       (doseq [[query value] queries]
         (r/dispatch-sync [:store/scoped (scoped/query-key query) value]))
       (r/dispatch-sync [:state [:supabase-init] :ready])
-      (r/reg-fx :http-xhrio reject!)
+      (r/reg-fx :http/fetch reject!)
       (r/reg-fx :supabase/request reject!)
       (set! supabase/ensure-code! reject!)
       (.addEventListener js/window "pagehide" cleanup! #js {:once true})
@@ -608,7 +608,7 @@
                   (fn [method uri & _]
                     (swap! *composer-requests conj {:method method, :uri uri})
                     (js/Promise.reject (js/Error. "Composer visual fixtures do not perform provider I/O"))))
-                (r/reg-fx :http-xhrio
+                (r/reg-fx :http/fetch
                   (fn [request]
                     (swap! *composer-requests conj (select-keys request [:method :uri]))
                     (throw (js/Error. "Composer visual fixtures do not perform HTTP or writes")))))
@@ -619,7 +619,7 @@
                 (r/dispatch-sync [:set [:options :supabase :providers]
                                   {:google true, :github true, :facebook true}])
                 (panel-state! "closed")
-                (r/reg-fx :http-xhrio
+                (r/reg-fx :http/fetch
                   (fn [_] (throw (js/Error. "Panel visual fixtures do not perform HTTP or writes")))))
               (when (#{"comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
                        "thread" "post" "search-mixed"} component)

@@ -46,6 +46,12 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   shared SSR/browser shell omits header, footers and back-to-top markup. Keep their
   navigation and secondary controls available in the workspace menu.
 
+Browser HTTP adapters use `website.http/request!`. Re-frame delivery goes through
+the `:http/fetch` effect. The transport owns origin-checked CSRF, query encoding,
+timeouts, and JSON/Transit/error decoding. Only multipart requests reporting
+uploaded bytes use the browser XHR upload progress API. Keep byte transport
+and response coercion out of components and feature handlers.
+
 ## Implementation priority: Reagent and re-frame
 - Editable CMS presentation consumers use `:content/view`. `content/fields.cljs`
   preserves native view elements and carries paths/mode in Clojure metadata;

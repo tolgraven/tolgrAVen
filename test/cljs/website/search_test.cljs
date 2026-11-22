@@ -58,9 +58,9 @@
           requests (atom [])
           delayed (atom [])
           ;; Preserve the actual registered adapters; replacements own only this test.
-          original-http (registrar/get-handler :fx :http-xhrio)
+          original-http (registrar/get-handler :fx :http/fetch)
           original-delay (registrar/get-handler :fx :dispatch-later)]
-      (r/reg-fx :http-xhrio #(swap! requests conj %))
+      (r/reg-fx :http/fetch #(swap! requests conj %))
       (r/reg-fx :dispatch-later #(swap! delayed into %))
       (-> (go-promise
             (r/dispatch-sync [:search/init])
@@ -92,7 +92,7 @@
             (is (false? (await! (support/subscription-value! [:search/pending?])))))
           (.catch #(is false (str %)))
           (.finally (fn []
-                      (r/reg-fx :http-xhrio original-http)
+                      (r/reg-fx :http/fetch original-http)
                       (r/reg-fx :dispatch-later original-delay)
                       (restore!)
                       (done)))))))
