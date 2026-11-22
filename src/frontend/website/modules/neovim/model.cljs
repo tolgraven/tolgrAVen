@@ -1,7 +1,8 @@
 (ns website.modules.neovim.model
   "Pure ext_linegrid presentation and native keyboard translation.
    The WASM process owns the buffer; this state is only its transient UI projection."
-  (:require [clojure.string :as string]))
+  (:require [cljs.math :as math]
+            [clojure.string :as string]))
 
 (def cell-schema [:tuple :string :int])
 (def grid-schema
@@ -159,5 +160,5 @@
 
 (defn mouse-position [{:keys [x y left top cell-width cell-height cols rows]}]
   ;; Clamp captured drags outside the grid to its nearest cell.
-  [(max 0 (min (dec rows) (js/Math.floor (/ (- y top) cell-height))))
-   (max 0 (min (dec cols) (js/Math.floor (/ (- x left) cell-width))))])
+  [(max 0 (min (dec rows) (math/floor (/ (- y top) cell-height))))
+   (max 0 (min (dec cols) (math/floor (/ (- x left) cell-width))))])

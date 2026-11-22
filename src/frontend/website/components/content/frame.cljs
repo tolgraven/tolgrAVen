@@ -1,6 +1,7 @@
 (ns website.components.content.frame
   "Generic authored frames reuse the shared sandbox and own only size measurement."
-  (:require [website.component.registry]
+  (:require [website.browser.css :as css]
+            [website.component.registry]
             [website.macros :refer-macros [defc]]
             [website.react :as r]
             [website.listener :as listener]
@@ -44,7 +45,7 @@
                 record! (fn [height]
                           (when @*alive? (reset! *height {:src src
                                             :value (str (/ (min 10000 (max 1 height))
-                                                           (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))) "rem")})))
+                                                           (css/font-size)) "rem")})))
                 measure! (fn []
                            (try (when-let [document (.-contentDocument frame)]
                                   (record! (let [body (.-body document)]

@@ -1,6 +1,7 @@
 (ns website.modules.neovim.document
   "Bounded, immutable source documents rendered by native Neovim windows."
-  (:require [website.modules.neovim.files :as files]))
+  (:require [website.async :as a]
+            [website.modules.neovim.files :as files]))
 
 (def max-bytes (* 1024 1024))
 (def file-schema [:map [:path [:string {:max 512}]] [:text [:string {:max 1048576}]]])
@@ -74,14 +75,14 @@
 
 (defn open! [request! document]
   (if-let [message (error document)]
-    (js/Promise.reject (js/Error. message))
+    (a/rejected (js/Error. message))
     (-> (reduce (fn [pending {:keys [path text]}]
-                  (.then pending #(files/write! request! {:path path, :file (js/Blob. #js [text])})))
-                (js/Promise.resolve nil) (:files document))
-        (.catch (fn [error]
+                  (a/then pending #(files/write! request! {:path path, :file (js/Blob. #js [text])})))
+                (a/resolved nil) (:files document))
+        (a/catch-error (fn [error]
                   (throw (js/Error. (str "Writing comparison files failed: " (.-message error))))))
-        (.then (fn [_]
+        (a/then (fn [_]
                  (-> (request! "nvim_exec_lua"
                                [configure-lua [(name (:mode document)) (mapv :path (:files document))]])
-                     (.catch (fn [error]
+                     (a/catch-error (fn [error]
                                (throw (js/Error. (str "Preparing comparison windows failed: " (.-message error))))))))))))

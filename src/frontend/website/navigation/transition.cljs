@@ -1,6 +1,8 @@
 (ns website.navigation.transition
   "Browser lifecycle adapter for CSS page transitions. React owns all page markup."
-  (:require [website.react :as r]
+  (:require [website.browser.css :as css]
+            [website.async :as a]
+            [website.react :as r]
 
             [website.listener :as listener]
             [website.render-context :as context]
@@ -82,7 +84,7 @@
     (assoc coeffects :scroll/restoring?
            (boolean (or @*restore-cleanup
                         (and (exists? js/window) (number? @*restored-position)
-                             (<= (js/Math.abs (- (.-scrollY js/window) @*restored-position)) 1)))))))
+                             (<= (abs (- (.-scrollY js/window) @*restored-position)) 1)))))))
 
 (def layout-properties
   #{"height" "minHeight" "maxHeight" "width" "minWidth" "maxWidth"
@@ -154,8 +156,8 @@
                                                                (.-complete %)
                                                                ;; Explicit dimensions/aspect ratio reserve layout
                                                                ;; without waiting for below-fold lazy downloads.
-                                                               (and (pos? (js/parseFloat (.getAttribute % "width")))
-                                                                    (pos? (js/parseFloat (.getAttribute % "height"))))
+                                                               (and (pos? (css/magnitude (.getAttribute % "width")))
+                                                                    (pos? (css/magnitude (.getAttribute % "height"))))
                                                                (let [ratio (.-aspectRatio (js/getComputedStyle %))]
                                                                  (and (seq ratio) (not (re-find #"auto" ratio)))))
                                                           images))
@@ -168,10 +170,10 @@
                                                   (not (some-> (.getElementById js/document "app")
                                                                (.hasAttribute "data-document-pending"))))
                                ready? (and layout-ready?
-                                           (<= (js/Math.abs (- (.-scrollY js/window) position')) 1))]
+                                           (<= (abs (- (.-scrollY js/window) position')) 1))]
                            (doseq [animation animations :when (not (contains? @*waiting animation))]
                              (swap! *waiting conj animation)
-                             (.then (.-finished animation)
+                             (a/then (.-finished animation)
                                     (fn [_] (when @*active? (@*wake)))
                                     (fn [_] (when @*active? (@*wake)))))
                            (if smooth?
@@ -219,7 +221,7 @@
       (.observe @*mutations (.-body js/document)
                 #js {:childList true :subtree true :characterData true :attributes true}))
     (when-let [fonts (.-fonts js/document)]
-      (.then (.-ready fonts) schedule!))
+      (a/then (.-ready fonts) schedule!))
     (reset! *timeout (js/setTimeout cleanup! 15000))
     (schedule!)))
 
@@ -242,7 +244,7 @@
         outgoing-height (when native?
                           (some-> (.getElementById js/document "main") .getBoundingClientRect .-height))
         update! (fn []
-                  (js/Promise.
+                  (a/create
                    (fn [resolve! _]
                      (if (= generation @*generation)
                        (r/dispatch [:common/navigate (:match @*destination)
@@ -262,14 +264,14 @@
         (reset! *transition transition)
         ;; Skipping an obsolete animation rejects ready, but still runs update!.
         (-> (.-ready transition)
-            (.then (fn []
+            (a/then (fn []
                      (when (and (identical? transition @*transition)
                                 (.-getAnimations js/document))
                        (motion/prefer-high-frame-rate!
                          (filter #(#{"page-opacity-out" "page-opacity-in-a"} (.-animationName %))
                                  (array-seq (.getAnimations js/document)))))))
-            (.catch (fn [_] nil)))
-        (.finally (.-finished transition)
+            (a/catch-error (fn [_] nil)))
+        (a/finally-do (.-finished transition)
                   #(when (identical? transition @*transition)
                      (reset! *transition nil)
                      (r/dispatch [:page/transition-finished generation]))))
@@ -283,9 +285,9 @@
 
 (defn- anchor-position [id & [viewport-padding?]]
   (when-let [element (.getElementById js/document id)]
-    (let [margin (js/parseFloat (.-scrollMarginTop (js/getComputedStyle element)))
+    (let [margin (css/magnitude (.-scrollMarginTop (js/getComputedStyle element)))
           padding (if viewport-padding?
-                    (js/parseFloat (.-scrollPaddingTop (js/getComputedStyle (.-documentElement js/document))))
+                    (css/magnitude (.-scrollPaddingTop (js/getComputedStyle (.-documentElement js/document))))
                     0)]
       (- (+ (.-top (.getBoundingClientRect element)) (.-scrollY js/window))
          (if (js/isNaN margin) 0 margin)

@@ -1,5 +1,6 @@
 (ns website.modules.neovim.views
-  (:require [website.component.registry]
+  (:require [website.async :as a]
+            [website.component.registry]
             [website.macros :refer-macros [defc]]
             [website.react :as r]
             [website.listener :as listener]
@@ -61,13 +62,13 @@
         request! (fn [method params]
                    (when-let [session (when (= :ready (:status @*view)) @*session)]
                      (-> (runtime/request! session method params)
-                         (.then (fn [result]
+                         (a/then (fn [result]
                                   (when (and (identical? session @*session) @*grid-element)
                                     (reset! *menu-open? false)
                                     (swap! *view dissoc :command-error)
                                     (.focus @*grid-element))
                                   result))
-                         (.catch #(when (identical? session @*session) (command-error! %))))))
+                         (a/catch-error #(when (identical? session @*session) (command-error! %))))))
         mouse-ready? #(and (= :ready (:status @*view)) (get-in @*view [:grid :mouse?]))
         mouse! (fn [event button action]
                  (when (mouse-ready?)
@@ -104,9 +105,9 @@
                  resize! (fn []
                            (when (and @*active? @*element @*probe)
                              (-> (runtime/resize! session @*element @*probe rows)
-                                 (.catch #(when @*active? (fail! %))))))]
+                                 (a/catch-error #(when @*active? (fail! %))))))]
              (reset! *session session)
-             (-> ready (.then (fn [result]
+             (-> ready (a/then (fn [result]
                                (when (and result @*active?)
                                  (resize!)
                                  (when (exists? js/ResizeObserver)
@@ -127,7 +128,7 @@
                       (swap! *imports assoc :status :loading :message "Importing files…")
                       (let [session @*session]
                         (-> (files/import! #(runtime/request! session %1 %2) file-list folder?)
-                          (.then (fn [paths]
+                          (a/then (fn [paths]
                                    (when (identical? session @*session)
                                      (swap! *imports assoc
                                             :status :ready
@@ -135,7 +136,7 @@
                                             :selected (first paths)
                                             :message (str (count paths) " files imported into this session."))
                                      (when @*grid-element (.focus @*grid-element)))))
-                          (.catch #(when (identical? session @*session)
+                          (a/catch-error #(when (identical? session @*session)
                                      (swap! *imports assoc :status :error :message (.-message %))))))))]
       (r/use-effect
        (fn []
@@ -150,10 +151,10 @@
              (reset! *pointer nil)
              (swap! *view assoc :status :booting :message "Preparing revision buffers…")
              (-> (document/open! #(runtime/request! session %1 %2) source-document)
-                 (.then #(runtime/request! session "nvim_command" ["redraw"]))
-                 (.then #(when (identical? session @*session)
+                 (a/then #(runtime/request! session "nvim_command" ["redraw"]))
+                 (a/then #(when (identical? session @*session)
                            (swap! *view assoc :status :ready :message "Ready")))
-                 (.catch #(when (identical? session @*session) (fail! %)))))))
+                 (a/catch-error #(when (identical? session @*session) (fail! %)))))))
        [source-document status])
       (r/use-effect
        (fn []
@@ -163,7 +164,7 @@
                           (when (identical? session @*session)
                             (-> (runtime/request! session "nvim_ui_set_focus"
                                   [(and (not (.-hidden js/document)) (.hasFocus js/document))])
-                                (.catch #(when (identical? session @*session) (fail! %))))))]
+                                (a/catch-error #(when (identical? session @*session) (fail! %))))))]
              (focus! nil)
              ;; React wheel listeners are passive. This owned native binding allows
              ;; Neovim to consume scrolling without also scrolling the host page.
@@ -180,8 +181,8 @@
                                               (not (or (.-ctrlKey event) (.-metaKey event))))
                                      (let [x (.-deltaX event)
                                            y (.-deltaY event)
-                                           delta (if (> (js/Math.abs x) (js/Math.abs y)) x y)
-                                           action (if (> (js/Math.abs x) (js/Math.abs y))
+                                           delta (if (> (abs x) (abs y)) x y)
+                                           action (if (> (abs x) (abs y))
                                                     (if (pos? x) "right" "left")
                                                     (if (pos? y) "down" "up"))]
                                        (when-not (zero? delta)
@@ -203,12 +204,12 @@
                       :on-click (fn [_]
                                   (when-let [session @*session]
                                     (-> (runtime/request! session "nvim_buf_get_lines" [0 0 -1 true])
-                                        (.then (fn [lines]
+                                        (a/then (fn [lines]
                                                  (when (identical? session @*session)
                                                    (on-save (string/join "\n" (js->clj lines)))
                                                    (reset! *menu-open? false)
                                                    (when @*grid-element (.focus @*grid-element)))))
-                                        (.catch #(when (identical? session @*session) (command-error! %))))))}
+                                        (a/catch-error #(when (identical? session @*session) (command-error! %))))))}
              "Use buffer"])
           (when (and (= :ready status) (not source-document))
             [:div.neovim__files
@@ -230,11 +231,11 @@
                                        (let [path (.. event -target -value)
                                              session @*session]
                                          (-> (files/open! #(runtime/request! session %1 %2) path)
-                                             (.then (fn [_]
+                                             (a/then (fn [_]
                                                       (when (identical? session @*session)
                                                         (swap! *imports assoc :selected path)
                                                         (when @*grid-element (.focus @*grid-element)))))
-                                             (.catch #(when (identical? session @*session) (fail! %))))))}
+                                             (a/catch-error #(when (identical? session @*session) (fail! %))))))}
                  (for [path (:paths @*imports)] ^{:key path} [:option {:value path} path])]
                 [:button {:disabled importing?, :on-click #(request! "nvim_command" ["Meta!"])}
                  "Search imported project"]])

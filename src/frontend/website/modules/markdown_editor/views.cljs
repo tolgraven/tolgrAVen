@@ -1,6 +1,8 @@
 (ns website.modules.markdown-editor.views
   "The SDK owns selection, undo and its editable DOM; application content stays Markdown."
-  (:require [website.component.registry]
+  (:require [website.browser.css :as css]
+            [website.async :as a]
+            [website.component.registry]
             [website.macros :refer-macros [defc]]
             [website.react :as r]
             [website.modules.markdown-editor.catalog :as catalog]
@@ -98,7 +100,7 @@
         parent-rem (when-let [{:keys [width rem]} @*parent-size] (/ width rem))
         preview-geometry (cond-> geometry
                            (and parent-rem (string/ends-with? (or (:width geometry) "") "%"))
-                           (assoc :width (str (* parent-rem (/ (js/parseFloat (:width geometry)) 100)) "rem")))
+                           (assoc :width (str (* parent-rem (/ (css/magnitude (:width geometry)) 100)) "rem")))
         invocation' (update invocation :arguments merge
                             (into {} (map (fn [[key value]] [key {:literal value}]))
                                   (layout/attributes (assoc preview-geometry :flow "block"))))
@@ -120,9 +122,9 @@
                            (let [style (js/getComputedStyle parent)]
                              (reset! *parent-size
                                      {:width (- (.-clientWidth parent)
-                                                (js/parseFloat (.-paddingLeft style))
-                                                (js/parseFloat (.-paddingRight style)))
-                                      :rem (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))})))
+                                                (css/magnitude (.-paddingLeft style))
+                                                (css/magnitude (.-paddingRight style)))
+                                      :rem (css/font-size)})))
                 observer (when (exists? js/ResizeObserver) (js/ResizeObserver. measure!))]
             (measure!)
             (when observer (.observe observer parent))
@@ -229,9 +231,9 @@
                           (do (reset! *pending? true)
                               (reset! *error nil)
                               (-> (upload! file)
-                                  (.then #(insert-image! % (.-name file)))
-                                  (.catch #(reset! *error (.-message %)))
-                                  (.finally #(reset! *pending? false)))))))}]])
+                                  (a/then #(insert-image! % (.-name file)))
+                                  (a/catch-error #(reset! *error (.-message %)))
+                                  (a/finally-do #(reset! *pending? false)))))))}]])
         (when @*pending? [:p {:role "status"} "Preparing image…"])
         (when @*error [:p {:role "alert"} @*error])])]))
 

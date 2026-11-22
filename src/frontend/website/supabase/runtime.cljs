@@ -1,7 +1,8 @@
 (ns website.supabase.runtime
   "Acquire the ordinary Supabase module only when a binding or action needs it."
   (:require-macros [website.build.site :refer [when-enabled]])
-  (:require [website.loader.code :as code]
+  (:require [website.async :as a]
+            [website.loader.code :as code]
             [website.supabase.query :as query]
             [website.supabase.state :as state]
             [website.component.data :as data]
@@ -20,11 +21,11 @@
       (if-let [module (get code/modules :supabase)]
         (let [ready? (lazy/ready? module)
               _ (when ready? (reset! *api (:client @module)))
-              promise (-> (js/Promise.resolve (if ready? @module (lazy/load module)))
-                          (.then (fn [spec]
+              promise (-> (a/resolved (if ready? @module (lazy/load module)))
+                          (a/then (fn [spec]
                                    (status/recover! [:module :supabase])
                                    (reset! *api (:client spec))))
-                          (.catch (fn [error]
+                          (a/catch-error (fn [error]
                                     (reset! *loading nil)
                                     (status/fail! [:module :supabase] "Database code unavailable"
                                                   "The database module could not load. Retry to load it again."
@@ -32,11 +33,11 @@
                                     (throw error))))]
           (reset! *loading promise)
           promise)
-        (js/Promise.reject (js/Error. "Supabase module is disabled")))))
+        (a/rejected (js/Error. "Supabase module is disabled")))))
 
 (defn ensure! []
   (-> (ensure-code!)
-      (.then (fn [_]
+      (a/then (fn [_]
                (if @*client
                  @*client
                  (do (r/dispatch [:store/init])
@@ -54,7 +55,7 @@
 (defn ensure-query! [opts]
   (let [code (ensure-code!)]
     ;; Settings/init failures use the existing retry/status events.
-    (-> (ensure!) (.catch (fn [_] nil)))
+    (-> (ensure!) (a/catch-error (fn [_] nil)))
     (if-let [api @*api]
       ((:ensure-query! api) opts)
       (let [*reader (r/atom nil)
@@ -69,7 +70,7 @@
         ;; A failed chunk may later load through the module's Retry action.
         ;; Observe API installation so the original mounted binding recovers.
         (add-watch *api owner install!)
-        (-> code (.catch (fn [_] nil)))
+        (-> code (a/catch-error (fn [_] nil)))
         (r/make-reaction
           #(if-let [reader @*reader] @reader (restored-value opts))
           :on-dispose (fn []
@@ -77,18 +78,18 @@
                         (when-let [reader @*reader] (remove-watch reader owner))))))))
 
 (defn- invoke! [method args]
-  (-> (ensure!) (.then (fn [_] (apply (get @*api method) args)))))
+  (-> (ensure!) (a/then (fn [_] (apply (get @*api method) args)))))
 
 (defn preload-query! [opts] (invoke! :preload-query! [opts]))
 (defn init! [& args]
-  (-> (ensure-code!) (.then (fn [_] (apply (:init! @*api) args)))))
+  (-> (ensure-code!) (a/then (fn [_] (apply (:init! @*api) args)))))
 (defn authenticated-request! [& args] (invoke! :authenticated-request! args))
 (when-enabled :gpt nil
   (defn write! [& args] (invoke! :write! args)))
 (when-enabled :user nil
   (defn- auth-action! [method args]
     (-> (invoke! method args)
-        (.catch (fn [_] ((last args) {:message "Supabase could not initialize"})))))
+        (a/catch-error (fn [_] ((last args) {:message "Supabase could not initialize"})))))
   (defn sign-in! [& args] (auth-action! :sign-in! args))
   (defn sign-up! [& args] (auth-action! :sign-up! args))
   (defn sign-out! [& args] (auth-action! :sign-out! args))

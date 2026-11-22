@@ -1,6 +1,7 @@
 (ns website.components.ui.action
   "Native icon actions with transient, clipping-safe hover and keyboard labels."
-  (:require [website.component.registry]
+  (:require [website.browser.css :as css]
+            [website.component.registry]
             [website.macros :refer-macros [defc]]
             [website.react :as r]
             [website.listener :as listener]
@@ -17,7 +18,7 @@
 
 (defn- label-position [anchor element]
   (let [bounds (.getBoundingClientRect anchor)
-        unit (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))
+        unit (css/font-size)
         above? (> (+ (.-bottom bounds) (* 3 unit)) (.-innerHeight js/window))
         maximum-right (max 0.5 (- (/ (.-innerWidth js/window) unit)
                                   (/ (.-width (.getBoundingClientRect element)) unit) 0.5))]

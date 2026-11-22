@@ -1,5 +1,6 @@
 (ns website.modules.search.events
-  (:require [website.react :as r]
+  (:require [website.async :as a]
+            [website.react :as r]
             [clojure.string :as string]
             [website.modules.search.schema :as schema]
             [website.modules.search.model :as model]
@@ -48,8 +49,8 @@
     ;; Reuse the shared code/install boundary when Search is opened before boot's
     ;; deferred coercion acquisition. The generation still guards its completion.
     (-> (loader/acquire-code! :coercion)
-        (.then #(r/dispatch [:search/request generation query page]))
-        (.catch #(r/dispatch [:search/failed generation query nil])))))
+        (a/then #(r/dispatch [:search/request generation query page]))
+        (a/catch-error #(r/dispatch [:search/failed generation query nil])))))
 
 (r/reg-event-fx :search/request
   (fn [{:keys [db]} [_ generation query page]]

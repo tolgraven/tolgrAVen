@@ -1,6 +1,7 @@
 (ns website.components.content.resize
   "A local pointer gesture previews geometry; its final callback owns persistence."
-  (:require [website.component.registry]
+  (:require [website.browser.css :as css]
+            [website.component.registry]
             [website.macros :refer-macros [defc]]
             [website.react :as r]
             [website.components.content.layout :as layout]))
@@ -9,8 +10,8 @@
   (let [bounds (.getBoundingClientRect element)]
     {:width (.-width bounds)
      :height (.-height bounds)
-     :units {:rem (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))
-             :em (js/parseFloat (.-fontSize (js/getComputedStyle element)))
+     :units {:rem (css/font-size)
+             :em (css/font-size element)
              :parent (some-> element .-parentElement .getBoundingClientRect .-width)}}))
 
 (defn geometry [original measured dx dy]

@@ -1,7 +1,8 @@
 (ns website.modules.blog.cache
   "Restore public caches before client mounts, or after network SSR hydration.
    All persistence uses the shared envelope; no component performs disk IO."
-  (:require [cljs.reader :as reader]
+  (:require [website.async :as a]
+            [cljs.reader :as reader]
             [website.component.legacy-storage :as legacy]
             [website.react :as r]
 
@@ -122,8 +123,8 @@
             cancel! (resources/after-page!
                       (fn []
                         (-> ready
-                            (.then (fn [_] (when @*active? (restore!))))
-                            (.catch (fn [_] nil)))))]
+                            (a/then (fn [_] (when @*active? (restore!))))
+                            (a/catch-error (fn [_] nil)))))]
         (reset! *restore-cleanup #(do (reset! *active? false) (cancel!)))
         nil)
-      (-> ready (.then (fn [_] (restore!)))))))
+      (-> ready (a/then (fn [_] (restore!)))))))

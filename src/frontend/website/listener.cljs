@@ -1,5 +1,7 @@
 (ns website.listener
   (:require
+    [website.browser.css :as css]
+    [cljs.math :as math]
     [clojure.string :as string]
     [website.react :as r]
     [website.validation.runtime :as validation]
@@ -84,7 +86,7 @@
      (-> (util/elem-by-type "body")
          js/getComputedStyle
          .-paddingBottom
-         js/parseFloat)))
+         css/magnitude)))
 
 (r/reg-fx :scroll/register-update-fn
   (fn [[id f]]
@@ -100,7 +102,7 @@
                                   (/ new-height)
                                   (* (+ 1 (/ vh new-height)))
                                   (* 100)
-                                  js/Math.ceil
+                                  math/ceil
                                   (min 100)
                                   (max 0))
                    opacity   (cond

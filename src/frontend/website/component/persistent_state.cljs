@@ -1,5 +1,6 @@
 (ns website.component.persistent-state
-  (:require [website.component.instrumentation :as instrumentation]
+  (:require [website.async :as a]
+            [website.component.instrumentation :as instrumentation]
             [website.validation.runtime :as validation]
             [website.validation :as value-validation]
             [clojure.string :as string]
@@ -143,7 +144,7 @@
           (storage/track! id #(storage/state-value path) persistence'))
         (when restore?
           (-> (storage/ready! persistence')
-              (.then (fn [_]
+              (a/then (fn [_]
                        (when (accessible-path? path)
                          (when-let [saved (storage/read! id persistence')]
                            (if (and (:schema options)

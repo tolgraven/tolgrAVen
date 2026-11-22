@@ -1,11 +1,12 @@
 (ns website.modules.supabase.client
   (:require-macros [website.build.site :refer [when-enabled]])
-  (:require ["@supabase/supabase-js" :as sdk]
+  (:require [website.async :as a]
+            ["@supabase/supabase-js" :as sdk]
             [website.supabase.state :as state]
             [website.validation.runtime :as validation]
             [website.supabase.schema :as schema]
             [website.media.query :as media]
-            [ajax.core :as ajax]
+            [website.http :as http]
             [website.react :as r]
             [website.service-status :as status]
             [goog.object :as gobj]
@@ -55,7 +56,7 @@
                       (reduce #(.order %1 (name %2)) q (:key (realtime/tables table))))
                   size (if limit (min 500 (- limit offset)) 500)
                   start (+ (or (:offset plan) 0) offset)]
-              (.then (status/within! (.range q start (+ start (dec size))) 15000)
+              (a/then (status/within! (.range q start (+ start (dec size))) 15000)
                      (fn [res]
                        (let [{:keys [data error]} (js->clj res :keywordize-keys true)
                              data' (mapv media/normalize-row data)]
@@ -64,7 +65,7 @@
                          (let [rows (into rows data')]
                            (if (and (= size (count data')) (or (nil? limit) (< (+ offset size) limit)))
                              (page! (+ offset size) rows) rows)))))))]
-    (-> (js/Promise.resolve) (.then (fn [] (page! 0 []))))))
+    (-> (a/resolved nil) (a/then (fn [] (page! 0 []))))))
 
 (defn- result [seed opts]
   (query/query-contract (shape/seed->contract seed) opts))
@@ -72,8 +73,8 @@
 (defn- with-reply-counts! [client opts value]
   (if-let [plan (query/reply-count-plan opts value)]
     (-> (run-select! client plan)
-        (.then #(query/with-reply-counts opts value %)))
-    (js/Promise.resolve value)))
+        (a/then #(query/with-reply-counts opts value %)))
+    (a/resolved value)))
 
 (defn read-once! [opts handler error-handler]
   (if-let [client @*client]
@@ -90,16 +91,16 @@
 
         :else
         (let [plan (query/seed-load-plan opts)]
-          (-> (js/Promise.all (into-array (map #(run-select! client %) plan)))
-              (.then (fn [rows]
+          (-> (a/all (map #(run-select! client %) plan))
+              (a/then (fn [rows]
                        ;; The transport already applied the page offset.
-                       (let [value (result (into {} (map (fn [p r] [(:seed-key p) r]) plan (array-seq rows))) (dissoc opts :offset))]
+                       (let [value (result (into {} (map (fn [p r] [(:seed-key p) r]) plan rows)) (dissoc opts :offset))]
                          (if (:reply-counts? opts) (with-reply-counts! client opts value) value))))
-              (.then (fn [value]
+              (a/then (fn [value]
                        (when (current?)
                          (status/recover! :supabase-read)
                          (handler value))))
-              (.catch (fn [_]
+              (a/catch-error (fn [_]
                         (when (current?)
                           (status/fail! :supabase-read "Supabase content unavailable"
                                         "A content request failed. Reload the page to retry."
@@ -171,34 +172,38 @@
       {:ready? true :value (:value entry)}
       :else {:ready? false})))
 
+(defn- install-preload! [key opts owner value]
+  (when (query/scoped-query? opts)
+    (r/dispatch-sync [:store/scoped key value]))
+  (r/dispatch-sync [:store/cache-query key
+                    {:value value :owner owner :generation @*client-generation
+                     :expires-at (+ (.now js/Date) 60000)}]))
+
+(defn- ^:async read-preload! [opts [key owner client]]
+  (let [current? #(and (identical? client @*client) (= owner (session-key @*session)))]
+    (await (a/delay! 0))
+    (when-not (current?)
+      (throw (js/Error. "Supabase session changed")))
+    (let [value (await (a/create (fn [resolve! reject!]
+                                   (read-once! opts resolve!
+                                               (fn [_] (reject! (js/Error. "Supabase dependency unavailable")))))))]
+      (when (current?) (install-preload! key opts owner value))
+      value)))
+
 (defn preload-query!
-  "Load without holding a realtime subscription. Identical queued reads share a
-   Promise and populate the same app-db cache used on a later subscription."
+  "Load without holding a realtime subscription. Concurrent reads share the same
+   promise and install their result in the cache used by later subscriptions."
   [opts]
-  (let [key (query-key opts) owner (session-key @*session) client @*client
-        pending-key [key owner client]
+  (let [pending-key [(query-key opts) (session-key @*session) @*client]
         cached (cached-query opts)]
-    (if (:ready? cached) (js/Promise.resolve (:value cached))
+    (if (:ready? cached)
+      (a/resolved (:value cached))
       (or (get @*preloads pending-key)
-          (let [promise (js/Promise.
-                         (fn [resolve reject]
-                           (js/setTimeout
-                            #(if (and (identical? client @*client) (= owner (session-key @*session)))
-                               (read-once! opts
-                                 (fn [value]
-                                   (when (and (identical? client @*client) (= owner (session-key @*session)))
-                                     (when (query/scoped-query? opts)
-                                       (r/dispatch-sync [:store/scoped key value]))
-                                     (r/dispatch-sync [:store/cache-query key
-                                                        {:value value :owner owner :generation @*client-generation
-                                                         :expires-at (+ (.now js/Date) 60000)}]))
-                                   (resolve value))
-                                 (fn [_] (reject (js/Error. "Supabase dependency unavailable"))))
-                               (reject (js/Error. "Supabase session changed"))) 0)))
-                promise (-> (status/within! promise 15000)
-                            (.finally #(swap! *preloads dissoc pending-key)))]
-            (swap! *preloads assoc pending-key promise)
-            promise)))))
+          (let [pending (-> (read-preload! opts pending-key)
+                            (status/within! 15000)
+                            (a/finally-do #(swap! *preloads dissoc pending-key)))]
+            (swap! *preloads assoc pending-key pending)
+            pending)))))
 
 (declare ensure-table! load-table!)
 
@@ -212,7 +217,7 @@
     (reset! *buffer [])
     (reset! *loading true)
     (-> (run-select! client {:table table :select (query/public-columns table)})
-        (.then (fn [rows]
+        (a/then (fn [rows]
                  (when (and (current-entry? entry) (= request @*request)
                             (or (not= table "user_documents") (= owner (session-key @*session))))
                    ;; Subscribe before reading. Events during paginated loading are
@@ -222,7 +227,7 @@
                    (status/recover! [:supabase-load table])
                    (reset! *buffer [])
                    (reset! *loading false))))
-        (.catch (fn [_]
+        (a/catch-error (fn [_]
                   (when (and (current-entry? entry) (= request @*request))
                     (status/fail! [:supabase-load table] "Supabase content unavailable"
                                   (str "Could not load " (get {"site_users" "profiles" "blog_posts" "blog posts"
@@ -312,37 +317,35 @@
           (queue-queries!)
           state)))))
 
+(defn- ^:async token-for! [client owner]
+  (let [result (await (status/within! (call-method (gobj/get client "auth") "getSession") 15000))
+        session (some-> result (gobj/get "data") (gobj/get "session"))]
+    (when (gobj/get result "error")
+      (throw (js/Error. "Unable to restore your Supabase session")))
+    (when (= owner (session-key session))
+      (or (some-> session (gobj/get "access_token"))
+          (throw (js/Error. "Sign in to continue"))))))
+
+(defn- ^:async send-authenticated! [client method uri data on-success on-error on-progress]
+  (let [owner (session-key @*session)
+        current? #(and (identical? client @*client) (= owner (session-key @*session)))
+        progress! (when on-progress #(when (current?) (on-progress %)))]
+    (try
+      (when-let [token (await (token-for! client owner))]
+        (when (current?)
+          (let [request {:method method :uri uri :timeout 60000 :headers {"Authorization" (str "Bearer " token)}
+                         :on-upload-progress progress!}
+                payload (assoc request (if (instance? js/FormData data) :body :params) data)
+                response (await (http/request! payload))]
+            (when (current?) (on-success response)))))
+      (catch :default error (when (current?) (on-error (http/error-data error)))))))
+
 (defn authenticated-request!
   ([method uri data on-success on-error]
    (authenticated-request! method uri data on-success on-error nil))
   ([method uri data on-success on-error {:keys [on-upload-progress]}]
    (if-let [client @*client]
-     (let [owner (session-key @*session)
-           current? #(and (identical? client @*client)
-                          (= owner (session-key @*session)))
-           fail! #(when (current?) (on-error %))]
-       (-> (status/within! (call-method (gobj/get client "auth") "getSession") 15000)
-           (.then (fn [result]
-                    (when (gobj/get result "error") (throw (js/Error. "Unable to restore your Supabase session")))
-                    (let [session (some-> result (gobj/get "data") (gobj/get "session"))
-                          token (some-> session (gobj/get "access_token"))]
-                      (when (and (current?) (= owner (session-key session)))
-                        (if token
-                          ((case method :get ajax/GET :put ajax/PUT :post ajax/POST)
-                           uri {:params (when-not (instance? js/FormData data) data)
-                                :body (when (instance? js/FormData data) data)
-                                :headers {"Authorization" (str "Bearer " token)}
-                                :timeout 60000
-                                :format (when-not (instance? js/FormData data) (ajax/json-request-format))
-                                :response-format (ajax/json-response-format {:keywords? true})
-                                :handler #(when (current?) (on-success %))
-                                :error-handler fail!
-                                :progress-handler (when on-upload-progress
-                                                    (fn [event]
-                                                      (when (and (current?) (.-lengthComputable event))
-                                                        (on-upload-progress {:loaded (.-loaded event), :total (.-total event)}))))})
-                          (fail! {:message "Sign in to continue"}))))))
-           (.catch #(fail! {:message (.-message %)}))))
+     (send-authenticated! client method uri data on-success on-error on-upload-progress)
      (on-error {:message "Supabase is not initialized"}))))
 
 (when-enabled :user nil
@@ -352,18 +355,18 @@
           (call-method auth "signInWithPassword" #js {:email email :password password})
           (call-method auth "signInWithOAuth" #js {:provider (name method)
                                      :options #js {:redirectTo (.-origin js/location)}}))
-        (.then #(when-let [error (.-error %)]
+        (a/then #(when-let [error (.-error %)]
                   (on-error {:message (.-message error)})))
-        (.catch #(on-error {:message (.-message %)})))
+        (a/catch-error #(on-error {:message (.-message %)})))
     (on-error {:message "Supabase is not initialized"})))
 
 (defn sign-up! [email password on-success on-error]
   (if-let [auth (some-> @*client (gobj/get "auth"))]
     (-> (call-method auth "signUp" #js {:email email :password password})
-        (.then #(if-let [error (.-error %)]
+        (a/then #(if-let [error (.-error %)]
                   (on-error {:message (.-message error)})
                   (on-success (some? (some-> % (gobj/get "data") (gobj/get "session"))))))
-        (.catch #(on-error {:message (.-message %)})))
+        (a/catch-error #(on-error {:message (.-message %)})))
     (on-error {:message "Supabase is not initialized"})))
 
 (defn change-password! [current-password new-password on-success on-error]
@@ -378,23 +381,23 @@
       (if (and user-id (string? new-password) (<= 6 (count new-password)))
         (-> (if (seq current-password)
               (call-method auth "signInWithPassword" #js {:email email :password current-password})
-              (js/Promise.resolve #js {}))
-            (.then (fn [result]
+              (a/resolved #js {}))
+            (a/then (fn [result]
                      (check! result)
                      (when-not (= user-id (session-user-id @*session))
                        (throw (js/Error. "Your account changed; please try again")))
                      (call-method auth "updateUser" #js {:password new-password})))
-            (.then (fn [result] (check! result) (on-success)))
-            (.catch #(on-error {:message (.-message %)})))
+            (a/then (fn [result] (check! result) (on-success)))
+            (a/catch-error #(on-error {:message (.-message %)})))
         (on-error {:message "Sign in and choose a password with at least six characters"})))
     (on-error {:message "Supabase is not initialized"})))
 
 (defn sign-out! [on-error]
   (when-let [auth (some-> @*client (gobj/get "auth"))]
     (-> (call-method auth "signOut")
-        (.then #(when-let [error (.-error %)]
+        (a/then #(when-let [error (.-error %)]
                   (on-error {:message (.-message error)})))
-        (.catch #(on-error {:message (.-message %)})))))
+        (a/catch-error #(on-error {:message (.-message %)})))))
 
 )
 
@@ -443,10 +446,10 @@
                 (gobj/get "data") (gobj/get "subscription")))
     (let [client @*client]
       (-> (status/within! (call-method (gobj/get client "auth") "getSession") 15000)
-          (.then (fn [result]
+          (a/then (fn [result]
                    (when (gobj/get result "error") (throw (js/Error. "Session initialization failed")))
                    (when (identical? client @*client) (status/recover! :supabase-session))))
-          (.catch (fn [_]
+          (a/catch-error (fn [_]
                     (when (identical? client @*client)
                       (status/fail! :supabase-session "Supabase session unavailable"
                                     "Your account session could not be restored. Reload to retry."

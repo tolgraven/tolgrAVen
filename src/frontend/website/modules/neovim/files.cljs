@@ -1,6 +1,7 @@
 (ns website.modules.neovim.files
   "User-selected File objects become session-local Neovim files, never host paths."
-  (:require [clojure.string :as string]))
+  (:require [website.async :as a]
+            [clojure.string :as string]))
 
 (def max-files 512)
 (def max-file-bytes (* 4 1024 1024))
@@ -43,20 +44,20 @@
 (defn open! [request! path]
   (if (safe-path? path)
     (request! "nvim_exec_lua" [open-lua [path]])
-    (js/Promise.reject (js/Error. "Invalid import path"))))
+    (a/rejected (js/Error. "Invalid import path"))))
 
 (defn write! [request! {:keys [path file]}]
   (-> (.arrayBuffer file)
-      (.then (fn [buffer]
+      (a/then (fn [buffer]
                (let [bytes (js/Uint8Array. buffer)
                      starts (if (zero? (.-length bytes)) [0] (range 0 (.-length bytes) 32768))]
                  (reduce (fn [pending start]
-                           (.then pending
+                           (a/then pending
                              (fn [_]
                                (let [chunk (.subarray bytes start (min (.-length bytes) (+ start 32768)))
                                      encoded (js/btoa (.apply (.-fromCharCode js/String) nil chunk))]
                                  (request! "nvim_exec_lua" [write-lua [path encoded (zero? start)]])))))
-                         (js/Promise.resolve nil) starts))))))
+                         (a/resolved nil) starts))))))
 
 (defn import! [request! file-list folder?]
   (let [descriptors (mapv (fn [file]
@@ -65,15 +66,15 @@
                              :file file})
                          (array-seq (js/Array.from file-list)))]
     (if-let [message (plan-error descriptors)]
-      (js/Promise.reject (js/Error. message))
+      (a/rejected (js/Error. message))
       (if (empty? descriptors)
-        (js/Promise.resolve [])
-        (-> (reduce (fn [pending descriptor] (.then pending #(write! request! descriptor)))
-                    (js/Promise.resolve nil) descriptors)
-            (.then (fn [_]
+        (a/resolved [])
+        (-> (reduce (fn [pending descriptor] (a/then pending #(write! request! descriptor)))
+                    (a/resolved nil) descriptors)
+            (a/then (fn [_]
                      (let [directory (if folder? (first (string/split (:path (first descriptors)) #"/")) "")]
                        (request! "nvim_exec_lua"
                          ["local directory = ...; vim.cmd('cd ' .. vim.fn.fnameescape('/workspace/' .. directory))"
                           [directory]]))))
-            (.then #(open! request! (:path (first descriptors))))
-            (.then #(mapv :path descriptors)))))))
+            (a/then #(open! request! (:path (first descriptors))))
+            (a/then #(mapv :path descriptors)))))))

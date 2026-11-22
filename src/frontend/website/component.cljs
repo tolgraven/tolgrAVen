@@ -1,5 +1,6 @@
 (ns website.component
   (:require
+    [website.async :as a]
     [clojure.string :as string]
     [clojure.walk :as walk]
     [website.render-context :as context]
@@ -122,10 +123,10 @@
   [component & args]
   (if-let [definition (component-spec component)]
     (data/ensure-all! (dependencies definition args))
-    (js/Promise.resolve nil)))
+    (a/resolved nil)))
 
 (defn prefetch! [component & args]
-  (-> (apply preload! component args) (.catch (fn [_] nil))))
+  (-> (apply preload! component args) (a/catch-error (fn [_] nil))))
 
 (defn- render-body! [*render args]
   (loop []

@@ -1,6 +1,7 @@
 (ns website.component.data
   "Shared, mount-independent resource loading. Adapters are registered separately."
-  (:require [website.validation.runtime :as validation]
+  (:require [website.async :as a]
+            [website.validation.runtime :as validation]
             [website.schema.declarations :as schemas]
             [website.react :as r]
 
@@ -116,97 +117,104 @@
 
 (def default-timeout-ms 15000)
 
+(defn- current-load? [key token]
+  (identical? token (get-in @*entries [key :token])))
+
+(defn- check-load! [key token]
+  (when-not (current-load? key token)
+    (throw (js/Error. "Component data request invalidated"))))
+
+(defn- complete-load! [resource key token value]
+  (check-load! key token)
+  (when-let [path (:into resource)]
+    ;; A newer request targeting this path may belong to a different resource.
+    (when (identical? token (get @*targets path))
+      (r/dispatch-sync [:component-data/install path value])
+      (swap! *installed assoc path {:resource resource :value value})))
+  (swap! *entries update key merge
+         {:status :ready :value value :installed? (boolean (:into resource))
+          :expires-at (+ (.now js/Date) (or (:ttl-ms resource) 60000)) :reject! nil})
+  (when-let [options (persistence resource)]
+    (let [id (snapshot-id resource)
+          read-current #(if-let [path (:into resource)]
+                          (storage/state-value path)
+                          (get-in @*entries [key :value] storage/missing))]
+      (storage/write! id value options)
+      (storage/track! id read-current options)))
+  (status/recover! [:component-data key])
+  value)
+
+(defn- fail-load! [resource key token error]
+  (when (current-load? key token)
+    (swap! *entries update key merge {:status :error :error error :reject! nil})
+    (status/fail! [:component-data key] "Component data unavailable"
+                  "Some content could not be loaded. Retry to load it again."
+                  #(a/catch-error (retry! [resource]) (constantly nil))))
+  (throw error))
+
+(defn- ^:async read-resource! [resource key token load!]
+  (let [options (persistence resource)]
+    (await (when options (storage/ready! options)))
+    (check-load! key token)
+    (if-let [saved (when options (storage/read! (snapshot-id resource) options))]
+      (try
+        (when-let [restore! (:restore! (adapter resource))] (restore! resource (:value saved)))
+        (:value saved)
+        (catch :default _
+          (storage/remove! (snapshot-id resource) options)
+          (load! resource)))
+      (load! resource))))
+
+(defn- begin-load! [resource key {:keys [load! timeout-ms]} now]
+  (let [token (js-obj)
+        {:keys [promise resolve! reject!]} (a/deferred)
+        timer (js/setTimeout #(reject! (js/Error. "Component data request timed out"))
+                             (or (:timeout-ms resource) timeout-ms default-timeout-ms))
+        cleanup! (fn []
+                   (js/clearTimeout timer)
+                   (when-let [path (:into resource)]
+                     (when (identical? token (get @*targets path)) (swap! *targets dissoc path))))
+        finish (-> promise
+                   (a/then #(complete-load! resource key token %))
+                   (a/catch-error #(fail-load! resource key token %))
+                   (a/finally-do cleanup!))
+        entry {:resource resource :token token :status :loading
+               :promise finish :reject! reject! :accessed-at now}]
+    (when-let [path (:into resource)] (swap! *targets assoc path token))
+    (swap! *entries #(trim-cache (assoc % key entry)))
+    (enqueue! #(when (current-load? key token)
+                 (a/then (read-resource! resource key token load!) resolve! reject!)))
+    finish))
+
 (defn ensure!
-  "Queue immediately, independent of React. Return a shared Promise for one resource.
+  "Queue immediately, independent of React. Concurrent callers share one load.
    Errors are retained until retry; successful remote snapshots default to 60s TTL."
   [resource]
   (try
     (validation/check! "data dependency" schemas/dependency resource)
     (restore! resource)
-    (let [{:keys [load! read timeout-ms]} (adapter resource)
+    (let [source (adapter resource)
           key (resource-key resource)
           ready (ready-value resource)
           existing (get @*entries key)
           now (.now js/Date)]
       (cond
-        (:ready? ready) (do (when (= :error (:status existing))
-                             (swap! *entries dissoc key)
-                             (status/recover! [:component-data key]))
-                           (js/Promise.resolve (:value ready)))
+        (:ready? ready)
+        (do (when (= :error (:status existing))
+              (swap! *entries dissoc key)
+              (status/recover! [:component-data key]))
+            (a/resolved (:value ready)))
         (= :loading (:status existing)) (:promise existing)
-        (= :error (:status existing)) (js/Promise.reject (:error existing))
-        (and (nil? read) (= :ready (:status existing)) (< now (:expires-at existing)))
-        (js/Promise.resolve (:value existing))
-        :else
-        (let [token (js-obj)
-              *resolve (atom nil) *reject (atom nil)
-              promise (js/Promise. (fn [resolve reject] (reset! *resolve resolve) (reset! *reject reject)))
-              current? #(identical? token (get-in @*entries [key :token]))
-              timer (js/setTimeout #(@*reject (js/Error. "Component data request timed out"))
-                                   (or (:timeout-ms resource) timeout-ms default-timeout-ms))
-              finish (-> promise
-                         (.then (fn [value]
-                                  (when-not (current?) (throw (js/Error. "Component data request invalidated")))
-                                  (when (current?)
-                                    (when-let [path (:into resource)]
-                                      ;; A newer request targeting this path wins even if
-                                      ;; this older, different resource finishes last.
-                                      (when (identical? token (get @*targets path))
-                                        (r/dispatch-sync [:component-data/install path value])
-                                        (swap! *installed assoc path {:resource resource :value value})))
-                                    (swap! *entries update key merge
-                                           {:status :ready :value value :installed? (boolean (:into resource))
-                                            :expires-at (+ (.now js/Date) (or (:ttl-ms resource) 60000))
-                                            :reject! nil})
-                                    (when-let [options (persistence resource)]
-                                      (storage/write! (snapshot-id resource) value options)
-                                      (storage/track! (snapshot-id resource)
-                                                      #(if (:into resource)
-                                                         (storage/state-value (:into resource))
-                                                         (get-in @*entries [key :value] storage/missing)) options))
-                                    (status/recover! [:component-data key]))
-                                  value))
-                         (.catch (fn [error]
-                                   (when (current?)
-                                     (swap! *entries update key merge {:status :error :error error :reject! nil})
-                                     (status/fail! [:component-data key] "Component data unavailable"
-                                                   "Some content could not be loaded. Retry to load it again."
-                                                   #(-> (retry! [resource]) (.catch (fn [_] nil)))))
-                                   (throw error)))
-                         (.finally #(do (js/clearTimeout timer)
-                                        (when-let [path (:into resource)]
-                                          (when (identical? token (get @*targets path))
-                                            (swap! *targets dissoc path))))))]
-          (when-let [path (:into resource)] (swap! *targets assoc path token))
-          (swap! *entries #(trim-cache (assoc % key {:resource resource :token token :status :loading
-                                                    :promise finish :reject! @*reject :accessed-at now})))
-          (enqueue!
-           (fn []
-             (when (current?)
-               (-> (if-let [options (persistence resource)]
-                     (storage/ready! options) (js/Promise.resolve nil))
-                   (.then (fn [_]
-                            (when-not (current?) (throw (js/Error. "Component data request invalidated")))
-                            ;; Disk snapshots are warm before deciding to fetch.
-                            (let [options (persistence resource)
-                                  saved (when options (storage/read! (snapshot-id resource) options))]
-                              (if saved
-                                (try
-                                  (when-let [restore! (:restore! (adapter resource))]
-                                    (restore! resource (:value saved)))
-                                  (:value saved)
-                                  (catch :default _
-                                    (storage/remove! (snapshot-id resource) options)
-                                    (load! resource)))
-                                (load! resource)))))
-                   (.then @*resolve @*reject)))))
-          finish)))
-    (catch :default error (js/Promise.reject error))))
+        (= :error (:status existing)) (a/rejected (:error existing))
+        (and (nil? (:read source)) (= :ready (:status existing)) (< now (:expires-at existing)))
+        (a/resolved (:value existing))
+        :else (begin-load! resource key source now)))
+    (catch :default error (a/rejected error))))
 
 (defn ensure-all! [resources]
-  (js/Promise.all (into-array (mapv ensure! resources))))
+  (a/all (mapv ensure! resources)))
 (defn prefetch! [resources]
-  (-> (ensure-all! resources) (.catch (fn [_] nil))))
+  (-> (ensure-all! resources) (a/catch-error (fn [_] nil))))
 (defn retry! [resources]
   (let [requested (set resources)]
     (doseq [resource resources :let [options (persistence resource)] :when options]
@@ -237,7 +245,7 @@
 (defn wait-for!
   "Observe a ratom without creating a React subscription. Always remove the watch."
   [reference read! timeout-ms]
-  (js/Promise.
+  (a/create
    (fn [resolve reject]
      (let [key (random-uuid) *timer (atom nil)
            cleanup! #(do (remove-watch reference key) (when @*timer (js/clearTimeout @*timer)))
@@ -263,4 +271,4 @@
 
 (defn retry-background! [resources]
   ;; The shared loader records failures and reports them through the HUD.
-  (-> (retry! resources) (.catch (fn [_] nil))))
+  (-> (retry! resources) (a/catch-error (fn [_] nil))))

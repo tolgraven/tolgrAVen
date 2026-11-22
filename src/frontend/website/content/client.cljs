@@ -1,9 +1,10 @@
 (ns website.content.client
   (:require
+    [website.async :as a]
     [website.macros :refer-macros [defc]]
     [website.component.registry]
     [website.component.visibility :as visibility]
-    [ajax.core :as ajax]
+    [website.http :as http]
     [clojure.string :as string]
     [website.react :as r]
 
@@ -39,48 +40,49 @@
 
 (declare ensure! prefetch!)
 
-(defn- request-ready! [ks]
-  (js/Promise.
-   (fn [resolve reject]
-     (ajax/GET (if (= (set ks) (set contract/sections)) "/api/content/bootstrap"
-                  (str "/api/content?keys=" (js/encodeURIComponent (string/join "," (map name ks)))))
-               {:timeout request-timeout-ms :response-format (ajax/json-response-format {:keywords? true})
-                :handler (fn [bundle]
-                           (if (valid-bundle? bundle ks)
-                             (do (r/dispatch-sync [:content/install bundle])
-                                 (doseq [id (keys @status/*failures)
-                                         :when (and (vector? id) (= :strapi (first id))
-                                                    (every? #(contains? (cached-content) %) (second id)))]
-                                   (status/recover! id))
-                                 (resolve bundle))
-                             (reject (js/Error. "Invalid content response"))))
-                :error-handler (fn [_] (reject (js/Error. "Content is temporarily unavailable")))}))))
+(defn- recover-sections! []
+  (doseq [id (keys @status/*failures)
+          :when (and (vector? id) (= :strapi (first id))
+                     (every? #(contains? (cached-content) %) (second id)))]
+    (status/recover! id)))
+
+(defn- ^:async request-ready! [ks]
+  (let [all? (= (set ks) (set contract/sections))
+        request (cond-> {:uri (if all? "/api/content/bootstrap" "/api/content") :timeout request-timeout-ms}
+                  (not all?) (assoc :url-params {:keys (string/join "," (map name ks))}))
+        bundle (try (await (http/request! request))
+                    (catch :default _ (throw (js/Error. "Content is temporarily unavailable"))))]
+    (when-not (valid-bundle? bundle ks) (throw (js/Error. "Invalid content response")))
+    (r/dispatch-sync [:content/install bundle])
+    (recover-sections!)
+    bundle))
 
 (defn request! [ks]
   (-> (validation/when-ready!)
-      (.then (fn [_] (request-ready! ks)))))
+      (a/then (fn [_] (request-ready! ks)))))
+
+(defn- complete-batch! [batch ks bundle]
+  (swap! *pending #(apply dissoc % ks))
+  (storage/schedule!)
+  (doseq [{:keys [resolve!]} (vals batch)] (resolve! bundle)))
+
+(defn- fail-section! [batch ks error]
+  (swap! *pending #(apply dissoc % ks))
+  (status/fail! [:strapi ks] "Strapi content unavailable"
+                "Some site content could not be loaded. Previously loaded content is retained."
+                #(prefetch! ks))
+  (doseq [{:keys [reject!]} (vals batch)] (reject! error)))
 
 (defn- acquire-batch! [batch]
-  (let [ks (vec (sort (keys batch)))]
-    (-> (js/Promise.resolve nil)
-        (.then (fn [_] (request! ks)))
-        (.then (fn [bundle]
-                 (swap! *pending #(apply dissoc % ks))
-                 (storage/schedule!)
-                 (doseq [[_ {:keys [resolve]}] batch] (resolve bundle)))
-               (fn [error]
-                 (if (> (count ks) 1)
-                   ;; Keep the normal shared request. A failed bundle cannot
-                   ;; identify its bad section; isolate it before rejecting
-                   ;; consumers so unrelated module loads can still complete.
-                   (js/Promise.all
-                     (into-array (map (fn [k] (acquire-batch! (select-keys batch [k]))) ks)))
-                   (do
-                     (swap! *pending #(apply dissoc % ks))
-                     (status/fail! [:strapi ks] "Strapi content unavailable"
-                                   "Some site content could not be loaded. Previously loaded content is retained."
-                                   #(prefetch! ks))
-                     (doseq [[_ {:keys [reject]}] batch] (reject error)))))))))
+  (let [ks (vec (sort (keys batch)))
+        ;; Retry separately so a bad section cannot fail unrelated module loads.
+        recover! (fn [error]
+                   (if (next ks)
+                     (a/all (map #(acquire-batch! (select-keys batch [%])) ks))
+                     (fail-section! batch ks error)))]
+    (-> (a/resolved nil)
+        (a/then (fn [_] (request! ks)))
+        (a/then #(complete-batch! batch ks %) recover!))))
 
 (defn drain!
   "Batch this tick's requests; isolate sections if the shared request fails."
@@ -94,12 +96,12 @@
   (doseq [k (distinct requested)
           :when (and (not (contains? (cached-content) k))
                      (not (contains? @*pending k)))]
-    (let [promise (js/Promise. (fn [resolve reject]
-                                (swap! *queued assoc k {:resolve resolve :reject reject})))]
-      (swap! *pending assoc k promise)))
+    (let [pending (a/deferred)]
+      (swap! *queued assoc k pending)
+      (swap! *pending assoc k (:promise pending))))
   (when (and (seq @*queued) (nil? @*tick))
     (reset! *tick (js/setTimeout drain! 0)))
-  (js/Promise.all (into-array (distinct (keep @*pending requested)))))
+  (a/all (distinct (keep @*pending requested))))
 
 (r/reg-fx :content/load #(prefetch! %))
 (r/reg-event-fx :content/load (fn [_ [_ ks]] {:content/load ks}))
@@ -129,14 +131,14 @@
       ;; Startup needs only the shared shell. Route/feature modules acquire
       ;; their own content through the loader and retain their local retry UI.
       (-> (ensure! (bootstrap-keys embedded (.-pathname js/location)))
-          (.then (fn [result] (status/recover! :strapi-bootstrap) (storage/schedule!) result))))
+          (a/then (fn [result] (status/recover! :strapi-bootstrap) (storage/schedule!) result))))
     (catch :default error
       ;; A retry fetches a fresh bundle instead of parsing the same broken snapshot.
       (when-let [element (.getElementById js/document "site-content-bootstrap")] (.remove element))
       (status/fail! :strapi-bootstrap "Strapi content could not initialize"
                     "The initial content response was invalid. Reload the page to try again."
                     #(.reload js/location))
-      (js/Promise.reject error))))
+      (a/rejected error))))
 
 (defn bootstrap-server!
   "Install content supplied with the validated network SSR pair.
@@ -147,13 +149,13 @@
   (storage/track! :public-content
                   #(hash-map :version contract/version :content (cached-content)) cache-options)
   (-> (ensure! (keys (:content snapshot)))
-      (.then (fn [result] (status/recover! :strapi-bootstrap) result))))
+      (a/then (fn [result] (status/recover! :strapi-bootstrap) result))))
 
 (defn bootstrap! []
-  (-> (storage/ready!) (.then (fn [_] (bootstrap-ready!)))))
+  (-> (storage/ready!) (a/then (fn [_] (bootstrap-ready!)))))
 
 (defn prefetch! [ks]
-  (-> (ensure! ks) (.catch (fn [_] nil)))) ; optional; initialization can retry
+  (-> (ensure! ks) (a/catch-error (fn [_] nil)))) ; optional; initialization can retry
 
 (defc <prefetch> [ks]
   [visibility/<sentinel> {:event [:content/load ks]

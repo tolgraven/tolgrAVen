@@ -1,6 +1,7 @@
 (ns website.modules.blog-editor.draft
   "Account-owned working/named drafts reuse the existing storage debounce and pagehide flush."
-  (:require [clojure.string :as string]
+  (:require [website.async :as a]
+            [clojure.string :as string]
             [website.react :as r]
             [website.component.storage :as storage]
             [website.validation :as validation]
@@ -72,7 +73,7 @@
   (fn [{:keys [id owner account token before restore? document-id]}]
     (let [identity @storage/*identity]
       (-> (storage/retry-read! options)
-          (.then (fn [_]
+          (a/then (fn [_]
                    (when-not (and identity (= identity @storage/*identity) (private-owner? account))
                      (throw (js/Error. "Private draft storage is not ready. Sign in and retry.")))
                    (when (storage/read-failed? options)
@@ -80,7 +81,7 @@
                    (r/dispatch [:blog/drafts-read owner account token id before restore? document-id
                                 (validated-read id schema/working account)
                                 (validated-read (collection-id-for id) schema/collection account)])))
-          (.catch (fn [error] (r/dispatch [:blog/draft-failed owner account token (.-message error)])))))))
+          (a/catch-error (fn [error] (r/dispatch [:blog/draft-failed owner account token (.-message error)])))))))
 
 (r/reg-fx :blog-editor/track-drafts
   (fn [{:keys [id owner account]}]

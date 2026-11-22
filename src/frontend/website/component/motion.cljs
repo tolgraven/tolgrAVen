@@ -1,6 +1,9 @@
 (ns website.component.motion
   "Root-merged motion and parent-owned exit retention. No wrapper components."
-  (:require [clojure.string :as string]
+  (:require [website.browser.css :as css]
+            [cljs.math :as math]
+            [website.async :as a]
+            [clojure.string :as string]
             [website.react :as r]
 
             [website.component.restore :as restore]))
@@ -65,7 +68,7 @@
     #(when @*frame (js/cancelAnimationFrame @*frame))))
 
 (defn- seconds [text]
-  (let [n (js/parseFloat text)]
+  (let [n (css/magnitude text)]
     (if (js/isNaN n) 0 (* n (if (string/ends-with? (string/trim text) "ms") 1 1000)))))
 (defn- css-duration [durations delays]
   (let [durations (mapv seconds (string/split durations #","))
@@ -110,8 +113,8 @@
                        ;; bounded CSS exit window, even if its clock shortens.
                        (:retain-layout? options) nil
                        (seq animations)
-                       (-> (js/Promise.allSettled (into-array (map #(.-finished %) animations)))
-                           (.then (fn [_] (done!))))
+                       (-> (a/all-settled (map #(.-finished %) animations))
+                           (a/then (fn [_] (done!))))
                        (.-getAnimations element) (done!))))))]
     #(do (reset! *active? false)
          (js/cancelAnimationFrame frame)
@@ -221,7 +224,7 @@
                                             (when @(:active? state)
                                               (doseq [entry (array-seq entries)]
                                                 (let [ratio (.-intersectionRatio entry)
-                                                      ratio' (if legacy? (/ (js/Math.floor (* ratio 100)) 100) ratio)
+                                                      ratio' (if legacy? (/ (math/floor (* ratio 100)) 100) ratio)
                                                       visible? (and (.-isIntersecting entry)
                                                                     (>= ratio' threshold))]
                                                   (when-not (and once? @*seen?)

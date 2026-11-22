@@ -315,8 +315,8 @@
 (r/reg-fx :supabase/load-query
   (fn [[opts on-success on-failure]]
     (-> (supabase-client/preload-query! opts)
-        (.then #(when on-success (r/dispatch (conj on-success (util/normalize-store-result %)))))
-        (.catch #(r/dispatch (conj (or on-failure [:default-http-error]) %))))))
+        (a/then #(when on-success (r/dispatch (conj on-success (util/normalize-store-result %)))))
+        (a/catch-error #(r/dispatch (conj (or on-failure [:default-http-error]) %))))))
 
 (r/reg-event-fx :<-store
   (fn [{:keys [db]} [_ path on-success on-failure]]
@@ -391,10 +391,10 @@
     (-> (supabase-client/init! settings
                               #(r/dispatch [:supabase/profile %])
                               #(r/dispatch [:supabase/auth-error %]))
-        (.then (fn [_]
+        (a/then (fn [_]
                  (service-status/recover! :supabase-init)
                  (r/dispatch [:supabase/initialized settings])))
-        (.catch (fn [_] (r/dispatch [:supabase/error attempt nil]))))))
+        (a/catch-error (fn [_] (r/dispatch [:supabase/error attempt nil]))))))
 
 (r/reg-event-fx :supabase/init
   {:args [:cat init-attempt supabase-schema/options]}

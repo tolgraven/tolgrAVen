@@ -1,27 +1,28 @@
 (ns website.validation
   "Stable validation boundary. Browser releases install the Malli engine lazily."
   (:require [clojure.string :as string]
+            #?(:cljs [website.async :as a])
             #?(:clj [website.validation.malli :as impl]
                :dev [website.validation.malli :as impl]
                :ssr [website.validation.malli :as impl])))
 
 (defonce *engine (atom #?(:clj impl/functions :dev impl/functions :ssr impl/functions :default nil)))
 #?(:cljs (defonce ^:private *pending (atom nil)))
-#?(:cljs (defonce ^:private *resolve (atom nil)))
 (defn ready? [] (some? @*engine))
 (defn install-engine! [engine]
   (reset! *engine engine)
-  #?(:cljs (when-let [resolve @*resolve] (resolve nil) (reset! *resolve nil)))
+  #?(:cljs (when-let [{:keys [resolve!]} @*pending]
+             (reset! *pending nil)
+             (resolve! nil)))
   nil)
 #?(:cljs
    (defn when-ready!
      "Wait without acquiring code; boot/navigation own acquisition."
      []
-     (if (ready?) (js/Promise.resolve nil)
-         (or @*pending
-             (let [pending (js/Promise. (fn [resolve _] (reset! *resolve resolve)))]
-               (reset! *pending pending)
-               pending)))))
+     (if (ready?)
+       (a/resolved nil)
+       (:promise (or @*pending (reset! *pending (a/deferred)))))))
+
 (defn- operation [key]
   (or (get @*engine key)
       (throw (ex-info "Validation engine is not ready" {:type :validation/not-ready}))))

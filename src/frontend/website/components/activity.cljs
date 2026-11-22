@@ -1,5 +1,6 @@
 (ns website.components.activity
-  (:require [website.macros :refer-macros [defc]]
+  (:require [website.browser.css :as css]
+            [website.macros :refer-macros [defc]]
             [website.react :as r]
             [website.listener :as listener]
             [website.components.portal :as portal]
@@ -8,7 +9,7 @@
 (defn- anchor [event day]
   ;; Native geometry is read only at the hover/focus boundary; React owns the UI.
   (let [rect (.getBoundingClientRect (.-currentTarget event))
-        unit (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))
+        unit (css/font-size)
         above? (> (+ (.-bottom rect) (* 12 unit)) (.-innerHeight js/window))]
     (assoc day :left (/ (+ (.-left rect) (.-right rect)) (* 2 unit))
                :top (/ (if above? (.-top rect) (.-bottom rect)) unit)

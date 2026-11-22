@@ -1,7 +1,8 @@
 (ns website.components.ui.liquid-glass
   "A refractive background for ordinary Hiccup. Children retain their own
    opacity, focus, state and DOM; only the independently sized glass is filtered."
-  (:require [clojure.string :as string]
+  (:require [website.browser.css :as css]
+            [clojure.string :as string]
             [website.react :as r]
             [website.macros :refer-macros [defc]]
             [website.component.registry]
@@ -108,8 +109,8 @@
 (defn- relative-value [value element width height]
   (let [[_ number unit] (re-matches #"([0-9]*\.?[0-9]+)(rem|em|vw|vh|vmin|vmax)?" value)
         multiplier (case unit
-                     "rem" (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))
-                     "em" (js/parseFloat (.-fontSize (js/getComputedStyle element)))
+                     "rem" (css/font-size)
+                     "em" (css/font-size element)
                      "vw" (/ (.-innerWidth js/window) 100)
                      "vh" (/ (.-innerHeight js/window) 100)
                      "vmin" (/ (min (.-innerWidth js/window) (.-innerHeight js/window)) 100)

@@ -1,6 +1,7 @@
 (ns website.component.storage-disk
   "Async heavy-cache IO. Small preferences remain in the synchronous store."
-  (:require [cognitect.transit :as transit]
+  (:require [website.async :as a]
+            [cognitect.transit :as transit]
             [cljs.reader :as reader]
             [clojure.string :as string]
             [cljs.tools.reader.reader-types :as reader-types]))
@@ -12,7 +13,7 @@
   "Decode/validate independent entries within a frame budget. IO callers share
    their promise; mounted components continue reading the in-memory index."
   [f entries]
-  (js/Promise.
+  (a/create
     (fn [resolve reject]
       (letfn [(step! [remaining result]
                 (try
@@ -35,11 +36,11 @@
   ;; Old envelopes and small preferences use EDN. Read their independent map
   ;; entries incrementally with the standard reader, preserving scalar types.
   (if-not text
-    (js/Promise.resolve nil)
+    (a/resolved nil)
     (let [text' (string/trim text)]
       (if-not (and (<= (count text') max-bytes) (string/starts-with? text' "{")
                    (string/ends-with? text' "}"))
-        (js/Promise.reject (js/Error. "Invalid preferences envelope"))
+        (a/rejected (js/Error. "Invalid preferences envelope"))
         (let [source (reader-types/string-push-back-reader (subs text' 1 (dec (count text'))))
               eof (js-obj)
               pairs! (fn pairs! []
@@ -49,12 +50,12 @@
                              (let [snapshot (reader/read {:eof eof} source)]
                                (when (identical? snapshot eof) (throw (js/Error. "Invalid preferences envelope")))
                                (cons [id snapshot] (pairs!)))))))]
-          (-> (map-chunks! identity (pairs!)) (.then #(into {} %))))))))
+          (-> (map-chunks! identity (pairs!)) (a/then #(into {} %))))))))
 
 (defn- database! []
   (or @*database
       (let [pending
-            (js/Promise.
+            (a/create
               (fn [resolve reject]
                 (if-not (exists? js/indexedDB)
                   (reject (js/Error. "IndexedDB is unavailable"))
@@ -69,32 +70,31 @@
                               (set! (.-onversionchange database)
                                     (fn [_] (.close database) (reset! *database nil)))
                               (resolve database))))))))
-            retryable (.catch pending (fn [error] (reset! *database nil) (throw error)))]
+            retryable (a/catch-error pending (fn [error] (reset! *database nil) (throw error)))]
         (reset! *database retryable)
         retryable)))
 
-(defn- transaction! [account mode value]
-  (-> (database!)
-      (.then
-        (fn [database]
-          (js/Promise.
-            (fn [resolve reject]
-              (let [transaction (.transaction database #js ["owners"] mode)
-                    store (.objectStore transaction "owners")
-                    request (if (= "readwrite" mode)
-                              (if (nil? value) (.delete store (pr-str account))
-                                  (.put store value (pr-str account)))
-                              (.get store (pr-str account)))]
-                (set! (.-oncomplete transaction) (fn [_] (resolve (.-result request))))
-                (set! (.-onabort transaction) (fn [_] (reject (or (.-error transaction)
-                                                                (js/Error. "Cache transaction aborted")))))
-                (set! (.-onerror transaction) (fn [_] (reject (.-error transaction)))))))))))
+(defn- ^:async transaction! [account mode value]
+  (let [database (await (database!))
+        key (pr-str account)]
+    (a/create
+      (fn [resolve! reject!]
+        (let [transaction (.transaction database #js ["owners"] mode)
+              store (.objectStore transaction "owners")
+              request (cond
+                        (= "readonly" mode) (.get store key)
+                        (nil? value) (.delete store key)
+                        :else (.put store value key))]
+          (set! (.-oncomplete transaction) (fn [_] (resolve! (.-result request))))
+          (set! (.-onabort transaction) (fn [_] (reject! (or (.-error transaction)
+                                                             (js/Error. "Cache transaction aborted")))))
+          (set! (.-onerror transaction) (fn [_] (reject! (.-error transaction)))))))))
 
 (defn remove! [account] (transaction! account "readwrite" nil))
 
 (defn read! [account]
   (-> (transaction! account "readonly" nil)
-      (.then (fn [record]
+      (a/then (fn [record]
                (if-not record
                  nil
                  (let [entries (.-entries record)]
@@ -109,13 +109,13 @@
                                      [(transit/read (transit/reader :json) (aget entry 0))
                                       (transit/read (transit/reader :json) (aget entry 1))])
                                    (array-seq entries))
-                       (.then #(into {} %)))))))))
+                       (a/then #(into {} %)))))))))
 
 (defn write! [account bucket]
   (-> (map-chunks! (fn [[id snapshot]]
                     #js [(transit/write (transit/writer :json) id)
                          (transit/write (transit/writer :json) snapshot)]) bucket)
-      (.then (fn [entries]
+      (a/then (fn [entries]
                (when (> (reduce + 0 (map #(reduce + 0 (map count (array-seq %))) entries)) max-bytes)
                  (throw (js/Error. "Cache envelope is too large")))
                (transaction! account "readwrite" #js {:version 1, :entries (into-array entries)})))))
