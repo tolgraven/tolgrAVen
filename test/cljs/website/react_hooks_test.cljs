@@ -1,6 +1,7 @@
 (ns website.react-hooks-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.macros :refer-macros [defc]]
             [website.test-support :as support]))
@@ -66,8 +67,8 @@
               (await! (support/settle!))
               (is (= 2 (count (filter #(= :layout-stop (first %)) @*lifecycle))))
               (is (= 2 (count (filter #(= :effect-stop (first %)) @*lifecycle))))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (defc <state-probe> [phase *observed]
   (let [[state set-state!] (r/use-state {:value 0})
@@ -100,8 +101,8 @@
                   (is (not (identical? state (:state @*observed))))
                   (is (not (identical? reduced (:reduced @*observed)))))
                 (finally (support/unmount! root)))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (deftest native-handles-and-functions-retain-identity-semantics-inside-clojure-dependencies
   (async done
@@ -125,5 +126,5 @@
                   (await! (support/render! root [<hook-probe> [handle (fn [] nil)] 3 true *observed *lifecycle]))
                   (is (not (identical? memo (:memo @*observed)))))
                 (finally (support/unmount! root)))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))

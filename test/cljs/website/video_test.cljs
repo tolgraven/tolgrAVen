@@ -1,6 +1,7 @@
 (ns website.video-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [async deftest is]]
             [website.react :as r]
             [website.components.video :as video]
@@ -63,5 +64,5 @@
               (finally (support/unmount! root)
                        (.remove element)
                        (set! js/IntersectionObserver original)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))

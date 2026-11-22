@@ -1,6 +1,7 @@
 (ns website.component.font
   "Committed font ownership; re-frame owns readiness and each transient fade."
-  (:require [clojure.string :as string]
+  (:require [website.async :as a]
+            [clojure.string :as string]
             [website.react :as r]
             [website.component.motion :as motion]
             [website.component.restore :as restore]
@@ -57,9 +58,9 @@
     (let [key (request options)]
       (try
         (-> (.load (.-fonts js/document) key (get options :sample "MWiw0123456789"))
-            (.then (fn [loaded]
+            (a/then (fn [loaded]
                      (r/dispatch [:font/loaded key token (pos? (.-length loaded))])))
-            (.catch (fn [_] (r/dispatch [:font/loaded key token false]))))
+            (a/catch-error (fn [_] (r/dispatch [:font/loaded key token false]))))
         (catch :default _ (r/dispatch [:font/loaded key token false]))))))
 
 (r/reg-event-fx :font/attach

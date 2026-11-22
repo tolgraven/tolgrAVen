@@ -1,6 +1,7 @@
 (ns website.liquid-glass-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.react.server :as server]
             [website.test-support :as support]
@@ -17,10 +18,10 @@
     ;; The default browser-test document has no application stylesheet. Acquire
     ;; the same native sheet as the dedicated glass page before measuring it.
     (-> (styles/acquire-path! "/css/website/main.css")
-        (.then (fn [_] (support/create-root! element)))
-        (.then (fn [root] (-> (js/Promise.resolve (f root element))
-                             (.finally #(support/unmount! root)))))
-        (.finally #(.remove element)))))
+        (p/then (fn [_] (support/create-root! element)))
+        (p/then (fn [root] (-> (p/resolved (f root element))
+                             (p/finally-do #(support/unmount! root)))))
+        (p/finally-do #(.remove element)))))
 
 (defn options [& [extra]]
   (merge {:mode :refraction
@@ -51,8 +52,8 @@
                     (is (= image (.getAttribute (.querySelector element "feImage") "href")))
                     (is (= "1" (.-opacity (js/getComputedStyle (.querySelector element ".liquid-glass__content")))))
                     (is (= "0.3" (.-opacity (js/getComputedStyle (.querySelector element ".liquid-glass__surface"))))))))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (deftest expanded-background-and-disabled-mode-preserve-children
   (async done
@@ -71,8 +72,8 @@
                 (is (identical? button (.querySelector element "button")))
                 (is (nil? (.querySelector element "filter")))
                 (is (= "0" (.-opacity (js/getComputedStyle surface))))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest multiple-lenses-have-independent-ids-and-reuse-cached-images
   (async done
@@ -88,8 +89,8 @@
                 (is (= 2 (count (set (map #(.getAttribute % "id") filters)))))
                 (is (apply = (map #(.getAttribute % "href") images)))
                 (is (= 1 (count (:order (maps/cache-info)))))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest frosted-and-failed-map-paths-keep-controls-usable
   (async done
@@ -106,8 +107,8 @@
                 (is (= "Fallback" (.-textContent (.querySelector element "button"))))
                 (is (nil? (.querySelector element "filter")))
                 (is (= "true" (.getAttribute (.querySelector element ".liquid-glass") "data-glass-error"))))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (deftest unmount-releases-owned-listeners-and-pending-work
   (async done
@@ -122,14 +123,14 @@
                 (await! (support/render! root [glass/<liquid-glass> (options) "Pending"]))
                 (await! (support/wait-for! #(seq @*scheduled)))
                 (is (> (count @listener/*bindings) before)))))
-          (.then (fn []
+          (p/then (fn []
                    (is (= before (count @listener/*bindings)))
                    (is (pos? @*cancelled))
                    ;; An already dispatched idle callback is also guarded, even
                    ;; if a browser ignores cancellation after removing a panel.
                    (doseq [callback @*scheduled] (callback))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (set! maps/schedule! original) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (set! maps/schedule! original) (done)))))))
 
 (deftest hydration-retains-the-ssr-input-node
   (async done
@@ -149,8 +150,8 @@
               (is (identical? input (.querySelector element "input")))
               (is (= "SSR" (.-value input)))
               (is (empty? @*errors))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (r/unmount @*root))
                       (.remove element)
                       (done)))))))
@@ -173,8 +174,8 @@
                   (is (identical? input (.querySelector element "input")))
                   (is (= (.-offsetWidth (.querySelector element ".liquid-glass__surface"))
                          (js/parseFloat (.getAttribute (.querySelector element "filter") "width")))))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest strict-mode-and-offscreen-surfaces-release-and-resume-work
   (async done
@@ -198,9 +199,9 @@
                       (await! (support/wait-for! #(.querySelector element "filter")))
                       (is (> @*samples samples))
                       (is (identical? button (.querySelector element "button")))))))))
-          (.then #(is (= before (count @listener/*bindings))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/then #(is (= before (count @listener/*bindings))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (deftest image-cache-is-bounded-and-hits-skip-raster-generation
   (maps/clear-cache!)

@@ -1,4 +1,4 @@
-(ns website.dev.styles
+(ns website.tooling.styles
   "Owned CSS watcher and fail-closed development freshness boundary."
   (:require [cheshire.core :as json]
             [clojure.java.shell :as shell]))

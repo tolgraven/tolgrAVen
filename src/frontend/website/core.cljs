@@ -1,5 +1,6 @@
 (ns website.core
   (:require
+    [website.async :as a]
     [website.react :as r]
     [website.validation.runtime :as validation]
     [website.validation :as engine]
@@ -11,7 +12,6 @@
     [website.modules.main.module :as main-module]
 
 
-    [website.ajax :as ajax]
     [website.boot :as boot]
     [website.browser-resources :as browser-resources]
     [website.content.client :as content]
@@ -51,13 +51,13 @@
   (or @*shell-removal
       (let [pending
             (if-let [element (.getElementById js/document "ssr-shell")]
-              (js/Promise.
+              (a/create
                 (fn [complete! _]
                   (motion/finish-animation! element {:timeout-ms 500}
                     (fn []
                       (reset! *shell-root (r/create-root element))
                       (r/render @*shell-root [<disposed-shell> complete!])))))
-              (js/Promise.resolve nil))]
+              (a/resolved nil))]
         (reset! *shell-removal pending)
         pending)))
 (defonce <page>
@@ -108,32 +108,57 @@
           ;; The route owns initial readiness. Optional SSR exports preserve their
           ;; native DOM and acquire code through their mounted activation boundary.
           (component-data/ensure! {:source :subscription :query [:common/page-ready?] :ttl-ms 1})
-          (js/Promise.resolve nil))
-        (.then (fn [_]
+          (a/resolved nil))
+        (a/then (fn [_]
                  (render)
                  (when hot-reload? (r/dispatch [:scroll/restore-position-dev 150])))))))
 
-(defn prepare-bootstrap! []
+(defn ^:async prepare-bootstrap! []
   (let [snapshot (when-not (.getElementById js/document "local-page-bootstrap")
-                   (or @ssr/*snapshot (ssr/install!)))
-        server-ready? (and (:hydrate? @restore/*context)
-                           (:route-parameters snapshot)
-                           (not (validation/configured?)))]
-    (if server-ready?
-      ;; The server validated this exact pair. Disk records remain pending until
-      ;; their validator arrives; retries must not reinstall older paired state.
-      (js/Promise.resolve snapshot)
-      (-> (loader/acquire-code! :coercion)
-          (.then (fn [_]
-                   (validation/install!)
-                   (validation/module! main-module/spec)
-                   (storage/ready!)))
-          (.then (fn [_]
-                   (let [local-snapshot (local-page/install!)]
-                     (if local-snapshot
-                       (local-page/prepare! local-snapshot)
-                       (storage/restore-public-cache!)))))
-          (.then (fn [_] nil))))))
+                   (or @ssr/*snapshot (ssr/install!)))]
+    (if (and (:hydrate? @restore/*context) (:route-parameters snapshot)
+             (not (validation/configured?)))
+      ;; This pair was validated on the server. A retry must not reinstall old disk state.
+      snapshot
+      (do
+        (await (loader/acquire-code! :coercion))
+        (validation/install!)
+        (validation/module! main-module/spec)
+        (await (storage/ready!))
+        (await (if-let [local-snapshot (local-page/install!)]
+                 (local-page/prepare! local-snapshot)
+                 (storage/restore-public-cache!)))
+        nil))))
+
+(defn- restore-history! []
+  (r/dispatch-sync [:ls/get-path [:scroll-position] [:state :scroll-position]])
+  ;; Real network SSR keeps native scroll restoration. A disk-backed history
+  ;; return waits for restored layout before moving to the saved position.
+  (when (and (restore/back-navigation?)
+             (not (.getElementById js/document "local-page-bootstrap"))
+             (= "true" (.getAttribute (.getElementById js/document "app") "data-restore")))
+    (r/dispatch [:scroll/restore-history (.-pathname js/location)])))
+
+(defn- ^:async initialize-page! [shell-cleared]
+  ;; Let synchronous document setup finish before installing bootstrap data.
+  (await nil)
+  (let [snapshot (await (prepare-bootstrap!))]
+    (restore-history!)
+    (await (if snapshot (content/bootstrap-server! snapshot) (content/bootstrap!)))
+    (await (a/all [shell-cleared (component-data/ensure-all! (:depends spec))]))
+    (await (mount-components))
+    (r/dispatch [:state [:page-init] {:status :ready}])))
+
+(defn- page-starter [shell-cleared]
+  (letfn [(failed! [_]
+            (service-status/fail! :page-init "Page initialization failed"
+                                  "The page could not initialize. Existing server content is retained." start!)
+            (r/dispatch [:state [:page-init] {:status :failed}]))
+          (start! []
+            (r/dispatch-sync [:state [:page-init] {:status :loading}])
+            (service-status/recover! :page-init)
+            (a/catch-error (initialize-page! shell-cleared) failed!))]
+    start!))
 
 (defn init "Called only on page load" []
   (when (engine/ready?)
@@ -153,36 +178,7 @@
     (r/dispatch-sync [:init/app-db])
     (r/dispatch-sync [:boot/document])
     (r/dispatch-sync [:history/set-referrer js/document.referrer js/window.performance.navigation.type])
-    (ajax/load-interceptors!)
-    (letfn [(start! []
-              (r/dispatch-sync [:state [:page-init] {:status :loading}])
-              (service-status/recover! :page-init)
-              (-> (js/Promise.resolve nil)
-                  (.then (fn [_] (prepare-bootstrap!)))
-                  (.then (fn [snapshot]
-                           (r/dispatch-sync [:ls/get-path [:scroll-position] [:state :scroll-position]])
-                           ;; A history return using persisted content needs layout-
-                           ;; aware scroll restoration. Real SSR HTML uses the browser's
-                           ;; native restoration; ordinary reloads keep entrance motion.
-                           (when (and (restore/back-navigation?)
-                                      (not (.getElementById js/document "local-page-bootstrap"))
-                                      (= "true" (.getAttribute (.getElementById js/document "app") "data-restore")))
-                             (r/dispatch [:scroll/restore-history (.-pathname js/location)]))
-                           (if snapshot
-                             (content/bootstrap-server! snapshot)
-                             (content/bootstrap!))))
-                  (.then (fn [_]
-                           (js/Promise.all
-                             #js [shell-cleared (component-data/ensure-all! (:depends spec))])))
-                  (.then (fn []
-                           (-> (mount-components)
-                               (.then (fn [_]
-                                        (r/dispatch [:state [:page-init] {:status :ready}]))))))
-                  (.catch (fn [_]
-                            (service-status/fail! :page-init "Page initialization failed"
-                                                  "The page could not initialize. Existing server content is retained."
-                                                  start!)
-                            (r/dispatch [:state [:page-init] {:status :failed}])))))]
+    (let [start! (page-starter shell-cleared)]
       (when-let [element (.getElementById js/document "page-init-status")]
         (when-not @*init-root (reset! *init-root (r/create-root element)))
         (r/render @*init-root [init-view/<fallback> start!]))

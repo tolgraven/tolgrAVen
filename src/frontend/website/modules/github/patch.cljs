@@ -20,8 +20,8 @@
         (fn [{:keys [old new] :as state} line]
           (if-let [[_ before after] (re-find #"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@" line)]
             (assoc (update state :hunks conj {:header line, :rows []})
-                   :old (js/parseInt before 10)
-                   :new (js/parseInt after 10))
+                   :old (parse-long before)
+                   :new (parse-long after))
             (if (empty? (:hunks state))
               state
               (let [kind (case (first line) "+" :addition "-" :deletion " " :context :note)

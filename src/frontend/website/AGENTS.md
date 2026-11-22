@@ -46,6 +46,12 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   shared SSR/browser shell omits header, footers and back-to-top markup. Keep their
   navigation and secondary controls available in the workspace menu.
 
+Browser HTTP adapters use `website.http/request!`. Re-frame delivery goes through
+the `:http/fetch` effect. The transport owns origin-checked CSRF, query encoding,
+timeouts, and JSON/Transit/error decoding. Only multipart requests reporting
+uploaded bytes use the browser XHR upload progress API. Keep byte transport
+and response coercion out of components and feature handlers.
+
 ## Implementation priority: Reagent and re-frame
 - Editable CMS presentation consumers use `:content/view`. `content/fields.cljs`
   preserves native view elements and carries paths/mode in Clojure metadata;
@@ -84,8 +90,9 @@ Keep this guide current with source changes. Detailed APIs/examples live in
   registered domain events. Compose layer-2/3 subscriptions from their actual
   input subscriptions; keep derivations pure and narrow. Application state must
   remain visible in app-db and application IO in registered effects/source adapters.
-- Delayed application work uses event effects such as `:dispatch-later`. Native
-  Promise code belongs at SDK/module-loader boundaries. A local pointer gesture
+- Delayed application work uses event effects such as `:dispatch-later`.
+  Use `^:async` and `await` for sequential work and `website.async` for
+  concurrent work and callback adapters. A local pointer gesture
   can own a cancellable timer/ref when feeding every movement into app-db would
   add noise; explain that exception and dispatch the resulting application action.
 - Reach for modern React features only for a concrete lifecycle/interoperability

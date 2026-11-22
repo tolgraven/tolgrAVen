@@ -1,7 +1,8 @@
 (ns website.neovim-visual-fixture
   "One real editable or readonly editor per isolated visual document; no provider I/O."
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [website.react :as r]
+  (:require [website.async :as p]
+            [website.react :as r]
             [website.component]
             [website.subs]
             [website.macros :refer-macros [defpage]]
@@ -63,10 +64,10 @@
   ;; Seed only this fixture's tiny files after the real profile, before the real
   ;; runtime opens initial-file and attaches the UI. Keep the bundled repository.
   (reduce (fn [pending {:keys [path text]}]
-            (.then pending
+            (p/then pending
               #(files/write! request! {:path (str "tolgrAVen/" path)
                                       :file (js/Blob. #js [text])})))
-          (js/Promise.resolve nil) workspace-files))
+          (p/resolved nil) workspace-files))
 
 (defn observe-first-workspace-paint! [*first-paint]
   (let [observer (js/MutationObserver.
@@ -100,12 +101,12 @@
    return true")
 
 (defn bounded [promise]
-  (js/Promise.
+  (p/create
     (fn [resolve reject]
       (let [timer (js/setTimeout #(reject (js/Error. "Native Neovim visual startup timed out")) 30000)]
         (-> promise
-            (.then resolve reject)
-            (.finally #(js/clearTimeout timer)))))))
+            (p/then resolve reject)
+            (p/finally-do #(js/clearTimeout timer)))))))
 
 (defpage <readonly-page> [source-document]
   [:section.github-diff
@@ -139,7 +140,7 @@
       (set! profile/configure!
         (fn [request!]
           (-> (original-configure! request!)
-              (.then #(seed-workspace! request!))))))
+              (p/then #(seed-workspace! request!))))))
     ;; Observe the actual worker and returned transport, never substitute either.
     (set! js/window.Worker
       (fn [url]

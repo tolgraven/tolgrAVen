@@ -1,6 +1,7 @@
 (ns website.settings-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [async deftest is testing]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [async deftest is testing]]
             [website.react :as r]
             [website.component.restore :as restore]
             [website.modules.user.views :as user]
@@ -58,8 +59,8 @@
               (r/dispatch-sync [:state [:settings :panel-open] true])
               (await! (support/wait-for! #(.querySelector element "[role=switch]")))
               (is (= "true" (.getAttribute (.querySelector element "[role=switch]") "aria-checked")))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (if theme (.setAttribute document-root "data-theme" theme)
@@ -110,5 +111,5 @@
                   (.remove element)
                   (restore-db!)
                   (reset! restore/*context previous))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))

@@ -1,6 +1,9 @@
 (ns website.modules.highlight.code-block
   "Controls hydrate immediately; the formatter hydrates after the page is ready."
-  (:require [clojure.string :as string]
+  (:require [cljs.math :as math]
+            [website.async :as a]
+            [website.browser.clipboard :as clipboard]
+            [clojure.string :as string]
             [website.schema.dsl :as dsl]
             [website.component.registry]
             [website.component.restore :as restore]
@@ -80,16 +83,15 @@
 (defn- make-formatter [committed!]
   ;; Construction is pure. The owned effect releases this gate; only then can
   ;; React.lazy acquire code through the existing parallel CSS/JS loader.
-  (let [*release (atom nil)
-        *waited? (atom false)
-        gate (js/Promise. (fn [resolve _] (reset! *release resolve)))]
-    {:release! #(@*release nil)
+  (let [{gate :promise release! :resolve!} (a/deferred)
+        *waited? (atom false)]
+    {:release! #(release! nil)
      :waited? *waited?
      :view (r/lazy
              (fn []
                (-> gate
-                   (.then (fn [_] (loader/acquire-code! :highlight)))
-                   (.then (fn [spec]
+                   (a/then (fn [_] (loader/acquire-code! :highlight)))
+                   (a/then (fn [spec]
                             (let [component (get-in spec [:view :formatted-code])
                                   component (if (var? component) @component component)]
                               #js {:default (r/reactify-component
@@ -148,13 +150,15 @@
   (fn [_ [_ text complete!]]
     {:code-block/copy {:text text
                        :complete! complete!}}))
-(r/reg-fx :code-block/copy
-  (fn [{:keys [text complete!]}]
-    (if-let [clipboard (when (exists? js/navigator) (.-clipboard js/navigator))]
-      (-> (.writeText clipboard text)
-          (.then #(complete! "Copied"))
-          (.catch #(complete! "Copy failed")))
-      (complete! "Copy unavailable"))))
+(defn- ^:async copy-code! [{:keys [text complete!]}]
+  (let [result (try
+                 (await (clipboard/copy! text))
+                 "Copied"
+                 (catch :default e
+                   (if (= :unavailable (:reason (ex-data e))) "Copy unavailable" "Copy failed")))]
+    (complete! result)))
+
+(r/reg-fx :code-block/copy copy-code!)
 
 (defn- use-copy-feedback [code]
   (let [[label set-label!] (r/use-state "Copy")
@@ -231,7 +235,7 @@
                             (= id (.-pointerId event))
                             ;; Pointer coordinates use the browser's CSS-pixel
                             ;; measurement API; this is not a style dimension.
-                            (or (> (js/Math.hypot (- x (.-clientX event))
+                            (or (> (math/hypot (- x (.-clientX event))
                                                  (- y (.-clientY event))) 4)
                                 (not (inside? (.-current *element)
                                               (.-clientX event) (.-clientY event)))))
@@ -252,7 +256,7 @@
                (when-let [{:keys [id x y released?] :as press} (.-current *press)]
                  (when (and (= id (.-pointerId event)) (not released?))
                    (if (and (not (control-target? (.-target event)))
-                            (<= (js/Math.hypot (- x (.-clientX event))
+                            (<= (math/hypot (- x (.-clientX event))
                                               (- y (.-clientY event))) 4)
                             (inside? (.-current *element) (.-clientX event) (.-clientY event))
                             (not (selected? (.-current *element))))

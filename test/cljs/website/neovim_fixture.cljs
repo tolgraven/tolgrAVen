@@ -1,6 +1,7 @@
 (ns website.neovim-fixture
   "Real local WASM component plus pure regression checks; no remote writes."
-  (:require [website.react :as r]
+  (:require [website.async :as p]
+            [website.react :as r]
             [cljs.test :as test :refer-macros [run-tests]]
             [website.neovim-test]
             [website.neovim-visual-fixture :as visual]
@@ -34,21 +35,21 @@
         (runtime/start! {:cols 40, :rows 12, :initial-text "hello", :filetype "clojure"}
                         (fn [_]) (fn [_ _]))]
     (-> ready
-        (.then (fn [session]
+        (p/then (fn [session]
                  (when-not session (throw (js/Error. "WASM startup failed")))
                  (-> (runtime/request! session "nvim_get_current_line" [])
-                     (.then (fn [line]
+                     (p/then (fn [line]
                               (assert (= "hello" line))
                               (runtime/request! session "nvim_exec_lua" ["return 6 * 7" []])))
-                     (.then (fn [result]
+                     (p/then (fn [result]
                               (assert (= 42 result))
                               (runtime/request! session "nvim_command" ["help usr_01"])))
-                     (.then (fn [_] (runtime/request! session "nvim_buf_get_name" [0])))
-                     (.then (fn [name]
+                     (p/then (fn [_] (runtime/request! session "nvim_buf_get_name" [0])))
+                     (p/then (fn [name]
                               (assert (.endsWith name "usr_01.txt"))
                               (reset! *live "PASS: real RPC, buffer, Lua and bundled help"))))))
-        (.catch #(reset! *live (str "FAIL: " (.-message %))))
-        (.finally stop!))))
+        (p/catch-error #(reset! *live (str "FAIL: " (.-message %))))
+        (p/finally-do stop!))))
 
 (def plugin-check-lua
   "assert(vim.g.colors_name == 'bruvbox', 'Bruvbox is not active')
@@ -95,13 +96,13 @@
         (runtime/start! {:cols 80, :rows 24, :initial-text "hello", :filetype "text"}
                         (fn [_]) (fn [_ _]))]
     (-> ready
-        (.then (fn [session]
+        (p/then (fn [session]
                  (when-not session (throw (js/Error. "Plugin bootstrap failed")))
                  (reset! *startup-ms (js/Math.round (- (js/performance.now) started)))
                  (runtime/request! session "nvim_exec_lua" [plugin-check-lua []])))
-        (.then #(reset! *plugins %))
-        (.catch #(reset! *plugins (str "FAIL: " (.-message %))))
-        (.finally stop!))))
+        (p/then #(reset! *plugins %))
+        (p/catch-error #(reset! *plugins (str "FAIL: " (.-message %))))
+        (p/finally-do stop!))))
 
 (def workspace-check-lua
   "assert(vim.fn.getcwd() == '/workspace/tolgrAVen', 'Repository cwd missing')
@@ -132,20 +133,20 @@
     (js/Object.defineProperty binary-file "webkitRelativePath" #js {:value "fixture/binary.dat"})
     (js/Object.defineProperty empty-file "webkitRelativePath" #js {:value "fixture/empty.txt"})
     (-> ready
-        (.then (fn [session]
+        (p/then (fn [session]
                  (when-not session (throw (js/Error. "Workspace startup failed")))
                  (-> (runtime/request! session "nvim_exec_lua" [workspace-check-lua []])
-                     (.then #(files/import! (fn [method params] (runtime/request! session method params))
+                     (p/then #(files/import! (fn [method params] (runtime/request! session method params))
                                #js [text-file binary-file empty-file] true))
-                     (.then (fn [paths]
+                     (p/then (fn [paths]
                               (assert (= 3 (count paths)))
                               (runtime/request! session "nvim_exec_lua"
                                 ["assert(vim.fn.getcwd() == '/workspace/fixture'); local f = assert(io.open('/workspace/fixture/binary.dat', 'rb')); local bytes = f:read('*a'); f:close(); assert(#bytes == 32769 and bytes == string.rep(string.char(0), 32769)); assert(vim.fn.getfsize('/workspace/fixture/empty.txt') == 0); return vim.api.nvim_get_current_line()" []])))
-                     (.then (fn [line]
+                     (p/then (fn [line]
                               (assert (= "(println \"hello λ\")" line))
                               (reset! *workspace "PASS: Meta repository discovery; folder paths, Unicode, empty and multi-packet binary imports"))))))
-        (.catch #(reset! *workspace (str "FAIL: " (.-message %))))
-        (.finally stop!))))
+        (p/catch-error #(reset! *workspace (str "FAIL: " (.-message %))))
+        (p/finally-do stop!))))
 
 (def settings-check-lua
   "local expected = {
@@ -211,21 +212,21 @@
         (runtime/start! {:cols 120, :rows 24, :initial-text "settings", :filetype "clojure"}
                         (fn [_]) (fn [_ _]))]
     (-> ready
-        (.then (fn [session]
+        (p/then (fn [session]
                  (when-not session (throw (js/Error. "Settings startup failed")))
                  (runtime/request! session "nvim_exec_lua" [settings-check-lua []])))
-        (.then (fn [result]
+        (p/then (fn [result]
                  (-> ready
-                     (.then (fn [session]
+                     (p/then (fn [session]
                               (-> (runtime/request! session "nvim_ui_set_focus" [false])
-                                  (.then #(runtime/request! session "nvim_exec_lua"
+                                  (p/then #(runtime/request! session "nvim_exec_lua"
                                             ["assert(vim.wait(1000, function() return vim.g.diminactive == 0 end, 10), 'FocusLost did not disable dimming')" []]))
-                                  (.then #(runtime/request! session "nvim_ui_set_focus" [true]))
-                                  (.then #(runtime/request! session "nvim_exec_lua"
+                                  (p/then #(runtime/request! session "nvim_ui_set_focus" [true]))
+                                  (p/then #(runtime/request! session "nvim_exec_lua"
                                             ["assert(vim.wait(1000, function() return vim.g.diminactive == 1 end, 10), 'FocusGained did not restore dimming'); assert(vim.wo.colorcolumn == vim.g.colorcolumn_orig, 'Focus color columns were not restored')" []]))
-                                  (.then #(reset! *settings (str result "; native focus restoration")))))))))
-        (.catch #(reset! *settings (str "FAIL: " (.-message %))))
-        (.finally stop!))))
+                                  (p/then #(reset! *settings (str result "; native focus restoration")))))))))
+        (p/catch-error #(reset! *settings (str "FAIL: " (.-message %))))
+        (p/finally-do stop!))))
 
 (def sample-diff
   {:mode :diff
@@ -247,7 +248,7 @@
                         (fn [_]) (fn [status message]
                                    (when-not (= :ready status) (reset! *diff message))))]
     (-> ready
-        (.then (fn [session]
+        (p/then (fn [session]
                  (when-not session (throw (js/Error. "Diff startup failed")))
                  (runtime/request! session "nvim_exec_lua"
                    ["local wins = vim.api.nvim_list_wins(); assert(#wins == 2)
@@ -263,40 +264,40 @@
                      local f = assert(io.open('/workspace/before/core.clj', 'rb'))
                      assert(vim.fn.sha256(f:read('*a')) == '8b9c16dd4d3e76ae000de41bd045b613abc273b65a28ff48e20be0be49f5bd7e', 'Bulk UTF-8 source bytes changed'); f:close()
                      return true" []])))
-        (.then (fn [_]
+        (p/then (fn [_]
                  (reduce
                   (fn [pending columns]
-                    (.then pending
+                    (p/then pending
                            #(-> (runtime/request! transport-session "nvim_ui_try_resize" [columns 20])
-                                (.then (fn [_]
+                                (p/then (fn [_]
                                          (runtime/request! transport-session "nvim_exec_lua"
                                            ["local wins = vim.api.nvim_list_wins(); assert(#wins == 2); assert(vim.wait(1000, function() return math.abs(vim.api.nvim_win_get_width(wins[1]) - vim.api.nvim_win_get_width(wins[2])) <= 1 end, 10), 'Resized diff panes are unequal'); return true" []]))))))
-                  (js/Promise.resolve nil) [54 120])))
-        (.then (fn [_]
-                 (-> ready (.then (fn [session]
+                  (p/resolved nil) [54 120])))
+        (p/then (fn [_]
+                 (-> ready (p/then (fn [session]
                    (-> (document/open! #(runtime/request! session %1 %2)
                          {:mode :diff
                           :files [{:path "before/added.txt", :text ""}
                                   {:path "after/added.txt", :text (apply str (repeat 256 "added line\n"))}]})
-                       (.then #(runtime/request! session "nvim_exec_lua"
+                       (p/then #(runtime/request! session "nvim_exec_lua"
                                  ["local wins = vim.api.nvim_list_wins(); assert(#wins == 2); local win = vim.fn.bufwinid('/workspace/after/added.txt'); local info = vim.fn.getwininfo(win)[1]; assert(info.topline == 1, 'Added source inherited the previous viewport: ' .. vim.inspect(info)); return true" []]))))))))
-        (.then (fn [_]
-                 (-> ready (.then (fn [session]
+        (p/then (fn [_]
+                 (-> ready (p/then (fn [session]
                    (-> (document/open! #(runtime/request! session %1 %2)
                          {:mode :diff
                           :files [{:path "before/deleted.txt", :text (apply str (repeat 256 "deleted line\n"))}
                                   {:path "after/deleted.txt", :text ""}]})
-                       (.then #(runtime/request! session "nvim_exec_lua"
+                       (p/then #(runtime/request! session "nvim_exec_lua"
                                  ["local win = vim.fn.bufwinid('/workspace/before/deleted.txt'); assert(vim.fn.getwininfo(win)[1].topline == 1, 'Deleted source inherited the previous viewport'); assert(vim.api.nvim_get_current_win() == win, 'Empty side took focus'); return true" []]))))))))
-        (.then (fn [_]
-                 (-> ready (.then (fn [session]
+        (p/then (fn [_]
+                 (-> ready (p/then (fn [session]
                    (-> (document/open! #(runtime/request! session %1 %2)
                          {:mode :patch, :files [{:path "commit.patch", :text "@@ -1 +1 @@\n-old\n+new\n"}]})
-                       (.then #(runtime/request! session "nvim_exec_lua"
+                       (p/then #(runtime/request! session "nvim_exec_lua"
                                  ["assert(#vim.api.nvim_list_wins() == 1); assert(#vim.api.nvim_get_autocmds({group = 'WebsiteReadonlyDocument'}) == 0, 'Diff resize owner leaked into patch view'); assert(vim.bo.filetype == 'diff'); assert(vim.bo.readonly and not vim.bo.modifiable); return 'PASS: native split diff, absolute line numbers, immutable buffers, equal panes through narrow/wide resizing, bulk UTF-8 file bytes and patch view'" []]))))))))
-        (.then #(reset! *diff %))
-        (.catch #(reset! *diff (str "FAIL: " (.-message %) "; unread input: " (.-pendingInputBytes (.diagnostics transport-session)))))
-        (.finally stop!))))
+        (p/then #(reset! *diff %))
+        (p/catch-error #(reset! *diff (str "FAIL: " (.-message %) "; unread input: " (.-pendingInputBytes (.diagnostics transport-session)))))
+        (p/finally-do stop!))))
 
 (defn check-written-text! [text]
   (let [{:keys [session ready stop!]} (runtime/start! {:cols 40
@@ -308,13 +309,13 @@
         *result (atom nil)
         *failure (atom nil)]
     (-> ready
-        (.then (fn [value]
+        (p/then (fn [value]
                  (assert value "WASM startup failed")
                  (let [watch (runtime/watch-writes! session #(reset! *result %) #(reset! *failure %))]
                    (reset! *release (:stop! watch))
                    (:ready watch))))
-        (.then #(runtime/request! session "nvim_command" ["write"]))
-        (.then (fn [_]
+        (p/then #(runtime/request! session "nvim_command" ["write"]))
+        (p/then (fn [_]
                  (assert (nil? @*failure))
                  (assert (= text (:text @*result)) "Native writes must preserve exact input bytes")
                  (@*release)
@@ -323,19 +324,19 @@
                                #(reset! *failure %))]
                    (reset! *release (:stop! watch))
                    (:ready watch))))
-        (.then #(runtime/request! session "nvim_command" ["write"]))
-        (.then (fn [_]
+        (p/then #(runtime/request! session "nvim_command" ["write"]))
+        (p/then (fn [_]
                  (assert (= "Consumer rejected this write" (some-> @*failure .-message)))
                  (runtime/request! session "nvim_buf_get_lines" [0 0 -1 true])))
-        (.then (fn [lines] (assert (pos? (.-length lines)) "Consumer failure must keep RPC usable")))
-        (.finally (fn [] (when-let [release! @*release] (release!)) (stop!))))))
+        (p/then (fn [lines] (assert (pos? (.-length lines)) "Consumer failure must keep RPC usable")))
+        (p/finally-do (fn [] (when-let [release! @*release] (release!)) (stop!))))))
 
 (defn write-checks! []
   (reset! *write-checks "Running…")
-  (-> (reduce (fn [pending text] (.then pending #(check-written-text! text)))
-              (js/Promise.resolve nil) ["hello\n" "" "hello" "λ\n" "hello\n\n" "hello\r\n"])
-      (.then #(reset! *write-checks "PASS: exact native writes for empty, Unicode, LF, CRLF and missing EOF; consumer failures preserve RPC"))
-      (.catch #(reset! *write-checks (str "FAIL: " (.-message %))))))
+  (-> (reduce (fn [pending text] (p/then pending #(check-written-text! text)))
+              (p/resolved nil) ["hello\n" "" "hello" "λ\n" "hello\n\n" "hello\r\n"])
+      (p/then #(reset! *write-checks "PASS: exact native writes for empty, Unicode, LF, CRLF and missing EOF; consumer failures preserve RPC"))
+      (p/catch-error #(reset! *write-checks (str "FAIL: " (.-message %))))))
 
 (defn <fixture> []
   [:main {:style {:max-width "65rem", :margin "2rem auto", :padding "1rem"}}

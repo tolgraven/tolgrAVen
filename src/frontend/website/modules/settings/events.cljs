@@ -1,5 +1,6 @@
 (ns website.modules.settings.events
-  (:require [clojure.string :as string]
+  (:require [website.browser.css :as css]
+            [clojure.string :as string]
             [website.react :as r]))
 
 (r/reg-event-fx :theme/dark-mode
@@ -34,17 +35,17 @@
   ([value rem-size unit]
    (cond
      (and (= unit "px") (string/ends-with? value "rem"))
-     (str (* (js/parseFloat value) rem-size) "px")
+     (str (* (css/magnitude value) rem-size) "px")
 
      (and (= unit "rem") (string/ends-with? value "px"))
-     (str (/ (js/parseFloat value) rem-size) "rem")
+     (str (/ (css/magnitude value) rem-size) "rem")
 
      :else value)))
 
 (r/reg-cofx :settings/rem-size
   (fn [cofx _]
     (assoc cofx :rem-size
-           (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document)))))))
+           (css/font-size))))
 
 (r/reg-event-fx :settings/read-css-vars
   [(r/inject-cofx :settings/rem-size)

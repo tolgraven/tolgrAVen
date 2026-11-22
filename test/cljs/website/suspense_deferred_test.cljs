@@ -1,6 +1,7 @@
 (ns website.suspense-deferred-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.component.hydration :as hydration]
             [website.component.restore :as restore]
             [website.react :as r]
@@ -24,12 +25,12 @@
 (defn delayed-view []
   (let [*release (atom nil)
         *ready? (atom false)
-        promise (js/Promise. (fn [resolve _] (reset! *release resolve)))]
+        promise (p/create (fn [resolve _] (reset! *release resolve)))]
     {:ready? *ready?
      :release! (fn [] (@*release nil))
      :view (r/lazy
              (fn []
-               (.then promise
+               (p/then promise
                  (fn [_]
                    (reset! *ready? true)
                    #js {:default (r/reactify-component
@@ -84,8 +85,8 @@
                 (is (identical? span (.querySelector element "span")))
                 (is (identical? original (r/batching-flush)))
                 (is (empty? @*errors) (pr-str @*errors)))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (r/unmount @*root))
                       (reset! restore/*context before-restore)
                       (r/set-batching-flush! before-flush)
@@ -149,8 +150,8 @@
                 (is (identical? second-span (.querySelector element "[data-deferred='second'] span")))
                 (is (= "defn latest" (.-textContent (.querySelector element "[data-deferred='second'] pre"))))
                 (is (empty? @*errors) (pr-str @*errors)))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (r/unmount @*root))
                       (reset! restore/*context before-restore)
                       (r/set-batching-flush! before-flush)
@@ -181,7 +182,7 @@
           before-restore @restore/*context
           delayed (delayed-view)
           *release (atom nil)
-          gate (js/Promise. (fn [resolve _] (reset! *release resolve)))]
+          gate (p/create (fn [resolve _] (reset! *release resolve)))]
       (-> (go-promise
             (let [root (await! (support/create-root! element))
                   original (r/batching-flush)]
@@ -218,8 +219,8 @@
                      (count (filter #(= :cleanup (first %)) @*events)))
                   "All committed child effects are cleaned after replacement")
               (is (identical? original (r/batching-flush)))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (reset! restore/*context before-restore)
                       (done)))))))

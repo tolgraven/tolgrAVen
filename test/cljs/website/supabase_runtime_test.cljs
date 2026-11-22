@@ -1,6 +1,7 @@
 (ns website.supabase-runtime-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [clojure.string :as string]
             [shadow.lazy :as lazy]
@@ -17,8 +18,8 @@
             [website.test-support :as support]))
 
 (defn pending-reader! [opts]
-  (r/with-framework-bindings [runtime/ensure-code! #(js/Promise. (fn [_ _]))
-                runtime/ensure! #(js/Promise.resolve nil)]
+  (r/with-framework-bindings [runtime/ensure-code! #(p/create (fn [_ _]))
+                runtime/ensure! #(p/resolved nil)]
     (runtime/ensure-query! opts)))
 
 (deftest mounted-reader-recovers-after-a-later-chunk-acquisition
@@ -171,9 +172,9 @@
           element (.createElement js/document "div")
           *root (atom nil)
           *resolve-code (atom nil)
-          code-ready (js/Promise. (fn [resolve _] (reset! *resolve-code resolve)))
+          code-ready (p/create (fn [resolve _] (reset! *resolve-code resolve)))
           *resolve-gate (atom nil)
-          gate (js/Promise. (fn [resolve _] (reset! *resolve-gate resolve)))
+          gate (p/create (fn [resolve _] (reset! *resolve-gate resolve)))
           *released? (atom false)
           *show-second? (r/atom false)
           *attempts (atom {})
@@ -213,8 +214,8 @@
                                  (string/includes? message "Hydration failed"))
                          (swap! *warnings conj message)))
                      (.apply original js/console (to-array args)))]
-      (-> (js/Promise.resolve nil)
-          (.then (fn []
+      (-> (p/resolved nil)
+          (p/then (fn []
                    (.appendChild (.-body js/document) element)
                    (reset! runtime/*api nil)
                    (reset! runtime/*loading nil)
@@ -227,14 +228,14 @@
                            ([value]
                             (if (identical? module value) code-ready ((:load before) value)))
                            ([value callback]
-                            (if (identical? module value) (.then code-ready callback)
+                            (if (identical? module value) (p/then code-ready callback)
                               ((:load before) value callback)))))
                    (set! (.-error js/console) (fn [& args] (capture! (:error before) args)))
                    (set! (.-warn js/console) (fn [& args] (capture! (:warn before) args)))
                    (observe-pending-store! fixture)))
-          (.then #(finish-pending-store! fixture %))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/then #(finish-pending-store! fixture %))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (r/unmount @*root))
                       (reset! *released? true)
                       (@*resolve-gate nil)
@@ -242,8 +243,8 @@
                       ;; Drain released module acquisition before restoring its
                       ;; transport and shared API, including an early test failure.
                       (-> code-ready
-                          (.then (fn [] (support/settle!)))
-                          (.finally (fn []
+                          (p/then (fn [] (support/settle!)))
+                          (p/finally-do (fn []
                                       (r/clear-subscription-cache!)
                                       (is (= (frequencies @*acquired) (frequencies @*disposed))
                                           "Every installed SDK reader is disposed")

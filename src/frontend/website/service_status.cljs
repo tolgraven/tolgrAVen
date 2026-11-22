@@ -1,7 +1,7 @@
 (ns website.service-status
   (:require
-    [website.react :as r]
-    ))
+    [website.async :as a]
+    [website.react :as r]))
 
 (defonce *failures (r/atom {}))
 
@@ -25,9 +25,9 @@
   (fn [_ [_ id]] {:service-status/retry id}))
 
 (defn within! [promise milliseconds]
-  (js/Promise.
+  (a/create
    (fn [resolve reject]
      (let [timer (js/setTimeout #(reject (js/Error. "Service request timed out")) milliseconds)]
-       (-> (js/Promise.resolve promise)
-           (.then (fn [value] (js/clearTimeout timer) (resolve value)))
-           (.catch (fn [error] (js/clearTimeout timer) (reject error))))))))
+       (-> (a/resolved promise)
+           (a/then (fn [value] (js/clearTimeout timer) (resolve value)))
+           (a/catch-error (fn [error] (js/clearTimeout timer) (reject error))))))))

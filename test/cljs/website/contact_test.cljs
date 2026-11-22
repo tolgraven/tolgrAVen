@@ -1,6 +1,7 @@
 (ns website.contact-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.components.contact :as contact]
@@ -41,8 +42,8 @@
                     (support/unmount! root)
                     (set! (.-error js/console) console-error)
                     (.remove element)))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest committed-email-links-follow-prop-updates-and-clean-up-their-frame
   (async done
@@ -72,5 +73,5 @@
                 (support/unmount! root)
                 (set! js/cancelAnimationFrame cancel-frame)
                 (.remove element)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))

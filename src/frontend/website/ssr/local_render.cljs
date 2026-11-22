@@ -1,6 +1,8 @@
 (ns website.ssr.local-render
   "Loaded only when the local document cache can save a page."
-  (:require [cljs.reader :as reader]
+  (:require [website.clock :as clock]
+            [cljs.reader :as reader]
+            [website.browser.location :as location]
             [website.validation.runtime :as validation]
             [website.ssr.schema :as schema]
             [website.react :as r]
@@ -33,7 +35,7 @@
         saved {:version contract/version
                :url url
                :build build
-               :saved-at (.now js/Date)
+               :saved-at (clock/epoch-ms)
                :owner owner
                :state-edn encoded
                :modules (vec (keys modules))
@@ -71,7 +73,7 @@
             :snapshot @context/*snapshot
             :styles (styles/manifest)
             :owner @storage/*identity
-            :url (str (.-origin js/location) (.-pathname js/location) (.-search js/location))
+            :url (location/page-url)
             :title (.-title js/document)})))
 
 (defn ^:export worker-pair! [encoded]

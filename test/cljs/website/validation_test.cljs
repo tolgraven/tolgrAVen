@@ -1,6 +1,8 @@
 (ns website.validation-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as a]
+            [website.validation :as engine]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [reitit.frontend :as frontend]
 
@@ -15,6 +17,22 @@
             [website.test-support :as support]
             [website.validation.runtime :as validation]
             [website.components.validation :as views]))
+
+(deftest readiness-shares-a-waiter-until-engine-installation
+  (async done
+    (let [[first-install second-install]
+          (with-redefs [engine/*engine (atom nil)]
+            (let [pending (engine/when-ready!)]
+              (is (identical? pending (engine/when-ready!)))
+              (engine/install-engine! {})
+              (reset! engine/*engine nil)
+              (let [next-install (engine/when-ready!)]
+                (is (not (identical? pending next-install)))
+                (engine/install-engine! {})
+                [pending next-install])))]
+      (a/then (a/all [first-install second-install])
+              (fn [values] (is (= [nil nil] values)) (done))
+              (fn [error] (is false (str error)) (done))))))
 
 (defonce *effects (atom 0))
 (r/reg-fx :validation-test/external (fn [_] (swap! *effects inc)))
@@ -92,8 +110,8 @@
                 (r/clear-global-interceptor :validation/app-db)
                 (reset! validation/*enabled? enabled?)
                 (restore!)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))
 
 
 (deftest editing-and-clearing-drafts-use-valid-app-state
@@ -129,8 +147,8 @@
                 (r/clear-global-interceptor :validation/app-db)
                 (reset! validation/*enabled? enabled?)
                 (restore!)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))
 
 (defc <positional>
   {:schema [:map [:category :keyword]]
@@ -179,8 +197,8 @@
               (is (some? (.querySelector element "[role=alert]")))
               (is (.includes (.-textContent element) "[:props]"))
               (finally (support/unmount! root) (.remove element)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))
 
 
 (defc <scoped-counter>
@@ -215,5 +233,5 @@
                 (reset! validation/*sections sections)
                 (reset! validation/*enabled? enabled?)
                 (restore!)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))

@@ -8,9 +8,9 @@
    [clojure.tools.logging :as log]
    [expound.alpha :as expound]
    [mount.core :as mount]
-   [website.dev.shadow :as shadow-startup]
-   [website.dev.styles :as styles]
-   [website.dev.python :as python]
+   [website.tooling.shadow :as shadow-startup]
+   [website.tooling.styles :as styles]
+   [website.tooling.python :as python]
    [website.handler :as handler]
    [website.ssr :as ssr]
    [website.core]))

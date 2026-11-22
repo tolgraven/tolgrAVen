@@ -1,5 +1,6 @@
 (ns website.blog-cache-test
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
 
             [website.modules.blog.cache :as cache]
@@ -94,8 +95,8 @@
           untouched [24 "106"]]
       (r/reg-fx :blog/cache-state (fn [_]))
       (r/reg-fx :component-storage/commit (fn [_]))
-      (set! storage/ready! (fn ([] (js/Promise.resolve nil))
-                                  ([_] (js/Promise.resolve nil))))
+      (set! storage/ready! (fn ([] (p/resolved nil))
+                                  ([_] (p/resolved nil))))
       (set! storage/read! (fn [id _]
                            (when (= id [:state path])
                              {:value {thread true untouched true}})))
@@ -107,14 +108,14 @@
       (reset! restore/*context {:hydrate? true})
       (reset! context/*snapshot {:route-parameters {}})
       (is (nil? (cache/install!)) "SSR code installation never waits on its own hydration")
-      (-> (js/Promise.resolve nil)
-          (.then (fn [_]
+      (-> (p/resolved nil)
+          (p/then (fn [_]
                    (is (identical? storage/missing (storage/state-value path)) "Resolved disk read cannot change unhydrated SSR")
                    (is (zero? @*starts) "Do not persist server defaults over saved choices")
                    (r/dispatch-sync [:blog/expand-comment-thread thread false])
                    (restore/hydrated!)
                    (@*gate)))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (false? (get (storage/state-value path) thread)) "New interaction wins")
                    (is (true? (get (storage/state-value path) untouched)) "Other saved choices restore")
                    (is (= 1 @*starts) "Tracking starts after restoration")
@@ -124,14 +125,14 @@
                    (cache/install!)
                    (cache/stop!)
                    (@*gate)))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (= 1 @*starts) "Stopping cancels even an already-resolved storage continuation")
                    ;; A client-only mount still waits for cache installation.
                    (reset! restore/*context {:hydrate? false})
                    (cache/install!)))
-          (.then (fn [_] (is (= 2 @*starts) "Client-only installation completes before mounting")))
-          (.catch (fn [error] (is false (str error))))
-          (.finally (fn []
+          (p/then (fn [_] (is (= 2 @*starts) "Client-only installation completes before mounting")))
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do (fn []
                       (cache/stop!)
                       (set! storage/ready! ready!)
                       (set! storage/read! read!)

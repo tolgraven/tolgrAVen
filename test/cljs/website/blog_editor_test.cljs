@@ -3,6 +3,7 @@
   (:require [cljs.test :refer-macros [deftest is testing async]]
             [clojure.string :as string]
             [website.react :as r]
+            [website.async :as a]
             [website.macros :refer-macros [defc]]
             [website.test-support :as support]
             [website.supabase.runtime :as client]
@@ -19,7 +20,7 @@
             [website.modules.markdown-editor.source-model :as source-model]
             [website.components.content.upload :as upload]
             [website.schema.dsl :as dsl]
-            ["lexical" :refer [getNearestEditorFromDOMNode $getNearestNodeFromDOMNode $createNodeSelection $setSelection KEY_BACKSPACE_COMMAND]]
+            ["lexical" :refer [IS_APPLE getNearestEditorFromDOMNode $getNearestNodeFromDOMNode $createNodeSelection $setSelection KEY_BACKSPACE_COMMAND]]
             [malli.core :as m]))
 
 (def files [{:id "first", :name "first.png", :file :first-file}
@@ -136,65 +137,68 @@
         (source-model/select-range! (source-model/document) (:anchor selection) (or (:head selection) (:anchor selection)))))
     #js {:discrete true}))
 
-(deftest source-view-retains-selection-history-and-chips-across-callback-and-progress-updates
-  (async done
-    (let [element (.createElement js/document "div")
-          *root (atom nil)
-          *text (r/atom "Hello")
-          *item (r/atom {:id "native-pending", :name "photo.png", :position 2, :order 0, :status :queued})
-          fixture (fn []
-                    [source/<source> {:text @*text, :uploads [@*item]
-                                      ;; A new callback on each render exercises
-                                      ;; listener reconfiguration independently
-                                      ;; of the editor/undo lifetime.
-                                      :on-change (fn [text _] (reset! *text text))
-                                      :render-upload (fn [item] [upload/<upload-slot> item])}])]
-      (.appendChild (.-body js/document) element)
-      (-> (support/create-root! element)
-          (.then (fn [root] (reset! *root root) (support/render! root [fixture])))
-          (.then (fn [_] (support/wait-for! #(.querySelector element ".upload-chip"))))
-          (.then (fn [_]
-                   (let [view (source-view element)]
-                     (edit-source! view [{:from 2, :insert "x"}] {:anchor 3})
-                     (swap! *item assoc :status :uploading :progress {:loaded 40, :total 100})
-                     (-> (support/settle!)
-                         (.then (fn [_]
-                                  (is (identical? view (source-view element)))
-                                  (is (= 3 (.read (.getEditorState view) #(:head (source-model/selected-range (source-model/document))))))
-                                  (is (= "Hexllo" (source-text element)))
-                                  (is (.querySelector element ".upload-chip progress"))
-                                  (.focus view)
-                                  (.dispatchEvent (.querySelector element ".md-source-content")
-                                                  (js/KeyboardEvent. "keydown" #js {:key "z", :code "KeyZ", :metaKey true
-                                                                                    :bubbles true, :cancelable true}))))))))
-          (.then (fn [_] (support/wait-for! #(= "Hello" (source-text element)))))
-          (.then (fn [_] (is (= "Hello" @*text)) (is (.querySelector element ".upload-chip"))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))
+(defn- undo-source! [element view]
+  (.focus view)
+  (.dispatchEvent (.querySelector element ".md-source-content")
+                  (js/KeyboardEvent. "keydown"
+                    #js {:key "z" :code "KeyZ" :metaKey IS_APPLE :ctrlKey (not IS_APPLE)
+                         :bubbles true :cancelable true})))
 
-(deftest source-input-is-accepted-before-the-next-native-key-transaction
-  (async done
-    (let [before @r/*app-db
-          element (.createElement js/document "div")
-          *root (atom nil)]
-      (r/dispatch-sync [:form-field [:post-blog] {:text "", :title "", :tags ""}])
-      (.appendChild (.-body js/document) element)
-      (-> (support/create-root! element)
-          (.then (fn [root] (reset! *root root)
-                   (support/render! root [editor/<markdown-editor> {:owner "rapid-source", :source? true}])))
-          (.then (fn [_] (support/wait-for! #(source-view element))))
-          (.then (fn [_]
-                   (let [view (source-view element)]
-                     (doseq [[index character] (map-indexed vector "```cljs")]
-                       (edit-source! view [{:from index, :insert (str character)}] {:anchor (inc index)})
-                       (is (= (subs "```cljs" 0 (inc index))
-                              (get-in @r/*app-db [:state :form-field :post-blog :text]))
-                           "Accepted form input never trails the next native key transaction"))
-                     (support/settle!))))
-          (.then (fn [_] (is (= "```cljs" (source-text element)))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (when @*root (support/unmount! @*root))
-                      (.remove element) (restore-fixture-db! before) (done)))))))
+(defn- ^:async with-editor-root! [exercise!]
+  (let [element (.createElement js/document "div")]
+    (.appendChild (.-body js/document) element)
+    (try
+      (let [root (await (support/create-root! element))]
+        (try
+          (await (exercise! root element))
+          (finally (support/unmount! root))))
+      (catch :default error (is false (str error)))
+      (finally (.remove element)))))
+
+(deftest ^:async source-view-retains-selection-history-and-chips-across-callback-and-progress-updates
+  (let [*text (r/atom "Hello")
+        *item (r/atom {:id "native-pending", :name "photo.png", :position 2, :order 0, :status :queued})
+        fixture (fn []
+                  [source/<source> {:text @*text, :uploads [@*item]
+                                    ;; Replace the callback on each render without replacing the editor.
+                                    :on-change (fn [text _] (reset! *text text))
+                                    :render-upload (fn [item] [upload/<upload-slot> item])}])]
+    (await
+      (with-editor-root!
+        (fn ^:async exercise! [root element]
+          (await (support/render! root [fixture]))
+          (await (support/wait-for! #(.querySelector element ".upload-chip") "Editor upload chip did not mount"))
+          (let [view (source-view element)]
+            (edit-source! view [{:from 2, :insert "x"}] {:anchor 3})
+            (swap! *item assoc :status :uploading :progress {:loaded 40, :total 100})
+            (await (support/settle!))
+            (is (identical? view (source-view element)))
+            (is (= 3 (.read (.getEditorState view) #(:head (source-model/selected-range (source-model/document))))))
+            (is (= "Hexllo" (source-text element)))
+            (is (.querySelector element ".upload-chip progress"))
+            (undo-source! element view)
+            (await (support/wait-for! #(= "Hello" (source-text element)) "Undo did not restore the editor text"))
+            (is (= "Hello" @*text))
+            (is (.querySelector element ".upload-chip"))))))))
+
+(deftest ^:async source-input-is-accepted-before-the-next-native-key-transaction
+  (let [before @r/*app-db]
+    (r/dispatch-sync [:form-field [:post-blog] {:text "", :title "", :tags ""}])
+    (try
+      (await
+        (with-editor-root!
+          (fn ^:async exercise! [root element]
+            (await (support/render! root [editor/<markdown-editor> {:owner "rapid-source", :source? true}]))
+            (let [view (await (support/wait-for! #(source-view element)))
+                  text "```cljs"]
+              (doseq [[index character] (map-indexed vector text)]
+                (edit-source! view [{:from index, :insert (str character)}] {:anchor (inc index)})
+                (is (= (subs text 0 (inc index))
+                       (get-in @r/*app-db [:state :form-field :post-blog :text]))
+                    "Accepted form input never trails the next native key transaction"))
+              (await (support/settle!))
+              (is (= text (source-text element)))))))
+      (finally (restore-fixture-db! before)))))
 
 (deftest rich-upload-retains-its-native-anchor-and-completes-once-under-strict-mode
   (async done
@@ -251,12 +255,12 @@
                       "The placeholder and ready image share the same native media owner")
                   (is (= 1 (count (re-seq #"https://media.test/image.png" text))))
                   (is (= 1 (count @*calls)))))))
-          (.catch #(is false (str % " stage=" @*stage
+          (a/catch-error #(is false (str % " stage=" @*stage
                                   " text=" (get-in @r/*app-db [:state :form-field :post-blog :text])
                                   " uploads=" (mapv (fn [item] (select-keys item [:status :position :anchor-attached? :image-inserted?]))
                                                      (vals (get-in @r/*app-db [:state :blog :image-uploads])))
                                   " rendered=" (.-textContent element))))
-          (.finally (fn []
+          (a/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (r/dispatch-sync [:blog/image-upload-dispose owner])
@@ -303,8 +307,8 @@
                   (is (= "Unchanged text" (get-in @r/*app-db [:state :form-field :post-blog :text])))
                   (is (= 1 (count (get-in @r/*app-db [:state :blog :image-uploads]))))
                   (is (not (string/includes? (get-in @r/*app-db [:state :form-field :post-blog :text]) (:src asset))))))))
-          (.catch #(is false (str % " rendered=" (.-textContent element))))
-          (.finally (fn []
+          (a/catch-error #(is false (str % " rendered=" (.-textContent element))))
+          (a/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (r/dispatch-sync [:blog/image-upload-dispose owner])
@@ -352,8 +356,8 @@
                 (transfer! (.querySelector element ".md-editor-content") "paste" (js/File. #js ["B"] "B.png" #js {:type "image/png"}))
                 (await! (support/wait-for! #(= 2 (count @*calls))))
                 (is (= 1 (count (get-in @r/*app-db [:state :blog :image-uploads])))))))
-          (.catch #(is false (str % " rendered=" (.-textContent element))))
-          (.finally (fn []
+          (a/catch-error #(is false (str % " rendered=" (.-textContent element))))
+          (a/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (set! client/authenticated-request! original)
@@ -408,7 +412,7 @@
                 (is (identical? image (.querySelector element "img")) "The ready acknowledgment must preserve the visible image")
                 (is (pos? (.-naturalWidth image)))
                 (is (nil? (.querySelector element ".upload-row"))))))
-          (.catch (fn [error]
+          (a/catch-error (fn [error]
                     (let [image (.querySelector element "img")
                           bounds (when image (.getBoundingClientRect image))]
                       (is false (str error " visibility=" (.-visibilityState js/document)
@@ -416,7 +420,7 @@
                                                            :natural-width (.-naturalWidth image)
                                                            :rect [(.-x bounds) (.-y bounds) (.-width bounds) (.-height bounds)]})
                                      " upload=" (dissoc (get-in @r/*app-db [:state :blog :image-uploads id]) :file))))))
-          (.finally (fn []
+          (a/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (r/dispatch-sync [:blog/image-upload-dispose owner])
@@ -498,8 +502,8 @@
                     (await! (support/wait-for! #(nil? (.querySelector element ".upload-row"))))
                     (is (nil? (.querySelector element ".upload-row")) "Actual preview acknowledgment completes the exit"))
                   (is (not (.includes (source-text element) "image-upload:")))))))
-          (.catch (fn [error] (is false (str error))))
-          (.finally (fn []
+          (a/catch-error (fn [error] (is false (str error))))
+          (a/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (r/dispatch-sync [:blog/image-upload-dispose "editor-test"])
@@ -582,11 +586,11 @@
                   ;; preventDefault. Verify the user's actual editing result.
                   (await! (support/wait-for! #(= "Draftordinary text" (source-text element))))
                   (is (= "Draftordinary text" (source-text element)))))))
-          (.catch (fn [error] (is false (str error " stage=" @*stage " calls=" (count @*calls)
+          (a/catch-error (fn [error] (is false (str error " stage=" @*stage " calls=" (count @*calls)
                                            " text=" (source-text element)
                                            " canonical=" (get-in @r/*app-db [:state :form-field :post-blog :text])
                                            " rendered=" (.-innerHTML element)))))
-          (.finally (fn []
+          (a/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (r/dispatch-sync [:blog/image-upload-dispose owner])
@@ -665,8 +669,8 @@
                 (await! (support/wait-for! #(string/includes? (get-in @r/*app-db (into [:state :form-field] path)) (:src asset))))
                 (is (= "Keep post draft" (get-in @r/*app-db [:state :form-field :post-blog :text])))
                 (is (= 1 (count @calls)) "No library reads accompany comment editing or upload"))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (a/catch-error #(is false (str %)))
+          (a/finally-do (fn []
                       (when @root (support/unmount! @root))
                       (set! client/authenticated-request! original)
                       (.remove element)

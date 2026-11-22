@@ -3,7 +3,8 @@
    as local documents. Code splitting and cached hydration's service readiness
    stay at their external test boundaries."
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.react.server :as server]
             [cljs.reader :as edn]
@@ -67,8 +68,8 @@
               (r/dispatch-sync [:page-return/install saved])
               (is (true? (await! (support/subscription-value! [:state [:gallery :loaded]])))
                   "Installing the pair retains the gallery's ready presentation")))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore-db!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore-db!) (done)))))))
 
 (deftest local-snapshot-policy-is-independent-of-the-mounted-document
   (let [mounted (r/atom {:page (restore/page-key)
@@ -106,7 +107,7 @@
           after-page! browser-resources/after-page!
           *scheduled (atom 0)]
       (set! local/schedule! #(swap! *scheduled inc))
-      (set! local/connect! #(js/Promise.resolve nil))
+      (set! local/connect! #(p/resolved nil))
       ;; Timing of the shared adapter is covered in browser-resources-test.
       (set! browser-resources/after-page! (fn [start! options]
                                            (is (= 750 (:settle-ms options)))
@@ -128,8 +129,8 @@
                   (await! (support/settle!))
                   (is (= (inc initial) @*scheduled) "Unmount releases the source subscription"))
                 (finally (support/unmount! root)))))
-          (.catch (fn [error] (is false (str error))))
-          (.finally (fn []
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do (fn []
                       (set! local/schedule! schedule!)
                       (set! local/connect! connect!)
                       (set! browser-resources/after-page! after-page!)
@@ -165,7 +166,7 @@
               ;; not SDK boot. Keep late children inside this boundary until
               ;; unmount so no settings request/retry outlives the fixture.
               (set! supabase/ensure!
-                    (fn [] (swap! *acquisitions inc) (js/Promise.resolve nil)))
+                    (fn [] (swap! *acquisitions inc) (p/resolved nil)))
               (r/dispatch-sync [:init/app-db])
               ;; The state observer round-trips EDN; retain the native route's
               ;; data fields without its executable coercion/controller objects.
@@ -208,7 +209,7 @@
                   (r/with-framework-bindings [loader/modules {:user (reify lazy/ILoadable (ready? [_] true)
                                                             IDeref (-deref [_] module))}
                                               rfe/href href]
-                    (await! (js/Promise.
+                    (await! (p/create
                               (fn [resolve _]
                                 (reset! *root
                                   (r/hydrate-root element [<check> form #(resolve nil)]
@@ -229,8 +230,8 @@
                     (reset! restore/*context original-context)
                     (reset! context/*interactive? original-interactive)
                     (restore-db!)))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest return-decisions-use-data-and-preserve-cache-boundaries
   (let [url "https://example.test/blog"
@@ -283,8 +284,8 @@
                 (is (nil? (await! (.match cache url))))
                 (is (nil? (await! (.match cache worker/arm-url)))))
               (finally (await! (.delete js/caches worker/cache-name))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest local-worker-bounds-documents-and-rejects-other-builds
   (async done
@@ -299,11 +300,11 @@
               (is (= worker/max-documents (.-length entries))))
             (let [rejected? (await! (-> (worker/save! {:url (str (.-origin js/location) "/cache-test/bad")
                                                        :html "wrong build" :build "other-build"})
-                                        (.then (fn [_] false)) (.catch (fn [_] true))))]
+                                        (p/then (fn [_] false)) (p/catch-error (fn [_] true))))]
               (is rejected?))
             (finally (await! (.delete js/caches worker/cache-name)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest lazy-renderer-discards-saves-overtaken-while-code-loads
   (async done
@@ -312,26 +313,26 @@
           acquire! loader/acquire-code!
           message! local/message!
           *resolve (atom nil)
-          pending (js/Promise. (fn [resolve _] (reset! *resolve resolve)))
+          pending (p/create (fn [resolve _] (reset! *resolve resolve)))
           *published (atom [])
           *rendered (atom [])]
-      (set! local/connect! #(js/Promise.resolve {:worker :worker}))
+      (set! local/connect! #(p/resolved {:worker :worker}))
       (set! loader/acquire-code! (fn [id] (is (= :page-capture id)) pending))
       (set! local/message! (fn [_ pair]
                             (swap! *published conj pair)
-                            (js/Promise.resolve nil)))
+                            (p/resolved nil)))
       (let [first-save (local/save! {:version :old} false)
             second-save (local/save! {:version :current} false)]
         (@*resolve {:pair! (fn [db _]
                             (swap! *rendered conj db)
                             {:op "save" :url "current" :state db})})
-        (-> (js/Promise.all #js [first-save second-save])
-            (.then (fn [_]
+        (-> (p/all [first-save second-save])
+            (p/then (fn [_]
                      (is (= [{:version :current}] @*rendered))
                      (is (= 1 (count @*published)))
                      (is (not (contains? (first @*published) :state)))))
-            (.catch (fn [error] (is false (str error))))
-            (.finally (fn []
+            (p/catch-error (fn [error] (is false (str error))))
+            (p/finally-do (fn []
                         (set! local/connect! connect!)
                         (set! loader/acquire-code! acquire!)
                         (set! local/message! message!)
@@ -367,8 +368,8 @@
                     (is (identical? header (.querySelector element "header"))
                         "Menu and scroll updates retain the native header"))
                   (finally (support/unmount! root))))))
-          (.catch (fn [error] (is false (str error))))
-          (.finally (fn []
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do (fn []
                       (reset! restore/*context original-context)
                       (restore-db!)
                       (done)))))))
@@ -397,8 +398,8 @@
                   (await! (support/render! root form))
                   (is (not (.contains (.-classList (.querySelector element "header")) "hide")))
                   (finally (support/unmount! root))))))
-          (.catch (fn [error] (is false (str error))))
-          (.finally (fn [] (restore-db!) (done)))))))
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do (fn [] (restore-db!) (done)))))))
 
 (deftest capture-orders-the-real-manifest-dependencies-once
   (is (= [{:id "main" :url "/main.js"}
@@ -432,11 +433,11 @@
           *resolve (atom {})
           *published (atom [])
           spec {:pair! (fn [db _]
-                         (js/Promise. (fn [resolve _]
+                         (p/create (fn [resolve _]
                                         (swap! *resolve assoc (:version db) resolve))))}]
-      (set! local/connect! #(js/Promise.resolve {:worker :worker}))
-      (set! loader/acquire-code! (fn [_] (js/Promise.resolve spec)))
-      (set! local/message! (fn [_ pair] (swap! *published conj pair) (js/Promise.resolve nil)))
+      (set! local/connect! #(p/resolved {:worker :worker}))
+      (set! loader/acquire-code! (fn [_] (p/resolved spec)))
+      (set! local/message! (fn [_ pair] (swap! *published conj pair) (p/resolved nil)))
       (-> (go-promise
             (let [first-save (local/save! {:version :old} false)]
               (await! (support/settle!))
@@ -447,8 +448,8 @@
                 ((get @*resolve :old) {:op "save" :url "old"})
                 (await! first-save)
                 (is (= ["current"] (mapv :url @*published))))))
-          (.catch (fn [error] (is false (str error))))
-          (.finally (fn []
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do (fn []
                       (set! local/connect! connect!)
                       (set! loader/acquire-code! acquire!)
                       (set! local/message! message!)
@@ -468,16 +469,16 @@
       (set! loader/acquire-code!
             (fn [id]
               (swap! *acquired conj id)
-              (js/Promise.resolve {:pair! (fn [db _] {:state db})})))
+              (p/resolved {:pair! (fn [db _] {:state db})})))
       (let [pending (capture/pair! {:version :current} {})]
         (is (empty? @*acquired) "Optional rendering waits for hydration and painted idle")
         (@*ready)
         (-> pending
-            (.then (fn [pair]
+            (p/then (fn [pair]
                      (is (= [:page-render] @*acquired))
                      (is (= {:state {:version :current}} pair))))
-            (.catch (fn [error] (is false (str error))))
-            (.finally (fn []
+            (p/catch-error (fn [error] (is false (str error))))
+            (p/finally-do (fn []
                         (set! local/modules modules)
                         (set! loader/acquire-code! acquire!)
                         (set! browser-resources/after-page! after-page!)
@@ -494,15 +495,15 @@
             #(r/dispatch-sync [:set [:page-return-test] :fresh]))
       (set! local/save! (fn [db arm?]
                          (reset! *captured [(:page-return-test db) arm?])
-                         (js/Promise.resolve nil)))
+                         (p/resolved nil)))
       (set! local/navigate! (fn [_] nil))
       (local/departure! "https://example.com/departure")
       (-> (support/settle!)
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (= [:fresh true] @*captured)
                        "Queued departure reads the updated history state")))
-          (.catch (fn [error] (is false (str error))))
-          (.finally (fn []
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do (fn []
                       (set! local/save! save!)
                       (set! local/navigate! navigate!)
                       (set! storage/save-navigation! save-navigation!)
@@ -522,11 +523,11 @@
           *render (atom nil)
           *published (atom [])
           *navigated (atom [])]
-      (set! local/connect! #(js/Promise.resolve {:worker :worker}))
+      (set! local/connect! #(p/resolved {:worker :worker}))
       (set! loader/acquire-code!
-            (fn [_] (js/Promise.resolve
-                       {:pair! (fn [_ _] (js/Promise. (fn [resolve _] (reset! *render resolve))))})))
-      (set! local/message! (fn [_ pair] (swap! *published conj pair) (js/Promise.resolve nil)))
+            (fn [_] (p/resolved
+                       {:pair! (fn [_ _] (p/create (fn [resolve _] (reset! *render resolve))))})))
+      (set! local/message! (fn [_ pair] (swap! *published conj pair) (p/resolved nil)))
       (set! local/navigate! #(swap! *navigated conj %))
       (set! storage/save-navigation! (fn [] nil))
       (set! (.-setTimeout js/window)
@@ -544,8 +545,8 @@
               (await! (support/settle!))
               (is (empty? (filter #(= "save" (:op %)) @*published)))
               (is (some #(= "clear" (:op %)) @*published))))
-          (.catch (fn [error] (is false (str error))))
-          (.finally (fn []
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do (fn []
                       (set! local/connect! connect!)
                       (set! loader/acquire-code! acquire!)
                       (set! local/message! message!)
@@ -562,7 +563,7 @@
           save-navigation! storage/save-navigation!
           *save (atom {})
           *navigated (atom [])]
-      (set! local/save! (fn [db _] (js/Promise. (fn [resolve _] (swap! *save assoc (:click db) resolve)))))
+      (set! local/save! (fn [db _] (p/create (fn [resolve _] (swap! *save assoc (:click db) resolve)))))
       (set! local/navigate! #(swap! *navigated conj %))
       (set! storage/save-navigation! (fn [] nil))
       (-> (go-promise
@@ -574,8 +575,8 @@
               ((get @*save :last) nil)
               (await! last-departure)
               (is (= ["https://example.com/last"] @*navigated))))
-          (.catch (fn [error] (is false (str error))))
-          (.finally (fn []
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do (fn []
                       (set! local/save! save!)
                       (set! local/navigate! navigate!)
                       (set! storage/save-navigation! save-navigation!)
@@ -589,10 +590,10 @@
       (set! local/modules (fn [] {}))
       (set! browser-resources/after-page! (fn [_] #(swap! *cancelled inc)))
       (let [pending (-> (capture/pair! {} {})
-                        (.then (fn [_] (is false "Cancelled capture must reject")))
-                        (.catch (fn [_] (is (= 1 @*cancelled)))))]
+                        (p/then (fn [_] (is false "Cancelled capture must reject")))
+                        (p/catch-error (fn [_] (is (= 1 @*cancelled)))))]
         (capture/stop!)
-        (.finally pending (fn []
+        (p/finally-do pending (fn []
                             (set! local/modules modules)
                             (set! browser-resources/after-page! after-page!)
                             (done)))))))

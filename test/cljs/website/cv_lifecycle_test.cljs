@@ -1,6 +1,7 @@
 (ns website.cv-lifecycle-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.editor-visual]
             [website.events]
@@ -346,8 +347,8 @@
                             :paired-return :spa-from-returned :late-unmounted :late-pagehide]]
                 (await! (check-cv-mode! fixture seed mode)))
               (await! (check-cv-queued-retirement! fixture seed))))
-          (.catch #(is false (str %)))
-          (.finally #(try (dispose-cv-fixture! fixture) (finally (done))))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do #(try (dispose-cv-fixture! fixture) (finally (done))))))))
 
 (defn- event-effects [id db event]
   ;; Invoke the actual registered handler without installing native timers.

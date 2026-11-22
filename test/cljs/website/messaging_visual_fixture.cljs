@@ -1,6 +1,7 @@
 (ns website.messaging-visual-fixture
   "Native Home messaging/profile owners with local managed reads and no writes."
-  (:require [website.react :as r]
+  (:require [website.async :as p]
+            [website.react :as r]
             [website.macros :as m]
             [website.editor-visual :as editor]
             [website.modules.home.views :as home]
@@ -96,7 +97,7 @@
     (throw (js/Error. "Dispose the previous messaging fixture before installing another")))
   (let [values (queries-for component)
         handlers (mapv (fn [[kind id]] [kind id (r/get-handler kind id)])
-                       [[:sub :store/on-snapshot] [:fx :http-xhrio] [:fx :supabase/request]])
+                       [[:sub :store/on-snapshot] [:fx :http/fetch] [:fx :supabase/request]])
         old-ensure-code! supabase/ensure-code!
         *disposed? (atom false)
         reject! (fn [& _]
@@ -132,7 +133,7 @@
         (r/dispatch-sync [:component-data/install [:content :codex-profile]
                           (if (= component "codex-unavailable")
                             (dissoc codex-profile :days) codex-profile)]))
-      (r/reg-fx :http-xhrio reject!)
+      (r/reg-fx :http/fetch reject!)
       (r/reg-fx :supabase/request reject!)
       (set! supabase/ensure-code! reject!)
       (.addEventListener js/window "pagehide" cleanup! #js {:once true})
@@ -186,23 +187,23 @@
 
 (defn ^:export init! [component]
   (module-for component)
-  (-> (js/Promise.resolve nil)
-      (.then (fn [_]
+  (-> (p/resolved nil)
+      (p/then (fn [_]
                (when (or @*root @*cleanup)
                  (throw (js/Error. "Messaging fixture already owns this document")))
                (js/fetch "/fixtures/editor-seed.json")))
-      (.then (fn [response]
+      (p/then (fn [response]
                (when-not (.-ok response) (throw (js/Error. "Messaging fixture seed is unavailable")))
                (.json response)))
-      (.then (fn [seed]
+      (p/then (fn [seed]
                (rfe/start! routes/router (fn [_ _]) {:use-fragment false})
                (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) false])
                (install! component)
                (restore/begin! {})
                (loader/load! {:module :markdown})))
-      (.then (fn [_] (loader/load! {:module (module-for component)})))
-      (.then (fn [_]
+      (p/then (fn [_] (loader/load! {:module (module-for component)})))
+      (p/then (fn [_]
                (let [root (r/create-root (.getElementById js/document "app"))]
                  (reset! *root root)
                  (r/render root [:main#main.main-content.perspective-top [<page> component]]))))
-      (.catch (fn [error] (dispose!) (throw error)))))
+      (p/catch-error (fn [error] (dispose!) (throw error)))))

@@ -1,5 +1,6 @@
 (ns website.loader
   (:require
+    [website.async :as a]
     [website.component.registry :as registry]
     [website.component.public-catalog :as public-catalog]
     [website.component.instrumentation]
@@ -47,26 +48,24 @@
                 (assoc listeners module remaining)
                 (dissoc listeners module))))))
 
-(defn- retry-later! [attempt!]
-  (-> (js/Promise. (fn [resolve _] (js/setTimeout resolve retry-delay-ms)))
-      (.then (fn [_] (attempt!)))))
+(defn- ^:async retry-later! [attempt!]
+  (await (a/delay! retry-delay-ms))
+  (attempt!))
 
-(defn- acquire-attempt! [module]
+(defn- ^:async shadow-code! [module]
+  (if-let [loadable (get modules module)]
+    (if (lazy/ready? loadable) @loadable (lazy/load loadable))
+    (throw (ex-info "Unknown module" {:module module}))))
+
+(defn- ^:async acquire-attempt! [module]
   (let [css (styles/acquire! module)
-        code (try
-               (if-let [loadable (get modules module)]
-                 (js/Promise.resolve (if (lazy/ready? loadable) @loadable (lazy/load loadable)))
-                 (js/Promise.reject (ex-info "Unknown module" {:module module})))
-               (catch :default error (js/Promise.reject error)))]
-    (-> (js/Promise.all #js [code css])
-        (.then (fn [results]
-                 (let [spec (module-code/module-spec module (aget results 0))]
-                   (validation/module! spec)
-                   (-> (js/Promise.resolve (when-let [install! (:install spec)] (install!)))
-                       (.then (fn [_]
-                                (swap! *installed conj module)
-                                (r/dispatch [:loader/code-ready module])
-                                spec)))))))))
+        [loaded] (await (a/all [(shadow-code! module) css]))
+        spec (module-code/module-spec module loaded)]
+    (validation/module! spec)
+    (await (when-let [install! (:install spec)] (install!)))
+    (swap! *installed conj module)
+    (r/dispatch [:loader/code-ready module])
+    spec))
 
 (defn acquire-code!
   "Share parallel CSS/Shadow acquisition, silently retrying once after a delay.
@@ -74,8 +73,8 @@
   [module]
   (or (get @*code-loads module)
       (let [promise (-> (acquire-attempt! module)
-                        (.catch (fn [_] (retry-later! #(acquire-attempt! module))))
-                        (.catch (fn [error]
+                        (a/catch-error (fn [_] (retry-later! #(acquire-attempt! module))))
+                        (a/catch-error (fn [error]
                                   (swap! *code-loads dissoc module)
                                   (throw error))))]
         (swap! *code-loads assoc module promise)
@@ -100,46 +99,44 @@
 (defn- prepare-view! [spec view args]
   (if-let [definition (component/component-spec (resolved-view (:id spec) (or view :view) spec))]
     (prepare-data! (component/dependencies definition args))
-    (js/Promise.resolve nil)))
+    (a/resolved nil)))
+
+(defn- ^:async initialize-module! [module view args]
+  (let [known-data (prepare-data! (get content-contract/module-dependencies module []))
+        [spec] (await (a/all [(acquire-code! module) known-data]))]
+    (await (a/all [(prepare-data! (:depends spec)) (prepare-view! spec view args)]))
+    (r/dispatch [:scope/init module args])
+    (await (when-let [init! (:init spec)] (apply init! args)))
+    spec))
+
+(defn- shared-module! [module view args]
+  (or (get @*loads module)
+      (let [forget! (fn [error] (swap! *loads dissoc module) (throw error))
+            pending (a/catch-error (initialize-module! module view args) forget!)]
+        (swap! *loads assoc module pending)
+        pending)))
+
+(defn- ^:async prepare-call! [pending {:keys [view args route post-fn]}]
+  ;; Route arguments belong to the caller, including already initialized modules.
+  (let [spec (await pending)
+        route-depends (:route-depends spec)
+        view-data (prepare-view! spec view args)
+        route-data (when (and route route-depends
+                              (not= (:path route) (:path @context/*snapshot)))
+                     (prepare-data! (route-depends route)))]
+    (await (a/all [view-data route-data]))
+    (if post-fn (apply post-fn spec args) spec)))
 
 (defn load!
   "Return a promise for an initialized module. Concurrent callers share one load.
    Hooks run per caller; module initialization runs once, including bundled modules."
-  [{:keys [module view init-evt pre-fn post-fn args route]}]
-  (if-let [loadable (get modules module)]
+  [{:keys [module view init-evt pre-fn args] :as request}]
+  (if (get modules module)
     (do
       (when init-evt (r/dispatch init-evt))
       (when pre-fn (apply pre-fn args))
-      (-> (or (get @*loads module)
-               (let [known-data (prepare-data! (get content-contract/module-dependencies module []))
-                     code (acquire-code! module)
-                     promise (-> (js/Promise.all #js [code known-data])
-                                 (.then (fn [loaded]
-                                          (let [spec (aget loaded 0)]
-                                            (-> (js/Promise.all
-                                                 #js [(prepare-data! (:depends spec))
-                                                      (prepare-view! spec view args)])
-                                                (.then (fn []
-                                                         (r/dispatch [:scope/init module args])
-                                                         (-> (js/Promise.resolve
-                                                              (when-let [init (:init spec)]
-                                                                (apply init args)))
-                                                             (.then (fn [_] spec)))))))))
-                                 (.catch (fn [error]
-                                           (swap! *loads dissoc module)
-                                           (throw error))))]
-                 (swap! *loads assoc module promise)
-                 promise))
-           (.then (fn [spec]
-                    ;; Per-call component dependencies may depend on route args,
-                    ;; even when the module itself is already initialized.
-                    (-> (js/Promise.all
-                         #js [(prepare-view! spec view args)
-                              (when (and route (:route-depends spec)
-                                         (not= (:path route) (:path @context/*snapshot)))
-                                (prepare-data! ((:route-depends spec) route)))])
-                        (.then (fn [_] (if post-fn (apply post-fn spec args) spec))))))))
-    (js/Promise.reject (ex-info "Unknown module" {:module module}))))
+      (prepare-call! (shared-module! module view args) request))
+    (a/rejected (ex-info "Unknown module" {:module module}))))
 
 (defn code-spec
   "Already-loaded code is renderable even while its managed data is pending."
@@ -155,8 +152,8 @@
   [options]
   (let [module (:module options)]
     (-> (load! options)
-        (.then (fn [_] (status/recover! [:module module])))
-        (.catch (fn [error]
+        (a/then (fn [_] (status/recover! [:module module])))
+        (a/catch-error (fn [error]
                   (status/fail! [:module module] "Section initialization failed"
                                 "This section could not finish loading. Retry to load it again."
                                 #(load-code! options)))))
@@ -202,7 +199,7 @@
     (let [options (if (keyword? value) {:module value} value)
           module (:module options)]
       (-> (load-code! options)
-          (.catch (fn [error] (r/dispatch [:loader/code-failed module error])))))))
+          (a/catch-error (fn [error] (r/dispatch [:loader/code-failed module error])))))))
 (r/reg-sub-raw :loader/module
   (fn [_ query]
     (let [[_ module] (or (:re-frame/query-v query) query)]
@@ -289,18 +286,17 @@
        :else (fallback-form options args true))]))
 
 (defn- make-boundary [module]
-  (let [*release (atom nil)
-        gate (js/Promise. (fn [resolve _] (reset! *release resolve)))
+  (let [{gate :promise release! :resolve!} (a/deferred)
         content #js {:default (r/reactify-component
                                (fn [{:keys [options args complete! hydrating?]}]
                                  [<module-content> options args complete! hydrating?]))}]
-    {:release! #(@*release nil)
+    {:release! #(release! nil)
      :view (r/lazy
              (fn []
                (-> gate
-                   (.then (fn [_] (acquire-code! module)))
-                   (.then (fn [_] content))
-                   (.catch (fn [error]
+                   (a/then (fn [_] (acquire-code! module)))
+                   (a/then (fn [_] content))
+                   (a/catch-error (fn [error]
                              ;; A failed module owns its Retry view; never reject
                              ;; through the entire page's error boundary.
                              ;; Publish that state before the lazy reader renders Retry.

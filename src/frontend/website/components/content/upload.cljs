@@ -1,6 +1,7 @@
 (ns website.components.content.upload
   "An upload row renders measured progress and processing as distinct states."
-  (:require [website.component.registry]
+  (:require [cljs.math :as math]
+            [website.component.registry]
             [website.components.content.upload-schema :as schema]
             [website.react :as r]
             [website.macros :refer-macros [defc]]))
@@ -32,7 +33,7 @@
          (cond-> {:aria-label (str label ": " name)}
            measured? (assoc :value (:loaded progress) :max (:total progress)))])
       (when measured?
-        [:small (str (js/Math.floor (* 100 (/ (:loaded progress) (:total progress)))) "%")])]
+        [:small (str (math/floor (* 100 (/ (:loaded progress) (:total progress)))) "%")])]
      [:div.upload-row__actions
       (when (and (= status :failed) retry!) [:button {:type "button", :on-click retry!} "Retry"])
       (when (and (not= status :ready) remove!) [:button {:type "button", :on-click remove!} "Remove"])]]))

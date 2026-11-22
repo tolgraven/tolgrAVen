@@ -1,5 +1,6 @@
 (ns website.component.loading
-  (:require [website.react :as r]
+  (:require [website.browser.css :as css]
+            [website.react :as r]
             [clojure.string]
             [website.component.visibility :as visibility]
             [website.supabase.query :as query]
@@ -9,15 +10,16 @@
 
 (defn- reserved-size [element]
   (let [style (js/getComputedStyle element)
-        unit (js/parseFloat (.-fontSize style))
-        height (js/parseFloat (.-height style))
+        unit (css/magnitude (.-fontSize style))
+        height (css/magnitude (.-height style))
+        width (css/magnitude (.-width style))
         height-valid? (and (pos? unit) (js/isFinite height) (>= height 0))]
     (cond-> {}
       height-valid? (assoc :height (str (/ height unit) "em"))
       (not height-valid?) (assoc :min-height "1em")
-      (and (pos? unit) (js/isFinite (js/parseFloat (.-width style)))
-           (.startsWith (.-display style) "inline"))
-      (assoc :width (str (/ (js/parseFloat (.-width style)) unit) "em")))))
+      (and (pos? unit) (js/isFinite width)
+           (clojure.string/starts-with? (.-display style) "inline"))
+      (assoc :width (str (/ width unit) "em")))))
 
 (defn- use-visible [attrs root-key]
   ;; This core adapter cannot depend on the full defc runtime. One outer loading

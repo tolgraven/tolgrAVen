@@ -6,7 +6,8 @@
 (defn page
   ([items requested] (page items requested (when (counted? items) (count items))))
   ([items requested total]
-   (let [index (max 0 (if total (min requested (max 0 (dec (int (js/Math.ceil (/ total page-size)))))) requested))
+   (let [last-page (when total (quot (max 0 (dec total)) page-size))
+         index (max 0 (if last-page (min requested last-page) requested))
          offset (* index page-size)
          window (vec (take (inc page-size) (drop offset items)))]
      {:index index :offset offset :total total :items (vec (take page-size window))

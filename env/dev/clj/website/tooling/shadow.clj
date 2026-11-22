@@ -1,4 +1,4 @@
-(ns website.dev.shadow
+(ns website.tooling.shadow
   "Deferred standalone bootstrap release and native development watches."
   (:require [clojure.tools.logging :as log]))
 

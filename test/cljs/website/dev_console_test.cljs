@@ -1,6 +1,7 @@
 (ns website.dev-console-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
 
             [website.macros :refer-macros [defc]]
@@ -125,7 +126,7 @@
               (is (= ["here:1" "other:0"]
                      (mapv #(.-textContent %) (array-seq (.querySelectorAll element "button")))))
               (finally (support/unmount! root) (.remove element)))))
-        (.catch #(is false (str %))) (.finally done))))
+        (p/catch-error #(is false (str %))) (p/finally-do done))))
 
 (deftest hydration-marker-expiry-is-token-safe
   (async done
@@ -143,7 +144,7 @@
               (await! (support/settle!))
               (is (nil? (:token ((:values consumer)))))
               (finally ((:unmount! consumer))))))
-        (.catch #(is false (str %))) (.finally done))))
+        (p/catch-error #(is false (str %))) (p/finally-do done))))
 
 (deftest dependency-readiness-ignores-unrelated-debug-history
   (async done
@@ -170,7 +171,7 @@
                 (is (re-find #"second" (.-textContent element))))
               (finally (support/unmount! root) (.remove element)
                        (r/dispatch [:component-data/remove path])))))
-        (.catch #(is false (str %))) (.finally done))))
+        (p/catch-error #(is false (str %))) (p/finally-do done))))
 
 (deftest complete-inline-collections-do-not-hide-data
   (is (views/inline-complete? {:id 27 :title "New features"}))
@@ -213,7 +214,7 @@
               (is (re-find #"No registered subscription" (.-textContent element)))
               (finally (support/unmount! root) (.remove element)
                        (r/dispatch [:component-data/remove [:test :query-result]])))))
-        (.catch #(is false (str %))) (.finally done))))
+        (p/catch-error #(is false (str %))) (p/finally-do done))))
 
 (deftest bounded-pagination-and-layout-correlation
   (is (= (vec (range 10 20)) (:items (layout/page (vec (range 25)) 1))))
@@ -249,7 +250,7 @@
                 (is (= 1 (.-length (.querySelectorAll preview " .dev-value--vector > .dev-value--map > .dev-value__delimiter")))
                     "The vector preview contains one map marker"))
               (finally (support/unmount! root) (.remove element)))))
-        (.catch #(is false (str %))) (.finally done))))
+        (p/catch-error #(is false (str %))) (p/finally-do done))))
 
 (deftest layout-attribution-retains-page-mixed-and-unknown-shifts
   (is (= :inspector (capture/layout-scope [{:inspector? true}])))
@@ -274,7 +275,7 @@
               (is (re-find #"HEADER" (.-textContent element)))
               (is (re-find #":nearby" (.-textContent element)))
               (finally (support/unmount! root) (.remove element)))))
-        (.catch #(is false (str %))) (.finally done))))
+        (p/catch-error #(is false (str %))) (p/finally-do done))))
 
 (deftest scoped-lookup-resolves-mounted-identities-and-source-queries
   (let [path [:component "blog.views" "<post>" "post-27"]
@@ -356,7 +357,7 @@
               (is (empty? @capture/*pending))
               (is (not (snapshot-mounted?)))
               (finally (support/unmount! root) (.remove element)))))
-        (.then (fn [] (done)) #(do (is false (str %)) (done))))))
+        (p/then (fn [] (done)) #(do (is false (str %)) (done))))))
 
 (deftest component-tree-keeps-ready-children-and-does-not-guess-ambiguous-parents
   (let [parent ["demo.views" "<parent>"] child ["demo.views" "<child>"]
@@ -401,4 +402,4 @@
                     parent (first (filter #(= parent-id (:component %)) (:mounted tree)))]
                 (is (some #(and (= child-id (:component %)) (= :ready (:status %))) (:children parent))))
               (finally (support/unmount! root) (.remove element)))))
-        (.then (fn [] (done)) #(do (is false (str %)) (done))))))
+        (p/then (fn [] (done)) #(do (is false (str %)) (done))))))

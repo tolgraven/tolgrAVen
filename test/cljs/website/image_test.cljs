@@ -1,6 +1,7 @@
 (ns website.image-test
   (:require-macros [website.test-async :refer [go-promise await!]])
   (:require
+    [website.async :as p]
     [cljs.core.async]
     [clojure.string :as string]
     [cljs.test :refer-macros [async deftest is]]
@@ -310,7 +311,7 @@
                                                   ["currentSrc" (str (.-origin js/location) selected)]]]
                            (js/Object.defineProperty element property #js {:configurable true :value value}))
                          (js/Object.defineProperty element "decode"
-                           #js {:configurable true :value (fn [] (js/Promise.resolve nil))}))))]
+                           #js {:configurable true :value (fn [] (p/resolved nil))}))))]
       (.appendChild (.-body js/document) container)
       (r/render root [(fn [] [image/<picture> {:src @*src
                                                :progressive? true
@@ -358,7 +359,7 @@
           (aset container "__progressiveImages" owners))
         (doseq [[property value] [["complete" true] ["naturalWidth" 800]
                                  ["currentSrc" (str (.-origin js/location) "/img/foggy-shit-small-800w.avif")]
-                                 ["decode" #(js/Promise.resolve)]]]
+                                 ["decode" #(p/resolved js/undefined)]]]
           (js/Object.defineProperty final property #js {:configurable true :value value}))
         (let [root (r/hydrate-root container form)]
           (js/setTimeout
@@ -402,7 +403,7 @@
             (set! (.-rel stylesheet) "stylesheet")
             (set! (.-href stylesheet) "/css/website/main.min.css")
             (try
-              (await! (js/Promise.
+              (await! (p/create
                         (fn [resolve reject]
                           (set! (.-onload stylesheet) resolve)
                           (set! (.-onerror stylesheet) reject)
@@ -413,11 +414,11 @@
                 (doseq [[image property value] [[final "complete" false]
                                               [final "naturalWidth" 0]
                                               [final "currentSrc" (str (.-origin js/location) "/img/foggy-shit-small-800w.avif")]
-                                              [final "decode" #(js/Promise.resolve)]
+                                              [final "decode" #(p/resolved js/undefined)]
                                               [preview "naturalWidth" 400]]]
                   (js/Object.defineProperty image property #js {:configurable true :value value}))
                 (reset! *root (r/hydrate-root container form))
-                (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 100))))
+                (await! (p/delay! 100))
                 (let [hero (.querySelector container ".progressive-image")]
                   (is (= "waiting" (.getAttribute hero "data-image-phase")))
                   (is (empty? @*ready) "Pending final pixels do not release preview status")
@@ -426,7 +427,7 @@
                   (js/Object.defineProperty final "complete" #js {:configurable true :value true})
                   (js/Object.defineProperty final "naturalWidth" #js {:configurable true :value 800})
                   (.dispatchEvent final (js/Event. "load"))
-                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 30))))
+                  (await! (p/delay! 30))
                   (when-not (.-matches (.matchMedia js/window "(prefers-reduced-motion: reduce)"))
                     (is (= "upgrading" (.getAttribute hero "data-image-phase")))
                     (is (empty? @*ready) "The overlap must finish before readiness notification")
@@ -452,8 +453,8 @@
                 (when @*root (r/unmount @*root))
                 (.remove stylesheet)
                 (.remove container)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest responsive-catalog-defaults-and-modern-originals-share-the-source-contract
   (is (sources/progressive? "/img/logo/tolgraven-logo.png"))
@@ -487,11 +488,11 @@
         (try
           (reset! restore/*context {})
           (r/render root [image/<picture> {:src "/img/foggy-shit-small.jpg"}])
-          (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 60))))
+          (await! (p/delay! 60))
           (let [final (.querySelector container "[data-image-final]")]
             (restore/direct-images!)
             (r/flush)
-            (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 60))))
+            (await! (p/delay! 60))
             (is (nil? (.querySelector container "[data-image-preview]")))
             (is (identical? final (.querySelector container "[data-image-final]")))
             (is (#{"single" "decoded"} (.getAttribute (.querySelector container ".progressive-image") "data-image-phase")))
@@ -581,7 +582,7 @@
               (is (not (.includes (r/render-to-string [render-image]) "on-visible-ready")))
               (r/render root [render-image])
               (await! (support/wait-for! #(pos? @*loaded) "Native SVG did not load"))
-              (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 100))))
+              (await! (p/delay! 100))
               (is (empty? @*ready) "A decoded SVG behind a hidden ancestor is not visible")
               (is (some #(= :image-visible-ready (:owner %)) (vals @listener/*bindings)))
               (reset! *src "/img/tolgrav.png")
@@ -592,7 +593,7 @@
               (let [native (.querySelector container "img")]
                 (is (= [{:src "/img/tolgrav.png", :selected-src (.-currentSrc native)}] @*ready))
                 (.dispatchEvent native (js/Event. "load"))
-                (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 80))))
+                (await! (p/delay! 80))
                 (is (= 1 (count @*ready)) "Repeated load events cannot notify twice")
                 (is (not-any? #(= :image-visible-ready (:owner %)) (vals @listener/*bindings))))
               (set! (.-visibility (.-style container)) "hidden")
@@ -600,14 +601,14 @@
               (await! (support/wait-for! #(> @*loaded 2) "Returning SVG did not load"))
               (r/unmount root)
               (set! (.-visibility (.-style container)) "visible")
-              (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 80))))
+              (await! (p/delay! 80))
               (is (= 1 (count @*ready)) "Unmount cancels a hidden generation's notification")
               (is (not-any? #(= :image-visible-ready (:owner %)) (vals @listener/*bindings)))
               (finally
                 (r/unmount root)
                 (.remove container)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest managed-picture-uses-explicit-query-bearing-renditions
   (let [original {:src "https://media.example/photo?version=2"

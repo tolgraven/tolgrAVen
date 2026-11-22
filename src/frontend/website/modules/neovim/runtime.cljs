@@ -1,7 +1,8 @@
 (ns website.modules.neovim.runtime
   "Lifecycle-owned browser/Neovim boundary. No worker is created during SSR."
-  (:require ["./transport.js" :as transport]
-            [clojure.string :as string]
+  (:require [cljs.math :as math]
+            [website.async :as a]
+            ["./transport.js" :as transport]
             [website.modules.neovim.model :as model]
             [website.modules.neovim.files :as files]
             [website.modules.neovim.document :as document]
@@ -35,94 +36,101 @@
 
 (def write-event "website-buffer-written")
 
+(def ^:private watch-writes-lua
+  "local channel, group, event = ...
+   vim.api.nvim_create_autocmd('BufWritePost', {
+     group = vim.api.nvim_create_augroup(group, {clear = true}),
+     callback = function(args)
+       local path = vim.api.nvim_buf_get_name(args.buf)
+       local file = assert(io.open(path, 'rb'))
+       local text = file:read('*a'); file:close()
+       vim.rpcnotify(channel, event, path, text)
+     end})")
+
+(defn- notify-written! [payload on-write fail!]
+  (let [[path text] (js->clj payload)]
+    (if (and (string? path) (<= (count path) 1024)
+             (string? text) (<= (count text) 4194304))
+      (try (on-write {:path path :text text})
+           (catch :default error (fail! error)))
+      (fail! (js/Error. "Written buffer exceeds the supported bounds")))))
+
+(defn- ^:async install-write-watch! [session group *active? fail!]
+  (try
+    (let [info (await (request! session "nvim_get_api_info" []))]
+      (when @*active?
+        (await (request! session "nvim_exec_lua"
+                         [watch-writes-lua [(aget info 0) group write-event]]))))
+    (catch :default error
+      (when @*active? (fail! error)))))
+
 (defn watch-writes!
   "Acquire one native BufWritePost owner. Cleanup releases RPC delivery and its
    exact autocommand group; callbacks never outlive the mounted editor."
   [^js session on-write fail!]
   (let [*active? (atom true)
         group (str "WebsiteWrites" (random-uuid))
-        release! (.listen session write-event
-                          (fn [payload]
-                            (when @*active?
-                              (let [[path text] (js->clj payload)]
-                                (if (and (string? path) (<= (count path) 1024)
-                                         (string? text) (<= (count text) 4194304))
-                                  (try (on-write {:path path, :text text})
-                                       (catch :default error (fail! error)))
-                                  (fail! (js/Error. "Written buffer exceeds the supported bounds")))))))
-        ready (-> (request! session "nvim_get_api_info" [])
-        (.then (fn [info]
-                 (when @*active?
-                   (request! session "nvim_exec_lua"
-                     ["local channel, group, event = ...
-                       vim.api.nvim_create_autocmd('BufWritePost', {
-                         group = vim.api.nvim_create_augroup(group, {clear = true}),
-                         callback = function(args)
-                           local path = vim.api.nvim_buf_get_name(args.buf)
-                           local file = assert(io.open(path, 'rb'))
-                           local text = file:read('*a'); file:close()
-                           vim.rpcnotify(channel, event, path, text)
-                         end})"
-                      [(aget info 0) group write-event]]))))
-        (.catch #(when @*active? (fail! %))))]
-    {:ready ready
-     :stop! (fn []
-      (reset! *active? false)
-      (release!)
-      (-> (request! session "nvim_exec_lua"
-            ["local group = ...; pcall(vim.api.nvim_del_augroup_by_name, group)" [group]])
-          (.catch (fn [_] nil))))}))
+        receive! #(when @*active? (notify-written! % on-write fail!))
+        release! (.listen session write-event receive!)
+        stop! (fn []
+                (reset! *active? false)
+                (release!)
+                (-> (request! session "nvim_exec_lua"
+                              ["local group = ...; pcall(vim.api.nvim_del_augroup_by_name, group)" [group]])
+                    (a/catch-error (constantly nil))))]
+    {:ready (install-write-watch! session group *active? fail!)
+     :stop! stop!}))
 
-(defn start! [{:keys [cols rows initial-text initial-file filetype document]} redraw! status!]
+(defn- ^:async open-editable! [rpc! {:keys [initial-file initial-text filetype]}]
+  (if initial-file
+    (await (rpc! "nvim_exec_lua"
+                 ["local path = ...; assert(not path:match('^/') and not path:find('..', 1, true), 'Invalid initial file'); vim.cmd('hide edit ' .. vim.fn.fnameescape('/workspace/tolgrAVen/' .. path))"
+                  [initial-file]]))
+    (do
+      (await (files/write! rpc! {:path "buffer" :file (js/Blob. #js [(or initial-text "")])}))
+      (await (files/open! rpc! "buffer"))))
+  (await (rpc! "nvim_set_option_value" ["fixendofline" false {:buf 0}]))
+  (rpc! "nvim_set_option_value" ["filetype" filetype {:buf 0}]))
+
+(defn- ^:async initialize! [^js session {:keys [cols rows document] :as options} configuring! publish!]
+  (let [rpc! #(request! session %1 %2)
+        attach! #(rpc! "nvim_ui_attach" [cols rows {:rgb true :ext_linegrid true}])]
+    (try
+      (await (.-ready session))
+      (let [info (await (rpc! "nvim_get_api_info" []))]
+        (configuring!)
+        (.registerTypes session (.-types (aget info 1))))
+      (await (profile/configure! rpc!))
+      (if document
+        ;; Diff windows need the measured UI in place before their splits are built.
+        (do (await (attach!)) (await (document/open! rpc! document)))
+        (do (await (open-editable! rpc! options)) (await (attach!))))
+      (await (rpc! "nvim_command" ["redraw"]))
+      (publish! :ready "Ready")
+      session
+      (catch :default error
+        (publish! :error (.-message error))
+        (.stop session)
+        nil))))
+
+(defn start! [options redraw! status!]
   (let [*active? (atom true)
-        *ready? (atom false)
         *bootstrap? (atom true)
         publish! (fn [status message] (when @*active? (status! status message)))
+        configuring! #(do (reset! *bootstrap? false)
+                          (publish! :booting "Configuring editor and repository…"))
         session (transport/start worker-path
                   #(when @*active? (redraw! (js->clj % :keywordize-keys true)))
-                  #(when (and @*bootstrap? (not @*ready?)) (publish! :booting %))
+                  #(when @*bootstrap? (publish! :booting %))
                   #(publish! :exited (str "Neovim exited (" % ")"))
-                  #(publish! :error %))
-        ready (-> (.-ready session)
-                  (.then #(request! session "nvim_get_api_info" []))
-                  (.then (fn [info]
-                           (reset! *bootstrap? false)
-                           (publish! :booting "Configuring editor and repository…")
-                           (.registerTypes session (.-types (aget info 1)))
-                           (profile/configure! #(request! session %1 %2))))
-                  ;; Native diff windows need the measured UI in place. Reagent keeps every startup frame hidden until ready.
-                  (.then #(when document
-                            (request! session "nvim_ui_attach" [cols rows {:rgb true, :ext_linegrid true}])))
-                  (.then (fn [_]
-                           (cond
-                            document (document/open! (fn [method params] (request! session method params)) document)
-                            initial-file
-                            (request! session "nvim_exec_lua"
-                              ["local path = ...; assert(not path:match('^/') and not path:find('..', 1, true), 'Invalid initial file'); vim.cmd('hide edit ' .. vim.fn.fnameescape('/workspace/tolgrAVen/' .. path))" [initial-file]])
-                            :else (-> (files/write! (fn [method params] (request! session method params))
-                                        {:path "buffer", :file (js/Blob. #js [(or initial-text "")])})
-                                      (.then #(files/open! (fn [method params] (request! session method params)) "buffer"))))))
-                  (.then #(when-not document
-                            (request! session "nvim_set_option_value" ["fixendofline" false {:buf 0}])))
-                  (.then #(when-not document
-                            (request! session "nvim_set_option_value"
-                              ["filetype" filetype {:buf 0}])))
-                  ;; Ordinary editable buffers retain their initial-file-before-UI order.
-                  (.then #(when-not document
-                            (request! session "nvim_ui_attach" [cols rows {:rgb true, :ext_linegrid true}])))
-                  (.then #(request! session "nvim_command" ["redraw"]))
-                  (.then #(do (reset! *ready? true) (publish! :ready "Ready") session))
-                  (.catch (fn [error]
-                            (publish! :error (.-message error))
-                            (.stop session)
-                            nil)))]
+                  #(publish! :error %))]
     {:session session
-     :ready ready
+     :ready (initialize! session options configuring! publish!)
      :stop! #(do (reset! *active? false) (.stop session))}))
 
 (defn column-count [element probe]
   (let [cell-width (.-width (.getBoundingClientRect probe))]
-    (max 20 (min 240 (js/Math.floor (/ (.-clientWidth element) cell-width))))))
+    (max 20 (min 240 (math/floor (/ (.-clientWidth element) cell-width))))))
 
 (defn resize! [session element probe rows]
   (request! session "nvim_ui_try_resize" [(column-count element probe) rows]))

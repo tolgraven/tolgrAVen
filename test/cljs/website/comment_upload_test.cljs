@@ -1,6 +1,7 @@
 (ns website.comment-upload-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.test-support :as support]
             [website.events]
@@ -86,8 +87,8 @@
                      (is (pos? (.-naturalWidth image)))
                      (is (nil? (.querySelector element ".upload-row")))
                      (is (not-any? :preview-error (vals (get-in @r/*app-db [:state :blog :image-uploads]))))))))
-             (.catch #(is false (str % " DOM: " (.-innerHTML element))))
-             (.finally (fn []
+             (p/catch-error #(is false (str % " DOM: " (.-innerHTML element))))
+             (p/finally-do (fn []
                          (when @root (support/unmount! @root))
                          (set! client/authenticated-request! original)
                          (.remove element)

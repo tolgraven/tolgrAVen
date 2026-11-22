@@ -4,7 +4,8 @@
   (:require-macros [website.test-async :refer [go-promise await!]])
   (:require
     [cljs.core.async]
-    [ajax.core :as ajax]
+    [website.http :as http]
+    [website.async :as a]
     [website.modules.docs.pages :as docs-pages]
     [website.test-support :as support]
     [cljs.test :refer-macros [deftest is testing async use-fixtures]]
@@ -114,7 +115,7 @@
              (let [*events (atom [])
                    *navigation (atom 0)
                    *resolve (atom nil)
-                   pending (js/Promise. (fn [resolve _] (reset! *resolve resolve)))
+                   pending (a/create (fn [resolve _] (reset! *resolve resolve)))
                    dispatch! #(swap! *events conj %)
                    old-match
                      {:data {:name :cv, :module :cv, :page :page, :controllers [{:start identity}]}}
@@ -133,7 +134,7 @@
                      (is (not-any? #(= :loading/on (first %)) @*events))
                      (done)))
                  0)))
-           (.catch (fn [error] (is false (str error)) (done))))))
+           (a/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest hydrated-route-does-not-enable-page-spinner
   (async done
          (-> (go-promise (let [before @ssr/*snapshot
@@ -145,20 +146,20 @@
                                   #(swap! *events conj %)
                                   (fn [_]
                                     (swap! *loads inc)
-                                    (js/Promise.resolve {:view {:page (fn [] [:div])}}))
+                                    (a/resolved {:view {:page (fn [] [:div])}}))
                                   {:path "/blog", :data {:name :blog, :module :blog, :page :page}})
                                 (is (= 1 @*loads) "Hydration still initializes the module")
                                 (is (not-any? #(= :loading/on (first %)) @*events))
                                 (finally (reset! ssr/*snapshot before)))
                            (js/setTimeout done 0)))
-             (.catch (fn [error] (is false (str error)) (done))))))
+             (a/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest module-load-failure-clears-loading
   (async done
          (-> (go-promise
                (let [*events (atom [])]
                  (routes/navigate! (atom 0)
                                    #(swap! *events conj %)
-                                   (fn [_] (js/Promise.reject (js/Error. "Test load failure")))
+                                   (fn [_] (a/rejected (js/Error. "Test load failure")))
                                    {:data {:name :docs, :module :docs, :page :page}})
                  (js/setTimeout
                    (fn []
@@ -172,7 +173,7 @@
                            "Page failures offer retry instead of a misleading 404"))
                      (done))
                    0)))
-             (.catch (fn [error] (is false (str error)) (done))))))
+             (a/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest cached-modules-initialize-once-and-return-native-promises
   (async done
          (-> (go-promise
@@ -189,13 +190,13 @@
                          second-load (loader/load! {:module id})]
                      (is (instance? js/Promise first-load))
                      (is (fn? (.-finally second-load)))
-                     (-> (js/Promise.all #js [first-load second-load])
-                         (.then (fn [results]
+                     (-> (a/all [first-load second-load])
+                         (a/then (fn [results]
                                   (is (= 1 @*initializations))
-                                  (is (= spec (aget results 0) (aget results 1)))))
-                         (.catch (fn [error] (is false (str error))))
-                         (.finally done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+                                  (is (= spec (first results) (second results)))))
+                         (a/catch-error (fn [error] (is false (str error))))
+                         (a/finally-do done))))))
+             (a/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest module-load-forwards-hooks-and-initialization-arguments
   (async done
     (let [id (keyword (str (random-uuid)))
@@ -216,13 +217,13 @@
                                               (swap! *calls conj [:post loaded args]) loaded)})))
           pending (load!)]
       (-> pending
-          (.then (fn [loaded]
+          (a/then (fn [loaded]
                    (is (= spec loaded))
                    (is (= [[:pre [:first {:second true}]]
                            [:init [:first {:second true}]]
                            [:post spec [:first {:second true}]]] @*calls))))
-          (.catch #(is false (str %)))
-          (.finally #(do (swap! loader/*loads dissoc id)
+          (a/catch-error #(is false (str %)))
+          (a/finally-do #(do (swap! loader/*loads dissoc id)
                          (swap! loader/*code-loads dissoc id) (done)))))))
 
 (deftest literal-search-completions
@@ -249,17 +250,17 @@
                      {:keys [values unmount!]} (await! (mount-subscriptions!
                                                          {:user [:user/active-user]}))]
                  (-> (wait-for! #(= 9 (get-in (values) [:user :karma])))
-                     (.then (fn [_]
+                     (a/then (fn [_]
                               (is (= ["admins"] (get-in (values) [:user :roles])))
                               (reset! *rows {:users [{:id "u", :name "After", :karma 10}]})
                               ((:change! transport) "site_users")
                               (wait-for! #(= "After" (get-in (values) [:user :name])))))
-                     (.then (fn [_]
+                     (a/then (fn [_]
                               (is (= 10 (get-in (values) [:user :karma])))
                               (is (= {:c 1} (get-in (values) [:user :comment-votes])))))
-                     (.catch #(is false (str %)))
-                     (.finally (fn [] (unmount!) ((:close! transport)) (restore!) (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+                     (a/catch-error #(is false (str %)))
+                     (a/finally-do (fn [] (unmount!) ((:close! transport)) (restore!) (done))))))
+             (a/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest mounted-blog-subscriptions-load-update-and-release-their-readers
   (async
     done
@@ -295,7 +296,7 @@
               *second (atom nil)]
           (-> (wait-for! #(and (= "Post 24" (get-in (values) [:post :title]))
                                (= #{:reply} (set (keys (:replies (values)))))))
-              (.then
+              (a/then
                 (fn [_]
                   (go-promise (let [v (values)]
                                 (is (= [28 24 1] (:ids v)))
@@ -325,30 +326,30 @@
                               (wait-for! #(and (= [29 28 24 1] (:ids (values)))
                                                (= #{:reply :new-reply}
                                                   (set (keys (:replies (values))))))))))
-              (.then (fn [_]
+              (a/then (fn [_]
                        (is (= [29 28] (:first (values))))
                        (unmount!)
                        (is (seq @scoped/*readers) "Second mounted owner keeps the readers alive")
                        (swap! *rows update :blog_posts #(filterv (fn [p] (not= 29 (:id p))) %))
                        ((:change! transport) "blog_posts")
                        (wait-for! #(= [28 24 1] (:ids ((:values @*second)))))))
-              (.then (fn [_]
+              (a/then (fn [_]
                        ((:unmount! @*second))
                        (reset! *second nil)
                        (wait-for! #(empty? @scoped/*readers))))
-              (.then (fn [_]
+              (a/then (fn [_]
                        (go-promise (is (empty? @scoped/*readers)
                                        "React unmount releases managed subscriptions")
                                    (is (seq (await! (state-at! [:store :scoped])))
                                        "Unmount retains event-populated content cache"))))
-              (.catch #(is false (str %)))
-              (.finally (fn []
+              (a/catch-error #(is false (str %)))
+              (a/finally-do (fn []
                           (unmount!)
                           (when @*second ((:unmount! @*second)))
                           ((:close! transport))
                           (restore!)
                           (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (a/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest active-vote-remains-clickable-unless-write-is-pending
   (async done
          (-> (go-promise
@@ -369,8 +370,8 @@
                         (r/flush)
                         (is (true? (.-disabled (.querySelector element "button"))))
                         (finally (support/unmount! root))))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (a/catch-error (fn [error] (is false (str error))))
+             (a/finally-do done))))
 (deftest blog-navigation-rejects-invalid-pages-and-page-sizes
   (async done
     (-> (go-promise
@@ -394,8 +395,8 @@
               (is (nil? (blog-model/page-ids [3 2 1] 0 0)))
               (is (= [] (blog-model/page-ids [3 2 1] 9 2)))
               (finally (restore!)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))
 (deftest blog-tags-handle-missing-values-whitespace-and-sequences
   (is (= [] (blog-model/tags nil)))
   (is (= ["clojure" "web"] (blog-model/tags "  clojure\tweb  clojure ")))
@@ -428,8 +429,8 @@
                         (r/flush)
                         (is (= "Live edit" (.-textContent element)))
                         (finally (support/unmount! root) (.remove element))))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (a/catch-error (fn [error] (is false (str error))))
+             (a/finally-do done))))
 (deftest heading-mounts-before-content-and-updates-reactively
   (async done
     (-> (go-promise
@@ -445,13 +446,13 @@
               (r/dispatch-sync [:content path {:title "Loaded heading"}])
               (await!
                 (-> (wait-for! #(= "Loaded heading" (.-textContent (.querySelector element "h1"))))
-                    (.catch
+                    (a/catch-error
                       (fn [error]
                         (-> (mount-subscriptions!
                               {:accepted (into [:get :content] path)
                                :view [:content/view path]
                                :validation [:validation/errors]})
-                            (.then
+                            (a/then
                               (fn [{:keys [values unmount!]}]
                                 (try
                                   (let [observed (values)
@@ -470,8 +471,8 @@
               (finally
                 (support/unmount! root)
                 (r/dispatch-sync [:content path nil])))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))
 
 (deftest tag-view-mounts-before-content-and-updates-reactively
   (async done
@@ -499,8 +500,8 @@
                         (is (= "Posts tagged cljs" (.-textContent element))
                             "A completed empty tag is not a pending read")
                         (finally (support/unmount! root))))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (a/catch-error (fn [error] (is false (str error))))
+             (a/finally-do done))))
 (deftest managed-query-failures-replace-pending-spinner
   (async
     done
@@ -519,8 +520,8 @@
                    (is (.includes (.-textContent element) "Please try again"))
                    (is (some? (.querySelector element "button")) "Failure retains a retry control")
                    (finally (support/unmount! root))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))
 (deftest header-routes-survive-json-roundtrip-on-direct-blog-load
   (async done
          (-> (go-promise
@@ -543,8 +544,8 @@
                                (mapv #(.getAttribute % "href")
                                  (array-seq (.querySelectorAll element "a"))))))
                       (finally (support/unmount! root) (r/clear-subscription-cache!) (before)))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (a/catch-error (fn [error] (is false (str error))))
+             (a/finally-do done))))
 (deftest fragment-links-retain-current-route-parameters
   (async done
          (-> (go-promise (let [before (r/make-restore-fn)
@@ -560,8 +561,8 @@
                                          (await! (subscription-value! [:href "#main"]))))
                                   (is (= [[:blog-post {:permalink "A-new-era-28"}]] @*calls)))
                                 (finally (r/clear-subscription-cache!) (before)))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (a/catch-error (fn [error] (is false (str error))))
+             (a/finally-do done))))
 (deftest shim-keeps-registration-call-site-in-debug-builds
   (r/reg-event-db :test/instrumented-shim (fn [db _] db))
   (try (let [source (meta (r/get-handler :event :test/instrumented-shim))]
@@ -593,14 +594,14 @@
                                (.remove retained)
                                (r/clear-subscription-cache!)
                                (before)))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (a/catch-error (fn [error] (is false (str error))))
+             (a/finally-do done))))
 (deftest background-initialization-does-not-dispatch-loading-events
   (let [handler (website.events/get-http-fn :get)
         effects (handler {:db {}} [:http/get {:uri "/api/supabase/settings", :background? true}])]
     (is (not (contains? effects :dispatch)))
-    (is (nil? (get-in effects [:http-xhrio :on-success 2])))
-    (is (not (contains? (:http-xhrio effects) :background?)))))
+    (is (nil? (get-in effects [:http/fetch :on-success 2])))
+    (is (not (contains? (:http/fetch effects) :background?)))))
 (deftest subscription-preload-releases-only-its-own-owner
   (async
     done
@@ -613,23 +614,23 @@
                                                                          [:test/preload-ready]}))
               load! (:load! (get @data/*sources :subscription))]
           (-> (load! {:query [:test/preload-ready], :timeout-ms 2000})
-              (.then (fn [ready]
+              (a/then (fn [ready]
                        (is (true? ready))
                        ;; Source readiness precedes the mounted React commit.
                        ;; Await that commit to test retained ownership reliably.
                        (-> (wait-for! #(true? (:ready (values))))
-                           (.then (fn [_]
+                           (a/then (fn [_]
                                     (is (true? (:ready (values)))
                                         "Mounted owner remains reactive after preload releases")
                                     (is (some #{[:test/preload-ready]} (r/live-query-vs)))
                                     (unmount!)
                                     (wait-for! #(not (some #{[:test/preload-ready]}
                                                          (r/live-query-vs)))))))))
-              (.then (fn [_] (is (not (some #{[:test/preload-ready]} (r/live-query-vs))))))
-              (.catch #(is false (str %)))
-              (.finally (fn [] (unmount!) (restore!) (done))))
+              (a/then (fn [_] (is (not (some #{[:test/preload-ready]} (r/live-query-vs))))))
+              (a/catch-error #(is false (str %)))
+              (a/finally-do (fn [] (unmount!) (restore!) (done))))
           (r/dispatch-sync [:state [:preload-ready] true])))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (a/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest codox-links-are-rewritten-before-rendering
   (is (= "<a href=\"/docs/codox/website.core#init\">Init</a>"
          (docs-view/page-links "<a href=\"website.core.html#init\">Init</a>")))
@@ -655,8 +656,8 @@
                                        (select-keys (await! (state-at! [:options :theme]))
                                                     [:dark-mode :colorscheme])))
                                 (finally (before)))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (a/catch-error (fn [error] (is false (str error))))
+             (a/finally-do done))))
 (deftest markdown-code-renders-through-the-react-adapter
   (async done
          (-> (go-promise (let [element (.createElement js/document "div")
@@ -669,8 +670,8 @@
                                 (is (.includes (.-textContent element) "(+ 1 2)"))
                                 (is (some? (.querySelector element "pre code")))
                                 (finally (support/unmount! root)))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (a/catch-error (fn [error] (is false (str error))))
+             (a/finally-do done))))
 (defn- event-effects
   [id coeffects event]
   ;; Exercise the registered handler without running navigation/timer effects.
@@ -756,7 +757,7 @@
           (r/dispatch-sync [:set [:common/route] old])
           (await! (support/render! root [:f> fixture]))
           (-> (page-transition/navigate! next true)
-              (.then (fn [_]
+              (a/then (fn [_]
                        (is (nil? (.querySelector element "#old-transition-page")))
                        (is (some? (.querySelector element "#new-transition-page")))
                        (is (= 1 (.-length (.querySelectorAll element "main"))))
@@ -765,14 +766,14 @@
                            "The transition completes while destination content is still pending")
                        (reset! *content-ready? true)
                        (wait-for! #(= "New" (some-> (.querySelector element "#new-transition-page") .-textContent)))))
-              (.catch #(is false (str %)))
-              (.finally (fn []
+              (a/catch-error #(is false (str %)))
+              (a/finally-do (fn []
                           (support/unmount! root)
                           (.remove element)
                           (r/clear-subscription-cache!)
                           (before)
                           (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (a/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest native-link-crossfade-hints-only-the-current-page-layers
   (async done
     (-> (go-promise
@@ -785,8 +786,8 @@
                 outgoing #js {:animationName "page-opacity-out", :frameRate "auto"}
                 incoming #js {:animationName "page-opacity-in-a", :frameRate "auto"}
                 unrelated #js {:animationName "blinking", :frameRate "auto"}
-                transition #js {:ready (js/Promise.resolve nil)
-                                :finished (js/Promise.resolve nil)
+                transition #js {:ready (a/resolved nil)
+                                :finished (a/resolved nil)
                                 :skipTransition (fn [])}]
             (try
               (reset! page-transition/*transition nil)
@@ -805,8 +806,8 @@
                 (reset! page-transition/*transition original-transition)
                 (reset! page-transition/*generation original-generation)
                 (reset! page-transition/*destination original-destination)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (deftest route-change-with-a-query-change-still-positions-the-new-page
   (let [old {:path "/blog", :query-params {:userBox "false"}, :data {:view identity}}
@@ -895,7 +896,7 @@
                                   (-deref [_] spec))
                      original loader/load!
                      *finish (atom nil)
-                     pending (js/Promise. (fn [resolve _] (reset! *finish resolve)))
+                     pending (a/create (fn [resolve _] (reset! *finish resolve)))
                      *events (atom [])]
                  (set! loader/load! (constantly pending))
                  (r/with-framework-bindings [loader/modules {id loadable}]
@@ -906,12 +907,12 @@
                    (is (= :page/navigate (ffirst @*events)))
                    (is (= (get-in spec [:view :page]) (get-in @*events [0 1 :data :view])))
                    (-> (loader/load-code! {:module id, :view :page})
-                       (.then (fn [actual]
+                       (a/then (fn [actual]
                                 (is (= spec actual) "Code resolves while data is still pending")
                                 (@*finish spec)))
-                       (.catch #(is false (str %)))
-                       (.finally (fn [] (set! loader/load! original) (done)))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+                       (a/catch-error #(is false (str %)))
+                       (a/finally-do (fn [] (set! loader/load! original) (done)))))))
+             (a/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest page-transition-does-not-wait-for-image-downloads
   (async done
          (-> (go-promise
@@ -919,7 +920,7 @@
                      image (.createElement js/document "img")
                      *completed (atom false)]
                  (set! (.-id main) "main")
-                 (set! (.-decode image) (fn [] (js/Promise. (fn [_ _]))))
+                 (set! (.-decode image) (fn [] (a/create (fn [_ _]))))
                  (set! (.-getBoundingClientRect image) (fn [] #js {:top 0, :bottom 100}))
                  (.appendChild main image)
                  (.appendChild (.-body js/document) main)
@@ -927,12 +928,12 @@
                    (page-transition/ready! nil
                                            {:current? (constantly true),
                                             :resolve! #(reset! *completed true)}))
-                 (-> (js/Promise.resolve)
-                     (.then (fn [_]
+                 (-> (a/resolved js/undefined)
+                     (a/then (fn [_]
                               (is @*completed
                                   "An indefinitely pending image must not freeze navigation")))
-                     (.finally (fn [] (.remove main) (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+                     (a/finally-do (fn [] (.remove main) (done))))))
+             (a/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest cold-hydration-never-installs-a-loading-shell
   (async done
          (-> (go-promise
@@ -940,7 +941,7 @@
                      snapshot @ssr/*snapshot
                      *events (atom [])
                      *finish (atom nil)
-                     pending (js/Promise. (fn [resolve _] (reset! *finish resolve)))
+                     pending (a/create (fn [resolve _] (reset! *finish resolve)))
                      view (fn [] [:article "Server article"])]
                  (reset! restore/*context {:hydrate? true})
                  (reset! ssr/*snapshot {:path "/blog/post/cold-28"})
@@ -951,14 +952,14 @@
                  (is (empty? @*events) "Preserve existing server DOM while code loads")
                  (@*finish {:view {:post view}})
                  (-> pending
-                     (.then (fn [_]
+                     (a/then (fn [_]
                               (is (= 1 (count @*events)))
                               (is (= view (get-in @*events [0 1 :data :view])))))
-                     (.finally (fn []
+                     (a/finally-do (fn []
                                  (reset! restore/*context context)
                                  (reset! ssr/*snapshot snapshot)
                                  (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+             (a/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest history-navigation-declares-restoration-before-page-commit
   (let [before @restore/*context
         native-start (.-startViewTransition js/document)
@@ -1013,8 +1014,8 @@
                         (is (identical? heading (.querySelector element "h1")))
                         (is (= "Second" (.-textContent (.querySelector element "article")))))
                       (finally (support/unmount! root)))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (a/catch-error (fn [error] (is false (str error))))
+             (a/finally-do done))))
 (deftest external-navigation-saves-the-current-path-not-a-captured-route-name
   (let [effects (event-effects :scroll/save-history
                                {:db {:common/route {:path "/blog/post/27"}}, :scroll-position 499}
@@ -1027,8 +1028,8 @@
                                   (r/dispatch-sync [:search/state [:open?] state])
                                   (is (= expected (await! (subscription-value! [:search/open?])))))
                                 (finally (before)))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (a/catch-error (fn [error] (is false (str error))))
+             (a/finally-do done))))
 (deftest first-document-route-restores-scroll-even-with-persisted-navigation-counters
   (let [effects (event-effects :common/navigate
                                {:db {:state {:scroll-position {"/blog/post/17" 499}}},
@@ -1055,7 +1056,7 @@
 (deftest cold-history-return-does-not-consume-restoration-on-an-interim-shell
   (let [context @restore/*context
         *events (atom [])
-        pending (js/Promise. (fn [_ _]))]
+        pending (a/create (fn [_ _]))]
     (try (restore/begin! {:back? true})
          (routes/navigate! (atom 0)
                            #(swap! *events conj %)
@@ -1098,8 +1099,8 @@
                 (support/unmount! root) (.remove element)
                 (set! (.-scrollRestoration js/history) original-mode)
                 (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (deftest native-height-release-only-applies-to-the-current-navigation
   (let [db {:page/commit {:target "main"
@@ -1252,8 +1253,8 @@
                 (support/unmount! root) (.remove element)
                 (set! (.-scrollRestoration js/history) original-mode)
                 (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (deftest component-anchor-follows-growing-ancestors-and-respects-header-clearance
   (async done
@@ -1293,8 +1294,8 @@
                 (.remove element)
                 (set! (.-scrollRestoration js/history) original-mode)
                 (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (deftest immediate-component-anchor-positions-before-unrelated-layout-is-ready
   (async done
@@ -1336,8 +1337,8 @@
                 (.remove element)
                 (set! (.-scrollRestoration js/history) original-mode)
                 (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (deftest native-positioned-component-keeps-tracking-layout-through-hydration
   (async done
@@ -1395,8 +1396,8 @@
                 (.remove element)
                 (set! (.-scrollRestoration js/history) original-mode)
                 (.scrollTo js/window #js {:top original-position, :behavior "instant"})))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (deftest disappearing-component-anchor-releases-restoration
   (async done
@@ -1422,8 +1423,8 @@
                 (.remove element)
                 (set! (.-scrollRestoration js/history) original-mode)
                 (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (defpage <restoration-data-page>
   {:depends [{:source :restoration-fixture}]}
@@ -1441,7 +1442,7 @@
                 *resolve (atom nil)]
             (.appendChild (.-body js/document) element)
             (data/register-source! :restoration-fixture
-              {:load! (fn [_] (js/Promise. (fn [resolve _] (reset! *resolve resolve))))})
+              {:load! (fn [_] (a/create (fn [resolve _] (reset! *resolve resolve))))})
             (try
               (await! (support/render! root
                         [:r> (r/context-provider restore/readiness-context) #js {:value true}
@@ -1471,8 +1472,8 @@
                   (swap! data/*sources dissoc :restoration-fixture))
                 (set! (.-scrollRestoration js/history) original-mode)
                 (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (deftest history-scroll-follows-layout-growth-and-releases-its-observer
   (async done
@@ -1503,8 +1504,8 @@
                 (.remove element)
                 (set! (.-scrollRestoration js/history) original-mode)
                 (.scrollTo js/window #js {:top original-position :behavior "instant"})))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))
 
 (defpage <crossfade-fixture> [spec]
   [:p {:id (:id spec)
@@ -1546,8 +1547,8 @@
               (finally (support/unmount! root) (.remove element)))
             (is (nil? @*caller))
             (is (nil? @*navigation))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (deftest fallback-transition-commits-pending-content-and-releases-old-page
   (async done
@@ -1570,8 +1571,8 @@
                   "Repeating the same route pair starts a fresh transition")
               (await! (wait-for! #(nil? (.querySelector element "#outgoing"))))
               (finally (support/unmount! root) (.remove element)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (deftest fallback-css-crossfades-incoming-and-outgoing-together
   (async done
@@ -1598,7 +1599,7 @@
                                      {:rate rate,
                                       :class (.. animation -effect -target -className)})))})
               ;; Production CSS in an isolated fixture, not duplicated test rules.
-              (await! (js/Promise.
+              (await! (a/create
                         (fn [resolve reject]
                           (set! (.-rel stylesheet) "stylesheet")
                           (set! (.-href stylesheet) "/css/website/main.min.css")
@@ -1607,7 +1608,7 @@
                           (.appendChild shadow stylesheet))))
               ;; Native pseudo-elements live at the document root. Load the same
               ;; sheet there so both paths inherit the production timing variables.
-              (await! (js/Promise.
+              (await! (a/create
                         (fn [resolve reject]
                           (set! (.-rel native-stylesheet) "stylesheet")
                           (set! (.-href native-stylesheet) (.-href stylesheet))
@@ -1664,7 +1665,7 @@
                         "Neither path delays either layer"))))
               (when (.-startViewTransition js/document)
                 (let [footer (.querySelector element "#footer-sticky")
-                      transition (.startViewTransition js/document #(js/Promise.resolve nil))
+                      transition (.startViewTransition js/document #(a/resolved nil))
                       style #(js/getComputedStyle (.-documentElement js/document) %)]
                   (await! (.-ready transition))
                   (is (= "sticky-footer" (.-viewTransitionName (js/getComputedStyle footer))))
@@ -1685,8 +1686,8 @@
                 (if original-frame-rate
                   (js/Object.defineProperty js/Animation.prototype "frameRate" original-frame-rate)
                   (js/Reflect.deleteProperty js/Animation.prototype "frameRate"))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (deftest github-pagination-component-is-not-the-default-loading-helper
   (r/with-framework-bindings [r/subscribe (fn
@@ -1714,7 +1715,7 @@
       (set! (.-startViewTransition js/document)
             (fn [callback]
               (reset! *callback callback)
-              #js {:ready (js/Promise.resolve nil) :finished (js/Promise.resolve nil)
+              #js {:ready (a/resolved nil) :finished (a/resolved nil)
                    :skipTransition (fn [])}))
       (r/with-framework-bindings [r/dispatch #(swap! *events conj %)]
         (page-transition/navigate! shell true)
@@ -1761,8 +1762,8 @@
                 (is (every? #(= "1" (:opacity %)) @*commits)
                     "The first commit must not hide cached Markdown until another render")
                 (finally (support/unmount! root) (.remove element))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))
 
 (deftest module-vectors-retain-native-ssr-roots
   (let [<target> (fn [spec] [:section (:title spec)])
@@ -1800,8 +1801,8 @@
               (finally
                 (r/dispatch [:set [:common/route] previous])
                 (support/unmount! root) (.remove element)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (m/defc <lazy-vector-target> [{:keys [title]}]
   [:p {:data-lazy-vector-target true} title])
@@ -1817,7 +1818,7 @@
                 original-modules loader/modules original-load loader/load-code!
                 *ready? (atom false) *calls (atom 0) *complete (atom nil)
                 spec {:id module :view {:view <lazy-vector-target>}}
-                pending (js/Promise. (fn [resolve _] (reset! *complete resolve)))
+                pending (a/create (fn [resolve _] (reset! *complete resolve)))
                 loadable (reify lazy/ILoadable (ready? [_] @*ready?)
                           IDeref (-deref [_] spec))]
             (.appendChild (.-body js/document) element)
@@ -1826,7 +1827,7 @@
               (set! loader/load-code!
                     (fn [_]
                       (swap! *calls inc)
-                      (.then pending (fn [_]
+                      (a/then pending (fn [_]
                                        (reset! *ready? true)
                                        (r/dispatch [:loader/code-ready module]) spec))))
               (await! (support/render! root
@@ -1844,8 +1845,8 @@
                 (set! loader/modules original-modules) (set! loader/load-code! original-load)
                 (r/dispatch [:component-data/remove [:loader :code-ready module]])
                 (r/dispatch [:component-data/remove [:loader :requested module]])))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (deftest documentation-events-and-components-share-the-backend-resource
   (async done
@@ -1854,13 +1855,13 @@
                 root (await! (support/create-root! element))
                 page (str "docs-test-" (random-uuid))
                 html "<h1>Backend documentation</h1>"
-                original-get ajax/GET
+                original-get http/request!
                 *calls (atom []) *respond (atom nil)]
             (.appendChild (.-body js/document) element)
             (try
-              (set! ajax/GET (fn [url & [options]]
-                              (swap! *calls conj url)
-                              (reset! *respond (:handler options))))
+              (set! http/request! (fn [{:keys [uri]}]
+                                    (swap! *calls conj uri)
+                                    (a/create (fn [resolve _] (reset! *respond resolve)))))
               ;; Route/controller event and two mounted views use the same source.
               (r/dispatch [:docs/get page])
               (await! (support/render! root [:div [docs-view/<doc-page> page]
@@ -1876,12 +1877,12 @@
               (is (= "Backend documentation" (.-textContent element)))
               (finally
                 (support/unmount! root) (.remove element)
-                (set! ajax/GET original-get)
+                (set! http/request! original-get)
                 (r/dispatch [:component-data/remove [:docs page]])
                 (data/invalidate! #{(docs-pages/document-dependency page)
                                     (:load (docs-pages/document-dependency page))})))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (a/catch-error #(is false (str %)))
+        (a/finally-do done))))
 
 (deftest mounted-thread-reveal-acquires-both-levels-before-child-mount
   (async done
@@ -1903,8 +1904,8 @@
                 (is (= "grandchild" (get-in result [:grandchild :id]))
                     "The child query was filled without mounting a child reader"))
               (finally (unmount!) ((:close! transport)) (restore!)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))
 
 (deftest hydration-suppression-ends-without-restarting-document-motion
   (let [before @restore/*context]
@@ -2001,5 +2002,5 @@
               (is (zero? (.-length (.querySelectorAll element ".appear-wrapper:not(.appeared)"))))
               (is (zero? (.-length (.querySelectorAll element ".component-spinner"))))
               (finally (support/unmount! root) (reset! restore/*context context) (restore!)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))

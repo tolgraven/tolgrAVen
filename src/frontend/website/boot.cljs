@@ -1,7 +1,8 @@
 (ns website.boot
   "Ordered document setup, committed UI setup and deferred background hosts."
   (:require-macros [website.build.site :refer [when-enabled]])
-  (:require [breaking-point.core :as bp]
+  (:require [website.async :as a]
+            [breaking-point.core :as bp]
             [website.breakpoints]
             [website.react :as r]
             [website.macros :refer-macros [defc]]
@@ -111,15 +112,15 @@
   ;; Keep restoration attached to engine readiness even if acquisition fails and
   ;; is retried from the shared loader notification later.
   (let [restored (-> (validation/when-ready!)
-                     (.then (fn [_]
+                     (a/then (fn [_]
                               (validation-runtime/install!)
                               (storage/ready!)))
-                     (.then (fn [_] (storage/restore-public-cache!))))]
+                     (a/then (fn [_] (storage/restore-public-cache!))))]
     (-> (if (validation/ready?)
-          (js/Promise.resolve nil)
+          (a/resolved nil)
           (loader/load-code! {:module :coercion}))
-        (.then (fn [_] restored))
-        (.catch (fn [_] nil)))))
+        (a/then (fn [_] restored))
+        (a/catch-error (fn [_] nil)))))
 
 (defc <coercion> {:profile false} []
   (r/use-effect

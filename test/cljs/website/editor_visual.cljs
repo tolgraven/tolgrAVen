@@ -1,6 +1,7 @@
 (ns website.editor-visual
   "Deterministic browser component fixture for before/after screenshot review."
-  (:require [clojure.string :as string]
+  (:require [website.async :as p]
+            [clojure.string :as string]
             [website.react :as r]
             [website.macros :refer-macros [defc defpage]]
             [website.supabase.runtime :as supabase]
@@ -88,7 +89,7 @@
                       :fields {}}
         handlers (mapv (fn [[kind id]] [kind id (r/get-handler kind id)])
                        [[:fx :content-editor/request] [:fx :content-editor/upload]
-                        [:fx :supabase/request] [:fx :http-xhrio] [:fx :ls] [:cofx :ls]])
+                        [:fx :supabase/request] [:fx :http/fetch] [:fx :ls] [:cofx :ls]])
         original-ensure-code! supabase/ensure-code!
         *saved (atom {})
         *disposed? (atom false)
@@ -127,7 +128,7 @@
             (reject-account-effect! :write))))
       (r/reg-fx :content-editor/upload (fn [_] (reject-account-effect! :write)))
       (r/reg-fx :supabase/request (fn [_] (reject-account-effect! :provider)))
-      (r/reg-fx :http-xhrio (fn [_] (reject-account-effect! :http)))
+      (r/reg-fx :http/fetch (fn [_] (reject-account-effect! :http)))
       ;; Native input blur persists through :ls/store-val. Keep this disposable
       ;; draft transport in memory, never in the shared browser's localStorage.
       (r/reg-cofx :ls #(assoc % :ls @*saved))
@@ -216,7 +217,7 @@
           (reject-cms-effect! :write))))
     (r/reg-fx :content-editor/upload (fn [_] (reject-cms-effect! :write)))
     (r/reg-fx :supabase/request (fn [_] (reject-cms-effect! :provider)))
-    (r/reg-fx :http-xhrio (fn [_] (reject-cms-effect! :http)))
+    (r/reg-fx :http/fetch (fn [_] (reject-cms-effect! :http)))
     ;; cv/<cv> always records its visit through this existing event/effect.
     ;; Keep its native mounted demo, but never read or persist a user's storage.
     (r/reg-cofx :ls #(assoc % :ls {}))
@@ -279,13 +280,13 @@
                        (assoc :headers {"Content-Type" "application/json"})
                        data (assoc :body (if (instance? js/FormData data) data
                                            (js/JSON.stringify (clj->js data)))))))
-          (.then (fn [response]
+          (p/then (fn [response]
                    (-> (.json response)
-                       (.then (fn [body]
+                       (p/then (fn [body]
                                 (r/dispatch (conj (if (.-ok response) success failure)
                                                   (if (.-ok response) (js->clj body :keywordize-keys true)
                                                     {:response (js->clj body :keywordize-keys true)}))))))))
-          (.catch #(r/dispatch (conj failure {:message (.-message %)})))))))
+          (p/catch-error #(r/dispatch (conj failure {:message (.-message %)})))))))
 
 (defn ^:export init! [enhanced?]
   ;; Header href subscriptions use the installed history's router. The fixture
@@ -295,8 +296,8 @@
         component (or (.get params "component") "intro")
         edit? (= "true" (.get params "edit"))]
     (-> (js/fetch (if (= "true" (.get params "live")) "/fixtures/editor-live.json" "/fixtures/editor-seed.json"))
-        (.then #(.json %))
-        (.then (fn [seed]
+        (p/then #(.json %))
+        (p/then (fn [seed]
                  (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) edit?])
                  (restore/begin! {:hydrate? false, :back? true})
                  (r/render (r/create-root (.getElementById js/document "app")) [<fixture> component enhanced?]))))))

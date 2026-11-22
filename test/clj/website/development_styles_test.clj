@@ -3,9 +3,9 @@
             [clojure.spec.alpha :as s]
             [clojure.test :refer [deftest is]]
             [mount.core :as mount]
-            [website.dev.shadow :as shadow]
-            [website.dev.styles :as styles]
-            [website.dev.python :as python]
+            [website.tooling.shadow :as shadow]
+            [website.tooling.styles :as styles]
+            [website.tooling.python :as python]
             [website.routes.home :as home]
             [user :as user]))
 

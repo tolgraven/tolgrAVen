@@ -1,6 +1,8 @@
 (ns website.ssr.return-worker
   "Cache/Fetch adapters for local return documents. No asset or SPA interception."
-  #?(:cljs (:require [website.ssr.return-policy :as policy]
+  #?(:cljs (:require [website.clock :as clock]
+                     [website.async :as a]
+                     [website.ssr.return-policy :as policy]
                      #?(:module/neovim [website.modules.neovim.policy :as neovim]))))
 
 #?(:cljs
@@ -13,7 +15,7 @@
 (def cache-name (str prefix build))
 (def origin (.-origin js/self.location))
 (def arm-url (str origin "/__local-return-arm__"))
-(defonce *writes (atom (js/Promise.resolve nil)))
+(defonce *writes (atom (a/resolved nil)))
 
 (defn reply! [event value]
   (when-let [port (first (array-seq (.-ports event)))]
@@ -28,28 +30,22 @@
                        "X-Local-Page"  "1"
                        "X-Local-Saved" (str saved-at)})})))
 
-(defn- trim! [cache]
-  (-> (.keys cache)
-      (.then (fn [entries]
-               (->> (array-seq entries)
-                    policy/excess-documents
-                    (map #(.delete cache %))
-                    into-array
-                    js/Promise.all)))))
+(defn- ^:async trim! [cache]
+  (let [entries (await (.keys cache))]
+    (a/all (map #(.delete cache %) (policy/excess-documents (array-seq entries))))))
 
-(defn save! [{:keys [url html] message-build :build}]
-  (if-not (= message-build build)
-    (js/Promise.reject (js/Error. "Incompatible return document build"))
-    (-> (.open js/caches cache-name)
-        (.then (fn [cache]
-                 (-> (.put cache url (document-response url html (.now js/Date)))
-                     (.then (fn [_] (trim! cache)))))))))
+(defn ^:async save! [{:keys [url html] message-build :build}]
+  (when-not (= message-build build)
+    (throw (js/Error. "Incompatible return document build")))
+  (let [cache (await (.open js/caches cache-name))]
+    (await (.put cache url (document-response url html (clock/epoch-ms))))
+    (trim! cache)))
 
 (defn arm! [url]
-  (let [record (policy/arm-record url (.now js/Date))
+  (let [record (policy/arm-record url (clock/epoch-ms))
         json (js/JSON.stringify (clj->js record))]
     (-> (.open js/caches cache-name)
-        (.then #(.put % arm-url (js/Response. json))))))
+        (a/then #(.put % arm-url (js/Response. json))))))
 
 (defn network! [request returning?]
   ;; Only an explicitly armed failed external return requests disk restoration.
@@ -59,63 +55,57 @@
 
 (defn- read-arm! [response]
   (if response
-    (-> (.json response) (.then #(js->clj % :keywordize-keys true)))
-    (js/Promise.resolve nil)))
+    (-> (.json response) (a/then #(js->clj % :keywordize-keys true)))
+    (a/resolved nil)))
 
 (defn- saved-at [response]
   (when-let [text (when response (.get (.-headers response) "X-Local-Saved"))]
     (parse-long text)))
 
-(defn- choose-response! [cache request saved armed]
+(defn- ^:async choose-response! [cache request saved armed]
   (let [{:keys [source returning?]}
-        (policy/navigation-plan (.-url request) (saved-at saved) armed (.now js/Date))]
+        (policy/navigation-plan (.-url request) (saved-at saved) armed (clock/epoch-ms))]
     (case source
-      :cache (-> (js/Promise.all
-                   (into-array (cond-> [(.delete cache request)]
-                                 returning? (conj (.delete cache arm-url)))))
-                 ;; Consume once; the new page republishes current state.
-                 (.then (fn [_] saved)))
+      :cache (do
+               ;; Consume once. The new page republishes current state.
+               (await (a/all (cond-> [(.delete cache request)]
+                               returning? (conj (.delete cache arm-url)))))
+               saved)
       :network (network! request returning?))))
 
-(defn- cached-navigation! [cache request]
-  (-> (js/Promise.all (into-array [(.match cache request) (.match cache arm-url)]))
-      (.then (fn [entries]
-               (let [[saved arm] (array-seq entries)]
-                 (-> (read-arm! arm)
-                     (.then #(choose-response! cache request saved %))))))))
+(defn- ^:async cached-navigation! [cache request]
+  (let [[saved arm] (await (a/all [(.match cache request) (.match cache arm-url)]))]
+    (choose-response! cache request saved (await (read-arm! arm)))))
 
 (defn navigation! [request]
   (-> @*writes
-      (.catch (fn [_] nil))
-      (.then (fn [_] (.open js/caches cache-name)))
-      (.then #(cached-navigation! % request))
-      (.catch (fn [_] (js/fetch request)))))
+      (a/catch-error (fn [_] nil))
+      (a/then (fn [_] (.open js/caches cache-name)))
+      (a/then #(cached-navigation! % request))
+      (a/catch-error (fn [_] (js/fetch request)))))
 
-(defn- activate! []
-  (-> (.keys js/caches)
-      (.then (fn [names]
-               (->> (policy/obsolete-caches (array-seq names) cache-name)
-                    (map #(.delete js/caches %))
-                    into-array
-                    js/Promise.all)))
-      (.then (fn [_] (.claim (.-clients js/self))))))
+(defn- ^:async activate! []
+  (let [names (array-seq (await (.keys js/caches)))
+        obsolete (policy/obsolete-caches names cache-name)]
+    (await (a/all (map #(.delete js/caches %) obsolete)))
+    (.claim (.-clients js/self))))
 
 (defn- write! [{:keys [op url arm] :as message}]
   (case op
-    "save" (-> (save! message) (.then (fn [_] (when arm (arm! url)))))
+    "save" (-> (save! message) (a/then (fn [_] (when arm (arm! url)))))
     "arm" (arm! url)
-    "disarm" (-> (.open js/caches cache-name) (.then #(.delete % arm-url)))
+    "disarm" (-> (.open js/caches cache-name) (a/then #(.delete % arm-url)))
     "clear" (.delete js/caches cache-name)
-    (js/Promise.resolve nil)))
+    (a/resolved nil)))
 
 (defn- message! [event]
   (let [message (js->clj (.-data event) :keywordize-keys true)
-        pending (-> @*writes (.catch (fn [_] nil))
-                    (.then (fn [_] (write! message))))]
+        pending (-> @*writes (a/catch-error (fn [_] nil))
+                    (a/then (fn [_] (write! message))))]
     (reset! *writes pending)
     (.waitUntil event (-> pending
-                         (.then (fn [_] (reply! event {:ok true})))
-                         (.catch (fn [_] (reply! event {:ok false})))))))
+                         (a/then (fn [_] (reply! event {:ok true})))
+                         (a/catch-error (fn [_] (reply! event {:ok false})))))))
 
 (defn- fetch! [event]
   (let [request (.-request event)

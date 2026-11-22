@@ -1,6 +1,7 @@
 (ns website.component-data-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [website.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
@@ -30,7 +31,7 @@
   [_ (swap! *created inc)]
   [:p @(r/subscribe [:get :fixture id])])
 (defn- flush! [] (support/settle!))
-(defn- tick! [] (js/Promise. (fn [resolve _] (js/setTimeout resolve 20))))
+(defn- tick! [] (p/delay! 20))
 (defn- clean!
   []
   (data/invalidate! (constantly true))
@@ -50,7 +51,7 @@
           (data/register-source! :fixture
                                  {:load! (fn [{:keys [id]}]
                                            (swap! *calls conj id)
-                                           (js/Promise. (fn [resolve _]
+                                           (p/create (fn [resolve _]
                                                           (swap! *resolve assoc id resolve))))})
           (let [first-load (component/preload! <dependent> :one)
                 second-load (component/preload! <dependent> :one)]
@@ -62,22 +63,22 @@
                                        "[aria-busy=true][aria-label=\"Loading content\"]")))
             (is (= [:one :parallel] @*calls) "Normal rendering allows the shared queue to run")
             (-> (tick!)
-                (.then (fn [_]
+                (p/then (fn [_]
                          (is (= [:one :parallel] @*calls) "Mount shares the preloaded requests")
                          ((get @*resolve :one) "First resource")
                          ((get @*resolve :parallel) "Second resource")
-                         (js/Promise.all #js [first-load second-load])))
-                (.then (fn [_] (tick!)))
-                (.then (fn [_]
+                         (p/all [first-load second-load])))
+                (p/then (fn [_] (tick!)))
+                (p/then (fn [_]
                          (go-promise (await! (flush!))
                                      (is (= "First resource" (.-textContent container)))
                                      (is (= 1 @*created))
                                      (is (= "First resource"
                                             (get-in @r/*app-db [:fixture :one]))))))
-                (.catch #(is false (str %)))
-                (.finally
+                (p/catch-error #(is false (str %)))
+                (p/finally-do
                   (fn [] (support/unmount! root) (clean!) (reset! r/*app-db before) (done)))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest app-db-can-wait-before-mount-and-load-through-strapi
   (async done
          (-> (go-promise
@@ -92,22 +93,22 @@
                        (fn [keys]
                          (swap! *calls conj keys)
                          (swap! r/*app-db assoc-in [:content :blog] {:title "From CMS"})
-                         (js/Promise.resolve nil)))
+                         (p/resolved nil)))
                  (-> (data/ensure! resource)
-                     (.then (fn [value]
+                     (p/then (fn [value]
                               (is (= {:title "From CMS"} value))
                               (is (= [[:blog]] @*calls))
                               (let [pending (data/ensure! {:source :app-db, :path [:flag]})]
                                 (swap! r/*app-db assoc :flag false)
                                 pending)))
-                     (.then (fn [value] (is (false? value) "False is loaded data, not missing")))
-                     (.catch #(is false (str %)))
-                     (.finally (fn []
+                     (p/then (fn [value] (is (false? value) "False is loaded data, not missing")))
+                     (p/catch-error #(is false (str %)))
+                     (p/finally-do (fn []
                                  (set! content/ensure! original)
                                  (clean!)
                                  (reset! r/*app-db before)
                                  (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+             (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest failures-are-visible-retryable-and-late-responses-cannot-install
   (async
     done
@@ -122,11 +123,11 @@
           (data/register-source! :fixture
                                  {:load! (fn [_]
                                            (if (= 1 (swap! *calls inc))
-                                             (js/Promise. (fn [resolve _] (reset! *late resolve)))
-                                             (js/Promise.resolve "fresh")))})
+                                             (p/create (fn [resolve _] (reset! *late resolve)))
+                                             (p/resolved "fresh")))})
           (-> (data/ensure! resource)
-              (.then (fn [_] (is false "Should time out")))
-              (.catch (fn [_]
+              (p/then (fn [_] (is false "Should time out")))
+              (p/catch-error (fn [_]
                         (go-promise
                           (is (= :error (data/state [resource])))
                           (is (some #(and (vector? %) (= :component-data (first %)))
@@ -141,18 +142,18 @@
                           (is (.includes (.-textContent element) "data could not be loaded"))
                           (.click (.querySelector element "button"))
                           (tick!))))
-              (.then (fn [_] (@*late "stale") (tick!)))
-              (.then (fn [_]
+              (p/then (fn [_] (@*late "stale") (tick!)))
+              (p/then (fn [_]
                        (go-promise (is (= "fresh" (get-in @r/*app-db [:fixture :value])))
                                    (is (= :ready (data/state [resource])))
                                    (is (= 2 @*calls))
                                    (await! (flush!))
                                    (is (nil? (.querySelector element ".component-failed")))
                                    (is (= "Recovered content" (.-textContent element))))))
-              (.catch #(is false (str %)))
-              (.finally
+              (p/catch-error #(is false (str %)))
+              (p/finally-do
                 (fn [] (support/unmount! root) (clean!) (reset! r/*app-db before) (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest supabase-adapter-does-not-install-old-account-data
   (async done
          (-> (go-promise
@@ -167,23 +168,23 @@
                  (set! supabase/read-once! (fn [_ success _] (reset! *resolve success)))
                  (let [pending (data/ensure! resource)
                        rejected (-> pending
-                                    (.then (fn [_] (is false "Old client should be invalidated")))
-                                    (.catch (fn [_] nil)))]
+                                    (p/then (fn [_] (is false "Old client should be invalidated")))
+                                    (p/catch-error (fn [_] nil)))]
                    (-> (tick!)
-                       (.then (fn [_]
+                       (p/then (fn [_]
                                 (is (fn? @*resolve))
                                 (reset! supabase/*client #js {})
                                 (@*resolve {:secret "old account"})
                                 rejected))
-                       (.then (fn [_] (is (nil? (get-in @r/*app-db [:fixture :private])))))
-                       (.catch #(is false (str %)))
-                       (.finally (fn []
+                       (p/then (fn [_] (is (nil? (get-in @r/*app-db [:fixture :private])))))
+                       (p/catch-error #(is false (str %)))
+                       (p/finally-do (fn []
                                    (set! supabase/read-once! original)
                                    (reset! supabase/*client original-client)
                                    (clean!)
                                    (reset! r/*app-db before)
                                    (done)))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+             (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest newest-request-owns-a-shared-destination
   (async done
          (-> (go-promise
@@ -194,16 +195,16 @@
                  (data/register-source!
                    :fixture
                    {:load! (fn [{:keys [id]}]
-                             (js/Promise. (fn [resolve _] (swap! *resolve assoc id resolve))))})
+                             (p/create (fn [resolve _] (swap! *resolve assoc id resolve))))})
                  (let [old-load (data/ensure! old)
                        new-load (data/ensure! new)]
                    (-> (tick!)
-                       (.then (fn [_] ((get @*resolve :new) "new") new-load))
-                       (.then (fn [_] ((get @*resolve :old) "old") old-load))
-                       (.then (fn [_] (is (= "new" (get-in @r/*app-db [:fixture :shared])))))
-                       (.catch #(is false (str %)))
-                       (.finally (fn [] (clean!) (reset! r/*app-db before) (done)))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+                       (p/then (fn [_] ((get @*resolve :new) "new") new-load))
+                       (p/then (fn [_] ((get @*resolve :old) "old") old-load))
+                       (p/then (fn [_] (is (= "new" (get-in @r/*app-db [:fixture :shared])))))
+                       (p/catch-error #(is false (str %)))
+                       (p/finally-do (fn [] (clean!) (reset! r/*app-db before) (done)))))))
+             (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest url-data-is-installed-and-errors-render-a-retry
   (async
     done
@@ -221,30 +222,30 @@
           (data/register-source! :fixture
                                  {:load! (fn [_]
                                            (if (= 1 (swap! *attempt inc))
-                                             (js/Promise.reject (js/Error. "fixture failure"))
-                                             (js/Promise.resolve :ready)))})
+                                             (p/rejected (js/Error. "fixture failure"))
+                                             (p/resolved :ready)))})
           (await! (support/render! root [view {:depends [resource]}]))
           (-> (tick!)
-              (.then (fn [_]
+              (p/then (fn [_]
                        (go-promise (await! (flush!))
                                    (is (.includes (.-textContent container) "could not be loaded"))
                                    (let [button (.querySelector container "button")]
                                      (is (= "Attempt reload" (.-textContent button)))
                                      (.click button))
                                    (tick!))))
-              (.then (fn [_]
+              (p/then (fn [_]
                        (go-promise (await! (flush!))
                                    (is (= "Ready after retry" (.-textContent container)))
                                    (data/ensure! {:source :url,
                                                   :url "/fixtures/component-data.json",
                                                   :into [:fixture :url]}))))
-              (.then (fn [value]
+              (p/then (fn [value]
                        (is (= "Preloaded URL content" (:title value)))
                        (is (= value (get-in @r/*app-db [:fixture :url])))))
-              (.catch #(is false (str %)))
-              (.finally
+              (p/catch-error #(is false (str %)))
+              (p/finally-do
                 (fn [] (support/unmount! root) (clean!) (reset! r/*app-db before) (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 
 (defn- tracking-resource [id]
   {:source :tracking-hydration, :id id, :into [:tracking-hydration id]})
@@ -281,7 +282,7 @@
           element (.createElement js/document "div")
           *root (atom nil)
           *release (atom nil)
-          gate (js/Promise. (fn [resolve _] (reset! *release resolve)))
+          gate (p/create (fn [resolve _] (reset! *release resolve)))
           *released? (atom false)
           *show-second? (r/atom false)
           *attempts (atom {})
@@ -306,7 +307,7 @@
       (data/register-source! :tracking-hydration
         {:load! (fn [{:keys [id]}]
                   (swap! *loads conj id)
-                  (js/Promise.resolve (name id)))})
+                  (p/resolved (name id)))})
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (await! (data/ensure-all! resources))
@@ -349,8 +350,8 @@
               (is (= "second" (.-textContent (.querySelector element "[data-tracking-resource='second']"))))
               (is (empty? @*warnings))
               (is (empty? @*recoveries))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (r/unmount @*root))
                       (reset! *released? true)
                       (@*release nil)

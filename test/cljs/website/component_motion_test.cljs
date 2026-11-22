@@ -1,6 +1,7 @@
 (ns website.component-motion-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [clojure.string :as string]
             [website.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
@@ -14,7 +15,7 @@
             [website.macros :refer-macros [defc]]))
 (defn- flush! [] (support/settle!))
 (defn- render! [root form] (support/render! root form))
-(defn- tick! ([] (tick! 45)) ([ms] (js/Promise. (fn [resolve _] (js/setTimeout resolve ms)))))
+(defn- tick! ([] (tick! 45)) ([ms] (p/delay! ms)))
 (defn- fixture
   []
   (go-promise (let [element (.createElement js/document "div")
@@ -65,8 +66,8 @@
                 (await! (tick! 180))
                 (is (= committed @*presence-renders) "Real parent updates also settle"))
               (finally (close!)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 (defc <seen> {:features [:props :seen]} [spec] [:div {:class "original"} "Seen"])
 (defc <appear> {:features [:props [:appear "opacity"]]} [spec] [:div "Appear"])
 
@@ -94,8 +95,8 @@
                 (is (<= (.-bottom bounds) (.-bottom parent))
                     "The native child actually escapes its initial clipped transform"))
               (finally (close!) (.remove style)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest continuous-visibility-can-opt-out-of-settled-history-restoration
   (async done
@@ -118,8 +119,8 @@
                   "Continuous background animation owners still pause after a history return")
               (finally (close!) (reset! restore/*context context)
                        (set! js/IntersectionObserver original)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest offscreen-appear-waits-for-the-viewport-and-enters-only-once
   (async done
@@ -148,8 +149,8 @@
               (await! (flush!))
               (is (.contains (.-classList (.-firstElementChild element)) "appeared"))
               (finally (close!) (set! js/IntersectionObserver original)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 (defc <domain-map> {:features [:props]} [{:keys [title]}] [:p title])
 (defc <destructured-spec> {:features [:props]} [{:keys [props]}] [:p (:title props)])
 (deftest high-frame-rate-hint-is-optional-and-preserves-animation-timing
@@ -189,8 +190,8 @@
                                   [<destructured-spec> {:props {:id "inferred", :title "Spec"}}]))
                  (is (some? (.querySelector element "#inferred")))
                  (finally (close!)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 (deftest presence-retains-until-exit-and-cancels-on-reentry
   (async
     done
@@ -210,7 +211,7 @@
           (is (= "SECTION" (.-tagName (.-firstElementChild element))))
           (is (= 2 (.-length (.querySelectorAll element "*"))) "Only original parent and child DOM")
           (-> (tick! 160)
-              (.then (fn [_]
+              (p/then (fn [_]
                        (go-promise (await! (flush!))
                                    (is (.contains (.-classList @*node) "appeared"))
                                    (await! (render! root [<list> []]))
@@ -224,22 +225,22 @@
                                    (is (identical? @*node (.querySelector element "button")))
                                    (is (not (.contains (.-classList @*node) "exiting")))
                                    (tick! 220))))
-              (.then (fn [_]
+              (p/then (fn [_]
                        (go-promise (await! (flush!))
                                    (is (= "Returned" (.-textContent element)))
                                    (is (= 1 @*mounts) "Re-entry preserves the component instance")
                                    (await! (render! root [<list> []]))
                                    (is (some? (.querySelector element "button")))
                                    (tick! 220))))
-              (.then (fn [_]
+              (p/then (fn [_]
                        (go-promise (await! (flush!))
                                    (is (nil? (.querySelector element "button"))
                                        "Exited DOM is actually removed")
                                    (tick!))))
-              (.then (fn [_] (is (= 1 @*unmounts))))
-              (.catch #(is false (str %)))
-              (.finally (fn [] (close!) (.remove style) (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+              (p/then (fn [_] (is (= 1 @*unmounts))))
+              (p/catch-error #(is false (str %)))
+              (p/finally-do (fn [] (close!) (.remove style) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest seen-merges-refs-and-cleans-up-observers
   (async
     done
@@ -263,24 +264,24 @@
           (is (.contains (.-classList @*ref) "original"))
           (@*callback #js [#js {:isIntersecting true, :intersectionRatio 0.75}] #js {})
           (-> (tick!)
-              (.then (fn [_]
+              (p/then (fn [_]
                        (go-promise (await! (flush!))
                                    (is (.contains (.-classList @*ref) "appeared"))
                                    (@*callback
                                     #js [#js {:isIntersecting true, :intersectionRatio 0.25}]
                                     #js {})
                                    (tick!))))
-              (.then (fn [_]
+              (p/then (fn [_]
                        (go-promise (await! (flush!))
                                    (is (not (.contains (.-classList @*ref) "appeared"))))))
-              (.catch #(is false (str %)))
-              (.finally (fn []
+              (p/catch-error #(is false (str %)))
+              (p/finally-do (fn []
                           (close!)
                           (is (nil? @*ref))
                           (is (pos? @*disconnects))
                           (set! js/IntersectionObserver original)
                           (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest seen-slide-settles-at-the-viewport-boundary-and-can-reenter
   (async done
     (-> (go-promise
@@ -295,7 +296,7 @@
                                                 :height "10rem"
                                                 :width "12rem"}}}])]
             (try
-              (await! (js/Promise.
+              (await! (p/create
                        (fn [resolve reject]
                          (set! (.-rel stylesheet) "stylesheet")
                          (set! (.-href stylesheet) "/css/website/main.min.css")
@@ -328,8 +329,8 @@
                 (.disconnect observer)
                 (close!)
                 (.remove stylesheet)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest reduced-motion-and-unanimated-exits-remove-without-delay
   (async done
@@ -342,12 +343,12 @@
                  (is (= "none" (.. (.querySelector element "button") -style -transition)))
                  (await! (render! root [<list> []]))
                  (-> (tick!)
-                     (.then (fn [_]
+                     (p/then (fn [_]
                               (go-promise (await! (flush!))
                                           (is (nil? (.querySelector element "button"))))))
-                     (.catch #(is false (str %)))
-                     (.finally (fn [] (close!) (set! motion/reduced-motion? original) (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+                     (p/catch-error #(is false (str %)))
+                     (p/finally-do (fn [] (close!) (set! motion/reduced-motion? original) (done))))))
+             (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest strict-mode-visibility-restarts-and-once-is-sticky
   (async done
          (-> (go-promise
@@ -368,27 +369,27 @@
                    #js [#js {:isIntersecting true, :intersectionRatio 0.8}]
                    #js {:disconnect #(swap! *disconnects inc)})
                  (-> (tick!)
-                     (.then (fn [_]
+                     (p/then (fn [_]
                               (go-promise (await! (flush!))
                                           (is (.contains (.-classList (.-firstElementChild element))
                                                          "appeared"))
                                           (is (pos? @*disconnects)))))
-                     (.catch #(is false (str %)))
-                     (.finally (fn [] (close!) (set! js/IntersectionObserver original) (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+                     (p/catch-error #(is false (str %)))
+                     (p/finally-do (fn [] (close!) (set! js/IntersectionObserver original) (done))))))
+             (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest exit-deadline-releases-paused-animations-and-parent-unmount-cleans-up
   (async done
          (-> (go-promise
                (let [{:keys [root element close!]} (await! (fixture))
                      *finish (atom nil)
-                     never (js/Promise. (fn [resolve _] (reset! *finish resolve)))]
+                     never (p/create (fn [resolve _] (reset! *finish resolve)))]
                  (await! (render! root [<list> [{:id "paused", :title "Paused"}]]))
                  (set! (.-getAnimations (.querySelector element "button"))
                        (fn [] #js [#js {:finished never}]))
                  (await! (render! root [<list> []]))
                  (is (some? (.querySelector element "button")))
                  (-> (tick! 240)
-                     (.then (fn [_]
+                     (p/then (fn [_]
                               (go-promise
                                 (await! (flush!))
                                 (is (nil? (.querySelector element "button"))
@@ -401,12 +402,12 @@
                                 (await! (render! root [:aside "Parent removed"]))
                                 (@*finish nil)
                                 (tick!))))
-                     (.then (fn [_]
+                     (p/then (fn [_]
                               (go-promise (await! (flush!))
                                           (is (= "Parent removed" (.-textContent element))))))
-                     (.catch #(is false (str %)))
-                     (.finally (fn [] (close!) (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+                     (p/catch-error #(is false (str %)))
+                     (p/finally-do (fn [] (close!) (done))))))
+             (p/catch-error (fn [error] (is false (str error)) (done))))))
 (defc <failed-item>
   {:features [:error-boundary [:exit {:timeout-ms 40}]]}
   []
@@ -423,13 +424,13 @@
                            (await! (render! root [<failure-list> false]))
                            (is (some? (.querySelector element "[role=alert]")))
                            (-> (tick! 80)
-                               (.then (fn [_]
+                               (p/then (fn [_]
                                         (go-promise (await! (flush!))
                                                     (is (nil? (.querySelector element
                                                                               "[role=alert]"))))))
-                               (.catch #(is false (str %)))
-                               (.finally (fn [] (close!) (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+                               (p/catch-error #(is false (str %)))
+                               (p/finally-do (fn [] (close!) (done))))))
+             (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest document-motion-retains-its-clock-through-hydration-and-spa-mounts-enter
   (async
     done
@@ -458,8 +459,8 @@
                    (is (nil? (.getAttribute node "data-document-appear")))
                    (is (.contains (.-classList node) "appeared")))
                  (finally (close!) (reset! restore/*context context)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 (defc <remembered-item>
   {:features [[:appear {:class "opacity" :remember-key :motion-test/remembered}]]}
   []
@@ -492,8 +493,8 @@
               (is (nil? (.getAttribute (.querySelector element "[data-remembered]") "data-document-appear"))
                   "A later remembered SPA mount stays settled")
               (finally (close!) (reset! restore/*context context) (restore-db!)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest remembered-content-is-visible-on-its-next-mount
   (async done
@@ -507,8 +508,8 @@
               (await! (render! root [<remembered-item>]))
               (is (.contains (.-classList (.querySelector element "[data-remembered]")) "appeared"))
               (finally (close!) (reset! restore/*context context)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (defc <visible-owner>
   {:features [[:on-seen (fn [id] {:event [:test/visible-owner id]})]]}
@@ -538,8 +539,8 @@
               (await! (render! root nil))
               (is (>= @*disconnects 2) "Once visibility and unmount both release observation")
               (finally (close!) (set! js/IntersectionObserver original)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest initial-network-seen-owners-resume-viewport-motion
   (async done
@@ -566,8 +567,8 @@
                 (is (.contains (.-classList node) "appeared"))
                 (is (identical? node (.querySelector element "div"))))
               (finally (close!) (set! js/IntersectionObserver original) (reset! restore/*context context)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 
 (defc <return-hydration-list> [committed!]
@@ -628,7 +629,7 @@
       (.addEventListener element "transitionrun" record-start! true)
       (.appendChild (.-body js/document) element)
       (-> (go-promise
-            (await! (js/Promise.
+            (await! (p/create
                       (fn [resolve reject]
                         (set! (.-rel stylesheet) "stylesheet")
                         (set! (.-href stylesheet) "/css/website/main.min.css")
@@ -685,8 +686,8 @@
               (is (some #(and (= "transitionrun" (:type %)) (= "opacity" (:property %))) @*starts))
               (await! (support/wait-for! #(nil? (.querySelector element "[data-item]"))
                                         "Native CSS exit did not dispose the retained owner"))))
-          (.catch #(is false (str %)))
-          (.finally
+          (p/catch-error #(is false (str %)))
+          (p/finally-do
             (fn []
               (when @*root (r/unmount @*root))
               (.removeEventListener element "animationstart" record-start! true)
@@ -724,5 +725,5 @@
                 (is (.contains (.-classList node) "appeared")
                     "Releasing restoration cannot replay a retained entrance"))
               (finally (close!) (reset! restore/*context before)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))

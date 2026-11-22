@@ -6,66 +6,80 @@
             [website.validation :as validation]
             [website.cache.inflight :as inflight])
   (:import [org.jsoup Jsoup]
+           [org.jsoup.nodes Document Element]
            [java.util.concurrent Semaphore]))
 
 (def user-schema [:re #"^[A-Za-z0-9][A-Za-z0-9-]{0,38}$"])
 (defonce ^:private *cache (atom {}))
 (defonce ^:private slots (Semaphore. 4))
 
-(defn parse-calendar [html]
-  (let [document (Jsoup/parse html)
-        labels (into {} (for [tip (.select document "tool-tip[for]")]
-                          [(.attr tip "for") (.text tip)]))
-        days (->> (.select document "td[data-date][data-level]")
-                  (mapv (fn [cell]
-                          (let [label (get labels (.id cell))
-                                count (cond
-                                        (string/starts-with? (or label "") "No contributions") 0
-                                        :else (some-> (re-find #"^([0-9,]+) contribution" (or label ""))
-                                                      second (string/replace "," "") Long/parseLong))]
-                            (when (nil? count) (throw (ex-info "Calendar count unavailable" {})))
-                            {:date (.attr cell "data-date")
-                             :count count
-                             :level (Long/parseLong (.attr cell "data-level"))})))
-                  (sort-by :date)
-                  vec)]
-    (when-not (and (<= 1 (count days) 371)
-                   (every? #(and (re-matches #"\d{4}-\d{2}-\d{2}" (:date %))
-                                 (<= 0 (:level %) 4)) days))
+(defn- contribution-number [text]
+  (or (parse-long (string/replace text "," ""))
+      (throw (ex-info "Invalid public activity count" {}))))
+
+(defn- calendar-labels [^Document document]
+  (into {} (for [^Element tip (.select document "tool-tip[for]")]
+             [(.attr tip "for") (.text tip)])))
+
+(defn- calendar-entry [labels ^Element cell]
+  (let [label (get labels (.id cell) "")
+        [_ amount] (re-find #"^([0-9,]+) contribution" label)
+        date (.attr cell "data-date")
+        level (parse-long (.attr cell "data-level"))]
+    (when-not (and (re-matches #"\d{4}-\d{2}-\d{2}" date) level (<= 0 level 4))
       (throw (ex-info "Invalid public calendar" {})))
-    {:days days}))
+    {:date date
+     :level level
+     :count (cond
+              amount (contribution-number amount)
+              (string/starts-with? label "No contributions") 0
+              :else (throw (ex-info "Calendar count unavailable" {})))}))
+
+(defn- calendar-days [^Document document]
+  (let [labels (calendar-labels document)
+        cells (.select document "td[data-date][data-level]")]
+    (when-not (<= 1 (count cells) 371)
+      (throw (ex-info "Invalid public calendar" {})))
+    (->> cells (map #(calendar-entry labels %)) (sort-by :date) vec)))
+
+(defn parse-calendar [html]
+  {:days (calendar-days (Jsoup/parse html))})
 
 (defn fetch-calendar! [user]
-  (-> (Jsoup/connect (str "https://github.com/users/" user "/contributions"))
-      (.timeout 7000)
-      (.maxBodySize 1048576)
-      (.followRedirects false)
-      (.get)
-      (.outerHtml)
-      parse-calendar))
+  (let [document (-> (Jsoup/connect (str "https://github.com/users/" user "/contributions"))
+                     (.timeout 7000)
+                     (.maxBodySize 1048576)
+                     (.followRedirects false)
+                     (.get))]
+    {:days (calendar-days document)}))
 
 (defn- unavailable []
   {:status 503
    :headers {"Cache-Control" "no-store"}
    :body {:error "GitHub activity is temporarily unavailable"}})
 
+(defn- load-response! [load!]
+  (if (.tryAcquire slots)
+    (try
+      {:status 200 :headers {"Cache-Control" "public, max-age=300"} :body (load!)}
+      (catch Exception _ (unavailable))
+      (finally (.release slots)))
+    (unavailable)))
+
+(defn- cached-response! [cache key limit wait-ms load!]
+  (let [now (System/currentTimeMillis)
+        [owner? entry] (inflight/acquire! cache key now 900000 limit)]
+    (when owner?
+      (let [response (load-response! load!)]
+        (when-not (= 200 (:status response))
+          (inflight/shorten! cache key entry (+ now 60000)))
+        (deliver (:value entry) response)))
+    (if entry (deref (:value entry) wait-ms (unavailable)) (unavailable))))
+
 (defn response! [user]
-  (if-not (and (string? user) (re-matches #"[A-Za-z0-9][A-Za-z0-9-]{0,38}" user))
-    {:status 400, :body {:error "Invalid GitHub user"}}
-    (let [now (System/currentTimeMillis)
-          [owner? entry] (inflight/acquire! *cache user now 900000 128)]
-      (when owner?
-        (let [response (if (.tryAcquire slots)
-                         (try {:status 200
-                               :headers {"Cache-Control" "public, max-age=300"}
-                               :body (fetch-calendar! user)}
-                              (catch Exception _ (unavailable))
-                              (finally (.release slots)))
-                         (unavailable))]
-          (when-not (= 200 (:status response))
-            (inflight/shorten! *cache user entry (+ now 60000)))
-          (deliver (:value entry) response)))
-      (if entry (deref (:value entry) 8000 (unavailable)) (unavailable)))))
+  (if (provider/user? user)
+    (cached-response! *cache user 128 8000 #(fetch-calendar! user))
+    {:status 400 :body {:error "Invalid GitHub user"}}))
 
 (defonce ^:private *day-cache (atom {}))
 
@@ -83,32 +97,32 @@
    [:repositories #"^Created ([0-9,]+|a) repositor(?:y|ies)(?: |$)"]
    [:restricted #"^([0-9,]+) contributions? in private repositor(?:y|ies)(?: |$)"]])
 
-(defn parse-day
-  "Read only public timeline category headings; verify against the calendar total.
-   Featured items and 'other' rollups are disjoint. Never count nested repo lists."
-  [html date]
-  (let [document (Jsoup/parse html)
-        day (first (filter #(= date (:date %)) (:days (parse-calendar html))))
+(defn- count-heading [totals ^Element item]
+  (let [heading (some-> (.selectFirst item "summary, h4, span.f4") .text)
+        match (fn [[category pattern]]
+                (when-let [[_ amount] (re-find pattern (or heading ""))]
+                  [category (if (#{"a" "an"} amount) 1 (contribution-number amount))]))]
+    (if-let [[category amount] (some match day-headings)]
+      (update totals category + amount)
+      (throw (ex-info "Public activity heading unavailable" {})))))
+
+(defn- day-breakdown [^Document document date]
+  (let [day (some #(when (= date (:date %)) %) (calendar-days document))
         timeline (.selectFirst document ".contribution-activity-listing")
-        range (.selectFirst document "form.js-show-more-timeline-form[data-from][data-to]")
-        types (reduce
-                (fn [counts item]
-                  (let [heading (some-> (.selectFirst item "summary, h4, span.f4") .text)
-                        [kind amount] (some (fn [[kind pattern]]
-                                              (when-let [[_ amount] (re-find pattern (or heading ""))]
-                                                [kind (if (#{"a" "an"} amount) 1
-                                                          (Long/parseLong (string/replace amount "," "")))]))
-                                            day-headings)]
-                    (when-not kind (throw (ex-info "Public activity heading unavailable" {})))
-                    (update counts kind + amount)))
-                (zipmap (map first day-headings) (repeat 0))
-                (.select document ".contribution-activity-listing .TimelineItem-body"))
-        result {:date date, :types types}]
-    (when-not (and day timeline range
-                   (= date (.attr range "data-from") (.attr range "data-to"))
-                   (= (:count day) (reduce + (vals types))))
+        period (.selectFirst document "form.js-show-more-timeline-form[data-from][data-to]")
+        empty-totals (zipmap (map first day-headings) (repeat 0))
+        totals (reduce count-heading empty-totals (.select document ".contribution-activity-listing .TimelineItem-body"))]
+    (when-not (and day timeline period
+                   (= date (.attr period "data-from") (.attr period "data-to"))
+                   (= (:count day) (reduce + (vals totals))))
       (throw (ex-info "Public activity breakdown unavailable" {})))
-    (validation/check! "GitHub day detail" schema/breakdown result)))
+    (validation/check! "GitHub day detail" schema/breakdown {:date date :types totals})))
+
+(defn parse-day
+  "Read the public timeline category headings and verify their sum against the
+   calendar total. Featured items and 'other' rollups are disjoint."
+  [html date]
+  (day-breakdown (Jsoup/parse html) date))
 
 (defn fetch-day! [user date]
   (when-not (and (provider/user? user) (valid-date? date))
@@ -125,24 +139,9 @@
       (.maxBodySize 1048576)
       (.followRedirects false)
       (.get)
-      (.outerHtml)
-      (parse-day date)))
+      (day-breakdown date)))
 
 (defn day-response! [user date]
-  (if-not (and (provider/user? user) (valid-date? date))
-    {:status 400, :body {:error "Invalid GitHub activity day"}}
-    (let [now (System/currentTimeMillis)
-          key [user date]
-          [owner? entry] (inflight/acquire! *day-cache key now 900000 512)]
-      (when owner?
-        (let [response (if (.tryAcquire slots)
-                         (try {:status 200
-                               :headers {"Cache-Control" "public, max-age=300"}
-                               :body (fetch-day! user date)}
-                              (catch Exception _ (unavailable))
-                              (finally (.release slots)))
-                         (unavailable))]
-          (when-not (= 200 (:status response))
-            (inflight/shorten! *day-cache key entry (+ now 60000)))
-          (deliver (:value entry) response)))
-      (if entry (deref (:value entry) 12000 (unavailable)) (unavailable)))))
+  (if (and (provider/user? user) (valid-date? date))
+    (cached-response! *day-cache [user date] 512 12000 #(fetch-day! user date))
+    {:status 400 :body {:error "Invalid GitHub activity day"}}))

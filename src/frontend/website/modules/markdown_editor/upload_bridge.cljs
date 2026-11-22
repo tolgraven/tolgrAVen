@@ -1,6 +1,7 @@
 (ns website.modules.markdown-editor.upload-bridge
   "SDK-required Promises observe the existing serialized event queue; no transport here."
-  (:require [website.react :as r]))
+  (:require [website.async :as a]
+            [website.react :as r]))
 
 (defonce ^:private *waiters (atom {}))
 
@@ -11,7 +12,7 @@
       (if error (reject (js/Error. error)) (resolve src)))))
 
 (defn upload! [owner file]
-  (js/Promise.
+  (a/create
     (fn [resolve reject]
       (let [id (str (random-uuid))]
         (swap! *waiters assoc id {:resolve resolve, :reject reject})

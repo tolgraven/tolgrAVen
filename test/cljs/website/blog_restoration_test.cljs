@@ -1,6 +1,7 @@
 (ns website.blog-restoration-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [website.test-support :as support]
             [cljs.reader :as reader]
             [cljs.test :refer-macros [deftest is async]]
@@ -63,8 +64,8 @@
         private-key (scoped/query-key {:path-collection [:gpt], :scoped? true})
         path [:store :scoped public-key]]
     (r/with-framework-bindings [storage/*tracked (atom {})
-                  storage/ready! (fn ([] (js/Promise.resolve nil))
-                                    ([_] (js/Promise.resolve nil)))
+                  storage/ready! (fn ([] (p/resolved nil))
+                                    ([_] (p/resolved nil)))
                   storage/schedule! #(swap! *scheduled inc)]
       (try
         (cache/start!)
@@ -142,8 +143,8 @@
                                                      ".blog-comment-collapsed-placeholder"))))
                  (is (not (.includes (.-textContent element) "Comment reply"))))
                (finally (support/unmount! root) (reset! restore/*context before)))))
-      (.catch (fn [error] (is false (str error))))
-      (.finally done))))
+      (p/catch-error (fn [error] (is false (str error))))
+      (p/finally-do done))))
 (deftest user-panel-closes-state-immediately-and-component-owns-exit
   (async done
     (-> (go-promise
@@ -175,7 +176,7 @@
                 (is (identical? panel (.querySelector element ".user-section-wrapper"))))
               (r/dispatch-sync [:user/close-ui])
               (r/flush)
-              (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 250))))
+              (await! (p/delay! 250))
               (r/flush)
               (is (nil? (.querySelector element ".user-section-wrapper"))
                   "Exited DOM is removed")
@@ -187,8 +188,8 @@
                 (.remove element)
                 (restore-db!)
                 (reset! restore/*context context)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 (deftest avatar-does-not-overlay-a-placeholder-while-loading
   (async
     done
@@ -227,8 +228,8 @@
                  (render!)
                  (is (= fallback (.getAttribute (.querySelector element "img") "src")))
                  (finally (support/unmount! root) (reset! r/*app-db before)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest hydration-recovers-failed-avatar-originals-without-widening-the-avatar
   (async done
@@ -248,10 +249,9 @@
             (.appendChild (.-body js/document) element)
             (try
               (swap! r/*app-db assoc-in [:content :common :user-avatar-fallback] fallback)
-              (await! (js/Promise.all
-                        (into-array
-                          (map (fn [[path stylesheet]]
-                                 (js/Promise.
+              (await! (p/all
+                        (map (fn [[path stylesheet]]
+                                 (p/create
                                    (fn [resolve reject]
                                      (set! (.-rel stylesheet) "stylesheet")
                                      (set! (.-href stylesheet) path)
@@ -259,7 +259,7 @@
                                      (set! (.-onerror stylesheet)
                                            #(reject (js/Error. "Avatar CSS unavailable")))
                                      (.appendChild (.-head js/document) stylesheet))))
-                               stylesheets))))
+                               stylesheets)))
               (doseq [[avatar selected expected]
                       [["/missing-avatar.svg" "/missing-avatar.svg" fallback]
                        ["/missing-avatar.png" "/missing-avatar.png" fallback]
@@ -292,8 +292,8 @@
                 (doseq [[_ stylesheet] stylesheets] (.remove stylesheet))
                 (.remove element)
                 (reset! r/*app-db before)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest load-more-retains-the-visible-window-and-persists-the-requested-size
   (async
@@ -327,8 +327,8 @@
                         (is (some #{[:state :blog :comment-limit]} cache/state-paths))
                         (finally (unmount!))))
                  (finally (r/clear-subscription-cache!) (reset! r/*app-db before)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 (deftest saved-comment-window-folds-and-data-round-trip-through-split-storage
   (async done
     (-> (go-promise
@@ -345,7 +345,7 @@
             (r/with-framework-bindings
               [storage/*buckets (atom {})
                storage/*tracked (atom {})
-               storage/*reads (atom {:public (js/Promise.resolve nil)})
+               storage/*reads (atom {:public (p/resolved nil)})
                storage/*ready (atom #{:public})
                storage/*heavy-ready (atom #{:public})
                storage/*dirty (atom #{})
@@ -357,7 +357,7 @@
                storage/*migrating (atom #{})
                storage/*disk-writes (atom {})
                storage/*disk-generations (atom {})
-               heavy-disk/write! (fn [_ bucket] (reset! heavy bucket) (js/Promise.resolve nil))
+               heavy-disk/write! (fn [_ bucket] (reset! heavy bucket) (p/resolved nil))
                storage/write-disk! (fn [_ value] (swap! writes inc) (reset! disk value))
                storage/mark-return! #(reset! marker %)]
               (try
@@ -392,8 +392,8 @@
                     (await! (storage/drain-async!))
                     (is (false? @marker) "Failed writes must not opt out of SSR")))
                 (finally (cache/stop!) (reset! storage/*tracked {}) (storage/drain!) (reset! r/*app-db before))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 (deftest folded-reply-placeholder-reserves-its-height-before-mount
   (let [context @restore/*context]
     (try (restore/begin! {:hydrate? true})

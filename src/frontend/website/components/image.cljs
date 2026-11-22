@@ -1,6 +1,8 @@
 (ns website.components.image
   "Helpers for serving modern image formats (WebP, AVIF) with automatic fallbacks"
   (:require
+    [website.browser.css :as css]
+    [website.async :as a]
     [website.component.registry]
     [website.component]
     [website.component.restore :as restore]
@@ -131,8 +133,8 @@
                             (.-a (js/DOMMatrixReadOnly. transform)))]
               (and (not= "hidden" (.-visibility style))
                    (not= "none" (.-display style))
-                   (> (js/parseFloat (.-opacity style)) 0)
-                   (> (js/Math.abs scale-x) (/ 2 3))
+                   (> (css/magnitude (.-opacity style)) 0)
+                   (> (abs scale-x) (/ 2 3))
                    (recur (.-parentElement node))))))))))
 
 (defn- in-viewport? [image]
@@ -151,7 +153,7 @@
            (let [style (js/getComputedStyle node)]
              (and (not= "hidden" (.-visibility style))
                   (not= "none" (.-display style))
-                  (pos? (js/parseFloat (.-opacity style)))
+                  (pos? (css/magnitude (.-opacity style)))
                   (recur (.-parentElement node))))))))
 
 (defn- use-visible-ready! [*image src state callback]
@@ -326,7 +328,7 @@
                                           (let [preview-image (.-current *preview-image)
                                                 upgrading? (= :upgrading (:phase @*image-phase))
                                                 settled? (and upgrading?
-                                                              (>= (js/parseFloat (.-opacity (js/getComputedStyle image))) 0.999))
+                                                              (>= (css/magnitude (.-opacity (js/getComputedStyle image))) 0.999))
                                                 overlap? (and upgrade? (not direct?) (not= :single (:phase @*image-phase)) preview-image
                                                               (noticeable-preview? image)
                                                               (pos? (.-naturalWidth preview-image))
@@ -341,7 +343,7 @@
                                                               :else :decoded)
                                                      :selected selected}))))]
                            (if (.-decode image)
-                             (-> (.decode image) (.then ready!) (.catch (fn [_] nil)))
+                             (-> (.decode image) (a/then ready!) (a/catch-error (fn [_] nil)))
                              (ready!)))))
                      [src direct?])
           capture! (r/use-memo

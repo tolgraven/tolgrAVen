@@ -1,6 +1,8 @@
 (ns website.loader.styles
   "React owns stylesheet insertion; this adapter observes load/error and retries."
-  (:require [website.react :as r]
+  (:require [clojure.string :as string]
+            [website.async :as a]
+            [website.react :as r]
             [website.render-context :as context]
             [website.loader.style-catalog :as catalog]
             [website.browser-resources.page :as page]
@@ -55,51 +57,54 @@
                     true))
               (required-paths module))))
 
+(defn- observe-stylesheet! [path element resolve! reject!]
+  (let [*timeout (volatile! nil)]
+    (letfn [(finish! [error]
+              (js/clearTimeout @*timeout)
+              (.removeEventListener element "load" loaded!)
+              (.removeEventListener element "error" failed!)
+              (if error
+                (reject! error)
+                (do (swap! *ready conj path) (resolve! nil))))
+            (loaded! [] (finish! nil))
+            (failed! [] (finish! (js/Error. (str "Stylesheet could not load: " path))))]
+      (.addEventListener element "load" loaded!)
+      (.addEventListener element "error" failed!)
+      (vreset! *timeout (js/setTimeout failed! 15000))
+      (when (.-sheet element) (loaded!)))))
+
+(defn- load-path! [path]
+  ;; React deduplicates by href, including failed resources. A retry needs a fresh URL.
+  (let [attempt (get @*attempts path 0)
+        href (str path (when (pos? attempt)
+                         (str (if (string/includes? path "?") "&" "?") "css-retry=" attempt)))]
+    (a/create
+      (fn [resolve! reject!]
+        (r/preinit href #js {:as "style" :precedence "modules" :fetchPriority "low"})
+        (if-let [element (link href)]
+          (observe-stylesheet! path element resolve! reject!)
+          (reject! (js/Error. "React did not register the stylesheet")))))))
+
 (defn acquire-path! [path]
   (or (get @*requests path)
-      (when (some-> (inline-style path) .-sheet)
-        (let [ready (js/Promise.resolve nil)]
-          (swap! *ready conj path)
-          (swap! *requests assoc path ready)
-          ready))
-      (let [attempt (get @*attempts path 0)
-            ;; React deduplicates resources by href, including failed resources.
-            ;; A fresh retry URL lets React retry without mutating its DOM nodes.
-            href (str path (when (pos? attempt)
-                             (str (if (.includes path "?") "&" "?") "css-retry=" attempt)))
-            promise (js/Promise.
-                      (fn [resolve reject]
-                        (r/preinit href #js {:as "style" :precedence "modules" :fetchPriority "low"})
-                        (if-let [element (link href)]
-                          (let [*timeout (atom nil)]
-                            (letfn [(finish! [error]
-                                      (js/clearTimeout @*timeout)
-                                      (.removeEventListener element "load" loaded!)
-                                      (.removeEventListener element "error" failed!)
-                                      (if error (reject error)
-                                          (do (swap! *ready conj path) (resolve nil))))
-                                    (loaded! [] (finish! nil))
-                                    (failed! [] (finish! (js/Error. (str "Stylesheet could not load: " path))))]
-                              (.addEventListener element "load" loaded!)
-                              (.addEventListener element "error" failed!)
-                              (reset! *timeout (js/setTimeout failed! 15000))
-                              (when (.-sheet element) (loaded!))))
-                          (reject (js/Error. "React did not register the stylesheet")))))
-            retryable (.catch promise (fn [error]
-                                        (swap! *requests dissoc path)
-                                        (swap! *attempts update path (fnil inc 0))
-                                        (throw error)))]
-        (swap! *requests assoc path retryable)
-        retryable)))
+      (let [failed! (fn [error]
+                      (swap! *requests dissoc path)
+                      (swap! *attempts update path (fnil inc 0))
+                      (throw error))
+            pending (if (some-> (inline-style path) .-sheet)
+                      (do (swap! *ready conj path) (a/resolved nil))
+                      (a/catch-error (load-path! path) failed!))]
+        (swap! *requests assoc path pending)
+        pending)))
 
 (defn acquire! [module]
   (if context/*server?*
-    (js/Promise.resolve nil)
-    (let [load! #(js/Promise.all (into-array (map acquire-path! (required-paths module))))]
+    (a/resolved nil)
+    (let [load! #(a/all (map acquire-path! (required-paths module)))]
       (if (and (= :deferred (get-in catalog/modules [module :ssr-styles])) (not (ready? module)))
-        (js/Promise.
+        (a/create
           (fn [resolve reject]
             ;; This sheet may itself block a mounted boundary's readiness.
             ;; Wait for hydration/paint, not for that same boundary to finish.
-            (page/after-page! #(-> (load!) (.then resolve) (.catch reject)) {:layout? false})))
+            (page/after-page! #(-> (load!) (a/then resolve) (a/catch-error reject)) {:layout? false})))
         (load!)))))

@@ -1,6 +1,8 @@
 (ns website.navigation.preload
   "Idle, bounded acquisition of the same modules and managed dependencies used by pages."
-  (:require [website.react :as r]
+  (:require [website.clock :as clock]
+            [website.async :as a]
+            [website.react :as r]
             [reitit.core :as reitit]
 
             [website.listener :as listener]
@@ -32,8 +34,8 @@
 (defn- acquire! [match]
   (let [{:keys [module page]} (:data match)]
     (-> (if module (loader/load! {:module module :view page})
-            (js/Promise.resolve nil))
-        (.then #(data/ensure-all! (resources match))))))
+            (a/resolved nil))
+        (a/then #(data/ensure-all! (resources match))))))
 
 (declare drain!)
 (defn- drain! []
@@ -42,16 +44,16 @@
       (swap! *queue subvec 1)
       (swap! *active conj key)
       (-> (acquire! match)
-          (.then (fn [_]
-                   (swap! *completed assoc key (.now js/Date))))
+          (a/then (fn [_]
+                   (swap! *completed assoc key (clock/epoch-ms))))
           ;; Speculation must not prevent later navigation/retry.
-          (.catch (fn [_] nil))
-          (.finally (fn [] (swap! *active disj key) (drain!))))
+          (a/catch-error (fn [_] nil))
+          (a/finally-do (fn [] (swap! *active disj key) (drain!))))
       (drain!))))
 
 (defn enqueue! [paths]
   (when (speculation-allowed?)
-    (let [now (.now js/Date)]
+    (let [now (clock/epoch-ms)]
       (swap! *completed #(into {} (filter (fn [[_ at]] (< (- now at) 300000))) %))
       (doseq [[path match] (map (fn [path] [path (reitit/match-by-path routes/router path)])
                               (distinct paths))

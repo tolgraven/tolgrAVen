@@ -1,6 +1,7 @@
 (ns website.oembed-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.component.data :as data]
             [website.components.oembed :as oembed]
             [website.components.oembed.contract :as contract]
@@ -21,7 +22,7 @@
       (data/register-source! :url
         {:load! (fn [{:keys [url]}]
                   (is (= "/api/oembed?url=https%3A%2F%2Fsoundcloud.com%2Fexample%2Fsandbox-regression" url))
-                  (js/Promise. (fn [resolve _] (reset! *resolve resolve))))})
+                  (p/create (fn [resolve _] (reset! *resolve resolve))))})
       (-> (go-promise
             (let [root (await! (support/create-root! element))]
               (try
@@ -42,8 +43,8 @@
                   (is (= "allow-scripts" (.getAttribute frame "sandbox")))
                   (is (= "no-referrer" (.getAttribute frame "referrerpolicy"))))
                 (finally (support/unmount! root)))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (.removeEventListener js/window "message" listen!)
                       (.remove element)
                       (data/invalidate! #(= (:url %) (:url (oembed/dependency url))))
@@ -68,7 +69,7 @@
       (.appendChild (.-body js/document) element)
       (data/register-source! :url
         {:load! (fn [_]
-                  (js/Promise.resolve
+                  (p/resolved
                     {:title "Video player"
                      :height 360
                      :html ""
@@ -82,8 +83,8 @@
                   (is (.includes (.getAttribute frame "allow") "fullscreen"))
                   (is (= "allow-scripts allow-same-origin" (.getAttribute frame "sandbox"))))
                 (finally (support/unmount! root)))))
-          (.catch #(is false (str %)))
-          (.finally #(do (.remove element)
+          (p/catch-error #(is false (str %)))
+          (p/finally-do #(do (.remove element)
                          (data/invalidate! (fn [resource] (= (:url resource) (:url (oembed/dependency url)))))
                          (data/register-source! :url source)
                          (done)))))))

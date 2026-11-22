@@ -1,6 +1,7 @@
 (ns website.carousel-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
 
             [website.events]
@@ -45,5 +46,5 @@
                 (await! (support/settle!))
                 (is (= "Three" (current)) "Another carousel's index never changes this instance"))
               (finally (support/unmount! root) (restore-db!)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))

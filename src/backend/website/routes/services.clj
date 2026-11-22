@@ -161,4 +161,4 @@
                           (when routes ((requiring-resolve routes))))
                         (sort-by key catalog/modules)))
     (:development? environment/defaults)
-    (into ((requiring-resolve 'website.dev.source/routes)))))
+    (into ((requiring-resolve 'website.inspector.source/routes)))))

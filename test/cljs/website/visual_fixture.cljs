@@ -1,6 +1,7 @@
 (ns website.visual-fixture
   "Fixed public content and native components for pixel/geometry comparisons."
-  (:require [clojure.string :as string]
+  (:require [website.async :as p]
+            [clojure.string :as string]
             [website.react :as r]
             [website.editor-visual :as editor]
             [website.messaging-visual-fixture :as messaging-fixture]
@@ -82,7 +83,7 @@
   ;; all remain native. Each visual case has its own disposable document realm.
   (data/register-source! :url
     {:load! (fn [{:keys [url]}]
-              (js/Promise.resolve
+              (p/resolved
                 (case url
                   "/api/github/settings" {:settings {:user "visual-user", :repo "visual-repo"}}
                   "/api/deployment" {:commit (:sha (first github-commits))
@@ -98,7 +99,7 @@
                            :repositories 1
                            :restricted 0}}
                   (throw (js/Error. (str "Unexpected GitHub fixture resource: " url))))))})
-  (r/reg-fx :http-xhrio
+  (r/reg-fx :http/fetch
     (fn [{:keys [method uri url-params on-success]}]
       (when-not (= :get method)
         (throw (js/Error. "GitHub visual fixtures only provide reads")))
@@ -153,18 +154,18 @@
   (data/register-source! :url
     {:load! (fn [{:keys [url]}]
               (if (= url "/api/integrations/instagram")
-                (js/Promise.resolve {:posts instagram-posts})
+                (p/resolved {:posts instagram-posts})
                 (if-let [[_ page] (re-matches #"/api/doc\?path=(index|docs)" url)]
                   (-> (js/fetch (str "/fixtures/docs/" page ".html"))
-                      (.then (fn [response]
+                      (p/then (fn [response]
                                (when-not (.-ok response)
                                  (throw (js/Error. (str "Missing generated Codox fixture: " page))))
                                (.text response)))
                       ;; Match the backend's trusted generated-body contract.
-                      (.then #(string/replace %
+                      (p/then #(string/replace %
                                 (js/RegExp. "^[\\s\\S]*<body[^>]*>([\\s\\S]*)</body>[\\s\\S]*$")
                                 "$1")))
-                  (js/Promise.reject (js/Error. (str "Unexpected public fixture resource: " url))))))}))
+                  (p/rejected (js/Error. (str "Unexpected public fixture resource: " url))))))}))
 
 (def entry
   {:id "visual-entry"
@@ -229,7 +230,7 @@
         queries (into {archive-data/summaries-query (response archive-summaries)}
                       (map (fn [post] [(archive-data/post-query (:id post)) (response [post])]) archive-posts))
         handlers (mapv (fn [[kind id]] [kind id (r/get-handler kind id)])
-                       [[:sub :store/on-snapshot] [:fx :http-xhrio] [:fx :supabase/request]])
+                       [[:sub :store/on-snapshot] [:fx :http/fetch] [:fx :supabase/request]])
         old-ensure-code! supabase/ensure-code!
         *disposed? (atom false)
         reject! (fn [& _]
@@ -259,7 +260,7 @@
       (doseq [[query value] queries]
         (r/dispatch-sync [:store/scoped (scoped/query-key query) value]))
       (r/dispatch-sync [:state [:supabase-init] :ready])
-      (r/reg-fx :http-xhrio reject!)
+      (r/reg-fx :http/fetch reject!)
       (r/reg-fx :supabase/request reject!)
       (set! supabase/ensure-code! reject!)
       (.addEventListener js/window "pagehide" cleanup! #js {:once true})
@@ -571,16 +572,16 @@
                "link-preview-ready" "link-preview-metadata" "link-preview-unavailable"} component)))
       (editor/init! false)
       :else (-> (js/fetch "/fixtures/editor-seed.json")
-          (.then #(.json %))
+          (p/then #(.json %))
           ;; Settled layout cases use one deterministic native font state. The
           ;; dedicated font suite still exercises cold fallback and crossfades.
-          (.then (fn [seed]
+          (p/then (fn [seed]
                    (-> (.load (.-fonts js/document) "1em 'Fira Code'" "MWiw0123456789")
-                       (.then (fn [faces]
+                       (p/then (fn [faces]
                                 (when (zero? (.-length faces))
                                   (throw (js/Error. "Fixture monospace font did not load")))
                                 seed)))))
-          (.then
+          (p/then
             (fn [seed]
               (rfe/start! routes/router (fn [_ _]) {:use-fragment false})
               (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) false])
@@ -607,8 +608,8 @@
                 (set! supabase/authenticated-request!
                   (fn [method uri & _]
                     (swap! *composer-requests conj {:method method, :uri uri})
-                    (js/Promise.reject (js/Error. "Composer visual fixtures do not perform provider I/O"))))
-                (r/reg-fx :http-xhrio
+                    (p/rejected (js/Error. "Composer visual fixtures do not perform provider I/O"))))
+                (r/reg-fx :http/fetch
                   (fn [request]
                     (swap! *composer-requests conj (select-keys request [:method :uri]))
                     (throw (js/Error. "Composer visual fixtures do not perform HTTP or writes")))))
@@ -619,7 +620,7 @@
                 (r/dispatch-sync [:set [:options :supabase :providers]
                                   {:google true, :github true, :facebook true}])
                 (panel-state! "closed")
-                (r/reg-fx :http-xhrio
+                (r/reg-fx :http/fetch
                   (fn [_] (throw (js/Error. "Panel visual fixtures do not perform HTTP or writes")))))
               (when (#{"comments" "comments-auth" "comments-reader" "comments-roots" "comments-edge"
                        "thread" "post" "search-mixed"} component)
@@ -717,7 +718,7 @@
                 (r/dispatch-sync [:docs/set-page (if (= component "docs-index") "index" "docs")]))
               (restore/begin! (if (#{"docs-index" "docs-topic" "instagram" "shell-panels" "shell-account" "strava" "post-editor" "cms-services" "cms-cv" "cms-gallery"} component) {} {:back? true}))
               (-> (loader/load! {:module :markdown})
-                  (.then (fn [_]
+                  (p/then (fn [_]
                            (case component
                              "github" (loader/load! {:module :github})
                              ("docs-index" "docs-topic") (loader/acquire-code! :docs)
@@ -728,20 +729,20 @@
                              ("link-preview-ready" "link-preview-metadata" "link-preview-unavailable")
                              (loader/load! {:module :link-preview})
                              "strava" (-> (loader/load! {:module :maps})
-                                          (.then (fn [_] (loader/load! {:module :carousel})))
-                                          (.then (fn [_] (loader/load! {:module :strava}))))
+                                          (p/then (fn [_] (loader/load! {:module :carousel})))
+                                          (p/then (fn [_] (loader/load! {:module :strava}))))
                              nil)))
-                  (.then (fn [_]
+                  (p/then (fn [_]
                            (when (#{"cv" "cms-cv"} component)
                              (loader/load! {:module :carousel}))))
-                  (.then (fn [_]
+                  (p/then (fn [_]
                            (when (additional-fixture/component-names component)
                              (additional-fixture/prepare! component))))
-                  (.then (fn [_]
+                  (p/then (fn [_]
                            (when (additional-fixture/component-names component)
                              (additional-fixture/install! component {:comment-row comment-row
                                                                      :search-response search-response}))))
-                  (.then (fn [_]
+                  (p/then (fn [_]
                            (r/render (r/create-root (.getElementById js/document "app"))
                              (if (additional-fixture/component-names component)
                                (if (additional-fixture/experiments? component)

@@ -1,7 +1,7 @@
-(ns website.dev.source
+(ns website.inspector.source
   "Source documentation uses normal component data bindings and the module loader."
   (:require [clojure.string :as string]
-            [website.dev.source-links :as links]
+            [website.inspector.source-links :as links]
             [website.react :as r]
             [website.macros :refer-macros [defc defpage]]
             [website.component :as component]

@@ -1,6 +1,7 @@
 (ns website.browser-resources-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is testing async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is testing async]]
             [website.component]
             [website.test-support :as support]
             [website.browser-resources :as resources]
@@ -30,7 +31,7 @@
                 (is (nil? (.querySelector js/document (str "script[src='" (get-in script [1 :src]) "']"))))
                 (@*release)
                 (is (some? (.querySelector element "div[hidden]")) "The timer has not fired yet")
-                (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 250))))
+                (await! (p/delay! 250))
                 (await! (support/settle!))
                 (is (nil? (.querySelector element "div[hidden]")))
                 (is (= token (.-__deferredTest js/window)) "Actual script Hiccup loads and executes")
@@ -38,8 +39,8 @@
                   (support/unmount! root)
                   (.remove element)
                   (js/Reflect.deleteProperty js/window "__deferredTest")))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (is @*cancelled? "Unmount releases the page gate")
                       (set! resources/after-page! original-after-page)
                       (done)))))))

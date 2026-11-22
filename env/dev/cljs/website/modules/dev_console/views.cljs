@@ -1,5 +1,9 @@
 (ns website.modules.dev-console.views
-  (:require [website.components.validation :as validation] [cljs.reader :as reader]
+  (:require [cljs.math :as math]
+            [website.browser.css :as css]
+            [cljs.reader :as reader]
+            [website.browser.clipboard :as clipboard]
+            [website.components.validation :as validation]
             [clojure.string :as string]
             [website.react :as r]
 
@@ -15,7 +19,7 @@
             [website.modules.dev-console.layout :as layout]
             [website.dev-console.components :as components]
             [website.dev-console.state]
-            [website.dev.source-links :as source]
+            [website.inspector.source-links :as source]
             [website.loader :as loader]
             [website.navigation.routes :as routes]))
 
@@ -33,24 +37,38 @@
   (fn [_ [_ resource]]
     (r/make-reaction #(or (:status (data/snapshot resource)) :unrequested))))
 
-(r/reg-fx :dev-console/dispatch
-  (fn [{:keys [event dry-run?]}]
-    (try
-      (let [event (reader/read-string event)]
-        (when-not (and (vector? event) (keyword? (first event)))
-          (throw (js/Error. "Enter an EDN event vector beginning with a keyword")))
-        (if dry-run?
-          (r/dispatch-with event
-            (into {} (for [id [:http-xhrio :http/fetch :http/get :http/post :http/put :local-storage :navigate]]
-                       [id (fn [value] (capture/emit! {:kind :stub :effect id :value value}))])))
-          (-> (r/dispatch-and-settle event)
-              (.then #(r/dispatch [:dev-console/result (capture/settled-result %)]))
-              (.catch #(r/dispatch [:dev-console/result {:error (str %)}])))))
-      (catch :default error (r/dispatch [:dev-console/result {:error (str error)}])))))
-(r/reg-fx :dev-console/copy
-  (fn [text]
-    (-> (.writeText (.-clipboard js/navigator) text)
-        (.catch #(r/dispatch [:dev-console/result {:error (str %)}])))))
+(defn- read-event [text]
+  (let [event (reader/read-string text)]
+    (if (and (vector? event) (keyword? (first event)))
+      event
+      (throw (ex-info "Enter an EDN event vector beginning with a keyword" {})))))
+
+(defn- capture-effect [id]
+  [id (fn [value] (capture/emit! {:kind :stub :effect id :value value}))])
+
+(def ^:private dry-run-effects
+  (into {} (map capture-effect)
+        [:http/fetch :http/get :http/post :http/put :local-storage :navigate]))
+
+(defn- report-error! [error]
+  (r/dispatch [:dev-console/result {:error (str error)}]))
+
+(defn- ^:async dispatch-event! [{:keys [event dry-run?]}]
+  (try
+    (let [event (read-event event)]
+      (if dry-run?
+        (r/dispatch-with event dry-run-effects)
+        (let [result (await (r/dispatch-and-settle event))]
+          (r/dispatch [:dev-console/result (capture/settled-result result)]))))
+    (catch :default error (report-error! error))))
+
+(defn- ^:async copy-text! [text]
+  (try
+    (await (clipboard/copy! text))
+    (catch :default error (report-error! error))))
+
+(r/reg-fx :dev-console/dispatch dispatch-event!)
+(r/reg-fx :dev-console/copy copy-text!)
 (r/reg-event-fx :dev-console/copy (fn [_ [_ text]] {:dev-console/copy text}))
 (r/reg-event-fx :dev-console/dispatch (fn [_ [_ opts]] {:dev-console/dispatch opts}))
 (r/reg-event-db :dev-console/result (fn [db [_ value]] (assoc-in db [:dev-console :result] value)))
@@ -90,13 +108,13 @@
   (str (+ 3 (min 36 (reduce max 1 (map #(count (pr-str (first %))) (take 40 (entries value)))))) "ch"))
 
 (defn duration-label [milliseconds]
-  (let [seconds? (>= (js/Math.abs milliseconds) 1000)
+  (let [seconds? (>= (abs milliseconds) 1000)
         value (if seconds? (/ milliseconds 1000) milliseconds)
-        rounded (/ (js/Math.round (* value 1000)) 1000)]
+        rounded (/ (math/round (* value 1000)) 1000)]
     (str rounded (if seconds? " s" " ms"))))
 
 (defn elapsed-label [milliseconds]
-  (let [total (max 0 (js/Math.round milliseconds))
+  (let [total (max 0 (math/round milliseconds))
         hours (quot total 3600000)
         minutes (mod (quot total 60000) 60)
         seconds (mod (quot total 1000) 60)
@@ -695,7 +713,7 @@
         (let [measure! (fn []
                          (if-let [element (element-for-instance instance)]
                            (let [rect (.getBoundingClientRect element)
-                                 unit (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))]
+                                 unit (css/font-size)]
                              (set-rect! {:left (str (/ (.-left rect) unit) "rem")
                                          :top (str (/ (.-top rect) unit) "rem")
                                          :width (str (/ (.-width rect) unit) "rem")

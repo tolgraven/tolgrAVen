@@ -4,7 +4,7 @@
             [clojure.test :refer [deftest is]]
             [nrepl.ack :as ack]
             [nrepl.core :as nrepl]
-            [website.dev.terminal :as terminal]))
+            [website.tooling.terminal :as terminal]))
 
 (deftest legacy-options-and-connect-address
   (is (= ":headless" (:mode (terminal/options [":headless" ":port" "0"]))))
@@ -75,12 +75,12 @@
                                  (re-pattern (java.util.regex.Pattern/quote separator)))
                        (remove #(.endsWith (str/replace % "\\" "/") "/env/dev/clj"))
                        (str/join separator))
-        program "(load-file \"env/dev/clj/website/dev/terminal.clj\")
-                 (with-redefs [website.dev.terminal/client-command
+        program "(load-file \"env/dev/clj/website/tooling/terminal.clj\")
+                 (with-redefs [website.tooling.terminal/client-command
                                (fn [_ _] [\"sh\" \"-c\" \"kill -INT $PPID; sleep 0.2; exit 7\"])
-                               website.dev.terminal/start! #(throw (Exception. \"must not start\"))
-                               website.dev.terminal/stop! #(throw (Exception. \"must not stop\"))]
-                   (website.dev.terminal/-main \":connect\" \"127.0.0.1:7888\"))"
+                               website.tooling.terminal/start! #(throw (Exception. \"must not start\"))
+                               website.tooling.terminal/stop! #(throw (Exception. \"must not stop\"))]
+                   (website.tooling.terminal/-main \":connect\" \"127.0.0.1:7888\"))"
         output (java.io.File/createTempFile "terminal-repl-interrupt-" ".log")
         process (-> (ProcessBuilder. ^java.util.List ["java" "-cp" classpath "clojure.main" "-e" program])
                     (.redirectErrorStream true)

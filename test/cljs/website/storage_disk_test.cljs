@@ -1,6 +1,7 @@
 (ns website.storage-disk-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [website.test-support]
             [website.component.storage-disk :as disk]
@@ -30,8 +31,8 @@
           *writes (atom 0)]
       (reset! storage/*identity account)
       (storage/write-disk! key (pr-str {draft snapshot}))
-      (set! disk/read! (fn [_] (js/Promise.reject (js/Error. "IndexedDB unavailable"))))
-      (set! disk/write! (fn [& _] (swap! *writes inc) (js/Promise.resolve nil)))
+      (set! disk/read! (fn [_] (p/rejected (js/Error. "IndexedDB unavailable"))))
+      (set! disk/write! (fn [& _] (swap! *writes inc) (p/resolved nil)))
       (-> (go-promise
             (await! (storage/ready! options))
             (is (false? (storage/read-failed? options)))
@@ -44,7 +45,7 @@
               (is (= "Edited draft" (get-in saved [draft :value]))))
             (is (zero? @*writes) "Failed cache reads cannot authorize overwriting unseen IDB data")
             (forget! account)
-            (set! disk/read! (fn [_] (js/Promise.resolve {heavy {:version "corrupt"}})))
+            (set! disk/read! (fn [_] (p/resolved {heavy {:version "corrupt"}})))
             (await! (storage/ready! options))
             (is (false? (storage/read-failed? options)) "Invalid heavy snapshots do not invalidate readable drafts")
             (is (= "Edited draft" (:value (storage/read! draft (assoc options :consume? false)))))
@@ -52,27 +53,27 @@
             (storage/drain!)
             (await! (storage/drain-async!))
             (is (zero? @*writes) "Invalid heavy snapshots also require a successful read before replacement"))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (set! disk/read! read!)
                       (set! disk/write! write!)
                       (reset! storage/*identity identity)
                       (forget! account)
                       (.removeItem js/localStorage key)
-                      (-> (disk/remove! account) (.finally done))))))))
+                      (-> (disk/remove! account) (p/finally-do done))))))))
 
 (deftest incremental-legacy-reader-preserves-tags-and-rejects-corruption
   (async done
     (let [value {[:state [:account (random-uuid)]]
                  {:value {:updated-at (js/Date. 1700000000000), :ids #{:one :two}}}}]
       (-> (disk/read-local! (pr-str value))
-          (.then (fn [saved]
+          (p/then (fn [saved]
                    (is (= value saved) "Incremental reads use the existing EDN tag readers")
                    (-> (disk/read-local! "{:broken [}")
-                       (.then (fn [_] (is false "Corrupt data must reject")))
-                       (.catch (fn [_] (is true "Reader errors settle the Promise"))))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+                       (p/then (fn [_] (is false "Corrupt data must reject")))
+                       (p/catch-error (fn [_] (is true "Reader errors settle the Promise"))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (deftest native-indexeddb-roundtrip-preserves-clojure-values-and-yields-frames
   (async done
@@ -88,14 +89,14 @@
       (set! js/requestAnimationFrame (fn [callback]
                                      (frame (fn [timestamp] (swap! *frames inc) (callback timestamp)))))
       (-> (disk/write! account bucket)
-          (.then #(disk/read! account))
-          (.then (fn [saved]
+          (p/then #(disk/read! account))
+          (p/then (fn [saved]
                    (is (= bucket saved) "Vector keys, sets, keywords and UUIDs survive native disk IO")
                    (is (pos? @*frames) "Independent entries yield painted frames")))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (set! js/requestAnimationFrame frame)
-                      (-> (disk/remove! account) (.finally done))))))))
+                      (-> (disk/remove! account) (p/finally-do done))))))))
 
 (deftest heavy-migration-commits-before-removing-the-legacy-copy
   (async done
@@ -108,12 +109,12 @@
           *commit (atom nil)]
       (reset! storage/*identity account)
       (storage/write-disk! key (pr-str bucket))
-      (set! disk/write! (fn [_ _] (js/Promise. (fn [resolve _] (reset! *commit resolve)))))
+      (set! disk/write! (fn [_ _] (p/create (fn [resolve _] (reset! *commit resolve)))))
       (-> (go-promise
             (await! (storage/ready! {:scope :user}))
             (let [pending (storage/drain-async!)]
-              (await! (js/Promise.resolve nil))
-              (await! (js/Promise.resolve nil))
+              (await! (p/resolved nil))
+              (await! (p/resolved nil))
               (is (.includes (storage/read-disk! (storage/migration-key account)) ":public-content")
                   "The only durable legacy copy remains while the transaction is pending")
               (is (not (.includes (storage/read-disk! key) ":public-content")))
@@ -123,14 +124,14 @@
               (is (.includes (storage/read-disk! key) ":mouse"))
               (is (nil? (storage/read-disk! (storage/migration-key account))))
               (is (= snapshot (get-in @storage/*buckets [account :public-content])))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (set! disk/write! write!)
                       (reset! storage/*identity identity)
                       (forget! account)
                       (.removeItem js/localStorage key)
                       (.removeItem js/localStorage (storage/migration-key account))
-                      (-> (disk/remove! account) (.finally done))))))))
+                      (-> (disk/remove! account) (p/finally-do done))))))))
 
 (deftest failed-heavy-migration-keeps-small-saves-durable-and-removals-absent
   (async done
@@ -144,7 +145,7 @@
           write! disk/write!]
       (reset! storage/*identity account)
       (storage/write-disk! key (pr-str {:public-content snapshot, draft snapshot, removed snapshot}))
-      (set! disk/write! (fn [& _] (js/Promise.reject (js/Error. "Migration unavailable"))))
+      (set! disk/write! (fn [& _] (p/rejected (js/Error. "Migration unavailable"))))
       (-> (go-promise
             (await! (storage/ready! options))
             (storage/write! draft {:text "New draft"} options)
@@ -161,14 +162,14 @@
             (is (not (contains? (get @storage/*buckets account) removed)) "Backup cannot resurrect small-state removals")
             (is (= snapshot (get-in @storage/*buckets [account :public-content])))
             (await! (storage/drain-async!)))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (set! disk/write! write!)
                       (reset! storage/*identity identity)
                       (forget! account)
                       (.removeItem js/localStorage key)
                       (.removeItem js/localStorage (storage/migration-key account))
-                      (-> (disk/remove! account) (.finally done))))))))
+                      (-> (disk/remove! account) (p/finally-do done))))))))
 
 (deftest late-heavy-restoration-preserves-an-edit-and-a-removal
   (async done
@@ -180,10 +181,10 @@
           removed [:state [:store :removed]]
           snapshot {:version 1, :schema 1, :expires-at (+ (.now js/Date) 60000), :value :old}]
       (reset! storage/*identity account)
-      (set! disk/read! (fn [_] (js/Promise. (fn [resolve _] (reset! *release resolve)))))
+      (set! disk/read! (fn [_] (p/create (fn [resolve _] (reset! *release resolve)))))
       (-> (go-promise
             (let [ready (storage/ready! {:scope :user})]
-              (await! (js/Promise.resolve nil))
+              (await! (p/resolved nil))
               (storage/write! edited :new {:scope :user})
               (storage/remove! removed {:scope :user})
               (@*release {edited snapshot, removed snapshot})
@@ -195,10 +196,10 @@
               (let [saved (await! (disk/read! account))]
                 (is (= :new (get-in saved [edited :value])))
                 (is (not (contains? saved removed))))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (set! disk/read! read!)
                       (reset! storage/*identity identity)
                       (forget! account)
                       (.removeItem js/localStorage (str storage/prefix (pr-str account)))
-                      (-> (disk/remove! account) (.finally done))))))))
+                      (-> (disk/remove! account) (p/finally-do done))))))))

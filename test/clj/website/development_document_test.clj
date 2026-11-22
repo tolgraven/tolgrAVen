@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             [website.env :as environment]
             [website.config :as config]
-            [website.dev.shadow :as startup]
+            [website.tooling.shadow :as startup]
             [ring.mock.request :as mock]
             [website.middleware :as middleware]
             [optimus.assets :as assets]))

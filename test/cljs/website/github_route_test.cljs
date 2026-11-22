@@ -1,6 +1,7 @@
 (ns website.github-route-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [clojure.string :as string]
             [cljs.test :refer-macros [deftest is async]]
             [reitit.frontend :as reitit]
@@ -39,8 +40,8 @@
             (r/dispatch-sync [:component-data/install [:common/route] (match "bbbbbbb12345")])
             (r/dispatch-sync [:navigation/component-loaded commit])
             (is (empty? @*dispatches) "A late module completion cannot activate the previous destination"))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest direct-sha-navigation-does-not-require-the-latest-page-and-overlap-is-deduplicated
   (async done
@@ -52,7 +53,7 @@
                 :commit {:message "fix: An old [literal] commit"
                          :author {:date "2001-01-01T12:00:00Z"}}
                 :files [{:filename "old.clj", :patch "+ old code"}]}]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (r/dispatch-sync [:component-data/install [:common/route] (match prefix)])
@@ -104,14 +105,14 @@
             (is (= [full] (mapv :sha (await! (support/subscription-value! [:github/commits]))))
                 "A cached direct SHA remains visible immediately across archive query changes")
             (await! (support/wait-for! #(= prefix (get-in (last @*requests) [:url-params :q])))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest failed-target-lookup-clears-pending-and-can-retry
   (async done
     (let [restore! (r/make-restore-fn)
           *requests (atom [])]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (r/dispatch-sync [:component-data/install [:module :github :configuration]
@@ -130,8 +131,8 @@
             (is (= 2 (count (filter #(string/ends-with? (:uri %) "bbbbbbb") @*requests)))
                 "A failed arbitrary lookup can be retried")
             (await! (support/wait-for! #(some (fn [request] (= "bbbbbbb" (get-in request [:url-params :q]))) @*requests))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest commit-filter-does-not-execute-user-regex
   (is (model/matches? {:sha "abc1234", :commit {:message "fix: [Literal]"}} "["))
@@ -147,7 +148,7 @@
           prefix "aaaaaaa"
           full (apply str (repeat 40 "a"))
           listed {:sha (apply str (repeat 40 "b")), :commit {:message "fix: layout spacing"}}]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (r/dispatch-sync [:component-data/install [:module :github :configuration]
@@ -168,15 +169,15 @@
             (is (= "layout" (await! (support/subscription-value! [:form-field [:github :search]]))))
             (is (= [(:sha listed)] (mapv :sha (await! (support/subscription-value! [:github/commits])))))
             (is (= "unrelated change" (:message (:commit (await! (support/subscription-value! [:github/commit prefix])))))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest legacy-first-page-cache-reacquires-complete-details-once
   (async done
     (let [restore! (r/make-restore-fn)
           *requests (atom [])
           sha (apply str (repeat 40 "a"))]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
             (r/dispatch-sync [:state [:github] {:target ["u" "r"], :generation 1, :commits-fetched [sha]}])
@@ -190,8 +191,8 @@
             (r/dispatch-sync [:github/fetch-commit "u" "r" sha])
             (await! (support/settle!))
             (is (= 1 (count @*requests)) "A current complete detail stays cached"))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest the-same-permalink-reopens-after-returning-to-the-list
   (async done
@@ -200,7 +201,7 @@
           *position (atom 12.5)
           *landings (atom [])]
       (r/reg-fx :scroll/component-target #(swap! *landings conj %))
-      (r/reg-fx :http-xhrio (fn [_]))
+      (r/reg-fx :http/fetch (fn [_]))
       (r/reg-cofx :github/list-position #(assoc % :github/list-position @*position))
       (-> (go-promise
             (r/dispatch-sync [:init/app-db])
@@ -228,5 +229,5 @@
             (r/dispatch-sync [:github/navigate-commit sha])
             (await! (support/settle!))
             (is (= sha (await! (support/subscription-value! [:github/commit-view])))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))

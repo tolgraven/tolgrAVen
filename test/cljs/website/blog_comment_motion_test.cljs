@@ -1,6 +1,7 @@
 (ns website.blog-comment-motion-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.component.restore :as restore]
@@ -11,14 +12,14 @@
             [website.macros :refer-macros [defc]]))
 
 (defn- tick! [ms]
-  (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
+  (p/delay! ms))
 
 (defn- heights [element]
   (mapv #(.-height (.getBoundingClientRect %))
         (array-seq (.querySelectorAll element ".blog-comment-reply-row"))))
 
 (defn- sample! [element duration]
-  (js/Promise.
+  (p/create
     (fn [resolve _]
       (let [start (js/performance.now)]
         (letfn [(frame! [samples]
@@ -53,17 +54,16 @@
       (set! (.-cssText (.-style element)) "position:fixed;top:2rem;left:2rem;width:30rem;z-index:10000")
       (.appendChild (.-body js/document) element)
       (try
-        (await! (js/Promise.all
-                  (into-array
-                    (map (fn [path link]
-                           (js/Promise.
+        (await! (p/all
+                  (map (fn [path link]
+                           (p/create
                              (fn [resolve reject]
                                (set! (.-rel link) "stylesheet")
                                (set! (.-href link) path)
                                (set! (.-onload link) #(resolve nil))
                                (set! (.-onerror link) #(reject (js/Error. (str "Missing motion CSS: " path))))
                                (.appendChild (.-head js/document) link))))
-                         paths links))))
+                         paths links)))
         {:element element
          :root root
          :close! #(do (support/unmount! root)
@@ -137,8 +137,8 @@
                     (is (every? #(>= (:outer %) (- initial 0.5)) samples)))
                   (is (identical? row (.querySelector element ".blog-comment-reply-row")))))
               (finally (close!) (reset! restore/*context context)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest arriving-replies-retain-a-placeholder-during-a-shortened-reverse
   (async done
@@ -158,7 +158,7 @@
                 ;; cached thread can do. Native CSS shortens the reversed exit.
                 (loop [attempt 0]
                   (when (and (< attempt 30) (empty? (array-seq (.getAnimations placeholder))))
-                    (await! (js/Promise. js/requestAnimationFrame))
+                    (await! (p/create js/requestAnimationFrame))
                     (recur (inc attempt))))
                 (is (some #(= "running" (.-playState %)) (array-seq (.getAnimations placeholder)))
                     "The placeholder has an actual unfinished native entrance")
@@ -171,8 +171,8 @@
                       "The native reply still grows through intermediate heights"))
                 (is (nil? (.querySelector outer ".blog-comment-collapsed-placeholder"))))
               (finally (close!) (reset! restore/*context context)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (defc <automatic-thread-handoff> [*ready? *expanded?]
   ;; Nested expanded threads can receive cached data before their placeholder's
@@ -205,8 +205,8 @@
                       "The reply still grows through intermediate heights")
                   (is (nil? (.querySelector element ".blog-comment-collapsed-placeholder")))))
               (finally (close!) (reset! restore/*context context)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest hydrated-placeholder-retires-its-document-clock-before-native-exit
   (async done
@@ -228,7 +228,7 @@
                 (is (= #{"document-opacity" "document-zoom-y"}
                        (set (map #(.-animationName %) entrance)))
                     "The native styles supply both original SSR entrance clocks")
-                (await! (js/Promise.allSettled (into-array (map #(.-finished %) entrance))))
+                (await! (p/all-settled (map #(.-finished %) entrance)))
                 (is (every? #(= "finished" (.-playState %)) entrance))
                 (restore/hydrated!)
                 (await! (support/settle!))
@@ -260,8 +260,8 @@
                   (is (not (.contains outer placeholder)))
                   (is (nil? (.querySelector outer ".blog-comment-collapsed-placeholder")))))
               (finally (close!) (reset! restore/*context context)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest late-replies-grow-layout-in-their-entrance-order-and-reverse-on-reentry
   (async done
@@ -305,8 +305,8 @@
                 (await! (tick! 210))
                 (is (every? #(< % 1) (heights element)) "Collapse finishes within comment retention"))
               (finally (close!) (reset! restore/*context context)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest restored-and-offscreen-layout-rows-keep-natural-height
   (async done
@@ -339,5 +339,5 @@
               (let [row (.querySelector element ".blog-comment-reply-row")]
                 (is (zero? (.-length (.getAnimations row))) "Offscreen entrance schedules no animation"))
               (finally (close!) (reset! restore/*context context)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))

@@ -1,7 +1,7 @@
 (ns website.development-source-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.java.io :as io]
-            [website.dev.source :as source]
+            [website.inspector.source :as source]
             [website.env :as environment])
   (:import [java.nio.file Files Path]))
 

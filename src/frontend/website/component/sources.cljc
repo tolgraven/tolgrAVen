@@ -1,7 +1,8 @@
 (ns website.component.sources
   "Adapters use existing application clients; credentials stay in those clients."
   #?(:cljs (:require-macros [website.build.site :refer [when-enabled]]))
-  #?(:cljs (:require [ajax.core :as ajax]
+  #?(:cljs (:require [website.async :as a]
+            [website.http :as http]
             [goog.object :as gobj]
             [website.react :as r]
             [website.component.data :as data]
@@ -33,16 +34,17 @@
 (defn- db-value [path]
   @(r/sub [:component-data/path path]))
 
+(defn- ^:async load-path! [{:keys [path load timeout-ms]}]
+  (when load (await (data/ensure! load)))
+  (let [*value (r/make-reaction #(db-value path) :auto-run true)]
+    (try (await (data/wait-for! *value #(deref *value) (or timeout-ms 15000)))
+         (finally (r/dispose! *value)))))
+
 (data/register-source!
  :app-db
  {:restore! (fn [{:keys [path]} value] (r/dispatch-sync [:component-data/install path value]))
   :read (fn [{:keys [path]}] (db-value path))
-  :load! (fn [{:keys [path load timeout-ms]}]
-           (-> (if load (data/ensure! load) (js/Promise.resolve nil))
-               (.then (fn [_]
-                        (let [*value (r/make-reaction #(db-value path) :auto-run true)]
-                          (-> (data/wait-for! *value #(deref *value) (or timeout-ms 15000))
-                              (.finally #(r/dispose! *value))))))))})
+  :load! load-path!})
 
 (data/register-source!
  :strapi
@@ -55,18 +57,14 @@
           @(r/sub [:component-data/content keys]))
   :load! (fn [{:keys [keys]}]
            (-> (content/ensure! keys)
-               (.then (fn [_] (:value @(r/sub [:component-data/content keys]))))))})
+               (a/then (fn [_] (:value @(r/sub [:component-data/content keys]))))))})
 
 (data/register-source!
  :url
  {:load! (fn [{:keys [url format timeout-ms]}]
-           (js/Promise.
-            (fn [resolve reject]
-              (ajax/GET url {:timeout (or timeout-ms 15000)
-                             :response-format (if (= :text format) (ajax/text-response-format)
-                                                 (ajax/json-response-format {:keywords? true}))
-                             :handler resolve
-                             :error-handler (fn [_] (reject (js/Error. "URL dependency unavailable")))}))))})
+           (http/request! {:uri url
+                           :timeout (or timeout-ms 15000)
+                           :response-format (if (= :text format) :text :json)}))})
 
 (when-enabled :supabase nil
 (defonce *auth-generation (atom 0))
@@ -92,7 +90,7 @@
   :load! (fn [{:keys [query timeout-ms]}]
            (let [generation @*auth-generation]
              (-> (status/within! (supabase/ensure!) (or timeout-ms 15000))
-                 (.then (fn [_]
+                 (a/then (fn [_]
                           (when-not (= generation @*auth-generation)
                             (throw (js/Error. "Supabase session changed")))
                           (supabase/preload-query! query))))))})
@@ -120,6 +118,6 @@
              (-> (data/wait-for! *value
                                 #(let [value @*value] {:ready? (true? value) :value value})
                                 (or timeout-ms 15000))
-                 (.finally #(r/dispose! *value)))))})
+                 (a/finally-do #(r/dispose! *value)))))})
 
 ))

@@ -1,6 +1,8 @@
 (ns website.strava-graph-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.math :as math]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.render-context :as context]
             [clojure.string :as string]
@@ -9,6 +11,21 @@
             [website.subs]
             [website.modules.strava.views :as views]
             [website.test-support :as support]))
+
+(deftest cursor-outlines-one-circle-at-the-selected-sample
+  (let [arcs (atom [])
+        noop (fn [& _])
+        context #js {:clearRect noop :beginPath noop :moveTo noop :lineTo noop :stroke noop
+                     :arc (fn [& args] (swap! arcs conj (vec args)))}
+        canvas #js {:width 100 :height 40 :clientWidth 100 :clientHeight 40
+                    :getContext (fn [_] context)}
+        cursor (atom [55 20])]
+    (views/draw-graph canvas "Power" [0 10 5 7] cursor)
+    (is (= [[50 20 4 0 (* 2 math/PI)]] @arcs))
+    (doseq [x [-1 100]]
+      (reset! cursor [x 20])
+      (views/draw-graph canvas "Power" [0 10 5 7] cursor))
+    (is (= 1 (count @arcs)) "A cursor outside the plot draws no extra circle.")))
 
 (deftest native-graphs-paint-constant-series-and-retain-varying-coordinates
   (async done
@@ -54,8 +71,8 @@
                           "Ordinary series retain their original rescaling"))
                     (finally (set! (.-lineTo context) original-line-to))))
                 (finally (support/unmount! root)))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (.remove element) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (.remove element) (done)))))))
 
 (r/defc ^:private <hydrated-activity-dots> [activities *committed?]
   (r/use-layout-effect (fn [] (reset! *committed? true) nil) [])
@@ -134,15 +151,15 @@
               (is (empty? @*recoveries))
               (is (= 3 (count @*timers)) "Each native dot owns one growth deadline")
               (is (every? #(<= 750 (:delay @%) 3249) @*timers))
-              (await! (js/Promise. (fn [resolve _] (.call before-timeout js/window resolve 3400))))
+              (await! (p/create (fn [resolve _] (.call before-timeout js/window resolve 3400))))
               (await! (support/settle!))
               (is (every? #(:called? @%) @*timers) "The original native timer callbacks actually ran")
               (is (= ["1.5em" "0.9em" "0.85em"] (widths element))
                   "Growth still reaches the original energy-based sizes and lower bound")
               (is (every? true? (map identical? server-dots (dots element)))
                   "Growth updates the retained dots rather than replacing them")))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (r/unmount @*root))
                       (set! js/setTimeout before-timeout)
                       (set! (.-error js/console) before-error)

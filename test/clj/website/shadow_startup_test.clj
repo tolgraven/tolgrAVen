@@ -1,7 +1,7 @@
 (ns website.shadow-startup-test
   (:require [clojure.test :refer [deftest is use-fixtures]]
             [clojure.tools.logging :as log]
-            [website.dev.shadow :as startup]))
+            [website.tooling.shadow :as startup]))
 
 (use-fixtures :each
   (fn [test!]

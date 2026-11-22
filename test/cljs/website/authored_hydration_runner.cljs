@@ -1,6 +1,7 @@
 (ns website.authored-hydration-runner
   "A focused cljs.test runner avoids the development-only display library in release."
-  (:require [cljs.test :as test :include-macros true]
+  (:require [website.async :as p]
+            [cljs.test :as test :include-macros true]
             [website.react :as r]
             [website.macros :refer-macros [defc]]
             [website.test-support :as support]
@@ -33,7 +34,7 @@
 
 (defn ^:export init []
   (-> (support/create-root! (.getElementById js/document "release-report"))
-      (.then (fn [root]
+      (p/then (fn [root]
                (reset! *root root)
                (support/render! root [<report>])))
-      (.then (fn [_] (start)))))
+      (p/then (fn [_] (start)))))

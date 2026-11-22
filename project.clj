@@ -10,7 +10,7 @@
   :url "https://tolgraven.se"
 
   ;; Application-owned dependencies; Shadow owns its compiler graph in :provided.
-  :dependencies [[org.clojure/clojure "1.12.6"]
+  :dependencies [[org.clojure/clojure "1.12.7"]
                  [org.clojure/data.json "2.5.2"]
                  [org.clojure/tools.cli "1.4.256"]
                  [nrepl "1.8.0"]
@@ -107,7 +107,7 @@
 
   :plugins [[lein-codox "0.10.8"]]
 
-  :aliases {"repl" ["trampoline" "run" "-m" "website.dev.terminal"]
+  :aliases {"repl" ["trampoline" "run" "-m" "website.tooling.terminal"]
             "repl-classic" ["update-in" ":aliases" "dissoc" "\"repl\"" "--" "repl"]
             "docs" ["update-in" ":" "assoc" ":prep-tasks" "^:replace []" "--"
                     "do" ["run" "-m" "website.build.docs"] ["codox"]]}
@@ -121,7 +121,7 @@
    :source-uri "https://github.com/tolgraven/tolgraven/blob/master/{filepath}#L{line}"}
 
   :profiles
-  {:antq {:dependencies ^:replace [[org.clojure/clojure "1.12.6"]
+  {:antq {:dependencies ^:replace [[org.clojure/clojure "1.12.7"]
                                    [com.github.liquidz/antq "2.11.1276"]]
           :source-paths ^:replace []
           :resource-paths ^:replace []
@@ -129,10 +129,8 @@
           :prep-tasks ^:replace []}
    :provided {:dependencies [[thheller/shadow-cljs "3.5.7"]
                              [com.cognitect/transit-cljs "0.8.280"]
-                             [cljs-ajax "0.8.4"]
                              [com.andrewmcveigh/cljs-time "0.5.2"]
                              [re-frame "1.4.7"]
-                             [day8.re-frame/http-fx "0.2.4"]
                              [breaking-point "0.1.2"]
                              [reagent "2.0.1"]]}
    :dev           [:project/dev :profiles/dev]

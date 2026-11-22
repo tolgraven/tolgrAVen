@@ -1,5 +1,6 @@
 (ns website.modules.cv.events
-  (:require [website.component.storage :as storage]
+  (:require [website.async :as a]
+            [website.component.storage :as storage]
             [website.react :as r]
             [website.util :as util]))
 
@@ -10,11 +11,11 @@
 (r/reg-fx :cv/restore-visit
   (fn [generation]
     (-> (storage/ready! {:scope :public})
-        (.then (fn [_]
+        (a/then (fn [_]
                  (let [snapshot (storage/read! [:state [:state :cv :visited]]
                                               {:scope :public, :consume? false})]
                    (r/dispatch [:cv/visit-restored generation (true? (:value snapshot))]))))
-        (.catch (fn [_] (r/dispatch [:cv/visit-restored generation false]))))))
+        (a/catch-error (fn [_] (r/dispatch [:cv/visit-restored generation false]))))))
 
 (r/reg-event-fx :cv/mount [(r/inject-cofx :ls)]
   (fn [{:keys [db ls]} [_ {:keys [owner returned?]}]]

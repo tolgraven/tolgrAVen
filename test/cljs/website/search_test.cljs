@@ -1,6 +1,7 @@
 (ns website.search-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [re-frame.registrar :as registrar]
             [website.react :as r]
             [website.events]
@@ -42,15 +43,15 @@
                   (await! (support/settle!))
                   (reset! *open? false)
                   (await! (support/settle!))
-                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 150))))
+                  (await! (p/delay! 150))
                   (is (not (identical? input (.-activeElement js/document)))
                       "Closing before delayed focus cancels it"))
                 (finally
                   (support/unmount! root)
                   (.remove container)
                   (.scrollTo js/window #js {:top scroll-y, :behavior "instant"}))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest debounced-search-rejects-stale-results-and-closing-cancels-queued-work
   (async done
@@ -58,9 +59,9 @@
           requests (atom [])
           delayed (atom [])
           ;; Preserve the actual registered adapters; replacements own only this test.
-          original-http (registrar/get-handler :fx :http-xhrio)
+          original-http (registrar/get-handler :fx :http/fetch)
           original-delay (registrar/get-handler :fx :dispatch-later)]
-      (r/reg-fx :http-xhrio #(swap! requests conj %))
+      (r/reg-fx :http/fetch #(swap! requests conj %))
       (r/reg-fx :dispatch-later #(swap! delayed into %))
       (-> (go-promise
             (r/dispatch-sync [:search/init])
@@ -90,9 +91,9 @@
             (await! (support/settle!))
             (is (= 2 (count @requests)))
             (is (false? (await! (support/subscription-value! [:search/pending?])))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
-                      (r/reg-fx :http-xhrio original-http)
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
+                      (r/reg-fx :http/fetch original-http)
                       (r/reg-fx :dispatch-later original-delay)
                       (restore!)
                       (done)))))))
@@ -109,8 +110,8 @@
                                               (model/marked-segments "A <mark><script>bad</script></mark> result")]))
               (is (= "<script>bad</script>" (.-textContent (.querySelector element "mark"))))
               (is (nil? (.querySelector element "script")))) )
-          (.catch #(is false (str %)))
-          (.finally #(do (when @root (support/unmount! @root)) (.remove element) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do #(do (when @root (support/unmount! @root)) (.remove element) (done)))))))
 
 (deftest styled-search-is-controlled-and-keyboard-completion-updates-its-real-input
   (async done
@@ -148,8 +149,8 @@
                 (await! (support/settle!))
                 (is (= "C++ guide" (.-value input)))
                 (is (zero? (.-length (.querySelectorAll element ".appear-wrapper")))))))
-          (.catch #(is false (str %)))
-          (.finally #(do (when @root (support/unmount! @root)) (.remove element)
+          (p/catch-error #(is false (str %)))
+          (p/finally-do #(do (when @root (support/unmount! @root)) (.remove element)
                          (r/reg-fx :dispatch-later original-delay) (restore!) (done)))))))
 
 (deftest header-search-retains-its-exiting-input-and-cancels-removal-on-reentry
@@ -176,7 +177,7 @@
                     input (.querySelector element "#search-input")]
                 (await! (support/wait-for! #(identical? input (.-activeElement js/document))))
                 (await! (support/wait-for! #(.contains (.-classList panel) "appeared")))
-                (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 350))))
+                (await! (p/delay! 350))
                 (r/dispatch-sync [:state [:search :open?] false])
                 (await! (support/wait-for! #(.hasAttribute panel "inert")))
                 (is (identical? panel (.querySelector element ".search-ui"))
@@ -192,8 +193,8 @@
                 (r/dispatch-sync [:state [:search :open?] false])
                 (await! (support/wait-for! #(nil? (.querySelector element ".search-ui"))))
                 (is (not (.-isConnected input)) "Completed exit leaves no hidden panel"))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (.remove style)
@@ -221,8 +222,8 @@
               (is (= ["native example" "native guide"]
                      (mapv #(.-textContent %) (array-seq (.querySelectorAll element "[role=option]")))))
               (is (= "native-search-suggestions-1" (.-id (.querySelector element "[role=option]:last-child"))))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (r/reg-fx :dispatch-later original-delay)

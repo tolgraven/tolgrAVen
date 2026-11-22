@@ -1,6 +1,8 @@
 (ns website.component-font-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [website.browser.css :as css]
+            [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.component]
@@ -34,9 +36,25 @@
        :close! #(do (support/unmount! root) (.remove element))})))
 (defn- phase [node] (.getAttribute node "data-font-phase"))
 (defn- until! [node value] (support/wait-for! #(= value (phase node))))
-(defn- tick! [ms] (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
 (defn- ended! [node name]
   (.dispatchEvent node (js/AnimationEvent. "animationend" #js {:bubbles true, :animationName name})))
+
+(defn- hold-fade-watchdogs! []
+  (let [schedule! (r/get-handler :fx :dispatch-later)
+        watchdogs (atom [])]
+    (r/reg-fx :dispatch-later
+      (fn [delays]
+        (let [delays (if (map? delays) [delays] delays)
+              {held true other false} (group-by #(= :font/done (first (:dispatch %))) delays)]
+          (swap! watchdogs into held)
+          (when (seq other) (schedule! other)))))
+    {:watchdogs watchdogs :restore! #(r/reg-fx :dispatch-later schedule!)}))
+
+(defn- pause-at-midpoint! [animation]
+  (.pause animation)
+  (set! (.-currentTime animation)
+        (/ (.-duration (.getTiming (.-effect animation))) 2)))
+
 (defn- options []
   (let [name (str "font-test-" (random-uuid))]
     (assoc font/fira :family name :initial-family (str name "-initial") :fade-ms 200)))
@@ -72,14 +90,15 @@
                 (is (= [2 6] [(.-selectionStart input) (.-selectionEnd input)]))
                 (is (nil? (.querySelector element ".font-text-stack"))))
               (finally (close!) (restore!) (.delete (.-fonts js/document) face)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest actual-font-load-crossfades-in-place-and-removes-original-text
   (async done
     (-> (go-promise
           (let [{:keys [element root close!]} (await! (fixture!))
                 {:keys [loads original restore!]} (capture-loads!)
+                {watchdogs :watchdogs restore-watchdogs! :restore!} (hold-fade-watchdogs!)
                 opts (options)
                 face (js/FontFace. (:family opts) "url('/webfonts/FiraCode-Retina.woff2')")
                 sheet (.createElement js/document "link")
@@ -93,14 +112,14 @@
             (set! (.-rel monospace) "stylesheet")
             (set! (.-href monospace) "/css/website/modules/monospace.min.css")
             (try
-              (await! (js/Promise. (fn [resolve reject]
+              (await! (p/create (fn [resolve reject]
                                     (set! (.-onload monospace) resolve)
                                     (set! (.-onerror monospace) reject)
                                     (.appendChild (.-head js/document) monospace))))
               (reset! *adjusted?
                       (await! (-> (.load (.-fonts js/document) "1em 'Fira Code Fallback'")
-                                  (.then #(pos? (.-length %)))
-                                  (.catch (constantly false)))))
+                                  (p/then #(pos? (.-length %)))
+                                  (p/catch-error (constantly false)))))
               (r/with-framework-bindings [motion/reduced-motion? (constantly false)]
                 (await! (support/render! root
                           [:section [<sample> opts {:class [:caller "other"]
@@ -138,14 +157,18 @@
                         "Both fades start in the same CSS animation frame")
                     (is (= 200 (.-duration (.getTiming (.-effect incoming-animation)))))
                     (is (= "linear" (.-easing (.getTiming (.-effect incoming-animation)))))
-                    (await! (tick! 75))
-                    (let [old-opacity (js/parseFloat (.-opacity (js/getComputedStyle outgoing)))
-                          new-opacity (js/parseFloat (.-opacity (js/getComputedStyle incoming)))]
+                    (run! pause-at-midpoint! [outgoing-animation incoming-animation])
+                    (let [old-opacity (css/magnitude (.-opacity (js/getComputedStyle outgoing)))
+                          new-opacity (css/magnitude (.-opacity (js/getComputedStyle incoming)))]
                       (is (< 0 old-opacity 1))
                       (is (< 0 new-opacity 1))
-                      (is (< (js/Math.abs (- 1 (+ old-opacity new-opacity))) 0.05)
+                      (is (< (abs (- 1 (+ old-opacity new-opacity))) 0.05)
                           "There is no transparent interval between the fonts")
                       (is (= "1" (.-opacity (js/getComputedStyle node)))))
+                    ;; Keep the timer as a separate completion path while checking
+                    ;; which layer owns the bubbling native animation event.
+                    (is (= [250 250] (mapv :ms @watchdogs))
+                        "Both owners schedule their fallback after the native fade")
                     (ended! incoming-code "font-fade-in")
                     (await! (support/settle!))
                     (is (= "crossfade" (phase node)) "Child animation cannot finish the fade")
@@ -159,8 +182,8 @@
                     (is (= "MWiw0123456789" (.-textContent node)))
                     (when @*adjusted?
                       (let [loaded (.querySelector incoming-code "span")]
-                        (is (< (js/Math.abs (- original-width (.-width (.getBoundingClientRect loaded)))) 0.2))
-                        (is (< (js/Math.abs (- original-height (.-height (.getBoundingClientRect loaded)))) 0.5))))
+                        (is (< (abs (- original-width (.-width (.getBoundingClientRect loaded)))) 0.2))
+                        (is (< (abs (- original-height (.-height (.getBoundingClientRect loaded)))) 0.5))))
                     (is (.contains (.-classList node) "caller"))
                     (is (.contains (.-classList node) "other"))
                     (is (= "rgb(10, 20, 30)" (.-color (.-style node))))
@@ -175,10 +198,10 @@
                       (is (.includes (.-fontFamily (js/getComputedStyle (.querySelector returned "code")))
                                      (:family opts)))
                       (is (= 1 (count @loads)) "No second acquisition or reveal")))))
-              (finally (close!) (restore!)
+              (finally (close!) (restore!) (restore-watchdogs!)
                        (.delete (.-fonts js/document) face) (.remove sheet) (.remove monospace)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest failure-and-stale-completion-keep-fallback-readable
   (async done
@@ -206,8 +229,8 @@
                                 (vals (get (await! (support/state-at! [:fonts])) :instances)))
                       "Unmount removes transient ownership")))
               (finally (close!) (restore!) (.delete (.-fonts js/document) face)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest native-ready-and-disabled-owners-never-request-or-animate
   (async done
@@ -228,8 +251,8 @@
                 (is (nil? (phase (.querySelector element "pre"))))
                 (is (empty? @loads)))
               (finally (close!) (restore!) (.delete (.-fonts js/document) original)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest reduced-motion-upgrades-directly-and-unmounted-owner-is-not-revived
   (async done
@@ -263,8 +286,8 @@
                     (is (not-any? #(= opts (:options %))
                                   (vals (get (await! (support/state-at! [:fonts])) :instances)))))))
               (finally (close!) (restore!) (.delete (.-fonts js/document) face)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest search-text-crossfades-with-one-live-input-and-one-caret
   (async done
@@ -307,8 +330,8 @@
                   (is (nil? (.querySelector element ".font-text-next")))
                   (is (= "re-frame" (.-value input)))))
               (finally (close!) (restore!) (.delete (.-fonts js/document) face) (.remove sheet)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest history-font-completion-skips-the-reveal
   (async done
@@ -332,5 +355,5 @@
               (finally (close!) (restore!)
                        (reset! restore/*context before)
                        (.delete (.-fonts js/document) face)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))

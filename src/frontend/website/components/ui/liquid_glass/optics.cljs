@@ -1,17 +1,18 @@
 (ns website.components.ui.liquid-glass.optics
   "Pure lens profiles and distance fields. Dimensions are measured CSS-pixel
-   coordinates at the browser boundary, never authored pixel styling.")
+   coordinates at the browser boundary, never authored pixel styling."
+  (:require [cljs.math :as math]))
 
 (defn clamp [low high value] (max low (min high value)))
 (defn finite? [value] (and (number? value) (js/Number.isFinite value)))
 
 (defn surface-height [profile t]
   (let [t' (clamp 0 1 t)
-        convex (js/Math.sqrt (max 0 (- 1 (* (- 1 t') (- 1 t')))))
+        convex (math/sqrt (max 0 (- 1 (* (- 1 t') (- 1 t')))))
         concave (- 1 convex)]
     (case profile
       :convex convex
-      :squircle (js/Math.pow (max 0 (- 1 (js/Math.pow (- 1 t') 4))) 0.25)
+      :squircle (math/pow (max 0 (- 1 (math/pow (- 1 t') 4))) 0.25)
       :concave concave
       :lip (let [mix (* t' t' t' (+ (* t' (- (* 6 t') 15)) 10))]
              (+ (* convex (- 1 mix)) (* concave mix)))
@@ -24,10 +25,10 @@
         height (surface-height profile t)
         slope (/ (- (surface-height profile high) (surface-height profile low))
                  (max step (- high low)))
-        normal-z (/ 1 (js/Math.sqrt (+ 1 (* slope slope))))
+        normal-z (/ 1 (math/sqrt (+ 1 (* slope slope))))
         normal-x (* (- slope) normal-z)
         ratio (/ 1 index)
-        transmitted (js/Math.sqrt (max 0 (- 1 (* ratio ratio (- 1 (* normal-z normal-z))))))
+        transmitted (math/sqrt (max 0 (- 1 (* ratio ratio (- 1 (* normal-z normal-z))))))
         factor (- (* ratio normal-z) transmitted)
         ray-x (* factor normal-x)
         ray-z (+ (- ratio) (* factor normal-z))
@@ -55,7 +56,7 @@
         qy (- (abs py) (- (/ height 2) radius'))
         ox (max 0 qx)
         oy (max 0 qy)
-        length (js/Math.hypot ox oy)
+        length (math/hypot ox oy)
         sx (if (neg? px) -1 1)
         sy (if (neg? py) -1 1)
         distance (- radius' (+ length (min (max qx qy) 0)))]
@@ -70,12 +71,12 @@
         ry (/ height 2)
         px (- x rx)
         py (- y ry)
-        radial (js/Math.hypot (/ px rx) (/ py ry))]
+        radial (math/hypot (/ px rx) (/ py ry))]
     (if (zero? radial)
       [(min rx ry) 0 0]
       (let [gx (/ px (* rx rx radial))
             gy (/ py (* ry ry radial))
-            length (js/Math.hypot gx gy)]
+            length (math/hypot gx gy)]
         [(/ (- 1 radial) length) (- (/ gx length)) (- (/ gy length))]))))
 
 (defn- polygon-edges [points]
@@ -97,7 +98,7 @@
 (defn- edge-distance [edges x y]
   (loop [offset 0, inside? false, nearest-distance js/Infinity, nx 0, ny 0]
     (if (= offset (.-length edges))
-      (let [length (js/Math.sqrt nearest-distance)
+      (let [length (math/sqrt nearest-distance)
             sign (if inside? 1 -1)]
         [(* sign length) (* sign nx) (* sign ny)])
       (let [ax (aget edges offset)
@@ -113,7 +114,7 @@
             vy (- y (+ ay (* fraction dy)))
             squared (+ (* vx vx) (* vy vy))
             nearer? (< squared nearest-distance)
-            length (if nearer? (max 0.000001 (js/Math.sqrt squared)) 1)
+            length (if nearer? (max 0.000001 (math/sqrt squared)) 1)
             crosses? (and (not= (> ay y) (> by y))
                           (< x (+ ax (/ (* (- y ay) dx) (- by ay)))))]
         (recur (+ offset 7) (if crosses? (not inside?) inside?)
@@ -127,7 +128,7 @@
   (when-not (and (finite? width) (finite? height) (pos? width) (pos? height))
     (throw (ex-info "Glass dimensions must be positive and finite" {})))
   (let [ratio (min resolution (/ max-side width) (/ max-side height)
-                   (js/Math.sqrt (/ max-pixels (* width height))))
+                   (math/sqrt (/ max-pixels (* width height))))
         w (max 1 (min max-pixels (int (* width ratio))))
         h (max 1 (min (int (/ max-pixels w)) (int (* height ratio))))]
     [w h]))
@@ -148,9 +149,9 @@
                     :ellipse #(ellipse-distance width height %1 %2)
                     :polygon #(edge-distance edges %1 %2)
                     #(rounded-distance width height (if (= shape :capsule) (/ (min width height) 2) radius) %1 %2))
-        angle (* light-angle (/ js/Math.PI 180))
-        light-x (js/Math.cos angle)
-        light-y (js/Math.sin angle)
+        angle (* light-angle (/ math/PI 180))
+        light-x (math/cos angle)
+        light-y (math/sin angle)
         bezel' (max 0.000001 (min bezel (/ (min width height) 2)))]
     (dotimes [y h]
       (dotimes [x w]
@@ -160,7 +161,7 @@
               t (/ distance bezel')
               amount (if (and edge? (pos? maximum)) (/ (sample table t) maximum) 0)
               rim (if edge?
-                    (* (js/Math.pow (- 1 t) light-focus)
+                    (* (math/pow (- 1 t) light-focus)
                        (max 0 (+ (* (- nx) light-x) (* (- ny) light-y)))) 0)]
           (aset displacement-data offset (+ 128 (* 127 nx amount)))
           (aset displacement-data (inc offset) (+ 128 (* 127 ny amount)))

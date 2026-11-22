@@ -1,6 +1,7 @@
 (ns website.binding-contract-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
 
 
@@ -61,8 +62,8 @@
               (await! (support/settle!))
               (is (= "12" (.-textContent element)))
               (finally (support/unmount! root) (.remove element)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest coerced-event-input-and-invalid-effects-use-real-event-queue
   (async done
@@ -89,7 +90,7 @@
               (await! (support/settle!))
               (is (= 43 (:value ((:values consumer)))) "Explicit coercion is consistent in production")
               (finally ((:unmount! consumer)) (reset! contracts/*enabled? enabled?) (restore!)))))
-        (.catch #(is false (str %))) (.finally done))))
+        (p/catch-error #(is false (str %))) (p/finally-do done))))
 
 (deftest normalized-queries-share-a-mounted-subscription
   (async done
@@ -102,7 +103,7 @@
               (is (= {:string 7, :number 7} ((:values consumer))))
               (is (= 1 @*created))
               (finally ((:unmount! consumer))))))
-        (.catch #(is false (str %))) (.finally done))))
+        (p/catch-error #(is false (str %))) (p/finally-do done))))
 
 (deftest replacing-a-contracted-subscription-removes-argument-normalization
   (async done
@@ -115,8 +116,8 @@
             (fn [_ [_ value]] value))
           (is (= "8" (await! (support/subscription-value! [:binding-test/replaced "8"]))))
           (is (= "plain" (await! (support/subscription-value! [:binding-test/replaced "plain"])))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest raw-contract-releases-source-with-last-consumer
   (async done
@@ -131,7 +132,7 @@
               (finally ((:unmount! a)) ((:unmount! b)))))
           (await! (support/settle!))
           (is (= 1 @*disposed) "The final unmount releases the managed reaction"))
-        (.catch #(is false (str %))) (.finally done))))
+        (p/catch-error #(is false (str %))) (p/finally-do done))))
 
 (deftest invalid-subscription-result-reaches-the-component-boundary
   (async done
@@ -147,7 +148,7 @@
               (is (some? (.querySelector element "[role=alert]")))
               (is (not (.includes (.-textContent element) "private-invalid-result")))
               (finally (support/unmount! root) (.remove element)))))
-        (.catch #(is false (str %))) (.finally done))))
+        (p/catch-error #(is false (str %))) (p/finally-do done))))
 
 (r/reg-sub :binding-test/coerced-result
   {:args [:tuple], :result :int, :result-coerce :string}
@@ -162,8 +163,8 @@
                 (reset! contracts/*enabled? enabled?)
                 (is (= 12 (await! (support/subscription-value! [:binding-test/coerced-result])))))
               (finally (reset! contracts/*enabled? enabled?)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest warning-results-are-visible-without-a-diagnostic-update-loop
   (async done
@@ -185,8 +186,8 @@
               (is (= 1 (:count (first (filter #(= "subscription-result :binding-test/warning" (:contract %))
                                              (:errors ((:values consumer))))))))
               (finally ((:unmount! consumer)) (restore!)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest invalid-query-is-rejected-before-source-acquisition
   (async done
@@ -204,5 +205,5 @@
               (is (zero? @*created))
               (is (not (.includes (.-textContent element) "invalid-private-id")))
               (finally (support/unmount! root) (.remove element)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))

@@ -1,6 +1,7 @@
 (ns website.supabase-boot-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
 
             [website.events]
@@ -17,7 +18,7 @@
           *retry (atom nil)
           *initialized (atom 0)
           *consumer (atom nil)]
-      (r/reg-fx :http-xhrio #(swap! *requests conj %))
+      (r/reg-fx :http/fetch #(swap! *requests conj %))
       (status/recover! :supabase-init)
       (r/reg-fx :dispatch-later #(when-let [retry (first (filter (fn [item] (= :supabase/fetch-settings (first (:dispatch item)))) %))]
                                    (reset! *retry retry)))
@@ -52,8 +53,8 @@
               (is (= 1 @*initialized))
               (is (= :ready (:init (values))))
               (is (true? (:booted (values))))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when-let [consumer @*consumer] ((:unmount! consumer)))
                       (set! client/init! init!)
                       (reset! status/*failures failures)
@@ -100,8 +101,8 @@
               (is (= :failed (:init (values))))
               (is (= "Supabase could not initialize" (get-in @status/*failures [:supabase-init :title])))
               (is (not (.includes (pr-str @status/*failures) "private SDK detail")))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when-let [consumer @*consumer] ((:unmount! consumer)))
                       (set! client/init! init!)
                       (reset! status/*failures failures)

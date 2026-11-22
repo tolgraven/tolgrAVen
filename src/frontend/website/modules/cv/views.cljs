@@ -1,5 +1,6 @@
 (ns website.modules.cv.views
   (:require
+    [website.browser.css :as css]
     [website.content.schema :as schema]
     [website.content.fields :as fields]
     [website.media.schema :as media-schema]
@@ -157,7 +158,7 @@
         closing (r/use-ref false)
         transform-for (fn [origin]
                         (let [style (js/getComputedStyle (.-current surface))]
-                          (origin-transform origin (js/parseFloat (.-width style)) (js/parseFloat (.-height style))
+                          (origin-transform origin (css/magnitude (.-width style)) (css/magnitude (.-height style))
                                             (.-innerWidth js/window) (.-innerHeight js/window))))
         begin-close! (fn []
                        (when-not (.-current closing)

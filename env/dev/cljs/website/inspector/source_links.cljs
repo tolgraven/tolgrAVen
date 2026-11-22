@@ -1,4 +1,4 @@
-(ns website.dev.source-links (:require [clojure.string :as string]))
+(ns website.inspector.source-links (:require [clojure.string :as string]))
 (def catalog-path [:dev-console :source-catalog])
 (def catalog-resource
   {:source :url

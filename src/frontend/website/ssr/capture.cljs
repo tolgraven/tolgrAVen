@@ -1,7 +1,9 @@
 (ns website.ssr.capture
   "Lazy transport adapter. Rendering runs against the same cached browser chunks
    in a worker; application state and publication remain in ssr.local events."
-  (:require [website.loader :as loader]
+  (:require [website.browser.location :as location]
+            [website.async :as a]
+            [website.loader :as loader]
             [website.loader.styles :as styles]
             [website.browser-resources :as browser-resources]
             [website.component.storage :as storage]
@@ -50,10 +52,17 @@
                           [{:id (name id) :url (:url asset)}]))))]
       (vec (mapcat ordered (sort ids))))))
 
+(defn- ^:async render-if-pending! [id db config code?]
+  (when (contains? @*pending id)
+    (let [[renderer] (await (a/all (cond-> [(loader/acquire-code! :page-render)]
+                                     code? (conj (loader/acquire-code! :highlight)))))]
+      (when (contains? @*pending id)
+        ((:pair! renderer) db config)))))
+
 (defn- browser-pair! [db config code?]
   ;; Leaflet's browser entry needs a real DOM. Development's entry additionally
   ;; starts debugging tools. Preserve capture for these cases in painted idle.
-  (js/Promise.
+  (a/create
     (fn [resolve reject]
       (let [id (swap! *request inc)
             finish! (fn [value error]
@@ -65,15 +74,9 @@
             timeout (js/setTimeout #(finish! nil (js/Error. "Local page rendering timed out")) 10000)]
         (swap! *pending assoc id {:reject reject :timeout timeout})
         (let [cancel (browser-resources/after-page!
-                       #(when (contains? @*pending id)
-                          (-> (js/Promise.all
-                                (into-array (cond-> [(loader/acquire-code! :page-render)]
-                                              code? (conj (loader/acquire-code! :highlight)))))
-                              (.then (fn [specs]
-                                       (when (contains? @*pending id)
-                                         ((:pair! (aget specs 0)) db config))))
-                              (.then (fn [value] (finish! value nil)))
-                              (.catch (fn [error] (finish! nil error))))))]
+                       #(a/then (render-if-pending! id db config code?)
+                                (fn [value] (finish! value nil))
+                                (fn [error] (finish! nil error))))]
           (when (contains? @*pending id)
             (swap! *pending update id assoc :cancel cancel)))))))
 
@@ -92,13 +95,13 @@
                      :template template
                      :build build
                      :owner @storage/*identity
-                     :url (str (.-origin js/location) (.-pathname js/location) (.-search js/location))
+                     :url (location/page-url)
                      :title (.-title js/document)}
             encoded (pr-str request)
             assets (asset-plan scripts' (cond-> (conj (set modules) :page-render) code? (conj :highlight)))]
         (when (> (contract/byte-count encoded) (* 2 contract/max-bytes))
           (throw (js/Error. "Local page request exceeds cache budget")))
-        (js/Promise.
+        (a/create
           (fn [resolve reject]
             (let [id (swap! *request inc)
                   timeout (js/setTimeout

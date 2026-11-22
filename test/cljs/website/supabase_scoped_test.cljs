@@ -1,5 +1,6 @@
 (ns website.supabase-scoped-test
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
 
             [website.supabase.scoped :as scoped]
@@ -25,7 +26,7 @@
         (is (= [opts] @*reads))
         ((ffirst @*callbacks) {:docs [{:id "42" :data {:id 42 :title "Ready"}}]})
         (-> (mocks/tick!)
-            (.then (fn [_]
+            (p/then (fn [_]
                      (is (= "Ready" (get-in @reader [:docs 0 :data :title])))
                      (let [change @(get-in @(:channels mock) ["blog-scoped-blog_posts" :change])]
                        (change #js {}) (change #js {}))
@@ -38,11 +39,11 @@
                      ;; retained state or recreate a stream.
                      ((first (second @*callbacks)) {:docs []})
                      (mocks/tick!)))
-            (.then (fn [_]
+            (p/then (fn [_]
                      (is (= "Ready" (get-in @r/*app-db [:store :scoped (scoped/query-key opts)
                                                        :docs 0 :data :title])))))
-            (.catch #(is false (str %)))
-            (.finally (fn [] (r/dispose! reader)
+            (p/catch-error #(is false (str %)))
+            (p/finally-do (fn [] (r/dispose! reader)
                         (scoped/connect! (:client old) (:read! old))
                         (reset! r/*app-db before) (done))))))))
 
@@ -93,12 +94,12 @@
         ((first @callbacks) {:docs [{:id "a1" :data {:id "a1" :parent-post 42 :parent-comment "a"}}
                                    {:id "b1" :data {:id "b1" :parent-post 42 :parent-comment "b"}}]})
         (-> (mocks/tick!)
-            (.then (fn [_]
+            (p/then (fn [_]
                      (is (= ["a1"] (mapv :id (:docs @a))))
                      (is (= ["b1"] (mapv :id (:docs @b))))
                      (is (identical? a (scoped/ensure-query! (opts "a"))))))
-            (.catch #(is false (str %)))
-            (.finally (fn [] (r/dispose! a) (r/dispose! b)
+            (p/catch-error #(is false (str %)))
+            (p/finally-do (fn [] (r/dispose! a) (r/dispose! b)
                         (scoped/connect! (:client old) (:read! old))
                         (reset! r/*app-db before) (done))))))))
 
@@ -116,12 +117,12 @@
         (@callback {:docs [{:id "a" :data {:id "a" :name "Alice"}}
                           {:id "b" :data {:id "b" :name "Bob"}}]})
         (-> (mocks/tick!)
-            (.then (fn [_]
+            (p/then (fn [_]
                      (is (= "Alice" (get-in @a [:docs 0 :data :name])))
                      (is (= "Bob" (get-in @b [:docs 0 :data :name])))
                      (is (identical? a (scoped/ensure-query! (query/profile-query "a"))))))
-            (.catch #(is false (str %)))
-            (.finally (fn [] (r/dispose! a) (r/dispose! b)
+            (p/catch-error #(is false (str %)))
+            (p/finally-do (fn [] (r/dispose! a) (r/dispose! b)
                         (scoped/connect! (:client old) (:read! old))
                         (reset! r/*app-db before) (done))))))))
 
@@ -135,8 +136,8 @@
           callbacks (atom [])
           opts data/summaries-query
           result (fn [n] {:docs [{:id "legacy", :data {:id 27, :title "Post", :comment-count n}}]})]
-      (-> (js/Promise.resolve nil)
-          (.then (fn [_]
+      (-> (p/resolved nil)
+          (p/then (fn [_]
                    ;; Setup belongs to the same failure/cleanup chain as the
                    ;; assertions, including a missing first read callback.
                    (scoped/connect! (:sdk mock)
@@ -152,7 +153,7 @@
                      (is (= [opts] @reads))
                      ((first @callbacks) (result 1))
                      (mocks/await-value! reader #(= 1 (get-in % [:docs 0 :data :comment-count]))))))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (let [change @(get-in @(:channels mock) ["blog-scoped-blog_comments" :change])]
                      (change #js {:eventType "DELETE", :old #js {:id "root"}})
                      (change #js {:eventType "UPDATE", :new #js {:id "other"}}))
@@ -160,28 +161,28 @@
                    (is (= [opts opts] @reads) "Comment events share one queued summary refresh")
                    ((second @callbacks) (result 0))
                    (mocks/await-value! @*reader #(= 0 (get-in % [:docs 0 :data :comment-count])))))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (r/dispose! @*reader)
                    (scoped/drain!)
                    (is (= 2 (count @(:removed mock))))
                    (is (empty? @scoped/*channels))
                    ((second @callbacks) (result 99))
                    (mocks/tick!)))
-          (.then (fn [_] (support/subscription-value! [:store/scoped (scoped/query-key opts)])))
-          (.then (fn [value]
+          (p/then (fn [_] (support/subscription-value! [:store/scoped (scoped/query-key opts)])))
+          (p/then (fn [value]
                    (is (= 0 (get-in value [:docs 0 :data :comment-count]))
                        "Disposed readers ignore late count responses")))
-          (.catch #(is false (str %)))
-          (.finally
+          (p/catch-error #(is false (str %)))
+          (p/finally-do
             (fn []
-              (-> (js/Promise.resolve nil)
-                  (.then (fn [_] (when-let [reader @*reader] (r/dispose! reader))))
-                  (.finally (fn [] (scoped/connect! (:client old) (:read! old))))
+              (-> (p/resolved nil)
+                  (p/then (fn [_] (when-let [reader @*reader] (r/dispose! reader))))
+                  (p/finally-do (fn [] (scoped/connect! (:client old) (:read! old))))
                   ;; Retire accepted result/drain events before restoring db,
                   ;; including failure after the first callback queued a result.
-                  (.finally (fn [] (support/settle!)))
-                  (.catch #(is false (str "Scoped count cleanup: " %)))
-                  (.finally (fn []
+                  (p/finally-do (fn [] (support/settle!)))
+                  (p/catch-error #(is false (str "Scoped count cleanup: " %)))
+                  (p/finally-do (fn []
                               (try
                                 (restore-db!)
                                 (catch :default error (is false (str error)))

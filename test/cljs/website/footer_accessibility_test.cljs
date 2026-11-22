@@ -1,5 +1,6 @@
 (ns website.footer-accessibility-test
-  (:require [cljs.test :refer-macros [async deftest is]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [async deftest is]]
             [website.react :as r]
             [website.components.shell :as shell]
             [website.events]
@@ -24,25 +25,25 @@
       (r/dispatch-sync [:state [:scroll :at-bottom] false])
       (r/dispatch-sync [:state [:hidden :footer] false])
       (-> (support/create-root! element)
-          (.then (fn [root]
+          (p/then (fn [root]
                    (reset! *root root)
                    (support/render! root [:<> [shell/<footer> content] [shell/<footer-full> content]])))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (inactive? "#footer-end") "Distant full footer has no accessible or focusable duplicate")
                    (is (not (inactive? "#footer-sticky")))
                    (set! (.. element -style -top) "0rem")
                    (support/wait-for! #(not (inactive? "#footer-end")))))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (not (inactive? "#footer-end")) "Full footer becomes accessible near the page end")
                    (is (inactive? "#footer-sticky") "The retired sticky copy is inert")
                    (set! (.. element -style -top) "calc(100vh + 20rem)")
                    (r/dispatch-sync [:state [:hidden :footer] true])
                    (support/wait-for! #(inactive? "#footer-end"))))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (inactive? "#footer-end"))
                    (is (inactive? "#footer-sticky") "A visually hidden sticky footer cannot receive focus")))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (restore!)

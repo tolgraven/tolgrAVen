@@ -1,6 +1,7 @@
 (ns website.component-ref-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.component]
             [website.macros :refer-macros [defc]]
@@ -34,8 +35,8 @@
                 (finally (support/unmount! root)))
               (is (nil? @*element))
               (is (= 2 (count @*events)))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (deftest each-native-attachment-returns-its-own-cleanup
   (let [*events (atom [])

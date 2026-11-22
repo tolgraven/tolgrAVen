@@ -1,5 +1,6 @@
 (ns website.navigation.routes
   #?(:cljs (:require
+    [website.async :as a]
     [website.component.registry]
     [website.site :as site]
     [website.validation :as validation]
@@ -130,8 +131,8 @@
           ;; Acquiring its code must not invoke that view with an empty argv.
           options (select-keys target [:module])]
       (-> (l/load-code! options)
-          (.then (fn [_] (r/dispatch [:navigation/component-loaded match])))
-          (.catch (fn [_] (r/dispatch [:navigation/component-failed match])))))))
+          (a/then (fn [_] (r/dispatch [:navigation/component-loaded match])))
+          (a/catch-error (fn [_] (r/dispatch [:navigation/component-failed match])))))))
 
 (r/reg-event-fx :navigation/component-loaded
   {:args [:tuple navigation-schema/route]}
@@ -183,7 +184,7 @@
              (navigate! view)
              (when (= :landing (:kind (:data match)))
                (-> (data/ensure-all! (landing-dependencies match))
-                   (.catch fail!))))
+                   (a/catch-error fail!))))
 
       module
       (let [ready (when (identical? load! l/load-code!) (l/code-spec module))
@@ -203,8 +204,8 @@
         (-> (load! {:module module :view page :route match})
             ;; Finishing code replaces the destination shell in place. It must
             ;; not cancel/restart its transition or reset its scroll a second time.
-            (.then #(when-not ready (navigate! (get-in % [:view page]) false (not restoring?))))
-            (.catch fail!)))
+            (a/then #(when-not ready (navigate! (get-in % [:view page]) false (not restoring?))))
+            (a/catch-error fail!)))
 
       :else (navigate! nil))))
 
@@ -264,12 +265,12 @@
       (or (nil? match) (page-coercion/ready?)) (commit! match)
       :else
       (-> (l/acquire-code! :coercion)
-          (.then (fn [_]
+          (a/then (fn [_]
                    (when (= request @*route-request)
                      (try
                        (commit! (assoc match :parameters (coercion/coerce! match)))
                        (catch :default error (coercion-failed! match error))))))
-          (.catch (fn [_]
+          (a/catch-error (fn [_]
                     (when (= request @*route-request)
                       (status/fail! :route-coercion "Page navigation could not initialize"
                                     "Check your connection and retry this page address."

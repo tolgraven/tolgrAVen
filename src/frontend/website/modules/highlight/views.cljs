@@ -153,7 +153,7 @@
         language' (or language (when inline? inline-language))
         numbered? (and (not inline?) (if (nil? line-numbers?) (not basic?) line-numbers?))
         ;; Retain the editable caret line without modifying authored source.
-        display-code (if (and editable? (.endsWith code "\n")) (str code "\u200b") code)
+        display-code (if (and editable? (string/ends-with? code "\n")) (str code "\u200b") code)
         tree (r/use-memo #(code-tree display-code language' default-language auto-languages)
                          [display-code language' default-language auto-languages])
         stylesheet (r/use-memo #(js->clj (clj->js style) :keywordize-keys false) [style])

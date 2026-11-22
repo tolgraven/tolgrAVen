@@ -1,4 +1,4 @@
-(ns website.dev.source
+(ns website.inspector.source
   "Development-only source catalog. Requests select catalog entries, never file paths."
   (:require [clojure.java.io :as io]
             [clojure.string :as string]

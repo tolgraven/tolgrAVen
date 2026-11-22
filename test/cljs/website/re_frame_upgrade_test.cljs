@@ -1,5 +1,6 @@
 (ns website.re-frame-upgrade-test
-  (:require [clojure.core.rrb-vector :as rrb]
+  (:require [website.async :as p]
+            [clojure.core.rrb-vector :as rrb]
             [clojure.core.rrb-vector.rrbt :as rrbt]
             [cljs.test :refer-macros [deftest is async]]
 
@@ -26,11 +27,11 @@
                     (r/dispatch-and-settle [:component-state/update path (fnil + 0) [3]]
                                             {:timeout-ms 2000}))]
       (-> (settle!)
-          (.then (fn [result]
+          (p/then (fn [result]
                    (is (:ok? result) (pr-str result))
                    (is (= 3 (get-in @r/*app-db path)))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (reset! r/*app-db before) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (reset! r/*app-db before) (done)))))))
 
 (deftest blog-edit-can-be-inspected-with-dispatch-local-effect-overrides
   (let [*effects (atom []) before @r/*app-db

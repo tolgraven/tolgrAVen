@@ -1,5 +1,8 @@
 (ns website.util
   (:require
+    [website.clock :as clock]
+    [website.browser.css :as css]
+    [cljs.math :as math]
     [website.react :as r]
     [reitit.frontend.easy :as rfe]
     [clojure.string :as string]
@@ -108,10 +111,10 @@
 
 (defn timestamp
   "Use minutes ago, hours ago, then a UTC date. Optional now keeps this pure in tests."
-  ([ms] (timestamp ms (js/Date.now)))
+  ([ms] (timestamp ms (clock/epoch-ms)))
   ([ms now]
    (if (and (number? ms) (js/Number.isFinite ms))
-     (let [mins (max 0 (js/Math.floor (/ (- now ms) 60000)))]
+     (let [mins (max 0 (math/floor (/ (- now ms) 60000)))]
        (cond
          (zero? mins) "now"
          (< mins 60) (str (pluralize mins "minute") " ago")
@@ -126,7 +129,7 @@
       (nil, 0) 0
       (try
        (-> (.toFixed n precision)
-           js/parseFloat)
+           parse-double)
        (catch js/Error e n)))))
 
 
@@ -340,36 +343,20 @@
     (elem-by-id el)
     el))
 
-(defn rem-to-px "Convert rem to pixels. Doesnt seem like gets quite perfect..."
-  [rem-val]
-  (-> (js/getComputedStyle js/document.documentElement)
-      .-fontSize
-      js/parseFloat
-      (* (js/parseFloat rem-val))))
+(defn rem-to-px [rem-val]
+  (* (css/font-size) (css/magnitude rem-val)))
 
-(defn px-to-rem "Convert pixels to rem. Doesnt seem like gets quite perfect..."
-  [px-val]
-  (->> (js/getComputedStyle js/document.documentElement)
-       .-fontSize
-       js/parseFloat
-       (/ (js/parseFloat px-val))))
+(defn px-to-rem [px-val]
+  (/ (css/magnitude px-val) (css/font-size)))
 
 (defn element-height-rem [element]
   (px-to-rem (.-clientHeight element)))
 
-(defn em->px "Convert em to pixels, passing element for sizing"
-  [el em-val]
-  (-> (js/getComputedStyle (ensure-elem el))
-      .-fontSize
-      js/parseFloat
-      (* (js/parseFloat em-val))))
+(defn em->px [el em-val]
+  (* (css/font-size (ensure-elem el)) (css/magnitude em-val)))
 
-(defn px->em "Convert pixels to em, passing element for sizing"
-  [el px-val]
-  (->> (js/getComputedStyle (ensure-elem el))
-       .-fontSize
-       js/parseFloat
-       (/ (js/parseFloat px-val))))
+(defn px->em [el px-val]
+  (/ (css/magnitude px-val) (css/font-size (ensure-elem el))))
 
 (defn run-highlighter! [el-type & [div-ref]]
   (let [selected (-> (or div-ref js/document)

@@ -250,7 +250,7 @@ sessions' tabs and restore any borrowed tab when finished.
   `target/production`; local prod loads those resources before shared assets and
   preflights the release browser manifest and both document bootstrap scripts
   before initialization logging/asset loading. See `doc/testing.md`.
-- `lein repl` trampolines through `website.dev.terminal` into a pinned Babashka
+- `lein repl` trampolines through `website.tooling.terminal` into a pinned Babashka
   neorepl client; keep CIDER/Piggieback/Shadow middleware aligned with the original
   `:repl-options`. `lein repl-classic` retains the original Lein task. Both call
   the existing `user/start`, which checks/rebuilds CSS before HTTP and owns one
@@ -491,7 +491,7 @@ These are required principles for new code and changes to existing code. Follow 
 ### ClojureScript and JavaScript interop
 - Prefer Clojure maps, vectors, destructuring and sequence functions within application code. Do not recursively convert Reagent props that are already Clojure values, or inspect React element internals to recover data.
 - Convert JSON/SDK payloads once at the boundary using standard `js->clj`/`clj->js` options. Native events, DOM measurements, React refs and SDK objects legitimately require property access; keep that access in the adapter that owns it.
-- Keep native Promises where a JavaScript API or shared asynchronous adapter requires them. Page/component code should declare dependencies and dispatch events rather than duplicate transport queries and Promise chains. Do not introduce an async library or thin wrappers solely to hide `js/Promise` syntax.
+- Keep native Promises where a JavaScript API or shared asynchronous adapter requires them. Page/component code should declare dependencies and dispatch events rather than duplicate transport queries and Promise chains. Use `^:async` and `await` for sequential work and `website.async` for concurrency, shared completion and callback bridges. Keep Java and browser interop in the adapters that own those resources. See [the Clojure modernization guide](doc/clojure-modernization.md) for library choices and examples.
 - `website.react/use-effect` and `use-layout-effect` accept implicit nil for no
   cleanup. Hook dependencies are Clojure vectors/sequences compared by value;
   refs/functions/native handles remain opaque. Memo/callback helpers require

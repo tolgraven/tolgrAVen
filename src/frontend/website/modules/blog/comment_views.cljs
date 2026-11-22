@@ -1,6 +1,7 @@
 (ns website.modules.blog.comment-views
   "Optional comment presentation; the blog shell remains in views."
-  (:require [clojure.string :as string]
+  (:require [website.browser.css :as css]
+            [clojure.string :as string]
             [website.react :as r]
             [website.components.timer :as timer]
             [website.components.ui.action :as action]
@@ -124,8 +125,8 @@
         ;; The original 25rem fold includes title, metadata and card padding.
         ;; offsetTop is layout geometry, unaffected by entrance transforms.
         top (- (layout-top element) (layout-top card))
-        bottom (+ (js/parseFloat (.-paddingBottom style))
-                  (js/parseFloat (.-borderBottomWidth style)))]
+        bottom (+ (css/magnitude (.-paddingBottom style))
+                  (css/magnitude (.-borderBottomWidth style)))]
     (max 0 (- (util/rem-to-px 25) top bottom))))
 
 (defn- measure-comment-text! [element *full? *truncated? *fade-style *text-limit]

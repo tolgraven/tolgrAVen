@@ -2,8 +2,8 @@
   (:require
     [clojure.tools.logging :as log]
     [website.dev-middleware :refer [wrap-dev]]
-    [website.dev.shadow :as shadow-startup]
-    [website.dev.styles :as styles]))
+    [website.tooling.shadow :as shadow-startup]
+    [website.tooling.styles :as styles]))
 
 (def defaults
   {:development? true

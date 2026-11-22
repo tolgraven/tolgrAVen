@@ -1,5 +1,6 @@
 (ns website.modules.settings.views
-  (:require [website.component.registry]
+  (:require [website.browser.css :as css]
+            [website.component.registry]
             [website.macros :refer-macros [defc]]
             [website.react :as r]
             [website.component.restore :as restore]
@@ -44,7 +45,7 @@
             :type :number
             :min min :max max :step step
             :value (if-let [value @(r/subscribe [:get-css-var (name k)])]
-                     (str (js/parseFloat value)) "")
+                     (str (css/magnitude value)) "")
             :on-change #(r/dispatch [:->css-var! (name k) (-> % .-target .-value (str unit))])}]
           [:label {:for (str (name k) "-input")}
            (-> (name k)
@@ -100,5 +101,5 @@
                       :max max
                       :step step
                       :value (if-let [value @(r/subscribe [:get-css-var (name key)])]
-                               (str (js/parseFloat value)) "")
+                               (str (css/magnitude value)) "")
                       :on-change #(r/dispatch [:->css-var! (name key) (str (.. % -target -value) unit)])}]]]))]]])

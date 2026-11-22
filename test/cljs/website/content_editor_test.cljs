@@ -1,6 +1,7 @@
 (ns website.content-editor-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.test-support :as support]
             [website.editor-visual]
             [website.content.fields :as fields]
@@ -50,8 +51,8 @@
                 (.click (.querySelector js/document ".cv-detail-layer"))
                 (await! (support/wait-for! #(nil? (.querySelector js/document ".cv-detail-surface"))))
                 (is (identical? source (.-activeElement js/document))))))
-          (.catch #(is false (str %)))
-          (.finally #(do (when @root (support/unmount! @root)) (.remove element) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do #(do (when @root (support/unmount! @root)) (.remove element) (done)))))))
 
 (deftest cv-logos-retain-relative-and-public-upload-urls
   (is (= "../../img/logo.png" (cv/logo-src "img/logo.png" nil)))
@@ -120,8 +121,8 @@
                                         [:text] nil 1])))
             (r/dispatch-sync [:content-editor/change [:intro :title] "Original" "Unauthorized"])
             (is (= "Second" (:value (await! (support/state-at! [:state :content-editor :fields (pr-str [:intro :title])]))))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest save-queue-waits-for-each-authoritative-response
   (async done
@@ -147,8 +148,8 @@
             (await! (support/settle!))
             (is (empty? (await! (support/state-at! [:state :content-editor :fields]))))
             (is (= "Text saved" (:text (await! (support/subscription-value! [:content [:intro]]))))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest conflict-retains-the-draft-and-installs-the-current-value
   (async done
@@ -165,8 +166,8 @@
               (is (= "Latest" (:title (await! (support/subscription-value! [:content [:intro]])))))
               (r/dispatch-sync [:content-editor/discard-field key])
               (is (nil? (await! (support/state-at! [:state :content-editor :fields key]))))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest empty-image-upload-is-a-valid-draft
   (async done
@@ -182,8 +183,8 @@
               (is (= "" (:value draft)))
               (is (m/validate (dsl/->malli schema/draft) draft)))
             (is (= 1 (count @uploads))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest cv-entry-parsing-and-origin-geometry
   (let [fields {:kind "container", :position "Description", :from "2020", :to "2024",
@@ -228,5 +229,5 @@
             (r/dispatch-sync [:state [:active-user] nil])
             (r/dispatch-sync [:content-editor/cv-failed "visual-admin" {:message "Old response"}])
             (is (= "Unavailable" (:error (await! (support/state-at! [:state :content-editor :cv-entry]))))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))

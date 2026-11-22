@@ -3,7 +3,7 @@
 ;; core.async is already a project dependency. This small bridge lets existing
 ;; Promise-based test adapters await Reagent lifecycle work without blocking JS.
 (defmacro go-promise [& body]
-  `(js/Promise.
+  `(website.async/create
     (fn [resolve# reject#]
       (cljs.core.async/go
         (try (resolve# (do ~@body))

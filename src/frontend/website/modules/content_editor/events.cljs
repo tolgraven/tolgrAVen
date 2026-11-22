@@ -1,5 +1,6 @@
 (ns website.modules.content-editor.events
-  (:require [clojure.string :as string]
+  (:require [website.async :as a]
+            [clojure.string :as string]
             [website.react :as r]
             [website.supabase.runtime :as transport]
             [website.content.contract :as contract]
@@ -16,7 +17,7 @@
   (-> (transport/authenticated-request! method uri data
         #(r/dispatch (conj success %))
         #(r/dispatch (conj failure %)))
-      (.catch #(r/dispatch (conj failure {:message "The content service could not initialize"})))))
+      (a/catch-error #(r/dispatch (conj failure {:message "The content service could not initialize"})))))
 (r/reg-fx :content-editor/request request!)
 
 (r/reg-event-fx :content-editor/open
@@ -95,8 +96,8 @@
           (update-in db [:state :content-editor] dissoc :cv-entry))))
 
     (defn cv-entry-value [{:keys [kind position from to what where how]} current-year]
-      (let [from' (when (re-matches #"[0-9]{4}" from) (js/parseInt from 10))
-            to' (when (re-matches #"[0-9]{4}" to) (js/parseInt to 10))
+      (let [from' (when (re-matches #"[0-9]{4}" from) (parse-long from))
+            to' (when (re-matches #"[0-9]{4}" to) (parse-long to))
             what' (string/trim what)
             how' (->> (string/split-lines how) (map string/trim) (remove string/blank?) vec)]
         (when (and (#{"regular" "container"} kind) from' (<= 1600 from' 3000)

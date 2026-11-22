@@ -1,6 +1,7 @@
 (ns website.components.content.layout
   "Persisted content geometry is data; runtime measurements stay in owned adapters."
-  (:require [clojure.string :as string]
+  (:require [cljs.math :as math]
+            [clojure.string :as string]
             [website.react :as r]))
 
 (def dimension-pattern #"^(?:auto|fit|[0-9]+(?:\.[0-9]+)?(?:rem|em|px|%))$")
@@ -35,4 +36,4 @@
   (let [unit (or (second (re-find #"(rem|em|px|%)$" (or dimension ""))) "rem")
         divisor (case unit "rem" rem "em" em "%" (/ parent 100) 1)
         amount (/ (max 1 pixels) (max 0.01 (or divisor 16)))]
-    (str (/ (js/Math.round (* 100 amount)) 100) unit)))
+    (str (/ (math/round (* 100 amount)) 100) unit)))

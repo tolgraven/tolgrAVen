@@ -1,6 +1,7 @@
 (ns website.module-transport
   "Controlled real loader/CSS readiness for mounted ordering regressions."
-  (:require [website.loader :as loader]
+  (:require [website.async :as p]
+            [website.loader :as loader]
             [website.loader.styles :as styles]
             [shadow.lazy :as lazy]))
 
@@ -15,7 +16,7 @@
         *ready (atom #{})
         *releases (atom {})
         gates (into {} (for [id (keys specs)]
-                         [id (js/Promise. (fn [resolve _] (swap! *releases assoc id resolve)))]))
+                         [id (p/create (fn [resolve _] (swap! *releases assoc id resolve)))]))
         loadables (into {} (for [[id spec] specs]
                              [id (reify lazy/ILoadable
                                    (ready? [_] true)

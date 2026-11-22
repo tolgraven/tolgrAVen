@@ -1,6 +1,7 @@
 (ns website.cv-visit-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.component.legacy-storage :as legacy]
             [website.component.storage :as storage]
             [website.editor-visual :as fixture]
@@ -17,14 +18,14 @@
           element (.createElement js/document "div")
           root (await! (support/create-root! element))
           seed (await! (-> (js/fetch "/fixtures/editor-seed.json")
-                           (.then #(.json %))
-                           (.then #(js->clj % :keywordize-keys true))))
+                           (p/then #(.json %))
+                           (p/then #(js->clj % :keywordize-keys true))))
           timers (atom [])
           moves (atom [])
           reads (atom [])
           disk (atom (legacy/encode saved))
           resolve! (atom nil)
-          ready (js/Promise. #(reset! resolve! %))]
+          ready (p/create #(reset! resolve! %))]
       (r/with-framework-bindings
         [legacy/*state (atom nil)
          legacy/*loaded? (atom false)
@@ -92,20 +93,20 @@
 (deftest first-visit-is-claimed-once-across-remount-and-reload
   (async done
     (-> (visit-check! {:unrelated "preserved"} false)
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest existing-legacy-visit-skips-demo
   (async done
     (-> (visit-check! {:cv-visited true, :unrelated "preserved"} false)
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest existing-migrated-visit-waits-for-storage-and-skips-demo
   (async done
     (-> (visit-check! {:unrelated "preserved"} true)
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 ;; Manual native-fixture checks use real disk persistence and the same deferred
 ;; engine installation as boot, rather than the unit tests' controlled boundary.

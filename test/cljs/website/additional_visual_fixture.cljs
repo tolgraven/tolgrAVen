@@ -1,6 +1,7 @@
 (ns website.additional-visual-fixture
   "Additional native consumers; only disposable read transports are replaced."
-  (:require [clojure.string :as string]
+  (:require [website.async :as p]
+            [clojure.string :as string]
             [reitit.core :as reitit]
             [website.component.data :as data]
             [website.components.media :as media]
@@ -40,9 +41,9 @@
                  (#{"inspector-data" "inspector-error"} component) [:data-inspector]
                  :else [])]
     (-> (reduce (fn [pending owner]
-                  (.then pending (fn [_] (loader/acquire-code! owner))))
-                (js/Promise.resolve nil) owners)
-        (.then (fn [_]
+                  (p/then pending (fn [_] (loader/acquire-code! owner))))
+                (p/resolved nil) owners)
+        (p/then (fn [_]
                  ;; Native :depends reads the SDK cache before the pooled reader.
                  ;; Install its real code/API before rejecting provider acquisition;
                  ;; the scoped local result below then satisfies that same cache.
@@ -65,7 +66,7 @@
   (reset! *reads [])
   (reset! *rejected 0)
   (let [handlers (mapv (fn [[kind id]] [kind id (r/get-handler kind id)])
-                       [[:sub :store/on-snapshot] [:fx :http-xhrio] [:fx :supabase/request]
+                       [[:sub :store/on-snapshot] [:fx :http/fetch] [:fx :supabase/request]
                         [:cofx :ls] [:fx :ls]
                         [:sub :search/query] [:sub :search/response] [:sub :search/pending?]
                         [:sub :search/error] [:sub :search/selected] [:sub :search/get]])
@@ -81,7 +82,7 @@
                      (set! supabase/ensure-code! original-ensure!)
                      (reset! *cleanup nil)))]
     (try
-      (r/reg-fx :http-xhrio reject!)
+      (r/reg-fx :http/fetch reject!)
       (r/reg-fx :supabase/request reject!)
       (set! supabase/ensure-code! reject!)
       ;; Authored preference controls must never write the shared profile's disk.
@@ -135,7 +136,7 @@
             (data/register-source! :url
               {:load! (fn [{:keys [url]}]
                         (if-let [result (get requests url)]
-                          (do (swap! *reads conj :oembed) (js/Promise.resolve result))
+                          (do (swap! *reads conj :oembed) (p/resolved result))
                           (reject!)))}))))
       (.addEventListener js/window "pagehide" cleanup! #js {:once true})
       (reset! *cleanup cleanup!)

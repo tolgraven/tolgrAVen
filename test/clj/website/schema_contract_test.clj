@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
+            [clojure.set :as set]
             [clojure.string :as string]
             [malli.core :as m]
             [website.schema.dsl :as dsl]
@@ -13,7 +14,9 @@
             [website.content.contract :as content]
             [website.content.schema :as cms]
             [website.supabase.schema :as store]
+            [website.supabase.catalog :as catalog]
             [website.supabase.query :as query]
+            [website.supabase.realtime :as realtime]
             [website.supabase.reader :as reader]
             [website.platform.supabase :as platform]
             [website.config :as config]
@@ -47,7 +50,12 @@
   (let [seed (json/read-str (slurp (io/resource "content-seed.json")) :key-fn keyword)
         bundle (content/checked-bundle {:version 1 :content seed} content/sections)]
     (is (m/validate (dsl/->malli cms/bundle) bundle))
-    (is (= (set content/sections) (set (keys cms/sections))))
+    (is (= (set (keys seed)) (set (keys cms/sections))))
+    (let [unpublished #{:github-settings :codex-profile}]
+      (is (= (set content/sections) (set/difference (set (keys cms/sections)) unpublished)))
+      (is (= content/sections (content/validate-keys nil)))
+      (doseq [section unpublished]
+        (is (thrown? clojure.lang.ExceptionInfo (content/validate-keys [section])))))
     (doseq [[section schema] cms/sections]
       (is (m/validate (dsl/->malli schema) (get-in bundle [:content section])) (str section)))
     (is (m/validate (dsl/->malli (db/schema {[:content] (c/optional-map cms/sections)})) {:content (:content bundle)}))
@@ -89,16 +97,39 @@
              {:path-document [:users "a"] :path-collection [:users]}
              {:path-collection [:users] :order-by [[:id "sideways"]]}]]
     (is (not (m/validate (dsl/->malli store/query) q))))
-  (doseq [[table columns] query/public-columns]
-    (let [fields (map keyword (string/split columns #","))]
-      (is (every? (set (keys (store/row-fields table))) fields) table)
-      (is (m/validate (dsl/->malli (store/projected-rows table columns)) []))))
+  (doseq [{:keys [table public-columns collections user-collections]}
+          (mapcat val catalog/definitions)
+          :when (and public-columns (or (seq collections) (seq user-collections)))]
+    (let [table-name (name table)
+          fields (map keyword (string/split public-columns #","))]
+      (is (= public-columns (get query/public-columns table-name)))
+      (is (every? (set (keys (store/row-fields table-name))) fields) table-name)
+      (is (m/validate (dsl/->malli (store/projected-rows table-name public-columns)) []))))
   (let [schema (store/projected-rows "blog_comments" "id,parent_comment")]
     (is (m/validate (dsl/->malli schema) [{:id "root" :parent_comment nil}]))
     (is (not (m/validate (dsl/->malli schema) [{:id "root"}]))))
   (let [schema (store/projected-rows "user_documents" "doc_id,data")]
     (is (m/validate (dsl/->malli schema) [{:doc_id "thread" :data {:messages ["Question" "Answer"]}}]))
     (is (not (m/validate (dsl/->malli schema) [{:doc_id "thread" :data {:messages [42]}}])))))
+
+(defn- granted-columns [sql]
+  (let [select-grant #"(?i)grant\s+select\s*\(([^)]+)\)\s+on\s+public\.(\w+)\s+to\s+anon,\s*authenticated"
+        [_ columns table] (re-find select-grant (slurp (io/resource sql)))]
+    (when table
+      {:table table :fields (set (map (comp keyword string/trim) (string/split columns #",")))})))
+
+(deftest github-archive-projections-match-the-storage-grants
+  (let [tables (:github catalog/definitions)]
+    (is (= #{:github_repositories :github_commits} (set (map :table tables))))
+    (doseq [{:keys [table sql public-columns]} tables]
+      (let [table-name (name table)
+            fields (set (map keyword (string/split public-columns #",")))
+            row (zipmap fields (range))
+            internal (assoc row :state {} :lease_owner "private" :search_vector "private")]
+        (is (= {:table table-name :fields fields} (granted-columns sql)))
+        (is (= public-columns (get query/public-columns table-name)))
+        (is (= row (realtime/public-row table-name internal)))
+        (is (false? (query/direct-read-query? {:path-collection [table-name]})))))))
 
 (deftest reader-rejects-malformed-responses-before-normalization
   (with-redefs [config/validation-enabled? (constantly true)

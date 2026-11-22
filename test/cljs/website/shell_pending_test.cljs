@@ -1,6 +1,7 @@
 (ns website.shell-pending-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [async deftest is]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [async deftest is]]
             [website.components.shell :as shell]
             [website.events]
             [website.module-transport :as transport]
@@ -67,8 +68,8 @@
                       "The Search image and its readiness owner are retained")
                   (is (identical? account (.querySelector element ".user-btn[aria-label='User account']"))
                       "The pending account link keeps its subscription owner")))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       ((:restore! acquisition))
@@ -116,8 +117,8 @@
                 (is (identical? footer (.querySelector element "#footer-sticky")))
                 (is (identical? content (.querySelector footer ".footer-content")))
                 (is (identical? title (.querySelector footer "h2"))))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (restore!)
                       (if (seq value)

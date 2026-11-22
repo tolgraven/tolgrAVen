@@ -1,6 +1,7 @@
 (ns website.link-preview-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [website.test-support :as support]
             [cljs.test :refer-macros [async deftest is]]
             [website.react :as r]
@@ -17,7 +18,7 @@
             [website.loader :as loader]
             [shadow.lazy :as lazy]
             [website.macros :refer-macros [defc]]))
-(defn- tick [ms] (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
+(defn- tick [ms] (p/delay! ms))
 (defn- render! [root form] (support/render! root form))
 (defn- flush! [] (support/settle!))
 (defc <link-example> {:features [:props :links]} [spec url] [:div [:a {:href url} "Example link"]])
@@ -51,7 +52,7 @@
       (set! loader/load-code!
             (fn [options]
               (swap! *requests conj (:module options))
-              (js/Promise.resolve nil)))
+              (p/resolved nil)))
       (.appendChild js/document.body element)
       (-> (go-promise
             (let [root (await! (support/create-root! element))]
@@ -87,8 +88,8 @@
                 (is (nil? (get @preview/*containers "optional-preview")))
                 (is (= [:link-preview] @*requests) "Ready code is not reacquired")
                 (is (identical? container (.-firstElementChild element))))))
-          (.catch (fn [error] (is false (str error))))
-          (.finally
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do
             (fn []
               (when @*root (support/unmount! @*root))
               (.remove element)
@@ -133,8 +134,8 @@
             (support/unmount! @*root)
             (reset! *root nil)
             (is (nil? (get @preview/*containers id)) "Unmount disconnects both observers"))
-          (.catch (fn [error] (is false (str error))))
-          (.finally (fn []
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       ((:restore! controlled))
@@ -176,7 +177,7 @@
                                        :on-pointer-over #(swap! *pointer-events inc)}} url])]
           (await! (render! root (form "https://example.invalid/one")))
           (-> (tick 0)
-              (.then (fn []
+              (p/then (fn []
                        (go-promise (is (= (.-firstElementChild element) @*ref))
                                    (.dispatchEvent @*ref
                                      (js/PointerEvent. "pointerover" #js {:bubbles true}))
@@ -193,7 +194,7 @@
                                               :url)))
                                    (await! (render! root (form "https://example.invalid/two")))
                                    (tick 0))))
-              (.then (fn []
+              (p/then (fn []
                        (is (= "https://example.invalid/two"
                               (-> @preview/*containers
                                   (get "macro-test")
@@ -201,14 +202,14 @@
                                   vals
                                   first
                                   :url)))))
-              (.catch #(is false (str %)))
-              (.finally (fn []
+              (p/catch-error #(is false (str %)))
+              (p/finally-do (fn []
                           (support/unmount! root)
                           (is (nil? @*ref))
                           (is (nil? (get @preview/*containers "macro-test")))
                           (.remove element)
                           (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest preview-interactions
   (async
     done
@@ -237,18 +238,18 @@
           (fire! "pointerout")
           (->
             (tick 350)
-            (.then (fn []
+            (p/then (fn []
                      (is (nil? (active)) "Leaving before hover delay cancels opening")
                      (fire! "pointerover")
                      (tick 350)))
-            (.then (fn []
+            (p/then (fn []
                      (go-promise (await! (flush!))
                                  (is (= url (:url (active))))
                                  (is (some? (.querySelector js/document "[data-popover]")))
                                  (.dispatchEvent js/window
                                                  (js/KeyboardEvent. "keydown" #js {:key "Escape"}))
                                  (tick 30))))
-            (.then (fn []
+            (p/then (fn []
                      (go-promise (await! (flush!))
                                  (is (nil? (active)) "Escape dismisses the preview")
                                  (is (nil? (.querySelector js/document "[data-popover]")))
@@ -261,7 +262,7 @@
                                    (.dispatchEvent @*link event)
                                    (is (.-defaultPrevented event)))
                                  (tick 30))))
-            (.then
+            (p/then
               (fn []
                 (go-promise
                   (await! (flush!))
@@ -277,31 +278,31 @@
                         "Activation reads reduced-motion preference without throwing")
                     (.dispatchEvent js/window (js/KeyboardEvent. "keydown" #js {:key "Escape"})))
                   (tick 450))))
-            (.then (fn []
+            (p/then (fn []
                      (is (nil? (active)) "Escape also cancels pending animated navigation")
                      (fire! "pointerdown" {:pointerType "touch"})
                      (.dispatchEvent @*link
                                      (js/MouseEvent. "click" #js {:bubbles true, :cancelable true}))
                      (tick 30)))
-            (.then (fn []
+            (p/then (fn []
                      (.dispatchEvent js/document.body
                                      (js/PointerEvent. "pointerdown" #js {:bubbles true}))
                      (tick 30)))
-            (.then (fn []
+            (p/then (fn []
                      (is (nil? (active)) "Outside pointer dismisses touch preview")
                      (fire! "pointerover")
                      (support/unmount! root)
                      (tick 350)))
-            (.then (fn []
+            (p/then (fn []
                      (is (nil? (active)) "Unmount cancels delayed hover")
                      (is (nil? (get @preview/*containers "interaction-test")))))
-            (.catch #(is false (str %)))
-            (.finally (fn []
+            (p/catch-error #(is false (str %)))
+            (p/finally-do (fn []
                         (when (.-firstChild element) (support/unmount! root))
                         (swap! preview/*preview-providers dissoc "example.invalid")
                         (.remove element)
                         (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 
 (deftest returning-from-a-visited-preview-does-not-reopen-on-hover-or-focus
   (async done
@@ -345,8 +346,8 @@
                 (finally
                   (support/unmount! root)
                   (.remove element)))))
-          (.catch (fn [error] (is false (str error))))
-          (.finally (fn []
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do (fn []
                       (if old-token (.setItem js/sessionStorage storage-key old-token)
                           (.removeItem js/sessionStorage storage-key))
                       (restore!)
@@ -393,5 +394,5 @@
               (is (.includes (.-textContent element) "Only page metadata is available"))
               (is (nil? (.querySelector element "iframe")))
               (finally (await! (support/unmount! root)) (.remove element)))))
-        (.then (fn [_] (done)))
-        (.catch (fn [error] (is false (str error)) (done))))))
+        (p/then (fn [_] (done)))
+        (p/catch-error (fn [error] (is false (str error)) (done))))))
