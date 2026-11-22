@@ -118,7 +118,11 @@
     (let [restore! (r/make-restore-fn)
           old-acquire loader/acquire-code!
           before @restore/*context
-          element (.createElement js/document "div")]
+          element (.createElement js/document "div")
+          page-style (.-style (.-scrollingElement js/document))
+          original-anchor (.-overflowAnchor page-style)]
+      ;; A growing browser test report must not scroll the page under an open label.
+      (set! (.-overflowAnchor page-style) "none")
       (reset! restore/*context {:hydrate? false})
       (set! loader/acquire-code!
         (fn [_]
@@ -129,6 +133,10 @@
             (let [root (await! (support/create-root! element))
                   tooltip #(when-let [id (.getAttribute % "aria-describedby")]
                              (.getElementById js/document id))
+                  wait-label! (fn [anchor expected]
+                                (support/wait-for!
+                                  #(= expected (some-> (tooltip anchor) .-textContent))
+                                  (str "Expected action label " (pr-str expected))))
                   owners #(filter (fn [binding] (= :action-label (:owner binding)))
                                   (vals @listener/*bindings))]
               (try
@@ -140,43 +148,43 @@
                   (is (nil? (tooltip copy)))
                   (is (empty? (owners)) "Closed labels install no listeners")
                   (.dispatchEvent copy (js/PointerEvent. "pointerover" #js {:bubbles true}))
-                  (await! (support/settle!))
+                  (await! (wait-label! copy "Copy code"))
                   (is (= "Copy code" (.-textContent (tooltip copy))))
                   (is (= "tooltip" (.getAttribute (tooltip copy) "role")))
                   (is (not (.contains element (tooltip copy))) "Label escapes code clipping")
                   (.click copy)
-                  (await! (support/wait-for! #(= "Copied" (.-textContent (tooltip copy)))))
+                  (await! (wait-label! copy "Copied"))
                   (.dispatchEvent copy (js/PointerEvent. "pointerout" #js {:bubbles true}))
-                  (await! (support/settle!))
+                  (await! (wait-label! copy nil))
                   (is (nil? (tooltip copy)))
                   (is (empty? (owners)))
-                  (.focus wrap)
-                  (await! (support/settle!))
+                  (.focus wrap #js {:preventScroll true})
+                  (await! (wait-label! wrap "Wrap lines"))
                   (is (= "Wrap lines" (.-textContent (tooltip wrap))))
                   (.click wrap)
                   (await! (support/settle!))
                   (is (= "true" (.getAttribute wrap "aria-pressed")))
                   (.dispatchEvent wrap (js/KeyboardEvent. "keydown" #js {:key "Escape", :bubbles true}))
-                  (await! (support/settle!))
+                  (await! (wait-label! wrap nil))
                   (is (nil? (tooltip wrap)))
                   (is (identical? wrap (.-activeElement js/document)) "Dismissal retains focus")
                   (.blur wrap)
-                  (.focus wrap)
-                  (await! (support/settle!))
+                  (.focus wrap #js {:preventScroll true})
+                  (await! (wait-label! wrap "Wrap lines"))
                   (.dispatchEvent js/window (js/Event. "resize"))
-                  (await! (support/settle!))
+                  (await! (wait-label! wrap nil))
                   (is (nil? (tooltip wrap)) "Geometry changes dismiss the label"))
                 (await! (support/render! root
                          [:div {:style {:position "fixed", :left "0rem", :top "1rem", :width "90vw"}}
                           [code/<code-block> "inline" :inline? true]]))
                 (let [copy (.querySelector element ".code-copy")]
-                  (.focus copy)
-                  (await! (support/settle!))
+                  (.focus copy #js {:preventScroll true})
+                  (await! (wait-label! copy "Copy code"))
                   (is (= "Copy code" (.-textContent (tooltip copy))))
                   (is (seq (owners)))
                   (r/reg-fx :code-block/copy (fn [{:keys [complete!]}] (complete! "Copy unavailable")))
                   (.click copy)
-                  (await! (support/wait-for! #(= "Copy unavailable" (.-textContent (tooltip copy)))))
+                  (await! (wait-label! copy "Copy unavailable"))
                   (await! (support/settle!))
                   (let [bounds (.getBoundingClientRect (tooltip copy))]
                     (is (<= 0 (.-left bounds)) "Long feedback near the left edge stays visible")
@@ -186,6 +194,7 @@
               (is (empty? (owners)) "Unmount releases every label listener")))
           (a/catch-error #(is false (str %)))
           (a/finally-do (fn []
+                      (set! (.-overflowAnchor page-style) original-anchor)
                       (.remove element)
                       (set! loader/acquire-code! old-acquire)
                       (reset! restore/*context before)
