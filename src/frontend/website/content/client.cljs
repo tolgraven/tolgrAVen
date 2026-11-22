@@ -64,14 +64,14 @@
 (defn- complete-batch! [batch ks bundle]
   (swap! *pending #(apply dissoc % ks))
   (storage/schedule!)
-  (doseq [{:keys [resolve!]} (vals batch)] (resolve! bundle)))
+  (doseq [{resolve! :resolve} (vals batch)] (resolve! bundle)))
 
 (defn- fail-section! [batch ks error]
   (swap! *pending #(apply dissoc % ks))
   (status/fail! [:strapi ks] "Strapi content unavailable"
                 "Some site content could not be loaded. Previously loaded content is retained."
                 #(prefetch! ks))
-  (doseq [{:keys [reject!]} (vals batch)] (reject! error)))
+  (doseq [{reject! :reject} (vals batch)] (reject! error)))
 
 (defn- acquire-batch! [batch]
   (let [ks (vec (sort (keys batch)))
@@ -96,9 +96,10 @@
   (doseq [k (distinct requested)
           :when (and (not (contains? (cached-content) k))
                      (not (contains? @*pending k)))]
-    (let [pending (a/deferred)]
-      (swap! *queued assoc k pending)
-      (swap! *pending assoc k (:promise pending))))
+    (let [{:keys [promise resolve! reject!]} (a/deferred)]
+      ;; The queue survives hot reload between enqueue and the next drain.
+      (swap! *queued assoc k {:resolve resolve! :reject reject!})
+      (swap! *pending assoc k promise)))
   (when (and (seq @*queued) (nil? @*tick))
     (reset! *tick (js/setTimeout drain! 0)))
   (a/all (distinct (keep @*pending requested))))

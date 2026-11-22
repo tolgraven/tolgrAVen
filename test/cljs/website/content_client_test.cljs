@@ -30,6 +30,8 @@
             (set! content/request! (fn [ks] (swap! calls conj ks) (js/Promise.resolve nil)))
             (let [a (content/ensure! [:document :cv])
                   b (content/ensure! [:cv :blog])]
+              (is (every? fn? ((juxt :resolve :reject) (get @content/*queued :cv)))
+                  "An outstanding batch keeps its completion callbacks across hot reload")
               (is (empty? @calls) "No work until the next tick")
               (-> (js/Promise.all #js [a b])
                   (.then (fn [_]
