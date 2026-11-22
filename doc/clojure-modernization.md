@@ -15,6 +15,8 @@ The website builds its Ring server with Leiningen and JDK 21, and its browser an
 
 Clojure 1.13 alphas now require Java 17 and emit Java 17 bytecode. The production JDK 21 meets that baseline. Recheck compiler tooling, optional profiles and the packaged server when trialling 1.13. [Java baseline change](https://clojure.org/news/2026/07/21/clojure-1-13-alpha5)
 
+The alpha also adds `merge-deep` and `merge-deep-with`. The Supabase store recursively merges document maps and replaces sequence values. The browser utility can concatenate seqs. Verify both contracts separately before consolidating them. Loading the current website graph on alpha11 produced name-shadowing warnings for those functions in `taoensso.encore`. The GitHub calendar and cache tests passed on that graph. [Alpha 8 additions](https://clojure.org/news/2026/09/30/clojure-1-13-alpha8) · [Document merge](../src/cljc/website/supabase/store.cljc) · [Browser merge](../src/frontend/website/util.cljs)
+
 Project dependencies still go in Lein profiles and the lockfile. Clojure 1.12's REPL library-loading functions rely on tools.deps basis information. They do not update a Lein prefab or a deployed artifact. [REPL library management](https://clojure.org/reference/repl_and_main#_adding_libraries_at_the_repl)
 
 ## Browser I/O, effects and tests
