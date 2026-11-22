@@ -1,6 +1,7 @@
 (ns website.component-font-test
   (:require-macros [website.test-async :refer [go-promise await!]])
   (:require [website.async :as p]
+            [website.browser.css :as css]
             [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
@@ -35,9 +36,24 @@
        :close! #(do (support/unmount! root) (.remove element))})))
 (defn- phase [node] (.getAttribute node "data-font-phase"))
 (defn- until! [node value] (support/wait-for! #(= value (phase node))))
-(defn- tick! [ms] (p/delay! ms))
 (defn- ended! [node name]
   (.dispatchEvent node (js/AnimationEvent. "animationend" #js {:bubbles true, :animationName name})))
+
+(defn- end-fade-events! [node]
+  (let [dispatch! r/dispatch
+        events (volatile! [])
+        record! (fn [event]
+                  (vswap! events conj (first event))
+                  (dispatch! event))]
+    (r/with-framework-bindings [r/dispatch record!]
+      (ended! node "font-fade-in"))
+    @events))
+
+(defn- pause-at-midpoint! [animation]
+  (.pause animation)
+  (set! (.-currentTime animation)
+        (/ (.-duration (.getTiming (.-effect animation))) 2)))
+
 (defn- options []
   (let [name (str "font-test-" (random-uuid))]
     (assoc font/fira :family name :initial-family (str name "-initial") :fade-ms 200)))
@@ -139,18 +155,21 @@
                         "Both fades start in the same CSS animation frame")
                     (is (= 200 (.-duration (.getTiming (.-effect incoming-animation)))))
                     (is (= "linear" (.-easing (.getTiming (.-effect incoming-animation)))))
-                    (await! (tick! 75))
-                    (let [old-opacity (js/parseFloat (.-opacity (js/getComputedStyle outgoing)))
-                          new-opacity (js/parseFloat (.-opacity (js/getComputedStyle incoming)))]
+                    (run! pause-at-midpoint! [outgoing-animation incoming-animation])
+                    (let [old-opacity (css/magnitude (.-opacity (js/getComputedStyle outgoing)))
+                          new-opacity (css/magnitude (.-opacity (js/getComputedStyle incoming)))]
                       (is (< 0 old-opacity 1))
                       (is (< 0 new-opacity 1))
-                      (is (< (js/Math.abs (- 1 (+ old-opacity new-opacity))) 0.05)
+                      (is (< (abs (- 1 (+ old-opacity new-opacity))) 0.05)
                           "There is no transparent interval between the fonts")
                       (is (= "1" (.-opacity (js/getComputedStyle node)))))
-                    (ended! incoming-code "font-fade-in")
-                    (await! (support/settle!))
+                    ;; React dispatches the bubbling event synchronously. Check the
+                    ;; owner here, before its independent timeout can also complete it.
+                    (is (empty? (end-fade-events! incoming-code))
+                        "A child's animationend does not request completion")
                     (is (= "crossfade" (phase node)) "Child animation cannot finish the fade")
-                    (ended! incoming "font-fade-in")
+                    (is (= [:font/done] (end-fade-events! incoming))
+                        "The incoming layer completes its own fade")
                     (await! (until! node "ready"))
                     (is (not (.contains node outgoing)) "Old text is removed after fading out")
                     (is (identical? incoming-code (.querySelector node "code")))
@@ -160,8 +179,8 @@
                     (is (= "MWiw0123456789" (.-textContent node)))
                     (when @*adjusted?
                       (let [loaded (.querySelector incoming-code "span")]
-                        (is (< (js/Math.abs (- original-width (.-width (.getBoundingClientRect loaded)))) 0.2))
-                        (is (< (js/Math.abs (- original-height (.-height (.getBoundingClientRect loaded)))) 0.5))))
+                        (is (< (abs (- original-width (.-width (.getBoundingClientRect loaded)))) 0.2))
+                        (is (< (abs (- original-height (.-height (.getBoundingClientRect loaded)))) 0.5))))
                     (is (.contains (.-classList node) "caller"))
                     (is (.contains (.-classList node) "other"))
                     (is (= "rgb(10, 20, 30)" (.-color (.-style node))))
