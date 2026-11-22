@@ -1,4 +1,4 @@
-(ns website.dev.python
+(ns website.tooling.python
   "Prepare checkout-local codec tools before development content startup."
   (:require [clojure.java.shell :as shell]))
 

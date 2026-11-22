@@ -9,8 +9,8 @@
             [website.render-context :as context]
             [website.dev-console.state]
             [website.dev-console.components :as components]
-            [website.dev.consumer :as consumer]
-            [website.dev.values :as values]))
+            [website.inspector.consumer :as consumer]
+            [website.inspector.values :as values]))
 
 (defonce *pending (atom []))
 (defonce *tick (atom nil))

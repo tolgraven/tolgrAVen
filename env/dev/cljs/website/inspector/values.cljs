@@ -1,4 +1,4 @@
-(ns website.dev.values
+(ns website.inspector.values
   "Bounded development details; public reports still omit values.")
 
 (defn sensitive? [key]

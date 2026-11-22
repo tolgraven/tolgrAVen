@@ -1,4 +1,4 @@
-(ns website.dev.terminal
+(ns website.tooling.terminal
   "Terminal client adapter; application and Shadow startup remain owned by user/start."
   (:refer-clojure :exclude [run!])
   (:require [clojure.java.io :as io]

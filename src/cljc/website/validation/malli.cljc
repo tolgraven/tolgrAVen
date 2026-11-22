@@ -6,7 +6,7 @@
             [malli.error :as me]
             [malli.transform :as mt]
             [clojure.string :as string]
-            #?(:dev [website.dev.values :as details])))
+            #?(:dev [website.inspector.values :as details])))
 
 (defonce ^:private *compiled (atom {}))
 (def compiled-cache-limit 256)

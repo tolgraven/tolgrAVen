@@ -59,7 +59,7 @@ Review these source owners when changing the shim; paths are relative to
 | `browser_resources.cljs`, `navigation/preload.cljs`, `navigation/transition.cljs`, `ssr/client.cljs`, `ssr/local.cljs` | Lifecycle-owned scheduling, restoration and cleanup |
 | `modules/blog/views.cljs`, `modules/home/sections.cljs`, `modules/link_preview/views.cljs`, `modules/search/views.cljs`, `modules/settings/views.cljs` | Current inputs, one focus owner, deferred acquisition and declarative interactions |
 | `env/dev/cljs/website/component/dev_instrumentation.cljs` | Commit-owned resolver publication, Clojure dependency/context values and bounded diagnostics |
-| `env/dev/cljs/website/dev_console/{capture,views}.cljs`, `env/dev/cljs/website/dev/{source,stack}.cljs` | Cached external-store snapshot identity, cancellation, measurement and source acquisition |
+| `env/dev/cljs/website/dev_console/{capture,views}.cljs`, `env/dev/cljs/website/inspector/{source,stack}.cljs` | Cached external-store snapshot identity, cancellation, measurement and source acquisition |
 
 Relevant direct test callers include `react_hooks_test.cljs`, `blog_ssr_test.cljs`,
 `page_return_test.cljs`, `suspense_deferred_test.cljs` and `viewport_module_test.cljs`

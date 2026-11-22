@@ -91,7 +91,7 @@ and response coercion out of components and feature handlers.
   input subscriptions; keep derivations pure and narrow. Application state must
   remain visible in app-db and application IO in registered effects/source adapters.
 - Delayed application work uses event effects such as `:dispatch-later`. Native
-  Promise code belongs at SDK/module-loader boundaries. A local pointer gesture
+  Use `website.http/request!` or the re-frame `:http/fetch` effect for HTTP. Sequential async work uses `^:async` and `await`. `website.async` owns Promise interop for concurrent work and callback adapters. A local pointer gesture
   can own a cancellable timer/ref when feeding every movement into app-db would
   add noise; explain that exception and dispatch the resulting application action.
 - Reach for modern React features only for a concrete lifecycle/interoperability

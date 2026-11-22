@@ -1,9 +1,9 @@
-(ns website.dev.consumer
+(ns website.inspector.consumer
   "Observation only: query ownership on Reagent instances, without extra watches."
   (:require [clojure.string :as string]
             [website.react.runtime :as r]
 
-            [website.dev.values :as values]))
+            [website.inspector.values :as values]))
 (defonce *owners (js/WeakMap.))
 (def ^:dynamic *collect* nil)
 (defonce *enabled? (atom false))
@@ -32,7 +32,7 @@
 (defn render! [definition args render]
   (if-let [owner (when-not (or (string/starts-with? (:ns definition) "website.dev-console.")
                                (string/starts-with? (:ns definition) "website.modules.dev-console.")
-                               (= "website.dev.stack" (:ns definition)))
+                               (= "website.inspector.stack" (:ns definition)))
                     (r/current-component))]
     (let [previous (.get *owners owner)
           *queries (volatile! (or (:reactions previous) {}))

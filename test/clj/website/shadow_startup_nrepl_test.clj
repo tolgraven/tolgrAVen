@@ -7,7 +7,7 @@
             [website.config :as config]
             [website.content.service :as content]
             [website.page-router :as pages]
-            [website.dev.shadow :as startup]))
+            [website.tooling.shadow :as startup]))
 
 (deftest real-nrepl-starts-during-cms-outage-and-content-recovers
   (let [previous @content/*immediate
@@ -71,7 +71,7 @@
           (let [client (nrepl/client connection 5000)
                 initialization (doall (nrepl/message client
                                        {:op "eval"
-                                        :code "(website.dev.shadow/start! [:return-worker :ssr :document :app-dev]) nil"}))]
+                                        :code "(website.tooling.shadow/start! [:return-worker :ssr :document :app-dev]) nil"}))]
             (is (some #(some #{"done"} (:status %)) initialization)
                 "Initialization is acknowledged before the blocked compilation finishes")
             (is (true? (deref entered 5000 :timeout)))

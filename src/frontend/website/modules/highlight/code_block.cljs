@@ -2,6 +2,7 @@
   "Controls hydrate immediately; the formatter hydrates after the page is ready."
   (:require [cljs.math :as math]
             [website.async :as a]
+            [website.browser.clipboard :as clipboard]
             [clojure.string :as string]
             [website.schema.dsl :as dsl]
             [website.component.registry]
@@ -149,13 +150,15 @@
   (fn [_ [_ text complete!]]
     {:code-block/copy {:text text
                        :complete! complete!}}))
-(r/reg-fx :code-block/copy
-  (fn [{:keys [text complete!]}]
-    (if-let [clipboard (when (exists? js/navigator) (.-clipboard js/navigator))]
-      (-> (.writeText clipboard text)
-          (a/then #(complete! "Copied"))
-          (a/catch-error #(complete! "Copy failed")))
-      (complete! "Copy unavailable"))))
+(defn- ^:async copy-code! [{:keys [text complete!]}]
+  (let [result (try
+                 (await (clipboard/copy! text))
+                 "Copied"
+                 (catch :default e
+                   (if (= :unavailable (:reason (ex-data e))) "Copy unavailable" "Copy failed")))]
+    (complete! result)))
+
+(r/reg-fx :code-block/copy copy-code!)
 
 (defn- use-copy-feedback [code]
   (let [[label set-label!] (r/use-state "Copy")

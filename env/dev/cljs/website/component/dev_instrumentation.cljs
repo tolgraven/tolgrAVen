@@ -7,7 +7,7 @@
             [website.component.restore :as restore]
             [website.render-context :as context]
             [website.dev-console.capture :as capture]
-            [website.dev.consumer :as consumer]))
+            [website.inspector.consumer :as consumer]))
 
 (defonce *path-resolver (atom nil))
 (defonce *dependencies-resolver (atom nil))

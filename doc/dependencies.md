@@ -5,6 +5,8 @@ Use locked npm installs (`npm ci`) and the explicit Maven versions in
 Node SSR and the browser: a successful JVM test run cannot validate React or
 ClojureScript changes.
 
+See the [Clojure and library modernization guide](clojure-modernization.md) for the runtime baseline, upgrade candidates and the checks each change needs.
+
 ## Ownership
 
 - Shadow owns ClojureScript, Closure Compiler and its implementation libraries.
@@ -42,7 +44,7 @@ ClojureScript changes.
 ## Optional and retained libraries
 
 The development CIDER Lein plugin supplies its middleware dependency. The default
-`lein repl` alias trampolines into `website.dev.terminal`, which uses nREPL's
+`lein repl` alias trampolines into `website.tooling.terminal`, which uses nREPL's
 server adapter with the CIDER middleware list, Piggieback and Shadow, and calls
 the unchanged `user/start`. The terminal client is neorepl v0.3.0, pinned by full
 Git SHA in `config/neorepl.edn`, running in a separate Babashka process so JLine
@@ -141,12 +143,12 @@ Several larger libraries remain because they perform real work:
 | Library | Current responsibility / reuse |
 | --- | --- |
 | Malli + Reitit coercion | Shared component/module/page/provider contracts, app-db sections and HTTP path/query/body coercion. Extend those schemas instead of creating parallel validators. |
-| core.async | Existing channel-based application work and sequential lifecycle-test adapters. |
+| core.async | Channel-based lifecycle tests use `website.test-async` and `website.test-support` to await operations. Browser tasks can also use native `^:async` and `await`. |
 | Transit | Clojure values over HTTP and compatibility with existing stored state. |
 | Jsonista / Cheshire | Application JSON and clj-http JSON coercion respectively; both are explicit runtime dependencies with aligned Jackson versions. |
 | Optimus + image transforms | Asset bundles, URLs and runtime image transforms. Its Graal/Truffle dependencies are substantial; removing them requires replacing these active asset paths. |
 | clj-http | Server-side provider HTTP adapters; use existing bulk plans rather than adding transport clients in views. |
-| cljs-time | Existing date calculations/formatting. |
+| cljs-time | The development Transit time codecs use Closure dates. Released frontend clocks and ranges use native Date and epoch milliseconds. |
 | PostgreSQL JDBC + next.jdbc | Active database provisioning tooling. Reads explicitly retain unqualified lower-case keys; imports retain per-table transactions and heterogeneous row defaults. Schema installation joins a supplied transaction. java.jdbc and HoneySQL are confined to `:experiments`. |
 | tools.logging + Telemere + SLF4J bridge | Application logging facade and Telemere sink, including Java libraries using SLF4J 2. Keep the bridge compatible with the resolved SLF4J API. |
 | org.clj-commons/pretty / Prone | Pretty exceptions shared with Telemere, and development error pages respectively. |

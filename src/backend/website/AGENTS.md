@@ -182,7 +182,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   The bounded cache shares in-flight requests, keeps success for fifteen minutes
   and failure for one minute, and retains only consumed provider fields.
 
-- Development source documentation is acquired through `website.dev.source`,
+- Development source documentation is acquired through `website.inspector.source`,
   resolved only when the server development flag is true. Catalog allowed source
   roots, reject symlinks/traversal/oversized files and recheck canonical ownership.
   Never expose configuration files or accept arbitrary filesystem paths.
@@ -279,7 +279,7 @@ Keep this guide current. See `doc/ssr.md`, `doc/strapi-content.md`, and
   worker warms module headings after readiness; a failed heading retains its
   last good value and cannot block healthy headings or unrelated routes.
 
-- Development CSS freshness belongs to `website.dev.styles`: one supervised
+- Development CSS freshness belongs to `website.tooling.styles`: one supervised
   watcher plus startup/compile/request checks. Only HTML/CSS/direct browser chunks
   wait; failure returns 503, and the verified revision invalidates Optimus delivery.
   Production retains its prepared inventory without runtime compilers.
