@@ -658,7 +658,9 @@
           loading-key (get opts :loading method)
           foreground? (not (:background? opts))
           cleanup (when foreground? [:loading/off loading-key id])
-          request (merge {:method method :timeout 8000 :response-format :transit
+          request (merge {:method method
+                          :timeout 8000
+                          :response-format :transit
                           :on-success [:http-result-wrapper (or on-success [:default-http-result]) cleanup]
                           :on-failure [:http-result-wrapper (or on-error [:default-http-error]) cleanup]}
                          defaults (dissoc opts :background?))]

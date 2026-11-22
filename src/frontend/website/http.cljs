@@ -6,7 +6,9 @@
             [website.http.time :as time]))
 
 (def ^:private media-types
-  {:json "application/json" :transit "application/transit+json" :text "text/plain"})
+  {:json "application/json"
+   :transit "application/transit+json"
+   :text "text/plain"})
 
 (defn- encode [format value]
   (case format
@@ -48,10 +50,14 @@
 
 (defn- failed [uri status status-text failure response]
   (ex-info (str (str/upper-case (name failure)) " " uri " " status " " status-text)
-           {:uri uri :status status :status-text status-text :failure failure :response response}))
+           {:uri uri
+            :status status
+            :status-text status-text
+            :failure failure
+            :response response}))
 
 (defn error-data [error]
-  (or (ex-data error) {:message (.-message error) :failure :failed}))
+  (or (ex-data error) {:message (.-message error), :failure :failed}))
 
 (defn- result [uri format status status-text text]
   (let [ok? (<= 200 status 299)
@@ -71,9 +77,13 @@
         timer (js/setTimeout #(.abort controller) timeout)
         detach! (follow-abort! signal #(.abort controller))]
     (try
-      (let [response (await (js/fetch (.-href url)
-                                #js {:method method :headers headers :body body :signal (.-signal controller)
-                                     :credentials "same-origin" :mode (if (local? url) "same-origin" "cors")}))
+      (let [options #js {:method method
+                         :headers headers
+                         :body body
+                         :signal (.-signal controller)
+                         :credentials "same-origin"
+                         :mode (if (local? url) "same-origin" "cors")}
+            response (await (js/fetch (.-href url) options))
             text (await (.text response))]
         (result uri response-format (.-status response) (.-statusText response) text))
       (catch :default error
@@ -96,7 +106,7 @@
         (set! (.-onprogress (.-upload xhr))
               (fn [event]
                 (when (.-lengthComputable event)
-                  (on-upload-progress {:loaded (.-loaded event) :total (.-total event)}))))
+                  (on-upload-progress {:loaded (.-loaded event), :total (.-total event)}))))
         (set! (.-onload xhr)
               #(try (resolve (result uri response-format (.-status xhr) (.-statusText xhr) (.-responseText xhr)))
                     (catch :default error (reject error))))
@@ -112,15 +122,19 @@
   GET params go into the URL. Supply :body for FormData, or :signal to cancel."
   [request]
   (let [{:keys [uri method format params body url-params on-upload-progress] :as options}
-        (merge {:method :get :timeout 15000 :format :json :response-format :json} request)
+        (merge {:method :get
+                :timeout 15000
+                :format :json
+                :response-format :json} request)
         url (request-url uri (if (= :get method) (merge params url-params) url-params))
         headers (headers-for url options)
-        body (when-not (= :get method) (if (some? body) body (when (some? params) (encode format params))))
+        body' (when-not (= :get method)
+                (if (some? body) body (when (some? params) (encode format params))))
         verb (str/upper-case (name method))]
     (when (some-> (:signal options) .-aborted)
       (throw (failed uri 0 "Request aborted" :aborted nil)))
     (when (and (.has headers "Authorization") (not (local? url)))
       (throw (failed uri 0 "An authenticated request requires this site's origin" :failed nil)))
     (if on-upload-progress
-      (upload! url options verb headers body)
-      (fetch! url options verb headers body))))
+      (upload! url options verb headers body')
+      (fetch! url options verb headers body'))))

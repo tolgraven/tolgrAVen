@@ -48,7 +48,8 @@
 
 (defn- ^:async request-ready! [ks]
   (let [all? (= (set ks) (set contract/sections))
-        request (cond-> {:uri (if all? "/api/content/bootstrap" "/api/content") :timeout request-timeout-ms}
+        request (cond-> {:uri (if all? "/api/content/bootstrap" "/api/content")
+                         :timeout request-timeout-ms}
                   (not all?) (assoc :url-params {:keys (string/join "," (map name ks))}))
         bundle (try (await (http/request! request))
                     (catch :default _ (throw (js/Error. "Content is temporarily unavailable"))))]

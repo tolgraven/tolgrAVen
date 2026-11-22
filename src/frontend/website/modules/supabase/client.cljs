@@ -334,7 +334,10 @@
     (try
       (when-let [token (await (token-for! client owner))]
         (when (current?)
-          (let [request {:method method :uri uri :timeout 60000 :headers {"Authorization" (str "Bearer " token)}
+          (let [request {:method method
+                         :uri uri
+                         :timeout 60000
+                         :headers {"Authorization" (str "Bearer " token)}
                          :on-upload-progress progress!}
                 payload (assoc request (if (instance? js/FormData data) :body :params) data)
                 response (await (http/request! payload))]

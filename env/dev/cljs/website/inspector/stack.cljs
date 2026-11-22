@@ -62,7 +62,7 @@
 
 (defn ^:async load-source-map! [{:keys [url]}]
   (try
-    (await (http/request! {:uri url :timeout 5000 :response-format :json}))
+    (await (http/request! {:uri url, :timeout 5000, :response-format :json}))
     ;; Missing maps leave the original JavaScript frame visible.
     (catch :default _ nil)))
 

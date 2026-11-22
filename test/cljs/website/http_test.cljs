@@ -21,14 +21,15 @@
 
 (defn- recording-fetch [seen]
   (fn ^:async respond [url options]
-    (reset! seen {:url (js/URL. url) :headers (.-headers options)})
+    (reset! seen {:url (js/URL. url), :headers (.-headers options)})
     (case (.-method options)
       "POST" (js/Response. (.-body options) #js {:status 200})
       "DELETE" (js/Response. "{\"error\":\"Conflict\"}" #js {:status 409})
       (js/Response. "{\"ok\":true}" #js {:status 200}))))
 
 (defn- ^:async check-query! [seen]
-  (is (= {:ok true} (await (http/request! {:uri uri :url-params {:path "a/b?x=2" :item ["a" "b"]}}))))
+  (is (= {:ok true} (await (http/request! {:uri uri
+                                          :url-params {:path "a/b?x=2", :item ["a" "b"]}}))))
   (let [query (.-searchParams (:url @seen))]
     (is (= "a/b?x=2" (.get query "path")))
     (is (= ["a" "b"] (vec (.getAll query "item"))))
@@ -49,18 +50,21 @@
 
 (defn- ^:async check-transit! [seen]
   (let [date (js/Date. "2026-10-10T23:04:05Z")
-        value {:id :message :time date :items [nil false "text"]}
-        result (await (http/request! {:method :post :uri uri :params value
-                                     :format :transit :response-format :transit}))]
+        value {:id :message, :time date, :items [nil false "text"]}
+        result (await (http/request! {:method :post
+                                      :uri uri
+                                      :params value
+                                      :format :transit
+                                      :response-format :transit}))]
     (is (= value result))
     (is (= "application/transit+json" (.get (:headers @seen) "Content-Type")))))
 
 (defn- ^:async check-errors! [seen]
-  (let [failure (await (failure-of {:method :delete :uri uri}))]
+  (let [failure (await (failure-of {:method :delete, :uri uri}))]
     (is (= 409 (:status failure)))
     (is (= {:error "Conflict"} (:response failure))))
   (reset! seen nil)
-  (is (= 0 (:status (await (failure-of {:uri uri :headers {"Authorization" "Bearer example"}})))))
+  (is (= 0 (:status (await (failure-of {:uri uri, :headers {"Authorization" "Bearer example"}})))))
   (is (nil? @seen)))
 
 (deftest request-codecs-query-encoding-and-response-status
@@ -81,7 +85,7 @@
 
 (defn- ^:async check-cancellation! []
   (let [controller (js/AbortController.)
-        pending (failure-of {:uri uri :signal (.-signal controller)})]
+        pending (failure-of {:uri uri, :signal (.-signal controller)})]
     (.abort controller)
     (is (= :aborted (:failure (await pending))))))
 
@@ -91,7 +95,7 @@
           check! (fn ^:async check []
                    (let [e (await (with-fetch! bad #(failure-of {:uri uri})))]
                      (is (= {:status 200 :failure :parse} (select-keys e [:status :failure]))))
-                   (let [e (await (with-fetch! abortable-fetch #(failure-of {:uri uri :timeout 5})))]
+                   (let [e (await (with-fetch! abortable-fetch #(failure-of {:uri uri, :timeout 5})))]
                      (is (= {:status 0 :failure :timeout} (select-keys e [:status :failure]))))
                    (await (with-fetch! abortable-fetch check-cancellation!)))]
       (complete! (check!) done))))

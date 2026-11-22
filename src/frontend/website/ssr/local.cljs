@@ -57,7 +57,7 @@
 
 (defn- ^:async register-worker! []
   (when (and (exists? js/window) js/window.isSecureContext (.-serviceWorker js/navigator))
-    (let [{:keys [build] :as config} (await (http/request! {:uri "/api/page-return-template" :timeout 10000}))
+    (let [{:keys [build] :as config} (await (http/request! {:uri "/api/page-return-template", :timeout 10000}))
           current-build (some-> (.querySelector js/document "meta[name=app-build]") (.getAttribute "content"))]
       (when (and (not ^boolean goog.DEBUG) (not= build current-build))
         (throw (js/Error. "Page build changed; reload before saving a local document")))

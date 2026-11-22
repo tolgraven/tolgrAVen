@@ -62,7 +62,8 @@
 (data/register-source!
  :url
  {:load! (fn [{:keys [url format timeout-ms]}]
-           (http/request! {:uri url :timeout (or timeout-ms 15000)
+           (http/request! {:uri url
+                           :timeout (or timeout-ms 15000)
                            :response-format (if (= :text format) :text :json)}))})
 
 (when-enabled :supabase nil
