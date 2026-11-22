@@ -1,6 +1,7 @@
 (ns website.loader-view-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [shadow.lazy :as lazy]
             [clojure.string :as string]
             [website.react :as r]
@@ -29,8 +30,8 @@
           *install-release (atom nil)
           *css-ready? (atom false)
           *install-started? (atom false)
-          css (js/Promise. (fn [resolve _] (reset! *css-release resolve)))
-          installed (js/Promise. (fn [resolve _] (reset! *install-release resolve)))
+          css (p/create (fn [resolve _] (reset! *css-release resolve)))
+          installed (p/create (fn [resolve _] (reset! *install-release resolve)))
           spec {:id id
                 :view {:view <loaded>}
                 :install (fn [] (reset! *install-started? true) installed)}
@@ -72,8 +73,8 @@
               (await! (support/wait-for! #(.querySelector element "[data-owned-view]")))
               (is (contains? @loader/*installed id))
               (is (nil? (.querySelector element "[data-pending-view]")))))
-          (.catch #(is false (.-message %)))
-          (.finally (fn []
+          (p/catch-error #(is false (.-message %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (set! loader/modules (:modules before))
@@ -245,7 +246,7 @@
           element (.createElement js/document "div")
           *root (atom nil)
           *release (atom nil)
-          gate (js/Promise. (fn [resolve _] (reset! *release resolve)))
+          gate (p/create (fn [resolve _] (reset! *release resolve)))
           *released? (atom false)
           *pending? (atom false)
           *committed? (atom false)
@@ -277,18 +278,18 @@
                    :*warnings *warnings
                    :*recoveries *recoveries
                    :*retention *retention}]
-      (-> (js/Promise.resolve nil)
-          (.then (fn []
+      (-> (p/resolved nil)
+          (p/then (fn []
                    (.appendChild (.-body js/document) element)
                    (reset! validation/*enabled? false)
                    (reset! *transport (transport/install! specs))
                    (set! (.-error js/console) (fn [& args] (forward! before-error args)))
                    (set! (.-warn js/console) (fn [& args] (forward! before-warn args)))
                    (prepare-held-loader! (assoc fixture :transport @*transport))))
-          (.then release-held-loader-code!)
-          (.then finish-held-loader!)
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/then release-held-loader-code!)
+          (p/then finish-held-loader!)
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when-let [retention @*retention]
                         (.disconnect (:observer retention)))
                       (when-let [reader @*reader] ((:unmount! reader)))
@@ -296,10 +297,10 @@
                       (reset! *released? true)
                       (@*release nil)
                       (when @*transport ((:release! @*transport) module))
-                      (-> (js/Promise.resolve (get @loader/*code-loads module))
-                          (.catch (fn [_] nil))
-                          (.then (fn [] (support/settle!)))
-                          (.finally (fn []
+                      (-> (p/resolved (get @loader/*code-loads module))
+                          (p/catch-error (fn [_] nil))
+                          (p/then (fn [] (support/settle!)))
+                          (p/finally-do (fn []
                                       (when @*transport ((:restore! @*transport)))
                                       (r/clear-subscription-cache!)
                                       (reset! restore/*context before-context)
@@ -434,8 +435,8 @@
                    :*sibling *sibling
                    :*observer *observer
                    :*loading *loading}]
-      (-> (js/Promise.resolve nil)
-          (.then (fn []
+      (-> (p/resolved nil)
+          (p/then (fn []
                    (.appendChild (.-body js/document) element)
                    (reset! validation/*enabled? false)
                    (reset! *transport (transport/install! specs))
@@ -447,32 +448,32 @@
                          (if (= id module)
                            (let [attempt (swap! *attempts inc)]
                              (if (or @*closing? (> attempt 2))
-                               (js/Promise.resolve nil)
-                               (js/Promise.
+                               (p/resolved nil)
+                               (p/create
                                  (fn [resolve reject]
                                    (swap! *css-gates assoc attempt
                                           {:resolve resolve :reject reject})))))
                            (original-css id)))))
                    (set! loader/retry-delay-ms 90)
                    (prepare-ssr-retry! fixture)))
-          (.then (fn [] (fail-ssr-retry! fixture)))
-          (.then (fn [] (recover-ssr-retry! (assoc fixture :transport @*transport))))
-          (.catch #(is false (str %)))
-          (.finally
+          (p/then (fn [] (fail-ssr-retry! fixture)))
+          (p/then (fn [] (recover-ssr-retry! (assoc fixture :transport @*transport))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do
             (fn []
               (when @*observer (.disconnect @*observer))
               (when @*root (r/unmount @*root))
               (reset! *closing? true)
               (when @*transport ((:release! @*transport) module))
               (doseq [gate (vals @*css-gates)] ((:resolve gate) nil))
-              (-> (js/Promise.allSettled
-                    #js [(js/Promise.resolve (get @loader/*code-loads module))
-                         (js/Promise.resolve (get @loader/*loads module))])
-                  (.catch (fn [_] nil))
-                  (.then (fn []
+              (-> (p/all-settled
+                    [(p/resolved (get @loader/*code-loads module))
+                         (p/resolved (get @loader/*loads module))])
+                  (p/catch-error (fn [_] nil))
+                  (p/then (fn []
                            (status/recover! [:module module])
                            (support/settle!)))
-                  (.finally
+                  (p/finally-do
                     (fn []
                       (when @*transport ((:restore! @*transport)))
                       (set! loader/retry-delay-ms before-delay)

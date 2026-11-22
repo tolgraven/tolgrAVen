@@ -1,6 +1,7 @@
 (ns website.preload-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.test-support :as support]
             [website.browser-resources :as resources]
             [website.navigation.preload :as preload]))
@@ -21,7 +22,7 @@
                 after-page! resources/after-page!
                 *calls (atom [])
                 *idle (atom nil)
-                idle (js/Promise. (fn [resolve _] (reset! *idle resolve)))
+                idle (p/create (fn [resolve _] (reset! *idle resolve)))
                 root (await! (support/create-root! element))]
             ;; Test-owned DOM represents ordinary page links, not application state.
             (set! (.-innerHTML fixture)
@@ -51,5 +52,5 @@
                 (.remove fixture)
                 (set! resources/after-page! after-page!)
                 (set! preload/enqueue! original)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))

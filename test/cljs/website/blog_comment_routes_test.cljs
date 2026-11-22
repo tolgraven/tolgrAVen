@@ -1,6 +1,7 @@
 (ns website.blog-comment-routes-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [reitit.frontend :as reitit]
             [website.react :as r]
@@ -66,8 +67,8 @@
             (is (false? (get (:comment-thread-expanded
                               (await! (support/state-at! [:state :blog]))) [24 "root"]))
                 "A completion for an obsolete comment cannot reopen its thread"))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest standalone-navigation-uses-its-own-root-without-expanding-hidden-ancestors
   (async done
@@ -92,8 +93,8 @@
             (r/dispatch-sync [:blog/navigate-comment "113"])
             (is (not (contains? (:comment-thread-expanded
                                   (await! (support/state-at! [:state :blog]))) [24 "root"]))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest history-comment-intent-retains-manual-folds
   (async done
@@ -113,8 +114,8 @@
             (r/dispatch-sync [:component-data/install [:state :scroll :component-focus] {:path path, :scroll? true}])
             (r/dispatch-sync [:blog/navigate-comment "113"])
             (is (true? (get (:comment-thread-expanded (await! (support/state-at! [:state :blog]))) [24 "root"]))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest focused-root-already-in-the-paged-records-is-rendered-once
   (async done
@@ -142,8 +143,8 @@
                 (is (= #{:root} (set (keys (:records page)))))
                 (is (= ["root"] (mapv :id (vals (:records page))))
                     "Focused roots use the store's canonical record keys"))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest component-intent-acquires-code-without-preparing-a-parent-supplied-view
   (async done
@@ -159,10 +160,10 @@
               [loader/load-code!
                (fn [options]
                  (swap! *options conj options)
-                 (js/Promise.resolve nil))]
+                 (p/resolved nil))]
               (r/dispatch-sync [:navigation/activate-component])
               (await! (support/settle!))
               (is (= [{:module :blog}] @*options)
                   "The comments view cannot be prepared without its required post argument")))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))

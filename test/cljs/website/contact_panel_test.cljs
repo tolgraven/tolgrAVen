@@ -1,6 +1,7 @@
 (ns website.contact-panel-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.events]
@@ -63,8 +64,8 @@
                 (await! (support/settle!))
                 (is (= [["" :blur] ["" :blur]] @*changes)))
               (finally (close!)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest contact-panel-mounts-on-intent-and-unmounts-after-native-exit
   (async done
@@ -84,8 +85,8 @@
                 (await! (support/wait-for! #(nil? (.querySelector element ".contact-form-popup"))))
                 (is (nil? (.querySelector element "input")) "Closed forms retain no inputs or hidden panel"))
               (finally (close!)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest reopening-during-exit-retains-the-panel-and-its-draft
   (async done
@@ -104,12 +105,12 @@
                 (is (identical? panel (.querySelector element ".contact-form-popup")))
                 (is (not (.hasAttribute panel "inert")))
                 (is (= "draft@example.com" (.-value (.querySelector panel "input[type=email]"))))
-                (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 400))))
+                (await! (p/delay! 400))
                 (is (identical? panel (.querySelector element ".contact-form-popup"))
                     "Cancelled exit cannot remove the reopened form"))
               (finally (close!)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (defn- focus-form [launcher?]
   [:div
@@ -140,8 +141,8 @@
                   (await! (support/wait-for! #(nil? (.querySelector element ".contact-form-popup"))))
                   (is (identical? opener (.-activeElement js/document)))))
               (finally (close!)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest closing-after-the-opener-disappears-releases-focused-descendants
   (async done
@@ -162,8 +163,8 @@
                   (is (not (.contains panel (.-activeElement js/document))))
                   (await! (support/wait-for! #(nil? (.querySelector element ".contact-form-popup"))))))
               (finally (close!)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest explicit-contact-open-enters-after-a-restored-page
   (async done
@@ -195,15 +196,15 @@
                   (await! (support/wait-for! #(.contains (.-classList panel) "exiting")))
                   (await! (support/wait-for! #(nil? (.querySelector element ".contact-form-popup")))))
                 (finally (.disconnect observer) (close!))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (defn ^:export show-panel! []
   (restore/begin! {:back? true})
   (restore/hydrated!)
   (r/dispatch-sync [:contact/close])
   (-> (support/create-root! (.getElementById js/document "contact-demo"))
-      (.then #(support/render! %
+      (p/then #(support/render! %
                 [:<>
                  [:main.contact-motion-demo
                   [:h1 "Contact entrance"]

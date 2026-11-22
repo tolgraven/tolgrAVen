@@ -1,5 +1,6 @@
 (ns website.github-diff-test
-  (:require [cljs.test :refer-macros [async deftest is]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [async deftest is]]
             [website.react :as r]
             [website.events]
             [website.subs]
@@ -149,20 +150,20 @@
                     :files [{:filename "image.png", :status "added"}
                             {:filename "source.clj", :status "modified"}])}])
       (-> (support/create-root! element)
-          (.then (fn [root]
+          (p/then (fn [root]
                    (reset! *root root)
                    (support/render! root [views/<viewer> revision])))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (nil? (.querySelector element ".neovim__grid")) "Failed source must not boot an editor")
                    (.click (.querySelector element ".disclosure-menu > summary"))
                    (support/settle!)))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (let [picker (.querySelector element "select")]
                      (is (pos? (.-width (.getBoundingClientRect picker))) "Recovery picker is visible in the open menu")
                      (set! (.-value picker) "source.clj")
                      (.dispatchEvent picker (js/Event. "change" #js {:bubbles true})))
                    (support/wait-for! #(= 2 (count @*requests)))))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (= #{(str "/api/github/contents?user=u&repo=r&ref=" parent "&path=source.clj")
                             (str "/api/github/contents?user=u&repo=r&ref=" sha "&path=source.clj")}
                           (set (map :uri @*requests))))
@@ -170,13 +171,13 @@
                      (is (= "Straight patch" (.-textContent patch)))
                      (.click patch))
                    (support/wait-for! #(= 3 (count @*requests)))))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (= (str "/api/github/commits/" sha "/patch?user=u&repo=r")
                           (:uri (last @*requests))))
                    (is (= "text/plain" (get-in (last @*requests) [:headers "Accept"])))
                    (is (nil? (.querySelector element ".neovim__grid")) "Recovery choices remain independent of WASM startup")))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (restore!)

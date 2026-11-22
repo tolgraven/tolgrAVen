@@ -1,6 +1,7 @@
 (ns website.component-lifecycle-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
 
             [website.components.popover :as popover]
@@ -14,7 +15,7 @@
     (let [original js/ResizeObserver
           *created (atom [])
           *stopped (atom #{})
-          gate (js/Promise. (fn [_ _]))]
+          gate (p/create (fn [_ _]))]
       (set! js/ResizeObserver
         (fn [_]
           (let [id (random-uuid)]
@@ -49,8 +50,8 @@
                 (is (= 1 (count (remove @*stopped @*created))))
                 (finally (support/unmount! root)))
               (is (every? @*stopped @*created) "Unmount releases the reopened owner")))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (set! js/ResizeObserver original) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (set! js/ResizeObserver original) (done)))))))
 
 (deftest timeout-keeps-its-deadline-and-runs-the-latest-committed-callback
   (async done
@@ -84,8 +85,8 @@
                 (is (= [:current] @*calls))
                 (finally (support/unmount! root)))
               (is (contains? @*cleared (:id (first @*timers))) "Unmount cancels the owned timer")))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (set! js/setTimeout original-timeout)
                       (set! js/clearTimeout original-clear)
                       (done)))))))

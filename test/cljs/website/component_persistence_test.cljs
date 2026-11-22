@@ -1,6 +1,7 @@
 (ns website.component-persistence-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [website.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
@@ -19,7 +20,7 @@
             [website.component.persistent-state :as state]
             [website.macros :refer-macros [defc]]))
 (defn- render! [root form] (support/render! root form))
-(defn- tick! [] (js/Promise. (fn [resolve _] (js/setTimeout resolve 35))))
+(defn- tick! [] (p/delay! 35))
 (defn- fixture
   []
   (go-promise (let [before @r/*app-db
@@ -79,7 +80,7 @@
                  (await! (render! root [<counter>]))
                  (.click (.querySelector element "button"))
                  (-> (tick!)
-                     (.then (fn [_]
+                     (p/then (fn [_]
                               (go-promise (r/flush)
                                           (is (= "1" (.-textContent element)))
                                           (await! (render! root [:p "Unmounted"]))
@@ -91,9 +92,9 @@
                                           (await! (render! root [<counter>]))
                                           (is (= "0" (.-textContent element))
                                               "Explicit deletion invalidates the local snapshot"))))
-                     (.catch #(is false (str %)))
-                     (.finally (fn [] (storage/remove! id {:scope :public}) (close!) (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+                     (p/catch-error #(is false (str %)))
+                     (p/finally-do (fn [] (storage/remove! id {:scope :public}) (close!) (done))))))
+             (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest page-state-isolates-pages-and-instance-keys
   (let [definition {:ns "fixture", :name "panel", :options {:state {:scope :page, :key identity}}}]
     (binding [state/*component* definition
@@ -130,15 +131,15 @@
                  (is (nil? (.querySelector element "[role=status]")))
                  (is (.contains (.-classList (.querySelector element "article")) "appeared"))
                  (-> (tick!)
-                     (.then (fn [_]
+                     (p/then (fn [_]
                               (is (= :ready
                                      (data/state [{:source :url,
                                                    :url "/never-needed",
                                                    :into [:persist-test :content]}])))))
-                     (.catch #(is false (str %)))
-                     (.finally
+                     (p/catch-error #(is false (str %)))
+                     (p/finally-do
                        (fn [] (data/invalidate! #(= "/never-needed" (:url %))) (close!) (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+             (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest valid-resource-cache-bypasses-loader-and-retry-forces-refresh
   (async done
          (-> (go-promise
@@ -151,23 +152,23 @@
                  (storage/write! id "Cached" {:scope :public})
                  (data/register-source! :persist-test {:load! (fn [_] (swap! *calls inc) "Fresh")})
                  (-> (data/ensure! resource)
-                     (.then (fn [value]
+                     (p/then (fn [value]
                               (is (= "Cached" value))
                               (is (= 0 @*calls))
                               (is (= "Cached" (get-in @r/*app-db [:persist-test :cached])))
                               (data/retry! [resource])))
-                     (.then (fn [_]
+                     (p/then (fn [_]
                               (is (= 1 @*calls))
                               (is (= "Fresh" (get-in @r/*app-db [:persist-test :cached])))))
-                     (.catch #(is false (str %)))
-                     (.finally (fn []
+                     (p/catch-error #(is false (str %)))
+                     (p/finally-do (fn []
                                  (data/invalidate! #{resource})
                                  (storage/remove! id {:scope :public})
                                  (swap! storage/*tracked dissoc id)
                                  (swap! data/*sources dissoc :persist-test)
                                  (reset! r/*app-db before)
                                  (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+             (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest placeholder-and-skeleton-are-only-shown-for-missing-data
   (async done
          (-> (go-promise
@@ -175,7 +176,7 @@
                      *resolve (atom nil)]
                  (data/register-source!
                    :persist-test
-                   {:load! (fn [_] (js/Promise. (fn [resolve _] (reset! *resolve resolve))))})
+                   {:load! (fn [_] (p/create (fn [resolve _] (reset! *resolve resolve))))})
                  (await! (render! root [<pending>]))
                  (is (some? (.querySelector element "article[role=status][aria-busy=true]")))
                  (is (nil? (.querySelector element ".component-spinner")))
@@ -183,15 +184,15 @@
                  (is (some? (.querySelector element ".component-skeleton--avatar")))
                  (is (some? (.querySelector element "h1.component-skeleton")))
                  (-> (tick!)
-                     (.then (fn [_] (@*resolve :loaded) (tick!)))
-                     (.then (fn [_] (r/flush) (is (= "Loaded" (.-textContent element)))))
-                     (.catch #(is false (str %)))
-                     (.finally (fn []
+                     (p/then (fn [_] (@*resolve :loaded) (tick!)))
+                     (p/then (fn [_] (r/flush) (is (= "Loaded" (.-textContent element)))))
+                     (p/catch-error #(is false (str %)))
+                     (p/finally-do (fn []
                                  (data/invalidate! #(= :persist-test (:source %)))
                                  (swap! data/*sources dissoc :persist-test)
                                  (close!)
                                  (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+             (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest hydration-keeps-the-existing-dom-node
   (async
     done
@@ -207,20 +208,20 @@
             (let [server-node (.-firstElementChild element)
                   root (r/hydrate-root element [<ready>])]
               (-> (tick!)
-                  (.then (fn [_]
+                  (p/then (fn [_]
                            (r/flush)
                            (is (identical? server-node (.-firstElementChild element)))
                            (is (nil? (.querySelector element "[role=status]")))
                            (is (= "Server content" (.-textContent element)))))
-                  (.catch #(is false (str %)))
-                  (.finally (fn []
+                  (p/catch-error #(is false (str %)))
+                  (p/finally-do (fn []
                               (support/unmount! root)
                               (.remove element)
                               (data/invalidate! #(= "/never-needed" (:url %)))
                               (reset! r/*app-db before)
                               (reset! restore/*context context)
                               (done)))))))
-        (.catch (fn [error] (is false (str error)) (done))))))
+        (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest metadata-keys-isolate-state-and-survive-remount
   (async
     done
@@ -237,7 +238,7 @@
                             (with-meta [<counter>] {:key "second"})]))
           (let [buttons (.querySelectorAll element "button")] (.click (aget buttons 0)))
           (-> (tick!)
-              (.then (fn [_]
+              (p/then (fn [_]
                        (go-promise (r/flush)
                                    (is (= ["1" "0"]
                                           (mapv #(.-textContent %)
@@ -245,7 +246,7 @@
                                    (await! (render! root [:p "Away"]))
                                    (tick!)))) ; Reagent 2 disposes reactions on a microtask for
                                               ; StrictMode.
-              (.then (fn [_]
+              (p/then (fn [_]
                        (go-promise
                          (is
                            (not-any? (fn [query]
@@ -260,9 +261,9 @@
                          (is (= ["1" "0"]
                                 (mapv #(.-textContent %)
                                   (array-seq (.querySelectorAll element "button"))))))))
-              (.catch #(is false (str %)))
-              (.finally (fn [] (close!) (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+              (p/catch-error #(is false (str %)))
+              (p/finally-do (fn [] (close!) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest storage-coalesces-disk-io-and-deduplicates-unchanged-dumps
   (async
     done
@@ -288,15 +289,15 @@
           (is (= 0 @*reads) "No disk reads in component creation")
           (is (empty? @*writes) "No disk writes in component updates")
           (-> (storage/ready! options)
-              (.then (fn [_]
+              (p/then (fn [_]
                        (storage/drain!)
                        (is (= 2 @*reads) "All components share the owner read and its migration backup check")
                        (is (= 1 (count @*writes)) "All component writes share one owner envelope")
                        (dotimes [i 50] (storage/write! i {:value i} options))
                        (tick!)))
-              (.then (fn [_] (is (= 1 (count @*writes)) "Unchanged dumps never write again")))
-              (.catch #(is false (str %)))
-              (.finally (fn []
+              (p/then (fn [_] (is (= 1 (count @*writes)) "Unchanged dumps never write again")))
+              (p/catch-error #(is false (str %)))
+              (p/finally-do (fn []
                           (set! storage/read-disk! original-read)
                           (set! storage/write-disk! original-write)
                           (swap! storage/*buckets dissoc account)
@@ -305,7 +306,7 @@
                           (swap! storage/*dirty disj account)
                           (reset! storage/*identity identity-before)
                           (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 ;; defc recognizes the scoped helpers; the declaration owns initial state.
 (defc <scoped-toggle>
   {:state {:initial {:opts {:setting false}}}}
@@ -330,14 +331,14 @@
             (is (false? (get-in @r/*app-db (into base [:opts :setting]))))
             (.click (aget (.querySelectorAll element "button") 0))
             (-> (tick!)
-                (.then (fn [_]
+                (p/then (fn [_]
                          (go-promise (r/flush)
                                      (is (= ["true" "true"]
                                             (mapv #(.-textContent %)
                                               (array-seq (.querySelectorAll element "button")))))
                                      (await! (render! root [:p "Away"]))
                                      (tick!))))
-                (.then (fn [_]
+                (p/then (fn [_]
                          (go-promise
                            (is (not-any? (fn [query]
                                            (and (= :component-state/scoped-value (first query))
@@ -348,9 +349,9 @@
                            (is (= ["true" "true"]
                                   (mapv #(.-textContent %)
                                     (array-seq (.querySelectorAll element "button"))))))))
-                (.catch #(is false (str %)))
-                (.finally (fn [] (close!) (done))))))
-        (.catch (fn [error] (is false (str error)) (done))))))
+                (p/catch-error #(is false (str %)))
+                (p/finally-do (fn [] (close!) (done))))))
+        (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest queued-component-updates-use-current-value-and-explicit-key
   (async done
          (-> (go-promise
@@ -367,19 +368,19 @@
                  (await! (render! root [<keyed-setting> "first"]))
                  (.click (.querySelector element "button"))
                  (-> (tick!)
-                     (.then (fn [_]
+                     (p/then (fn [_]
                               (r/flush)
                               (is (= "5" (.-textContent element))
                                   "Queued updates do not overwrite each other")
                               (component/>reset resolved 12)
                               (tick!)))
-                     (.then (fn [_]
+                     (p/then (fn [_]
                               (r/flush)
                               (is (= "12" (.-textContent element)))
                               (is (= 12 (get-in @r/*app-db path)))))
-                     (.catch #(is false (str %)))
-                     (.finally (fn [] (close!) (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+                     (p/catch-error #(is false (str %)))
+                     (p/finally-do (fn [] (close!) (done))))))
+             (p/catch-error (fn [error] (is false (str error)) (done))))))
 (defc <cold-setting>
   {:state {:persist {:scope :user}, :initial {:opts {:setting false}}}}
   []
@@ -414,15 +415,15 @@
           (is (= "true" (.-textContent element))
               "Cold storage has settled through the normal render lifecycle")
           (-> (tick!)
-              (.then (fn [_]
+              (p/then (fn [_]
                        (r/flush)
                        (is (= "true" (.-textContent element))
                            (str "disk=" (pr-str (get @storage/*buckets owner))
                                 " state=" (pr-str (get-in @r/*app-db (subvec root-path 0 3)))
                                 " revisions=" (pr-str (:component-revisions @r/*app-db))))
                        (is (true? (get-in @r/*app-db (into root-path [:opts :setting]))))))
-              (.catch #(is false (str %)))
-              (.finally (fn []
+              (p/catch-error #(is false (str %)))
+              (p/finally-do (fn []
                           (set! storage/read-disk! original)
                           (close!)
                           (reset! storage/*identity old-owner)
@@ -431,7 +432,7 @@
                           (swap! storage/*ready disj owner)
                           (swap! storage/*dirty disj owner)
                           (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest late-restoration-preserves-explicit-edits-even-when-equal-to-default
   (let [before @r/*app-db
         root (binding [state/*component* {:ns "restore-test", :name "setting"}] (state/path-for {}))
@@ -462,14 +463,14 @@
                                             (with-meta [<wrapped-key-setting> "manual"] {:key 0})))
                            (.click (.querySelector element "button"))
                            (-> (tick!)
-                               (.then (fn [_]
+                               (p/then (fn [_]
                                         (r/flush)
                                         (is (= 1 (get-in @r/*app-db (conj base 0))))
                                         (is (nil? (get-in @r/*app-db (conj base "manual"))))
                                         (is (= "1" (.-textContent element)))))
-                               (.catch #(is false (str %)))
-                               (.finally (fn [] (close!) (done))))))
-             (.catch (fn [error] (is false (str error)) (done))))))
+                               (p/catch-error #(is false (str %)))
+                               (p/finally-do (fn [] (close!) (done))))))
+             (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest explicit-deletions-patch-snapshots-and-do-not-reappear-on-flush
   (async
     done
@@ -493,13 +494,13 @@
           (is (nil? (storage/read! id options)))
           (storage/flush!)
           (-> (tick!)
-              (.then (fn [_]
+              (p/then (fn [_]
                        (is (nil? (storage/read! id options)))
                        (is (not (.includes (or (storage/read-disk! (storage/storage-key id options))
                                                "")
                                            "Old value")))))
-              (.catch #(is false (str %)))
-              (.finally (fn []
+              (p/catch-error #(is false (str %)))
+              (p/finally-do (fn []
                           (.removeItem js/localStorage (storage/storage-key id options))
                           (reset! storage/*tracked tracked)
                           (reset! r/*app-db before)
@@ -509,7 +510,7 @@
                           (swap! storage/*dirty disj owner)
                           (reset! storage/*identity old-owner)
                           (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest deletion-before-a-cold-read-is-also-written-back-to-disk
   (async
     done
@@ -530,13 +531,13 @@
           (r/dispatch-sync [:component-state/reset path "Deleted before loading storage"])
           (r/dispatch-sync [:unset path])
           (-> (storage/ready! options)
-              (.then (fn [_] (tick!)))
-              (.then (fn [_]
+              (p/then (fn [_] (tick!)))
+              (p/then (fn [_]
                        (is (nil? (storage/read! id options)))
                        (is (not (.includes (storage/read-disk! (storage/storage-key id options))
                                            "Deleted before loading storage")))))
-              (.catch #(is false (str %)))
-              (.finally (fn []
+              (p/catch-error #(is false (str %)))
+              (p/finally-do (fn []
                           (.removeItem js/localStorage (storage/storage-key id options))
                           (reset! r/*app-db before)
                           (swap! storage/*buckets dissoc owner)
@@ -546,7 +547,7 @@
                           (swap! storage/*deleted-paths dissoc owner)
                           (reset! storage/*identity old-owner)
                           (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 (defonce *scope-handles (atom nil))
 (defc <scope-controls>
   {:module :blog, :state {:initial {:count 0}}}
@@ -587,18 +588,18 @@
             (is (= 5 @*comp) "Queued writes compute from current state in event handlers")
             (.click (.querySelector element "button"))
             (-> (tick!)
-                (.then (fn [_]
+                (p/then (fn [_]
                          (r/flush)
                          (is (= "[8 13 23 33]" (.-textContent element)))
                          (component/>update [:global :handle-test] inc)
                          (component/>reset [:module :blog :handle-test] 42)
                          (tick!)))
-                (.then (fn [_]
+                (p/then (fn [_]
                          (go-promise (r/flush)
                                      (is (= "[8 42 23 34]" (.-textContent element)))
                                      (await! (render! root [:p "Away"]))
                                      (tick!))))
-                (.then (fn [_]
+                (p/then (fn [_]
                          (go-promise (is (not-any?
                                            (fn [query]
                                              (and (= :component-state/scoped-value (first query))
@@ -608,9 +609,9 @@
                                      (await! (render! root [<scope-controls>]))
                                      (is (= "[8 42 23 34]" (.-textContent element))
                                          "Unmount retains state for every scope"))))
-                (.catch #(is false (str %)))
-                (.finally (fn [] (reset! *scope-handles nil) (close!) (done)))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+                (p/catch-error #(is false (str %)))
+                (p/finally-do (fn [] (reset! *scope-handles nil) (close!) (done)))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest restored-snapshots-are-consumed-and-republished-on-navigation
   (async
     done
@@ -628,7 +629,7 @@
                   (when (= key (storage/storage-key id options)) (reset! *disk value))))
           (->
             (storage/ready! options)
-            (.then
+            (p/then
               (fn [_]
                 (storage/write! id {:expanded false, :comments [1 2]} options)
                 (storage/track! id #(hash-map :expanded false :comments [1 2]) options)
@@ -649,8 +650,8 @@
                 (storage/flush! :navigation)
                 (storage/drain!)
                 (is (= "{}" @*disk) "Removed snapshots stay removed")))
-            (.catch #(is false (str %)))
-            (.finally (fn []
+            (p/catch-error #(is false (str %)))
+            (p/finally-do (fn []
                         (set! storage/write-disk! write-before)
                         (swap! storage/*tracked dissoc id)
                         (doseq [*store [storage/*buckets storage/*reads storage/*consumed]]
@@ -659,7 +660,7 @@
                         (swap! storage/*dirty disj account)
                         (reset! storage/*identity previous)
                         (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 
 (deftest missing-state-and-data-entries-do-not-invalidate-mounted-consumers
   (async done
@@ -696,8 +697,8 @@
                 ((:unmount! mounted))
                 (r/dispatch [:component-data/remove path])
                 (r/dispatch [:component-data/remove [:persist-test :unrelated]])))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest nonpersistent-value-reads-do-not-initialize-state
   (let [before @r/*app-db
@@ -721,7 +722,7 @@
                 original-read storage/read!
                 *release (atom nil)
                 *reads (atom 0)
-                ready (js/Promise. (fn [resolve _] (reset! *release resolve)))
+                ready (p/create (fn [resolve _] (reset! *release resolve)))
                 options {:initial 0, :persist true}
                 path [:state :source-load-test]
                 edited-path [:state :source-edited-test]]
@@ -737,7 +738,7 @@
                 (r/dispatch-sync [:component-state/load path options])
                 (r/dispatch-sync [:component-state/reset edited-path 12])
                 (let [restored (-> ready
-                                   (.then (fn [_]
+                                   (p/then (fn [_]
                                             (is (= 7 (get-in @r/*app-db path))
                                                 "Storage readiness cannot expose defaults to a following autosave"))))]
                   (@*release nil)
@@ -756,5 +757,5 @@
                   (set! storage/read! original-read)
                   (reset! storage/*tracked tracked)
                   (reset! r/*app-db before))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))

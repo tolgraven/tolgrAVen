@@ -1,6 +1,7 @@
 (ns website.dev-diagnostics-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [website.macros :refer-macros [defc]]
             [website.react :as r]
@@ -98,7 +99,7 @@
               (finally (support/unmount! root) (.remove element) (stop-record!) (stop!)
                        (reset! capture/*recording? false)
                        (r/dispatch [:component-data/remove [:test :diagnostic-value]])))))
-        (.catch #(is false (str %))) (.finally done))))
+        (p/catch-error #(is false (str %))) (p/finally-do done))))
 
 (deftest structured-schema-values-retain-type-highlighting
   (let [html (r/render-to-string [values/<issues> [{:path [:age]
@@ -132,8 +133,8 @@
               (finally
                 (r/dispatch [:dev-console/pick nil])
                 ((:unmount! mounted))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest observation-does-not-flush-or-revive-unread-reactions
   (let [owner (js-obj)
@@ -211,8 +212,8 @@
               (finally
                 (.remove element)
                 (restore-db!)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 
 (defc <host-frame> [content] [:section content])
@@ -282,5 +283,5 @@
                 (stop-record!)
                 (stop!)
                 (restore-db!)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))

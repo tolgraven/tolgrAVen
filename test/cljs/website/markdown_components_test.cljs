@@ -1,5 +1,6 @@
 (ns website.markdown-components-test
-  (:require [cljs.test :refer-macros [deftest is testing async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is testing async]]
             [website.react :as r]
             [website.modules.markdown-editor.views :as rich]
             [website.test-support :as support]
@@ -140,12 +141,12 @@
           *root (atom nil)]
       (.appendChild (.-body js/document) element)
       (-> (support/create-root! element)
-          (.then (fn [root]
+          (p/then (fn [root]
                    (reset! *root root)
                    (support/render! root [rich/<editor> {:text source
                                                        :on-change #(swap! *changes conj %)}])))
-          (.then (fn [_] (support/wait-for! #(.querySelector element "[contenteditable=true]"))))
-          (.then (fn [_]
+          (p/then (fn [_] (support/wait-for! #(.querySelector element "[contenteditable=true]"))))
+          (p/then (fn [_]
                    (is (.querySelector element "h2"))
                    (is (.querySelector element "strong"))
                    (is (.querySelector element ".md-component-node"))
@@ -157,15 +158,15 @@
                      (let [setter (.-set (.getOwnPropertyDescriptor js/Object (.-prototype js/HTMLInputElement) "value"))]
                        (.call setter argument "A changed aside"))
                      (.dispatchEvent argument (js/Event. "input" #js {:bubbles true})))))
-          (.then (fn [_] (support/wait-for! #(seq @*changes))))
-          (.then (fn [_]
+          (p/then (fn [_] (support/wait-for! #(seq @*changes))))
+          (p/then (fn [_]
                    (let [markdown (last @*changes)]
                      (is (string/includes? markdown "A changed aside"))
                      (is (string/includes? markdown "## Heading"))
                      (is (string/includes? markdown "**Bold**"))
                      (is (re-find #"(?:-|\*) \[x\] Done" markdown)))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))
 
 (deftest editable-code-removes-invisible-artifacts-without-damaging-source-text
   (is (= "\tλ café 👩‍💻 فارسی‌\nnext\n"
@@ -192,7 +193,7 @@
       (.setAttribute element "class" "blog-image-editor")
       (.appendChild (.-body js/document) element)
       (-> (support/create-root! element)
-          (.then (fn [root]
+          (p/then (fn [root]
                    (reset! *root root)
                    (support/render! root [(fn []
                                             [rich/<editor> {:text @*text
@@ -200,9 +201,9 @@
                                                             :on-change (fn [text']
                                                                          (swap! *changes conj text')
                                                                          (when @*echo? (reset! *text text')))}])])))
-          (.then (fn [_] (support/wait-for! #(.querySelector element ".code-block-input"))))
-          (.then (fn [_] (.focus (.querySelector element "[contenteditable=true]")) (support/settle!)))
-          (.then (fn [_]
+          (p/then (fn [_] (support/wait-for! #(.querySelector element ".code-block-input"))))
+          (p/then (fn [_] (.focus (.querySelector element "[contenteditable=true]")) (support/settle!)))
+          (p/then (fn [_]
                    (.focus (.querySelector element ".code-block-input"))
                    (is (.querySelector element ".code-block .code-wrap"))
                    (is (= "(defn yada [] [])" (.-value (.querySelector element ".code-block-input")))
@@ -213,8 +214,8 @@
                        "Public blog CSS must not impose its old source-editor minimum on nested code fields")
                    (is (nil? (.querySelector element ".code-edit-popover [role=combobox]")) "No external language field occupies document space")
                    (change! ".code-block-input" "\u0007(+\u200b 3 4)\ufeff")))
-          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(+ 3 4)"))))
-          (.then (fn [_]
+          (p/then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(+ 3 4)"))))
+          (p/then (fn [_]
                    (is (identical? (.-activeElement js/document) (.querySelector element ".code-block-input"))
                        "An accepted code edit preserves native focus after the outer Lexical selection")
                    (is (string/includes? (last @*changes) "```cljs sample") "Formatting aliases never rewrite the authored fence tag")
@@ -222,29 +223,29 @@
                        "Pasted artifacts are removed before the SDK saves Markdown")
                    (.click (.querySelector element ".code-language"))
                    (support/settle!)))
-          (.then (fn [_] (change! ".code-edit-popover [role=combobox]" "javascript")))
-          (.then (fn [_] (support/wait-for! #(.querySelector element ".search-select [role=option]"))))
-          (.then (fn [_] (.click (.querySelector element ".search-select [role=option]"))))
-          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "```javascript"))))
-          (.then (fn [_]
+          (p/then (fn [_] (change! ".code-edit-popover [role=combobox]" "javascript")))
+          (p/then (fn [_] (support/wait-for! #(.querySelector element ".search-select [role=option]"))))
+          (p/then (fn [_] (.click (.querySelector element ".search-select [role=option]"))))
+          (p/then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "```javascript"))))
+          (p/then (fn [_]
                    (is (nil? (.querySelector element ".code-edit-popover [role=combobox]")) "Choosing a language dismisses the field")
                    (.click (.querySelector element ".code-metadata"))
                    (support/settle!)))
-          (.then (fn [_] (change! "input[aria-label='Fence metadata']" "title=Example")))
-          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "javascript title=Example"))))
-          (.then (fn [_]
+          (p/then (fn [_] (change! "input[aria-label='Fence metadata']" "title=Example")))
+          (p/then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "javascript title=Example"))))
+          (p/then (fn [_]
                    (.dispatchEvent (.querySelector element "input[aria-label='Fence metadata']")
                      (js/KeyboardEvent. "keydown" #js {:key "Enter", :bubbles true, :cancelable true}))
                    (support/settle!)))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (nil? (.querySelector element "input[aria-label='Fence metadata']")))
                    (is (identical? (.-activeElement js/document) (.querySelector element ".code-block-input")))
                    (is (string/includes? (last @*changes) "(+ 3 4)"))
                    (.click (.querySelector element ".code-language"))
                    (support/settle!)))
-          (.then (fn [_] (.click (.querySelector element ".search-select [role=option]"))))
-          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "```auto title=Example"))))
-          (.then (fn [_]
+          (p/then (fn [_] (.click (.querySelector element ".search-select [role=option]"))))
+          (p/then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "```auto title=Example"))))
+          (p/then (fn [_]
                    (let [tree (fromMarkdown (last @*changes))
                          code-node (some #(when (= "code" (.-type %)) %) (array-seq (.-children tree)))]
                      (is (= "auto" (.-lang code-node)))
@@ -252,50 +253,50 @@
                    (is (= "Language: Auto detect" (.getAttribute (.querySelector element ".code-language") "title")))
                    (reset! *echo? false)
                    (change! ".code-block-input" "(first)")))
-          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(first)"))))
-          (.then (fn [_]
+          (p/then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(first)"))))
+          (p/then (fn [_]
                    (reset! *earlier-export (last @*changes))
                    (change! ".code-block-input" "(second)")))
-          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(second)"))))
-          (.then (fn [_]
+          (p/then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(second)"))))
+          (p/then (fn [_]
                    (reduce (fn [pending index]
-                             (.then pending
+                             (p/then pending
                                (fn [_]
                                  (let [code (str "(burst " index ")")]
                                    (change! ".code-block-input" code)
                                    (support/wait-for! #(string/includes? (or (last @*changes) "") code))))))
-                           (js/Promise.resolve nil) (range 100))))
-          (.then (fn [_] (reset! *text @*earlier-export) (support/settle!)))
-          (.then (fn [_]
+                           (p/resolved nil) (range 100))))
+          (p/then (fn [_] (reset! *text @*earlier-export) (support/settle!)))
+          (p/then (fn [_]
                    (is (= "(burst 99)" (.-value (.querySelector element ".code-block-input")))
                        "An old echo cannot replace newer input after sustained delayed acknowledgement")
                    (reset! *text (last @*changes))
                    (support/settle!)))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (reset! *echo? true)
                    (reset! *text "```cljs\n(external replacement)\n```")
                    (support/wait-for! #(= "(external replacement)" (.-value (.querySelector element ".code-block-input"))))))
-          (.then (fn [_] (is (= "(external replacement)" (.-value (.querySelector element ".code-block-input")))
+          (p/then (fn [_] (is (= "(external replacement)" (.-value (.querySelector element ".code-block-input")))
                             "External document changes still replace SDK content")
                    (reset! *echo? false)
                    (change! ".code-block-input" "(pending)")))
-          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(pending)"))))
-          (.then (fn [_]
+          (p/then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(pending)"))))
+          (p/then (fn [_]
                    (reset! *text @*earlier-export)
                    (reset! *document-id "restore-earlier-revision")
                    (support/wait-for! #(= "(first)" (.-value (.querySelector element ".code-block-input"))))))
-          (.then (fn [_] (is (= "(first)" (.-value (.querySelector element ".code-block-input")))
+          (p/then (fn [_] (is (= "(first)" (.-value (.querySelector element ".code-block-input")))
                             "A document identity change deliberately restores even an earlier exported value")
                    (change! ".code-block-input" "(temporary)")))
-          (.then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(temporary)"))))
-          (.then (fn [_] (change! ".code-block-input" "(first)") (support/settle!)))
-          (.then (fn [_]
+          (p/then (fn [_] (support/wait-for! #(string/includes? (or (last @*changes) "") "(temporary)"))))
+          (p/then (fn [_] (change! ".code-block-input" "(first)") (support/settle!)))
+          (p/then (fn [_]
                    (reset! *text "```cljs\n(normal external)\n```")
                    (support/wait-for! #(= "(normal external)" (.-value (.querySelector element ".code-block-input"))))))
-          (.then (fn [_] (is (= "(normal external)" (.-value (.querySelector element ".code-block-input")))
+          (p/then (fn [_] (is (= "(normal external)" (.-value (.querySelector element ".code-block-input")))
                             "Returning to unchanged parent content acknowledges edits without a document-ID change")))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))
 
 (deftest inserting-code-focuses-the-shared-editor-input
   (async done
@@ -303,21 +304,21 @@
           *root (atom nil)]
       (.appendChild (.-body js/document) element)
       (-> (support/create-root! element)
-          (.then (fn [root]
+          (p/then (fn [root]
                    (reset! *root root)
                    (support/render! root [rich/<editor> {:text "A paragraph", :on-change (fn [_])}])))
-          (.then (fn [_] (support/wait-for! #(.querySelector element "[contenteditable=true]"))))
-          (.then (fn [_]
+          (p/then (fn [_] (support/wait-for! #(.querySelector element "[contenteditable=true]"))))
+          (p/then (fn [_]
                    (.focus (.querySelector element "[contenteditable=true]"))
                    (.click (.querySelector element "button[aria-label='Insert Code Block']"))))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (support/wait-for!
                      #(let [input (.querySelector element ".code-block-input")]
                         (and input (identical? input (.-activeElement js/document))))
                      "Code block insertion did not focus its editor")))
-          (.then (fn [_] (is (.querySelector element ".code-block .code-wrap"))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/then (fn [_] (is (.querySelector element ".code-block .code-wrap"))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (done)))))))
@@ -330,25 +331,25 @@
       (r/dispatch-sync [:content [:common :code-languages] [{:value "rust", :label "Rust"}]])
       (.appendChild (.-body js/document) element)
       (-> (support/create-root! element)
-          (.then (fn [root] (reset! *root root)
+          (p/then (fn [root] (reset! *root root)
                    (support/render! root [code-block/<code-block> "fn main() {}"
                                           {:editable? true, :language "", :on-language-change #(reset! *chosen %)}])))
-          (.then (fn [_] (.click (.querySelector element ".code-language")) (support/settle!)))
-          (.then (fn [_] (support/wait-for! #(.querySelector element "[role=combobox]"))))
-          (.then (fn [_]
+          (p/then (fn [_] (.click (.querySelector element ".code-language")) (support/settle!)))
+          (p/then (fn [_] (support/wait-for! #(.querySelector element "[role=combobox]"))))
+          (p/then (fn [_]
                    (.focus (.querySelector element "[role=combobox]"))
                    (support/settle!)))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (= ["Auto detect" "Rust"] (mapv #(.-textContent %) (array-seq (.querySelectorAll element "[role=option]")))))
                    (r/dispatch-sync [:content [:common :code-languages] []])
                    (support/settle!)))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (= ["Auto detect"] (mapv #(.-textContent %) (array-seq (.querySelectorAll element "[role=option]")))))
                    (.dispatchEvent (.querySelector element "[role=combobox]")
                                    (js/KeyboardEvent. "keydown" #js {:key "Enter", :bubbles true, :cancelable true}))
                    (is (= "" @*chosen))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (when @*root (support/unmount! @*root))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (when @*root (support/unmount! @*root))
                       (.remove element) (editor-test/restore-fixture-db! before) (done)))))))
 
 (deftest published-components-render-real-interactive-ui
@@ -358,15 +359,15 @@
           *root (atom nil)]
       (.appendChild (.-body js/document) element)
       (-> (support/create-root! element)
-          (.then (fn [root]
+          (p/then (fn [root]
                    (reset! *root root)
                    (support/render! root [public-markdown/<parse-markdown-components> source])))
-          (.then (fn [_] (support/wait-for! #(and (.querySelector element ".content-box")
+          (p/then (fn [_] (support/wait-for! #(and (.querySelector element ".content-box")
                                                 (.querySelector element "[role=switch]")))))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (= "Published aside" (.-textContent (.querySelector element ".content-box p"))))
                    (is (= "right" (.. element (querySelector ".content-widget") -style -float)))
                    (is (.querySelector element "[role=switch]"))
                    (is (nil? (.querySelector element "site-component")) "No inert custom HTML tags remain")))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (when @*root (support/unmount! @*root)) (.remove element) (done)))))))

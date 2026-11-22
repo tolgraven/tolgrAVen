@@ -1,6 +1,7 @@
 (ns website.github-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [async deftest is testing]]
             [clojure.string :as string]
             [cljs.reader :as edn]
@@ -160,8 +161,8 @@
                 (finally
                   (support/unmount! root)
                   (.remove container))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest absent-settings-are-pending-until-an-empty-response-arrives
   (let [subscribe (r/subscribe-function)
@@ -207,8 +208,8 @@
             (is (= "https://github.com/second-user/second-repo" (await! (support/subscription-value! [:github/website-url]))))
             (r/dispatch-sync [:github/save-commits "second-user" "second-repo" 2 1 {:commits [], :total 0, :complete true}])
             (is (= 0 (await! (support/subscription-value! [:github/commit-count])))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest paired-repository-returns-retain-query-content-and-resume-pagination
   (async done
@@ -266,8 +267,8 @@
                 (is (= ["other-user" "repo"]
                        (await! (support/subscription-value! [:github/get-from]))))
                 (is (= "Loading" (await! (support/subscription-value! [:github/commit-count])))))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 
 (deftest late-disk-restoration-preserves-paired-repository-input
@@ -333,8 +334,8 @@
                       (is (= 7 (:generation current)))
                       (is (empty? @*requests) "Completed paired content needs no page-one refetch"))
                     (finally (unmount!)))))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest failed-initial-repository-reads-can-retry
   (async done
@@ -364,8 +365,8 @@
             (r/dispatch-sync [:github/init])
             (await! (support/settle!))
             (is (= 2 (count @*requests)) "Successfully loaded empty pages are retained"))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest repository-generation-rejects-pending-responses-after-switching-back
   (async done
@@ -394,8 +395,8 @@
               (is (= ["fresh"] (mapv :sha (await! (support/subscription-value! [:github/commits])))))
               (is (= 1 (await! (support/state-at! [:content :github :total]))))
               (is (= [1] (vec (:pages-fetched (await! (support/state-at! [:state :github]))))))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest calendar-preserves-real-counts-and-fits-a-phone
   (async done
@@ -415,8 +416,8 @@
                        (.getAttribute (.querySelector container "[data-date='2026-10-12']") "aria-label")))
                 (is (string/includes? (.-textContent container) "42 contributions"))
                 (finally (support/unmount! root) (.remove container))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest overflowing-calendar-starts-at-latest-and-keeps-chronological-keyboard-order
   (async done
@@ -441,8 +442,8 @@
                     (is (= "0" (.getAttribute latest "tabindex")))
                     (is (= (:date (first days)) (.getAttribute (.querySelector container "[data-date]") "data-date")))))
                 (finally (support/unmount! root)))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (.remove container) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (.remove container) (done)))))))
 
 (deftest cached-calendar-belongs-to-its-user-after-switching-back
   (async done
@@ -455,7 +456,7 @@
       (data/register-source! :url
         {:load! (fn [{:keys [url]}]
                   (swap! *requests conj url)
-                  (js/Promise.resolve
+                  (p/resolved
                     {:days [{:date "2026-10-11"
                              :count (if (string/ends-with? url "activity-test-a") 3 7)
                              :level 1}]}))})
@@ -472,8 +473,8 @@
                          (.getAttribute (.querySelector container "[data-date]") "aria-label"))))
                 (is (= 2 (count @*requests)) "Returning to A uses A's cached calendar")
                 (finally (support/unmount! root)))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (data/invalidate! resources)
                       (data/register-source! :url original-source)
                       (.remove container)
@@ -525,8 +526,8 @@
                   (.blur empty-day)
                   (await! (support/wait-for! #(nil? (.querySelector js/document ".activity-calendar__popup")))))
                 (finally (support/unmount! root) (.remove container)))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (deftest search-queries-complete-history-and-rejects-stale-responses
   (async done
@@ -555,8 +556,8 @@
             (r/dispatch-sync [:github/fetch-commits-next "test-user" "repo"])
             (await! (support/settle!))
             (is (= 2 (count @*requests)) "Exhausted searches do not request extra pages"))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (restore!) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (restore!) (done)))))))
 
 (deftest failed-day-detail-stays-compact-and-truthful
   (async done
@@ -568,7 +569,7 @@
       (data/invalidate! resources)
       (data/register-source! :url {:load! (fn [{:keys [url]}]
                                           (swap! *requests conj url)
-                                          (js/Promise.reject (js/Error. "Token unavailable")))})
+                                          (p/rejected (js/Error. "Token unavailable")))})
       (.appendChild (.-body js/document) container)
       (-> (go-promise
             (let [root (await! (support/create-root! container))]
@@ -607,8 +608,8 @@
                       (is (= 1 requests-after))
                       (is (zero? control-count)))))
                 (finally (support/unmount! root) (.remove container)))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (data/register-source! :url original-source)
                       (data/invalidate! resources)
                       (restore!)
@@ -644,8 +645,8 @@
                     (is (= page-y (.-scrollY js/window))))
                   (is (= 1 (.-length (.querySelectorAll container "[data-date][tabindex='0']")))))
                 (finally (support/unmount! root) (.remove container)))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (deftest native-calendar-tracks-focus-and-pointer-without-lazy-reactive-reads
   (async done
@@ -712,8 +713,8 @@
                 (is (empty? @*warnings)
                     (str "Calendar must read reactive state inside its render: " (pr-str @*warnings)))
                 (finally (support/unmount! root)))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (set! (.-warn js/console) before-warn)
                       (set! (.-error js/console) before-error)
                       (.remove container)

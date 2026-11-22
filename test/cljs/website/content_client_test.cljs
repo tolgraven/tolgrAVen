@@ -1,6 +1,7 @@
 (ns website.content-client-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [website.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
@@ -27,28 +28,28 @@
                 original content/request!]
             (reset! content/*pending {})
             (reset! r/*app-db {:content {:document {:title "Loaded"}}})
-            (set! content/request! (fn [ks] (swap! calls conj ks) (js/Promise.resolve nil)))
+            (set! content/request! (fn [ks] (swap! calls conj ks) (p/resolved nil)))
             (let [a (content/ensure! [:document :cv])
                   b (content/ensure! [:cv :blog])]
               (is (every? fn? ((juxt :resolve :reject) (get @content/*queued :cv)))
                   "An outstanding batch keeps its completion callbacks across hot reload")
               (is (empty? @calls) "No work until the next tick")
-              (-> (js/Promise.all #js [a b])
-                  (.then (fn [_]
+              (-> (p/all [a b])
+                  (p/then (fn [_]
                            (is (= [[:blog :cv]] @calls)
                                "Disjoint sections batch; duplicates disappear")
                            (is (empty? @content/*pending))))
-                  (.catch #(is false (str %)))
-                  (.finally
+                  (p/catch-error #(is false (str %)))
+                  (p/finally-do
                     (fn [] (set! content/request! original) (reset! r/*app-db before) (done)))))))
-        (.catch (fn [error] (is false (str error)) (done))))))
+        (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest module-init-waits-for-required-content
   (async done
     (-> (go-promise
           (let [id (keyword (str (random-uuid)))
                 restore! (r/make-restore-fn)
                 *initialized? (atom false) *started? (atom false) *resolve (atom nil)
-                pending (js/Promise. (fn [resolve _] (reset! *resolve resolve)))
+                pending (p/create (fn [resolve _] (reset! *resolve resolve)))
                 resource {:source :strapi :keys [:cv] :key id}
                 spec {:id id :depends [resource] :init #(reset! *initialized? true)}
                 loadable (reify lazy/ILoadable (ready? [_] true) IDeref (-deref [_] spec))
@@ -68,8 +69,8 @@
                 (swap! loader/*loads dissoc id)
                 (data/invalidate! #{resource})
                 (restore!)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 (deftest bootstrap-rejects-content-outside-the-public-contract
   (is (false? (content/valid-bundle? {:version 1, :content {:secrets {}}} [])))
   (is (false? (content/valid-bundle? {:version 1, :content {:story nil}} [:story])))
@@ -87,8 +88,8 @@
               succeed? (atom false)
               rejected! (fn [promise]
                           (-> promise
-                              (.then (fn [_] (is false "Request should fail")))
-                              (.catch (fn [_] nil))))]
+                              (p/then (fn [_] (is false "Request should fail")))
+                              (p/catch-error (fn [_] nil))))]
           (reset! status/*failures {})
           (reset! content/*pending {})
           (reset! r/*app-db {:content {:cv {:title "Keep me"}}})
@@ -100,27 +101,27 @@
                     :invalid {:version 999 :content {}}
                     (throw (ex-info "Unavailable" {:status 503})))))
           (-> (rejected! (content/ensure! [:story]))
-              (.then (fn []
+              (p/then (fn []
                        (is (empty? @content/*pending))
                        (is (= "Keep me" (get-in @r/*app-db [:content :cv :title])))
                        (is (contains? @status/*failures [:strapi [:story]]))
                        (reset! succeed? :invalid)
                        (rejected! (content/ensure! [:story]))))
-              (.then (fn []
+              (p/then (fn []
                        (is (= 1 (count (filter #(= :diag/new (first %)) @events))))
                        (reset! succeed? true)
                        (content/ensure! [:story])))
-              (.then (fn []
+              (p/then (fn []
                        (is (empty? @status/*failures))
                        (is (= "Recovered" (get-in @r/*app-db [:content :story :title])))))
-              (.catch #(is false (str %)))
-              (.finally (fn []
+              (p/catch-error #(is false (str %)))
+              (p/finally-do (fn []
                           (set! http/request! original-get)
                           (r/set-dispatch-function! original-dispatch)
                           (reset! status/*failures failures)
                           (reset! r/*app-db before)
                           (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest module-data-starts-with-code-and-can-retry
   (async
     done
@@ -144,28 +145,28 @@
                                  {:load! (fn [_]
                                            (swap! *events conj :data)
                                            (if (= 1 (swap! *attempt inc))
-                                             (js/Promise.reject (js/Error. "First load fails"))
-                                             (js/Promise.resolve :loaded)))})
+                                             (p/rejected (js/Error. "First load fails"))
+                                             (p/resolved :loaded)))})
           (set! loader/modules {id loadable})
           (set! contract/module-dependencies {id [resource]})
           (set!
             lazy/load
             (fn
-              ([_] (swap! *events conj :code) (js/Promise. (fn [resolve _] (reset! *code resolve))))
+              ([_] (swap! *events conj :code) (p/create (fn [resolve _] (reset! *code resolve))))
               ([_ _] nil)))
           (let [first-load (loader/load! {:module id})]
             (is (= [:code] @*events) "Code starts while data joins the next batch")
             (@*code spec)
             (-> first-load
-                (.then (fn [_] (is false "First module load should reject")))
-                (.catch (fn [_]
+                (p/then (fn [_] (is false "First module load should reject")))
+                (p/catch-error (fn [_]
                           (is (not-any? #{:init} @*events))
                           (let [retried (loader/load! {:module id})]
                             (@*code spec)
                             retried)))
-                (.then (fn [_] (is (= 2 @*attempt)) (is (= :init (last @*events)))))
-                (.catch #(is false (str %)))
-                (.finally (fn []
+                (p/then (fn [_] (is (= 2 @*attempt)) (is (= :init (last @*events)))))
+                (p/catch-error #(is false (str %)))
+                (p/finally-do (fn []
                             (set! loader/modules original-modules)
                             (set! contract/module-dependencies original-manifest)
                             (set! lazy/load original-load)
@@ -173,7 +174,7 @@
                             (data/invalidate! #{resource})
                             (swap! data/*sources dissoc :module-test)
                             (done)))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest external-back-restores-public-content-before-network-loads
   (async
     done
@@ -197,20 +198,20 @@
           (storage/write! :public-content bundle content/cache-options)
           (restore/begin! {:back? true})
           (set! content/request!
-                (fn [_] (swap! *calls inc) (js/Promise.reject (js/Error. "Unexpected request"))))
+                (fn [_] (swap! *calls inc) (p/rejected (js/Error. "Unexpected request"))))
           (-> (content/bootstrap!)
-              (.then (fn [_]
+              (p/then (fn [_]
                        (is (= 0 @*calls))
                        (is (= (set contract/sections) (set (keys (:content @r/*app-db)))))))
-              (.catch #(is false (str %)))
-              (.finally (fn []
+              (p/catch-error #(is false (str %)))
+              (p/finally-do (fn []
                           (set! content/request! original)
                           (reset! r/*app-db before)
                           (reset! restore/*context context)
                           (reset! storage/*tracked tracked)
                           (storage/remove! :public-content content/cache-options)
                           (done))))))
-      (.catch (fn [error] (is false (str error)) (done))))))
+      (p/catch-error (fn [error] (is false (str error)) (done))))))
 (deftest content-subscription-only-prefetches-declared-cms-sections
   (async done
          (-> (go-promise
@@ -226,8 +227,8 @@
                         (is (nil? (await! (subscription-value! [:content [:story]]))))
                         (is (= [[:content/load [:story]]] @*requests)))
                       (finally (r/clear-subscription-cache!) (reset! r/*app-db before)))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (p/catch-error (fn [error] (is false (str error))))
+             (p/finally-do done))))
 
 (deftest module-installation-is-shared-and-finishes-before-code-is-renderable
   (async done
@@ -236,9 +237,9 @@
           *finish (atom nil)
           *installs (atom 0)
           *started (atom nil)
-          started (js/Promise. (fn [resolve _] (reset! *started resolve)))
+          started (p/create (fn [resolve _] (reset! *started resolve)))
           spec {:install #(do (swap! *installs inc)
-                              (js/Promise. (fn [resolve _]
+                              (p/create (fn [resolve _]
                                              (reset! *finish resolve)
                                              (@*started nil))))}
           loadable (reify lazy/ILoadable (ready? [_] true)
@@ -248,18 +249,18 @@
             second-load (loader/acquire-code! id)]
         (is (identical? first-load second-load))
         (-> started
-            (.then (fn [_]
+            (p/then (fn [_]
                      (is (= 1 @*installs))
                      (is (not (loader/ready? id)))
                      (is (nil? (loader/code-spec id)))
                      (@*finish nil)
                      first-load))
-            (.then (fn [loaded]
+            (p/then (fn [loaded]
                      (is (= (assoc spec :id id) loaded))
                      (is (true? (loader/ready? id)))
                      (is (= (assoc spec :id id) (loader/code-spec id)))))
-            (.catch (fn [error] (is false (str error))))
-            (.finally (fn []
+            (p/catch-error (fn [error] (is false (str error))))
+            (p/finally-do (fn []
                         (set! loader/modules original)
                         (swap! loader/*code-loads dissoc id)
                         (swap! loader/*installed disj id)
@@ -283,8 +284,8 @@
                   (await! pending)
                   (is (= [:public-content] @*tracked))))
               (finally (restore!)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest failed-batched-content-does-not-reject-unrelated-consumers
   (async done
@@ -303,25 +304,25 @@
                       (do (r/dispatch-sync [:content/install
                                             {:version contract/version
                                              :content {:story {:title "Available"}}}])
-                          (js/Promise.resolve nil))
-                      (js/Promise.reject (js/Error. "Missing module config")))))
+                          (p/resolved nil))
+                      (p/rejected (js/Error. "Missing module config")))))
             (let [healthy (content/ensure! [:story])
                   unavailable (-> (content/ensure! [:docs])
-                                  (.then (fn [_] (is false "Missing content must reject its owner")))
-                                  (.catch (fn [_] nil)))]
-              (-> (js/Promise.all #js [healthy unavailable])
-                  (.then (fn [_]
+                                  (p/then (fn [_] (is false "Missing content must reject its owner")))
+                                  (p/catch-error (fn [_] nil)))]
+              (-> (p/all [healthy unavailable])
+                  (p/then (fn [_]
                            (is (= [[:docs :story] [:docs] [:story]] @*calls))
                            (is (= "Available" (get-in @r/*app-db [:content :story :title])))
                            (is (= "Retained" (get-in @r/*app-db [:content :cv :title])))
                            (is (= #{[:strapi [:docs]]} (set (keys @status/*failures))))
                            (is (empty? @content/*pending))))
-                  (.finally (fn []
+                  (p/finally-do (fn []
                               (set! content/request! original)
                               (reset! r/*app-db before)
                               (reset! status/*failures failures)))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest startup-content-does-not-gate-the-shell-on-route-modules
   (is (= contract/shell-content (content/bootstrap-keys nil "/test/liquid-glass")))
@@ -349,7 +350,7 @@
           *rejects (atom [])
           *closed? (atom false)
           *consumers (atom [])
-          settled! (fn [promise] (.catch (js/Promise.resolve promise) (fn [_] nil)))
+          settled! (fn [promise] (p/catch-error (p/resolved promise) (fn [_] nil)))
           schedule! (fn [callback milliseconds]
                       (let [id (js-obj)]
                         (swap! *timer-ids conj id)
@@ -386,8 +387,8 @@
         (fn [ks]
           (swap! *requests conj ks)
           (if @*closed?
-            (js/Promise.reject (js/Error. "Fixture closed"))
-            (js/Promise.
+            (p/rejected (js/Error. "Fixture closed"))
+            (p/create
               (fn [resolve reject]
                 (swap! *rejects conj reject)
                 (schedule!
@@ -411,17 +412,17 @@
               (advance! 35)
               (await! (support/wait-for! #(= [[:docs :story] [:docs] [:story]] @*requests)))
               (advance! 50)
-              (await! (js/Promise.resolve nil))
+              (await! (p/resolved nil))
               (is (= :loading (:status (data/snapshot resource)))
                   "Recovery remains pending beyond the ordinary 50ms budget")
               (is (not (contains? (:content @r/*app-db) :story)))
               (advance! 70)
-              (let [values (await! (js/Promise.all #js [healthy unavailable]))]
-                (is (= "Recovered" (get-in (aget values 0) [:story :title])))
+              (let [values (await! (p/all [healthy unavailable]))]
+                (is (= "Recovered" (get-in values [0 :story :title])))
                 (is (= :ready (:status (data/snapshot resource))))
                 (is (= #{[:strapi [:docs]]} (set (keys @status/*failures)))))))
-          (.catch (fn [error] (is false (str error))))
-          (.finally
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do
             (fn []
               ;; A failed assertion/wait must not leave a transport callback that
               ;; installs content after this fixture restores the application's db.
@@ -430,8 +431,8 @@
                 (data/invalidate! #{resource})
                 (doseq [reject @*rejects] (reject (js/Error. "Fixture closed")))
                 (reset! *timers {})
-                (js/Promise.all (into-array (map settled! pending))))))
-          (.finally
+                (p/all (map settled! pending)))))
+          (p/finally-do
             (fn []
               (set! js/setTimeout original-set-timeout)
               (set! js/clearTimeout original-clear-timeout)
@@ -462,28 +463,28 @@
                   (fn [ks]
                     (swap! *calls conj ks)
                     (if (some #{:story} ks)
-                      (js/Promise.reject (js/Error. "Missing route content"))
+                      (p/rejected (js/Error. "Missing route content"))
                       (let [bundle {:version contract/version
                                     :content (into {} (map (fn [k] [k (if (#{:footer :post-footer} k) [] {})])) ks)}]
                         (r/dispatch-sync [:content/install bundle])
-                        (js/Promise.resolve bundle)))))
+                        (p/resolved bundle)))))
             (-> (content/bootstrap!)
-                (.then (fn [_]
+                (p/then (fn [_]
                          (is (= [(vec (sort contract/shell-content))] @*calls))
                          (is (= :ready (get-in @r/*app-db [:state :content :status])))
                          (-> (content/ensure! [:story])
-                             (.then (fn [_] (is false "The unavailable route dependency must fail")))
-                             (.catch (fn [_] nil)))))
-                (.then (fn [_]
+                             (p/then (fn [_] (is false "The unavailable route dependency must fail")))
+                             (p/catch-error (fn [_] nil)))))
+                (p/then (fn [_]
                          (is (every? #(contains? (:content @r/*app-db) %) contract/shell-content))
                          (is (= :ready (get-in @r/*app-db [:state :content :status])))
                          (is (= #{[:strapi [:story]]} (set (keys @status/*failures))))))
-                (.finally (fn []
+                (p/finally-do (fn []
                             (set! content/request! original)
                             (reset! r/*app-db before)
                             (reset! status/*failures failures)
                             (reset! restore/*context context)
                             (reset! storage/*tracked tracked)
                             (storage/remove! :public-content content/cache-options))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))

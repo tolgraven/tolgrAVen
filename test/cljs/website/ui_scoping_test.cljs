@@ -1,6 +1,7 @@
 (ns website.ui-scoping-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [cljs.reader :as reader]
             [website.react :as r]
             [website.events]
@@ -49,5 +50,5 @@
                 (.click retry)
                 (is (nil? @*error)))
               (finally (support/unmount! root)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))

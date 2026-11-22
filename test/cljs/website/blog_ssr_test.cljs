@@ -1,5 +1,6 @@
 (ns website.blog-ssr-test
   (:require
+    [website.async :as p]
     [cljs.test :refer-macros [deftest is async]]
     [website.react :as r]
 
@@ -101,7 +102,7 @@
         *hydration-state (atom nil)
         *markdown-release (atom nil)
         markdown-gate (when delay-markdown?
-                        (js/Promise. (fn [resolve _] (reset! *markdown-release resolve))))
+                        (p/create (fn [resolve _] (reset! *markdown-release resolve))))
         *markdown-nodes (atom [])
         *markdown-mutations (atom [])
         markdown-selectors [".blog-post-text .md-rendered strong"
@@ -151,10 +152,10 @@
         (letfn [(load! ([loadable]
                        (if (identical? parser loadable)
                          (do (reset! *markdown-started? true)
-                             (.then markdown-gate (fn [spec] (reset! *markdown-ready? true) spec)))
+                             (p/then markdown-gate (fn [spec] (reset! *markdown-ready? true) spec)))
                          (old-lazy-load loadable)))
-                      ([loadable success] (.then (load! loadable) success))
-                      ([loadable success failure] (.then (load! loadable) success failure)))]
+                      ([loadable success] (p/then (load! loadable) success))
+                      ([loadable success failure] (p/then (load! loadable) success failure)))]
           (set! lazy/load load!))))
     (set! context/*href* (fn [name params query]
                           (some-> (reitit/match-by-name routes/router name params) (reitit/match->path query))))
@@ -175,22 +176,22 @@
         (if (= id :highlight)
           (do
             (swap! *highlight-requests conj id)
-            (js/Promise.resolve
+            (p/resolved
               (assoc-in highlight/spec [:view :formatted-code]
                         (fn [& args] [<formatter-commit> *formatter-commits args]))))
           (old-acquire id))))
     ;; Fixtures are regenerated from the current Node bundle; never hydrate
     ;; cached HTML from a previous component graph.
     (-> (js/fetch (str "/js/" fixture "-ssr.json") #js {:cache "no-store"})
-        (.then #(.json %))
-        (.then (fn [payload]
+        (p/then #(.json %))
+        (p/then (fn [payload]
                  (let [snapshot (:snapshot (js->clj payload :keywordize-keys true))
                        match (reitit/match-by-path routes/router (:path snapshot))]
                    ;; Production installs route dependency styles in the head.
                    ;; Await the same catalog here before hydrating its HTML.
                    (-> (styles/acquire! (get-in match [:data :module]))
-                       (.then (fn [_] payload))))))
-        (.then (fn [payload]
+                       (p/then (fn [_] payload))))))
+        (p/then (fn [payload]
                  (let [{:keys [snapshot html]} (js->clj payload :keywordize-keys true)
                        raw-match (reitit/match-by-path routes/router (:path snapshot))
                        ;; Prefer the same server-typed parameters as native boot;
@@ -234,7 +235,7 @@
                          letter (.querySelector element ".intro-title-letter")
                          animations (when letter (vec (array-seq (.getAnimations letter))))]
                      (is (every? some? nodes) "Ordinary page elements exist before hydration")
-                     (js/Promise.
+                     (p/create
                       (fn [resolve reject]
                         (reset! *root
                           (r/hydrate-root element
@@ -259,7 +260,7 @@
                                  (catch :default error (reject error))))
                              delay-markdown?]
                             {:on-recoverable-error #(swap! *errors conj (str %))}))))))))
-        (.then (fn [_]
+        (p/then (fn [_]
                  (when delay-markdown?
                    ;; Observe client/<hydrate>'s actual queued activation; do
                    ;; not replace its reset/flush/dispatch/completion ordering.
@@ -268,7 +269,7 @@
                                (not (restore/initial-hydration?))
                                (seq @*hydration-events))
                          "Native hydration lifecycle or parser acquisition did not run")
-                       (.then (fn [_]
+                       (p/then (fn [_]
                                 (is (false? @*markdown-ready?) "Parser code is still absent")
                                 (is (= [{:interactive? true, :hydrate? true, :parser-ready? false}]
                                        @*hydration-events)
@@ -276,11 +277,11 @@
                                 (is (false? (restore/initial-hydration?)))
                                 (unchanged-markdown! "Parser pending after root completion")
                                 (support/settle!)))
-                       (.then (fn [_]
+                       (p/then (fn [_]
                                 (support/mount-subscriptions!
                                   {:route [:common/route]
                                    :hydrating? [:state [:ssr :hydrating?]]})))
-                       (.then (fn [state]
+                       (p/then (fn [state]
                                 (reset! *hydration-state state)
                                 (support/wait-for!
                                   #(let [{:keys [route hydrating?]} ((:values state))]
@@ -289,7 +290,7 @@
                                           (= (count (get-in route [:data :controllers]))
                                              (count (:controllers route)))))
                                   "Actual page/hydrated controller field/state did not commit")))
-                       (.then (fn [_]
+                       (p/then (fn [_]
                                 (is (false? @*markdown-ready?) "Parser remains held through real controller activation")
                                 (is (= "server-rendered-42"
                                        (get-in ((:values @*hydration-state)) [:route :parameters :path :permalink]))
@@ -300,10 +301,10 @@
                                   #(and @*markdown-ready? (loader/code-spec :markdown)
                                         (nil? (.querySelector element "template[data-module-boundary='markdown']")))
                                   "Native parser owners did not commit after code release")))
-                       (.then (fn [_]
+                       (p/then (fn [_]
                                 (unchanged-markdown! "Parser hydrated")
                                 (is (empty? @*errors) (pr-str @*errors))))))))
-        (.then (fn [_]
+        (p/then (fn [_]
                  (when (= fixture "code-blog")
                    (restore/hydrated!)
                    ;; Root completion does not mean the lazy parser's controls
@@ -315,7 +316,7 @@
                                  (.querySelector element ".code-block button[aria-pressed]")
                                  (= blocks (count @*release))))
                          "Delayed Markdown did not retain its formatter gates")
-                       (.then (fn [_]
+                       (p/then (fn [_]
                                 (record-stage! :controls-ready-before-wrap)
                                 (doseq [[node selector] (map vector @*code-nodes code-selectors)]
                                   (is (identical? node (.querySelector element selector))
@@ -326,7 +327,7 @@
                                 (.click (.querySelector element ".code-block button[aria-pressed]"))
                                 (support/wait-for! #(.querySelector element ".code-block-wrapped")
                                                    "Hydrated code controls did not respond before formatting")))
-                       (.then (fn [_]
+                       (p/then (fn [_]
                                 (record-stage! :after-wrap-before-formatter)
                                 (doseq [[node selector] (map vector @*code-nodes code-selectors)]
                                   (is (identical? node (.querySelector element selector))
@@ -336,14 +337,14 @@
                                 (support/wait-for!
                                   #(= (.-length (.querySelectorAll element ".code-block, .code-highlight"))
                                       @*formatter-commits))))
-                       (.then (fn [_]
+                       (p/then (fn [_]
                                 (record-stage! :after-formatter)
                                 (doseq [[node selector] (map vector @*code-nodes code-selectors)]
                                   (is (identical? node (.querySelector element selector))
                                       (str selector " | " (pr-str @*code-stages))))
                                 (is (empty? @*errors) (pr-str @*errors))))))))
-        (.catch #(is false (str %)))
-        (.finally (fn []
+        (p/catch-error #(is false (str %)))
+        (p/finally-do (fn []
                     ;; Drain before cleanup so unmount is not a hydration receipt.
                     (when observer
                       (record-markdown! (.takeRecords observer))
@@ -369,7 +370,7 @@
                                   ;; dispatch is muted. Release that queue through its owner
                                   ;; after restoring dispatch, before the next test acquires it.
                                   (r/dispatch [:store/drain-readers])
-                                  (-> (support/settle!) (.then (fn [_] (done)))))]
+                                  (-> (support/settle!) (p/then (fn [_] (done)))))]
                       (if delay-markdown?
                         (let [pending #js [(get @loader/*code-loads :markdown)
                                            (get @loader/*loads :markdown)]]
@@ -377,10 +378,10 @@
                           ;; muted, before restoring caches/handlers for the next
                           ;; fixture. This also drains a failed assertion path.
                           (@*markdown-release markdown/spec)
-                          (-> (js/Promise.all pending)
-                              (.catch (fn [_] nil))
-                              (.then (fn [_] (support/settle!)))
-                              (.then (fn [_] (finish!)))))
+                          (-> (p/all pending)
+                              (p/catch-error (fn [_] nil))
+                              (p/then (fn [_] (support/settle!)))
+                              (p/then (fn [_] (finish!)))))
                         (finish!))))))))
 
 (deftest ordinary-blog-markup-hydrates-without-replacing-content

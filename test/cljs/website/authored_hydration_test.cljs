@@ -1,6 +1,7 @@
 (ns website.authored-hydration-test
   "Exercise the release validation and selective-hydration path with delayed owned transports."
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [shadow.lazy :as lazy]
             [website.react :as r]
             [website.db :as db]
@@ -20,7 +21,7 @@
 
 (defn gate []
   (let [*release (atom nil)]
-    {:promise (js/Promise. (fn [resolve _] (reset! *release resolve)))
+    {:promise (p/create (fn [resolve _] (reset! *release resolve)))
      :release! (fn [value] (@*release value))}))
 
 (r/defc <hydration-id-fixture> []
@@ -41,12 +42,12 @@
                                    {:identifier-prefix "markdown-native-"
                                     :on-recoverable-error #(swap! *errors conj %)}))
       (-> (support/wait-for! #(seq @*errors) "React did not forward its actual recovery callback")
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (= "Client content" (.-textContent element)))
                    (is (.includes (.-id (.querySelector element "p")) "markdown-native-"))
                    (is (seq @*errors))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (r/unmount @*root))
                       (.remove element)
                       (done)))))))
@@ -71,10 +72,10 @@
     (letfn [(load! ([loadable]
                    (if-let [id (get owners loadable)]
                      (do (swap! *started conj [id :code])
-                         (.then (get-in gates [id :code :promise]) (fn [spec] (swap! *code-ready conj id) spec)))
+                         (p/then (get-in gates [id :code :promise]) (fn [spec] (swap! *code-ready conj id) spec)))
                      ((:load before) loadable)))
-                  ([loadable success] (.then (load! loadable) success))
-                  ([loadable success failure] (.then (load! loadable) success failure)))]
+                  ([loadable success] (p/then (load! loadable) success))
+                  ([loadable success failure] (p/then (load! loadable) success failure)))]
       (set! lazy/load load!))
     (set! styles/acquire!
       (fn [id]
@@ -116,8 +117,8 @@
       ;; Explicit Promise stages make every deferred transport and final assertion
       ;; observable in an optimized browser test; no application IO lives here.
       (-> (js/fetch "/js/authored-config-ssr.json" #js {:cache "no-store"})
-          (.then #(.json %))
-          (.then (fn [payload]
+          (p/then #(.json %))
+          (p/then (fn [payload]
                    (let [snapshot (:snapshot (js->clj payload :keywordize-keys true))
                          staging (.createElement js/document "div")
                          source (get-in snapshot [:posts 0 :text])]
@@ -136,42 +137,42 @@
                                                    {:on-recoverable-error #(swap! *errors conj (.-message %))}))
                      (support/wait-for! #(contains? @(:started transport) [:markdown-components :code])
                                         "The authored component owner did not begin acquisition"))))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (unchanged! "Authored owner pending")
                    ((:release-code! transport) :markdown-components)
                    ((:release-css! transport) :markdown-components)
                    (support/wait-for! #(contains? @(:started transport) [:coercion :code])
                                       "The authored owner did not acquire coercion during installation")))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (unchanged! "Coercion pending")
                    (is (not (validation/ready?)))
                    ((:release-code! transport) :coercion)
                    ((:release-css! transport) :coercion)
                    (support/wait-for! #(contains? @(:started transport) [:settings :code])
                                       "The canonical settings owner did not begin acquisition")))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (unchanged! "Settings owner pending")
                    (is (validation/ready?))
                    ((:release-code! transport) :settings)
                    ((:release-css! transport) :settings)
                    (support/wait-for! #(contains? @loader/*installed :settings))))
-          (.then (fn [_] (support/settle!)))
-          (.then (fn [_]
+          (p/then (fn [_] (support/settle!)))
+          (p/then (fn [_]
                    (unchanged! "All owners installed")
                    (let [toggle (:toggle @*nodes)
                          checked (.getAttribute toggle "aria-checked")]
                      (.click toggle)
                      (support/wait-for! #(not= checked (.getAttribute toggle "aria-checked"))))))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (unchanged! "After interactive toggle")
                    (is (empty? @*errors) (pr-str @*errors))
                    (reset! *completed? true)))
-          (.catch #(is false (str (.-message %)
+          (p/catch-error #(is false (str (.-message %)
                                  " | acquired transports " (pr-str @(:started transport))
                                  " | hydration errors " (pr-str @*errors)
                                  " | loader state " (pr-str (:loader @r/*app-db))
                                  " | pending owners " (pr-str (keys @loader/*code-loads)))))
-          (.finally (fn []
+          (p/finally-do (fn []
                       (is @*completed? "All owner gates and the final interactive control must complete")
                       (when @*root (r/unmount @*root))
                       (.remove element)

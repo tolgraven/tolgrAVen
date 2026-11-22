@@ -1,6 +1,7 @@
 (ns website.editor-visual
   "Deterministic browser component fixture for before/after screenshot review."
-  (:require [clojure.string :as string]
+  (:require [website.async :as p]
+            [clojure.string :as string]
             [website.react :as r]
             [website.macros :refer-macros [defc defpage]]
             [website.supabase.runtime :as supabase]
@@ -279,13 +280,13 @@
                        (assoc :headers {"Content-Type" "application/json"})
                        data (assoc :body (if (instance? js/FormData data) data
                                            (js/JSON.stringify (clj->js data)))))))
-          (.then (fn [response]
+          (p/then (fn [response]
                    (-> (.json response)
-                       (.then (fn [body]
+                       (p/then (fn [body]
                                 (r/dispatch (conj (if (.-ok response) success failure)
                                                   (if (.-ok response) (js->clj body :keywordize-keys true)
                                                     {:response (js->clj body :keywordize-keys true)}))))))))
-          (.catch #(r/dispatch (conj failure {:message (.-message %)})))))))
+          (p/catch-error #(r/dispatch (conj failure {:message (.-message %)})))))))
 
 (defn ^:export init! [enhanced?]
   ;; Header href subscriptions use the installed history's router. The fixture
@@ -295,8 +296,8 @@
         component (or (.get params "component") "intro")
         edit? (= "true" (.get params "edit"))]
     (-> (js/fetch (if (= "true" (.get params "live")) "/fixtures/editor-live.json" "/fixtures/editor-seed.json"))
-        (.then #(.json %))
-        (.then (fn [seed]
+        (p/then #(.json %))
+        (p/then (fn [seed]
                  (r/dispatch-sync [:editor-visual/install (js->clj seed :keywordize-keys true) edit?])
                  (restore/begin! {:hydrate? false, :back? true})
                  (r/render (r/create-root (.getElementById js/document "app")) [<fixture> component enhanced?]))))))

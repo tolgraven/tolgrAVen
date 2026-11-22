@@ -1,6 +1,7 @@
 (ns website.boot-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
 
             [website.boot :as boot]
@@ -95,8 +96,8 @@
                   (reset! restore/*context old-context)
                   (set! (.-scrollRestoration js/history) old-history)
                   (restore-db!))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest committed-boot-host-owns-listeners-and-cancels-background-work-on-unmount
   (async done
@@ -124,8 +125,8 @@
                   (await! (support/settle!))
                   (is (= binding-count (count @listener/*bindings)) "Remount does not multiply callbacks"))
                 (finally (support/unmount! root)))))
-          (.catch (fn [error] (is false (str error))))
-          (.finally (fn []
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do (fn []
                       (r/dispatch-sync [:boot/stop])
                       (set! resources/after-page! after-page!)
                       (restore-db!)

@@ -1,6 +1,7 @@
 (ns website.component-instance-features-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
 
@@ -86,11 +87,11 @@
                     (await! (support/render! root [<motion-counter> [:seen]]))
                     (is (= 2 @*observers))
                     (is (identical? native (.querySelector element "section"))))))))
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (= 2 @*disconnects) "Unmount releases the newly added current owner")
                    (is (= 2 @*removals))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (set! js/IntersectionObserver observer-before)
                       (set! (.-matchMedia js/window) media-before)
                       (set! r/observe-subscription! subscribe-before)
@@ -119,9 +120,9 @@
                   (await! (support/render! root [view (mapv #(vector % false) ids)]))
                   (is (= (mapv #(vector :unmount %) (reverse ids)) (subvec @*events 10)))
                   (await! (support/render! root [view [(last ids)]]))))))
-          (.then (fn [_] (is (= [:unmount (last ids)] (last @*events)))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/then (fn [_] (is (= [:unmount (last ids)] (last @*events)))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (defc <callback-counter> {:features [:lifecycle]} [spec] [:button "Callbacks"])
 (deftest lifecycle-enablement-calls-current-init-and-exit-once
@@ -144,9 +145,9 @@
                   (is (= [[:init :first] [:exit :current]] @*events))
                   (await! (support/render! root [<callback-counter> (spec true :last)]))
                   (is (identical? button (.querySelector element "button")))))))
-          (.then (fn [_] (is (= [[:init :first] [:exit :current] [:init :last] [:exit :last]] @*events))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/then (fn [_] (is (= [[:init :first] [:exit :current] [:init :last] [:exit :last]] @*events))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (deftest shared-prefetch-replaces-only-changed-resources-and-cleans-up
   (async done
@@ -186,8 +187,8 @@
                         (await! (support/settle!))
                         (is (= [[event [:second]]] @*events)))))))
               (is (= 2 @*disconnects))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (set! js/IntersectionObserver before)
                       (doseq [[id handler] effects-before] (r/reg-fx id handler))
                       (done)))))))
@@ -227,8 +228,8 @@
                   (reset! *visible? false)
                   (await! (support/settle!))
                   (is (nil? (.-firstElementChild element)))))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (set! r/observe-subscription! before) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (set! r/observe-subscription! before) (done)))))))
 
 (defc <instance-exit>
   {:features [[:exit (fn [spec *enabled?]
@@ -267,8 +268,8 @@
                   (await! (support/settle!))
                   (is (nil? (.querySelector element "button")) "An ineligible child is removed immediately")
                   (is (= 1 @*starts))))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (set! motion/finish-animation! before) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (set! motion/finish-animation! before) (done)))))))
 
 (deftest throwing-cleanup-still-releases-all-current-owners
   (async done
@@ -294,8 +295,8 @@
                 (await! (support/render! root [boundary false]))
                 (is (= (vec (reverse ids)) @*released))
                 (is (some? (.querySelector element "[role=alert]"))))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (deftest disabled-custom-functions-and-legacy-layout-props-preserve-contracts
   (async done
@@ -321,8 +322,8 @@
                   (is (some? surface))
                   (is (= "red" (.. surface -style -color)))
                   (is (= "blue" (.. surface -style -backgroundColor)))))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (deftest lean-sentinel-restarts-after-strict-mode-cleanup-and-supports-fallback
   (async done
@@ -350,8 +351,8 @@
                 (set! js/IntersectionObserver js/undefined)
                 (await! (support/render! root [visibility/<sentinel> {:callback callback}]))
                 (is (= 2 @*fired) "Without IntersectionObserver, the shared adapter dispatches immediately"))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (set! js/IntersectionObserver before) (done)))))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn [] (set! js/IntersectionObserver before) (done)))))))
 
 (defpage <required-boundary> {:container false} [spec]
   (throw (js/Error. "Required page recovery")))
@@ -378,8 +379,8 @@
                 (await! (support/render! root [<lean-domain> {:features [[:unknown-feature true]]}]))
                 (is (= "[[:unknown-feature true]]" (.-textContent element)))
                 (is (false? (get-in (component/component-spec <lean-domain>) [:options :spec]))))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (set! data/state before)
                       (swap! data/*sources dissoc :instance-required-data)
                       (done)))))))

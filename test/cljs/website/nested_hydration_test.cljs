@@ -1,6 +1,7 @@
 (ns website.nested-hydration-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.loader :as loader]
             [website.module-transport :as transport]
@@ -98,12 +99,12 @@
             (await! (support/wait-for! #(= "Clicked" (.-textContent button))))
             (is (identical? button (.querySelector element "button")))
             (is (empty? @*errors) (pr-str @*errors)))
-        (.catch (fn [error]
+        (p/catch-error (fn [error]
                   (is false (str (.-message error) " | renders/commits " (pr-str @*events)
                                  " | acquisitions " (pr-str @(:started transport))
                                  " | recovery " (pr-str @*errors)
                                  " | html " (.-innerHTML element)))))
-        (.finally (fn []
+        (p/finally-do (fn []
                     (when @*root (r/unmount @*root))
                     (.remove element)
                     ((:restore! transport))
@@ -114,11 +115,11 @@
 
 (deftest nested-completed-ssr-preserves-nodes-through-delayed-owners
   (async done
-    (-> (nested-scenario! :immediate) (.finally done))))
+    (-> (nested-scenario! :immediate) (p/finally-do done))))
 
 (deftest nested-completed-ssr-retains-intent-activation
   (async done
-    (-> (nested-scenario! :hover) (.finally done))))
+    (-> (nested-scenario! :hover) (p/finally-do done))))
 
 (deftest hydration-recovery-reaches-the-public-root-callback
   (async done
@@ -133,8 +134,8 @@
             (await! (support/wait-for! #(seq @*errors) "React recovery callback was dropped"))
             (is (= "Client text" (.-textContent element)))
             (is (some #(re-find #"Hydration|hydration|#418" %) @*errors)))
-          (.catch #(is false (.-message %)))
-          (.finally (fn []
+          (p/catch-error #(is false (.-message %)))
+          (p/finally-do (fn []
                       (when @*root (r/unmount @*root))
                       (.remove element)
                       (done)))))))

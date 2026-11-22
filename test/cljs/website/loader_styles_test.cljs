@@ -1,5 +1,6 @@
 (ns website.loader-styles-test
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [shadow.lazy :as lazy]
             [website.loader :as loader]
             [website.loader.style-catalog :as catalog]
@@ -24,12 +25,12 @@
                       (array-seq (.querySelectorAll js/document "link[rel=stylesheet]"))))
         (@*release)
         (-> pending
-            (.then (fn [_]
+            (p/then (fn [_]
                      (is (contains? @styles/*ready url))
                      (is (some #(and (.includes (.-href %) url) (= "low" (.-fetchPriority %)))
                                (array-seq (.querySelectorAll js/document "link[rel=stylesheet]"))))))
-            (.catch #(is false (str %)))
-            (.finally (fn []
+            (p/catch-error #(is false (str %)))
+            (p/finally-do (fn []
                         (set! page/after-page! gate)
                         (set! styles/manifest manifest)
                         (done))))))))
@@ -55,8 +56,8 @@
           *css (atom nil)
           *installed (atom false)
           spec {:id id :install #(reset! *installed true)}
-          css (js/Promise. (fn [resolve _] (reset! *css resolve)))
-          code (js/Promise. (fn [resolve _] (reset! *code resolve)))
+          css (p/create (fn [resolve _] (reset! *css resolve)))
+          code (p/create (fn [resolve _] (reset! *code resolve)))
           loadable (reify lazy/ILoadable
                      (ready? [_] false)
                      IDeref (-deref [_] spec))]
@@ -68,14 +69,14 @@
         (is (= [:css :js] @*started) "Styles start synchronously, before Shadow code acquisition")
         (is (identical? first-load (loader/acquire-code! id)) "Concurrent callers share both acquisitions")
         (@*code spec)
-        (-> (js/Promise.resolve nil)
-            (.then (fn [_]
+        (-> (p/resolved nil)
+            (p/then (fn [_]
                      (is (false? @*installed) "Fast JavaScript cannot expose an unstyled module")
                      (@*css nil)
                      first-load))
-            (.then (fn [loaded] (is (= spec loaded)) (is (true? @*installed))))
-            (.catch (fn [error] (is false (str error))))
-            (.finally (fn []
+            (p/then (fn [loaded] (is (= spec loaded)) (is (true? @*installed))))
+            (p/catch-error (fn [error] (is false (str error))))
+            (p/finally-do (fn []
                         (set! loader/modules original-modules)
                         (set! styles/acquire! original-css)
                         (set! lazy/load original-load)
@@ -90,21 +91,21 @@
           first-load (styles/acquire-path! url)]
       (is (identical? first-load (styles/acquire-path! url)))
       (-> first-load
-          (.then (fn [_]
+          (p/then (fn [_]
                    (is (contains? @styles/*ready url))
                    (is (some #(and (.includes (.-href %) url) (.-sheet %))
                              (array-seq (.querySelectorAll js/document "link[rel=stylesheet]"))))
                    (-> (styles/acquire-path! missing)
-                       (.then (fn [_] (is false "Missing CSS must reject readiness")))
-                       (.catch (fn [_]
+                       (p/then (fn [_] (is false "Missing CSS must reject readiness")))
+                       (p/catch-error (fn [_]
                                  (is (nil? (get @styles/*requests missing)))
                                  (is (= 1 (get @styles/*attempts missing)))
                                  (let [retry (styles/acquire-path! missing)]
                                    (is (some #(.includes (.-href %) (str missing "?css-retry=1"))
                                              (array-seq (.querySelectorAll js/document "link[rel=stylesheet]"))))
-                                   (.catch retry (fn [_] (is (= 2 (get @styles/*attempts missing)))))))))))
-          (.catch (fn [error] (is false (str error))))
-          (.finally done)))))
+                                   (p/catch-error retry (fn [_] (is (= 2 (get @styles/*attempts missing)))))))))))
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do done)))))
 
 (deftest initial-inline-css-satisfies-acquisition-without-a-duplicate-request
   (async done
@@ -119,14 +120,14 @@
       (let [request (styles/acquire-path! url)]
         (is (identical? request (styles/acquire-path! url)))
         (-> request
-            (.then (fn [_]
+            (p/then (fn [_]
                      (is (contains? @styles/*ready url))
                      (is (= "700" (.-fontWeight (js/getComputedStyle probe))))
                      (is (not-any? #(= (.-pathname (js/URL. (.-href %))) url)
                                    (array-seq (.querySelectorAll js/document "link[rel=stylesheet]")))
                          "Ready inline CSS does not call React preinit again")))
-            (.catch (fn [error] (is false (str error))))
-            (.finally (fn []
+            (p/catch-error (fn [error] (is false (str error))))
+            (p/finally-do (fn []
                         (.remove sheet)
                         (.remove probe)
                         (swap! styles/*ready disj url)

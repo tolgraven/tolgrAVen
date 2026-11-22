@@ -1,6 +1,7 @@
 (ns website.loading-visibility-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.component.loading :as loading]
             [website.test-support :as support]))
@@ -47,8 +48,8 @@
                 (await! (support/wait-for! #(= 2 @*mounts) "Visible loading content did not resume"))
                 (is (identical? slot (.querySelector element ".component-render-skeleton")))
                 (is (not (.hasAttribute slot "data-skeleton-hidden"))))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (set! js/IntersectionObserver original)
@@ -77,8 +78,8 @@
               (reset! *hidden? false)
               (.dispatchEvent js/document (js/Event. "visibilitychange"))
               (await! (support/wait-for! #(= 2 @*mounts)))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (if descriptor
@@ -121,8 +122,8 @@
                     (is (.endsWith (.-width (.-style slot)) "em"))
                     (await! (support/render! root (form "1rem")))
                     (await! (support/wait-for! #(.querySelector element ".component-skeleton-lines"))))))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (done)))))))
@@ -145,8 +146,8 @@
                 (await! (support/wait-for! #(.hasAttribute slot "data-skeleton-hidden")))
                 (is (= "0em" (.-height (.-style slot))))
                 (is (zero? (.-height (.getBoundingClientRect slot)))))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (.remove element)
                       (done)))))))

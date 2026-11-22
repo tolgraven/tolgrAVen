@@ -1,6 +1,7 @@
 (ns website.shell-hydration-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [clojure.string :as string]
+  (:require [website.async :as p]
+            [clojure.string :as string]
             [cljs.test :refer-macros [async deftest is]]
             [re-frame.registrar :as registrar]
             [website.component.restore :as restore]
@@ -180,8 +181,8 @@
               ;; A failed independence check still proceeds to the positive control.
               (let [committed-before-release?
                     (await! (-> (support/wait-for! hidden? "Shell classes waited for an unrelated SSR sibling")
-                                (.then (fn [_] true))
-                                (.catch (fn [_] false))))]
+                                (p/then (fn [_] true))
+                                (p/catch-error (fn [_] false))))]
                 (is committed-before-release?
                     (str "Accepted hidden state/CSS must reach native shell classes while the module gate is closed; "
                          "header=" (.-className header) ", footer=" (.-className footer)))
@@ -233,19 +234,19 @@
               (is (= "true" (.getAttribute footer "aria-hidden")))
               (is (.hasAttribute footer "inert"))
               (is (identical? header (.querySelector element "header"))))
-            (.then (fn [_]
+            (p/then (fn [_]
                      (is (identical? footer (.querySelector element "#footer-sticky")))
                      (is (identical? sibling (.querySelector element "[data-deferred-shell-sibling]")))
                      (is (empty? @*errors) (pr-str @*errors))))
-            (.catch #(is false (str %)))
-            (.finally (fn []
+            (p/catch-error #(is false (str %)))
+            (p/finally-do (fn []
                         ((:stop! retention))
                         (when @*root (r/unmount @*root))
                         ((:release! acquisition) module)
-                        (-> (js/Promise.all #js [(get @loader/*code-loads module) (get @loader/*loads module)])
-                            (.catch (fn [_] nil))
-                            (.then (fn [_] (support/settle!)))
-                            (.then (fn [_]
+                        (-> (p/all [(get @loader/*code-loads module) (get @loader/*loads module)])
+                            (p/catch-error (fn [_] nil))
+                            (p/then (fn [_] (support/settle!)))
+                            (p/then (fn [_]
                                      (.remove element)
                                      ((:restore! acquisition))
                                      (r/reg-fx :dispatch-later before-delay)
@@ -414,12 +415,12 @@
                 ((:assert! @*next-retention) "Next actual SSR owner completed")
                 (is (identical? @*upstream (r/batching-flush)) "The final consumer restores upstream batching"))
               (is (empty? @*errors) (pr-str @*errors)))
-            (.catch #(is false
+            (p/catch-error #(is false
                          (str % " | " (pr-str {:phase @*phase
                                                 :commits @*commits
                                                 :formatter-commits @*formatter-commits
                                                 :acquisitions @(:started acquisition)}))))
-            (.finally
+            (p/finally-do
               (fn []
                 (when @*retention ((:stop! @*retention)))
                 (when @*next-retention ((:stop! @*next-retention)))
@@ -431,13 +432,13 @@
                 (doseq [id (keys specs)] ((:release! acquisition) id))
                 ;; Gate delivery queues make-formatter's acquire-code! in a
                 ;; Promise callback. Snapshot only after those acquisitions start.
-                (-> (js/Promise.resolve nil)
-                    (.then (fn [_]
-                             (js/Promise.all
-                               (into-array (keep identity (mapcat #(vector (get @loader/*code-loads %) (get @loader/*loads %)) (keys specs)))))))
-                    (.catch (fn [_] nil))
-                    (.then (fn [_] (support/settle!)))
-                    (.then (fn [_]
+                (-> (p/resolved nil)
+                    (p/then (fn [_]
+                             (p/all
+                               (keep identity (mapcat #(vector (get @loader/*code-loads %) (get @loader/*loads %)) (keys specs))))))
+                    (p/catch-error (fn [_] nil))
+                    (p/then (fn [_] (support/settle!)))
+                    (p/then (fn [_]
                              (.remove element)
                              (.remove next-element)
                              ((:restore! acquisition))
@@ -527,8 +528,8 @@
               ((:assert! retention) "Native formatter completed with latest props after resume")
               (is (identical? @*upstream (r/batching-flush)) "Completion leaves upstream batching intact")
               (is (empty? @*errors) (pr-str @*errors)))
-            (.catch #(is false (str %)))
-            (.finally
+            (p/catch-error #(is false (str %)))
+            (p/finally-do
               (fn []
                 ((:stop! retention))
                 (when @*root (r/unmount @*root))
@@ -537,13 +538,13 @@
                 ((:release! acquisition) :highlight)
                 ;; Formatter acquisition starts in the gate's Promise callback.
                 ;; Collect its actual promises after that callback can run.
-                (-> (js/Promise.resolve nil)
-                    (.then (fn [_]
-                             (js/Promise.all #js [(get @loader/*code-loads :highlight)
+                (-> (p/resolved nil)
+                    (p/then (fn [_]
+                             (p/all [(get @loader/*code-loads :highlight)
                                                   (get @loader/*loads :highlight)])))
-                    (.catch (fn [_] nil))
-                    (.then (fn [_] (support/settle!)))
-                    (.then (fn [_]
+                    (p/catch-error (fn [_] nil))
+                    (p/then (fn [_] (support/settle!)))
+                    (p/then (fn [_]
                              (.remove element)
                              ((:restore! acquisition))
                              (set! resources/after-page! old-after-page)

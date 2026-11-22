@@ -1,6 +1,7 @@
 (ns website.viewport-module-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
 
             [shadow.lazy :as lazy]
@@ -59,8 +60,8 @@
         *started (atom [])
         *css (atom nil)
         *code (atom nil)
-        css (js/Promise. (fn [resolve _] (reset! *css resolve)))
-        code (js/Promise. (fn [resolve _] (reset! *code resolve)))
+        css (p/create (fn [resolve _] (reset! *css resolve)))
+        code (p/create (fn [resolve _] (reset! *code resolve)))
         loadable (reify lazy/ILoadable (ready? [_] @*ready?) IDeref (-deref [_] spec))]
     (set! loader/modules (assoc original-modules module loadable))
     (set! styles/acquire!
@@ -70,7 +71,7 @@
           (original-css id))))
     (set! lazy/load (fn
                      ([_] (swap! *started conj :js)
-                          (.then code (fn [value] (reset! *ready? true) value)))
+                          (p/then code (fn [value] (reset! *ready? true) value)))
                      ([_ _] code)))
     {:started *started
      :code! #(@*code spec)
@@ -126,8 +127,8 @@
               (finally
                 (support/unmount! root) (.remove element)
                 ((:restore! transport)) ((:restore! observers))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest manual-module-waits-for-re-frame-intent
   (async done
@@ -155,8 +156,8 @@
               (finally
                 (support/unmount! root) (.remove element)
                 ((:restore! transport)) ((:restore! observers))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest deferred-module-hydration-preserves-ssr-through-ancestor-events
   (async done
@@ -166,8 +167,8 @@
                 *root (atom nil)
                 *outer (atom nil)
                 *inner (atom nil)
-                outer (js/Promise. (fn [resolve _] (reset! *outer resolve)))
-                inner (js/Promise. (fn [resolve _] (reset! *inner resolve)))
+                outer (p/create (fn [resolve _] (reset! *outer resolve)))
+                inner (p/create (fn [resolve _] (reset! *inner resolve)))
                 spec {:id module :view {:view <target>}}
                 before @restore/*context
                 previous (await! (support/state-at! [:state :viewport-fixture]))
@@ -203,8 +204,8 @@
                 (.click strong)
                 (await! (support/wait-for! #(seq @(:started transport)) "SSR intent did not start assets"))
                 ((:code! transport)) ((:css! transport))
-                (await! (js/Promise.race #js [inner
-                                             (js/Promise. (fn [_ reject]
+                (await! (p/race [inner
+                                             (p/create (fn [_ reject]
                                                             (js/setTimeout #(reject (js/Error. "Inner module did not hydrate")) 3000)))]))
                 (await! (support/wait-for! #(nil? (.querySelector element "template")) "SSR template did not disappear"))
                 (is (identical? article (.querySelector element "article")))
@@ -223,8 +224,8 @@
                 (reset! restore/*context before)
                 (stop-record!) (stop-capture!)
                 ((:restore! transport)) ((:restore! observers))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest intent-adapter-cleans-up-and-falls-back-without-intersection-observer
   (async done
@@ -251,8 +252,8 @@
                 (await! (loader/acquire-code! module))
                 (stop!))
               (finally (.remove element) ((:restore! transport)) ((:restore! observers))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest failed-assets-retry-silently-once-before-showing-the-local-error
   (async done
@@ -275,8 +276,8 @@
                 (fn [_]
                   (swap! *times conj (.now js/performance))
                   (if (<= (swap! *attempts inc) 2)
-                    (js/Promise.reject (js/Error. "Transient asset failure"))
-                    (js/Promise.resolve nil))))
+                    (p/rejected (js/Error. "Transient asset failure"))
+                    (p/resolved nil))))
               (await! (support/render! root (m/<> {:module module :load-on :immediate} "Retried" (fn []))))
               (await! (support/wait-for! #(pos? @*attempts)))
               (is (= 1 @*attempts))
@@ -299,8 +300,8 @@
                 (doseq [path [[:loader :code-ready module] [:loader :requested module]
                               [:loader :errors module] [:state :init :scope module]]]
                   (r/dispatch [:component-data/remove path]))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (defn <reserved-avatar> [& _]
   [:div.user-avatar-container {:data-custom-avatar true}
@@ -325,7 +326,7 @@
   ((:code! transport))
   (if (seq @(:started transport))
     (loader/load! {:module module})
-    (js/Promise.resolve nil)))
+    (p/resolved nil)))
 
 (deftest custom-functional-loading-retains-its-native-comment-footprint
   (async done
@@ -372,8 +373,8 @@
                     (.remove element)
                     ((:restore! transport))
                     ((:restore! observers))))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest fragment-loading-observes-native-roots-and-retains-sibling-intent
   (async done
@@ -424,8 +425,8 @@
                       (.remove element)
                       ((:restore! transport))
                       ((:restore! observers)))))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest custom-loading-unmount-retires-proximity-and-sibling-intent
   (async done
@@ -464,8 +465,8 @@
                     (.remove element)
                     ((:restore! transport))
                     ((:restore! observers))))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest empty-custom-loading-preserves-immediate-and-manual-acquisition
   (async done
@@ -500,8 +501,8 @@
                       (.remove element)
                       ((:restore! transport))
                       ((:restore! observers)))))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest default-loading-retains-its-section-and-existing-proximity-owner
   (async done
@@ -532,8 +533,8 @@
                     (.remove element)
                     ((:restore! transport))
                     ((:restore! observers))))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest header-search-retains-first-click-and-control-through-code-arrival
   (async done
@@ -596,5 +597,5 @@
                                 [:component-data/remove path]
                                 [:component-data/install path value])))
                 (.remove element)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))

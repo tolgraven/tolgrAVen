@@ -1,6 +1,7 @@
 (ns website.component-fixture
   "Interactive local fixture: real blog views and local data, no remote writes."
-  (:require [website.react :as r]
+  (:require [website.async :as p]
+            [website.react :as r]
 
 
 
@@ -131,7 +132,7 @@
   (r/reg-event-fx :run-highlighter! (fn [_ _] {}))
   (r/reg-sub :scope/inited? (fn [_ _] false))
   (swap! loader/*loads assoc :user
-         (js/Promise.resolve {:view {:avatar (fn [_] [:span {:aria-label "Author avatar"} "JT"])}}))
+         (p/resolved {:view {:avatar (fn [_] [:span {:aria-label "Author avatar"} "JT"])}}))
   (when-not @*root
     (reset! *root (r/create-root (.getElementById js/document "app"))))
   (r/render @*root [<fixture>]))

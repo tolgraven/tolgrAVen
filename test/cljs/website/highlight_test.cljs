@@ -1,6 +1,7 @@
 (ns website.highlight-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [clojure.string :as string]
             [website.react :as r]
             [website.subs]
@@ -42,8 +43,8 @@
               (is (.querySelector element ".code-block-wrapped")
                   "Changing parser options preserves the reader's control state")
               (is (= "true" (.getAttribute wrap "aria-pressed")))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (reset! restore/*context before)
                       (done)))))))
@@ -180,8 +181,8 @@
             (.click (.querySelector container "pre code"))
             (is (= [[:cookie/accept-notice true]] @*events)
                 "Highlighted code preserves the notice's existing click action"))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (r/set-dispatch-function! dispatch)
                       (reset! restore/*context before)

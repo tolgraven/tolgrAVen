@@ -110,8 +110,8 @@
                 (r/clear-global-interceptor :validation/app-db)
                 (reset! validation/*enabled? enabled?)
                 (restore!)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))
 
 
 (deftest editing-and-clearing-drafts-use-valid-app-state
@@ -147,8 +147,8 @@
                 (r/clear-global-interceptor :validation/app-db)
                 (reset! validation/*enabled? enabled?)
                 (restore!)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))
 
 (defc <positional>
   {:schema [:map [:category :keyword]]
@@ -197,8 +197,8 @@
               (is (some? (.querySelector element "[role=alert]")))
               (is (.includes (.-textContent element) "[:props]"))
               (finally (support/unmount! root) (.remove element)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))
 
 
 (defc <scoped-counter>
@@ -233,5 +233,5 @@
                 (reset! validation/*sections sections)
                 (reset! validation/*enabled? enabled?)
                 (restore!)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (a/catch-error (fn [error] (is false (str error))))
+        (a/finally-do done))))

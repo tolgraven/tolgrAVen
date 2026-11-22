@@ -2,68 +2,83 @@
   "Reagent fixtures for isolated component tests. Initial mounting is asynchronous;
    updates use a stable reactive form, never raw React root renders or flushSync."
   (:require [cljs.core.async :as a]
-            [website.react :as r]
+            [website.async :as p]
+            [website.clock :as clock]
+            [website.react :as r]))
 
-            ))
-(defn result-channel
-  [promise]
+(defn result-channel [pending]
   (let [channel (a/promise-chan)]
-    (-> (js/Promise.resolve promise)
-        (.then #(a/put! channel {:value %}))
-        (.catch #(a/put! channel {:error %})))
+    (-> (p/resolved pending)
+        (p/then #(a/put! channel {:value %}))
+        (p/catch-error #(a/put! channel {:error %})))
     channel))
+
 (defn wait-for!
   ([predicate] (wait-for! predicate "Mounted view did not settle"))
   ([predicate label]
-  (js/Promise. (fn [resolve reject]
-                 (let [deadline (+ (.now js/Date) 3000)]
-                   (letfn [(check! []
-                             (try (if-let [value (predicate)]
-                                    (resolve value)
-                                    (if (> (.now js/Date) deadline)
-                                      (reject (js/Error. label))
-                                      (r/after-render check!)))
-                                  (catch :default error (reject error))))]
-                     (r/after-render check!)))))))
-(defn create-root!
-  [element]
+   (let [deadline (+ (clock/epoch-ms) 3000)]
+     (p/create
+       (fn [resolve reject]
+         (letfn [(check! []
+                   (try
+                     (if-let [value (predicate)]
+                       (resolve value)
+                       (if (> (clock/epoch-ms) deadline)
+                         (reject (js/Error. label))
+                         (r/after-render check!)))
+                     (catch :default error (reject error))))]
+           (r/after-render check!)))))))
+
+(defn ^:async create-root! [element]
   (let [root (r/create-root element)
         *form (r/atom nil)
         *mounted? (atom false)
-        <fixture> (r/create-class {:component-did-mount (fn [_] (reset! *mounted? true)),
-                                   :reagent-render (fn [] @*form)})]
-    (r/render root [<fixture>])
-    (-> (wait-for! #(deref *mounted?))
-        (.then (fn [_] {:root root, :form *form}))
-        (.catch (fn [error] (r/unmount root) (throw error))))))
-(defn settle! [] (js/Promise. (fn [resolve _] (r/after-render #(r/after-render resolve)))))
-(defn render! [{:keys [form]} value] (reset! form value) (settle!))
-(defn unmount! [root] (r/unmount (if (map? root) (:root root) root)))
+        fixture (r/create-class {:component-did-mount #(reset! *mounted? true)
+                                 :reagent-render (fn [] @*form)})]
+    (try
+      (r/render root [fixture])
+      (await (wait-for! #(deref *mounted?)))
+      {:root root :form *form}
+      (catch :default error
+        (r/unmount root)
+        (throw error)))))
+
+(defn settle! []
+  (p/create (fn [resolve _] (r/after-render #(r/after-render resolve)))))
+
+(defn render! [{:keys [form]} value]
+  (reset! form value)
+  (settle!))
+
+(defn unmount! [root]
+  (r/unmount (if (map? root) (:root root) root)))
+
 (r/defc <subscription-consumer> [queries *values]
   (let [values (into {} (map (fn [[key query]] [key @(r/subscribe query)])) queries)]
-    ;; Keep opaque native route/controller values intact. The rendered text is
-    ;; diagnostic output, not a serialization transport for subscription data.
+    ;; Retain the actual router/controller values for the calling test.
     (r/use-layout-effect (fn [] (reset! *values values) nil) [values *values])
     [:pre (pr-str values)]))
 
-(defn mount-subscriptions!
-  [queries]
+(defn ^:async mount-subscriptions! [queries]
   (let [element (.createElement js/document "div")
-        *mounted? (atom true)
         *values (atom {})]
     (.appendChild (.-body js/document) element)
-    (-> (create-root! element)
-        (.then (fn [root]
-                 (-> (render! root [<subscription-consumer> queries *values])
-                     (.then (fn [_]
-                              {:values #(deref *values),
-                               :unmount! (fn []
-                                           (when (compare-and-set! *mounted? true false)
-                                             (unmount! root)
-                                             (.remove element)))})))))
-        (.catch (fn [error] (.remove element) (throw error))))))
-(defn subscription-value!
-  [query]
-  (-> (mount-subscriptions! {:value query})
-      (.then (fn [{:keys [values unmount!]}] (try (:value (values)) (finally (unmount!)))))))
-(defn state-at! [path] (subscription-value! (into [:get] path)))
+    (let [root (try (await (create-root! element))
+                    (catch :default error
+                      (.remove element)
+                      (throw error)))
+          dispose! (delay (try (unmount! root) (finally (.remove element))))]
+      (try
+        (await (render! root [<subscription-consumer> queries *values]))
+        {:values #(deref *values) :unmount! #(force dispose!)}
+        (catch :default error
+          (force dispose!)
+          (throw error))))))
+
+(defn ^:async subscription-value! [query]
+  (let [{:keys [values unmount!]} (await (mount-subscriptions! {:value query}))]
+    (try (:value (values))
+         (finally (unmount!)))))
+
+(defn state-at! [path]
+  (subscription-value! (into [:get] path)))

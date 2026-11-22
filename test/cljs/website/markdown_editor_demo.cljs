@@ -1,6 +1,7 @@
 (ns website.markdown-editor-demo
   "Persistent browser fixture for native editor, published preview and layout checks."
-  (:require [website.react :as r]
+  (:require [website.async :as p]
+            [website.react :as r]
             [website.macros :refer-macros [defc]]
             [website.db :as db]
             [website.events]
@@ -35,7 +36,7 @@
 (defn ^:export init! []
   (r/dispatch-sync [:test-editor/initialize])
   (-> (support/create-root! (.getElementById js/document "editor-demo"))
-      (.then #(support/render! % [<fixture>]))))
+      (p/then #(support/render! % [<fixture>]))))
 
 (defc <comment-fixture> []
   (let [owner (blog-editor/use-owner :comment-demo)
@@ -55,7 +56,7 @@
   (r/dispatch-sync [:form-field [:write-comment [42] :text]
                     "## A comment\n\n**Bold**, *italic*, lists, links and code use the full editor.\n\n- First point\n- Second point\n\n```clojure\n(map inc [1 2 3])\n```"])
   (-> (support/create-root! (.getElementById js/document "editor-demo"))
-      (.then #(support/render! % [<comment-fixture>]))))
+      (p/then #(support/render! % [<comment-fixture>]))))
 
 (defc <code-fixture> []
   :let [*source (r/atom "(defn example []\n  ;; A comment\n  (str \"Unicode λ — \" (range 100)))\n")]
@@ -72,7 +73,7 @@
 (defn ^:export init-code! []
   (r/dispatch-sync [:test-editor/initialize])
   (-> (support/create-root! (.getElementById js/document "editor-demo"))
-      (.then #(support/render! % [<code-fixture>]))))
+      (p/then #(support/render! % [<code-fixture>]))))
 
 (defc <upload-fixture> []
   [:main.editor-demo
@@ -85,7 +86,7 @@
 
 (defn ^:export init-uploads! []
   (-> (support/create-root! (.getElementById js/document "editor-demo"))
-      (.then #(support/render! % [<upload-fixture>]))))
+      (p/then #(support/render! % [<upload-fixture>]))))
 
 (defc <draft-fixture> []
   (let [account @(r/subscribe [:state [:active-user :id]])
@@ -117,4 +118,4 @@
   (r/dispatch-sync [:state [:active-user] {:id 990}])
   (storage/identity! ["local-draft-fixture" 990])
   (-> (support/create-root! (.getElementById js/document "editor-demo"))
-      (.then #(support/render! % [<draft-fixture>]))))
+      (p/then #(support/render! % [<draft-fixture>]))))

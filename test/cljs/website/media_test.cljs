@@ -1,6 +1,7 @@
 (ns website.media-test
   (:require-macros [website.test-async :refer [go-promise await!]])
   (:require
+    [website.async :as p]
     [cljs.test :refer-macros [deftest is testing async]]
     [clojure.string :as string]
     [website.modules.instagram.views :as instagram]
@@ -122,8 +123,8 @@
                       "Ready Instagram media did not replace the pending logos"))
             (is (= "Native ready image" (.-alt (first (images)))))
             (is (empty? @*errors) "Ready native media keeps its existing direct URL preference"))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (p/catch-error #(is false (str %)))
+          (p/finally-do (fn []
                       (.disconnect observer)
                       (.removeEventListener container "error" record-error! true)
                       (when @*root (support/unmount! @*root))

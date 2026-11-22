@@ -1,6 +1,7 @@
 (ns website.blog-comments-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [reitit.frontend :as reitit]
@@ -22,7 +23,7 @@
             [website.events]
             [website.subs]))
 
-(defn- tick! [ms] (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
+(defn- tick! [ms] (p/delay! ms))
 
 (defn- make-loader-restore-fn []
   (let [restore-db! (r/make-restore-fn)
@@ -40,7 +41,7 @@
 
 (defn- load-module! [module]
   (-> (loader/load! {:module module})
-      (.then (fn [spec]
+      (p/then (fn [spec]
                ;; init/app-db intentionally clears this case's readiness while
                ;; genuine code/CSS may already be cached by another native case.
                (r/dispatch-sync [:loader/code-ready module])
@@ -118,8 +119,8 @@
                 (support/unmount! root)
                 (restore-db!)
                 (reset! restore/*context before-context)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest standalone-root-edit-renders-the-parent-path-editor
   (async done
@@ -212,8 +213,8 @@
                 (.remove element)
                 (reset! restore/*context before-context)
                 (restore-db!)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest clipped-replies-enter-and-survive-repeated-fast-folds
   (async done
@@ -343,8 +344,8 @@
                 (.remove element)
                 (restore-db!)
                 (reset! restore/*context context)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest trusted-comment-markdown-never-renders-site-components-or-iframes
   (async done
@@ -374,8 +375,8 @@
               (is (nil? (.querySelector element "iframe")))
               (is (nil? (.querySelector element "[src='/injected-component.png']")))
               (is (.querySelector element "img[alt='Uploaded image']") "Ordinary uploaded Markdown images remain available")))
-          (.catch #(is false (str % " DOM: " (.-innerHTML element))))
-          (.finally (fn []
+          (p/catch-error #(is false (str % " DOM: " (.-innerHTML element))))
+          (p/finally-do (fn []
                       (when @root (support/unmount! @root))
                       (.remove element)
                       (restore-db!)

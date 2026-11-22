@@ -1,6 +1,7 @@
 (ns website.component-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [website.test-support :as support]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
@@ -56,8 +57,8 @@
               (await! (render! root [<contained-content> {:container [<custom-layout> {:props {:class "supplied"}}]}]))
               (is (= 2 (.-length (.querySelectorAll element "article.supplied .inner > p"))))))]
       (-> (with-root test!)
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (p/catch-error #(is false (str %)))
+          (p/finally-do done)))))
 
 (deftest native-attrs-flatten-props-without-leaking-component-options
   (let [child (fn [_] [:p "Child"])
@@ -90,8 +91,8 @@
                     (is (= "Sample paragraph" (.-textContent (.querySelector element "p"))))
                     (is (.hasAttribute (.querySelector element ".component-render-skeleton") "inert"))))]
       (-> (with-root test!)
-          (.catch (fn [error] (is false (str error))))
-          (.finally done)))))
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do done)))))
 (deftest skeleton-reveal-retains-the-outgoing-layer-and-disposes-it
   (async done
     (let [test! (fn [root element]
@@ -100,7 +101,7 @@
                       (set! (.-rel stylesheet) "stylesheet")
                       (set! (.-href stylesheet) "/css/website/main.min.css")
                       (try
-                        (await! (js/Promise.
+                        (await! (p/create
                                   (fn [resolve reject]
                                     (set! (.-onload stylesheet) resolve)
                                     (set! (.-onerror stylesheet) reject)
@@ -118,13 +119,13 @@
                           (is (= "none" (.-animationName (js/getComputedStyle skeleton)))
                               "The outgoing skeleton stops shimmering before it unmounts"))
                         ;; Let ordinary commits and the presence lifecycle complete.
-                        (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 650))))
+                        (await! (p/delay! 650))
                         (is (nil? (.querySelector element ".component-loading-reveal__skeleton")))
                         (is (= "Real content" (.-textContent element)))
                         (finally (.remove stylesheet))))))]
       (-> (with-root test!)
-          (.catch (fn [error] (is false (str error))))
-          (.finally done)))))
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do done)))))
 
 (deftest cached-skeleton-reveal-starts-with-only-the-live-component
   (async done
@@ -135,8 +136,8 @@
                     (is (nil? (.querySelector element ".component-loading-reveal__skeleton")))
                     (is (= "Cached content" (.-textContent element)))))]
       (-> (with-root test!)
-          (.catch (fn [error] (is false (str error))))
-          (.finally done)))))
+          (p/catch-error (fn [error] (is false (str error))))
+          (p/finally-do done)))))
 
 (defn- render! [root form] (support/render! root form))
 (defn- with-root
@@ -212,8 +213,8 @@
                                            [(component/resolve-view #'<destructured>)
                                             {:title "Post route"}] "/blog/post/2"]))
                          (is (= "Post route" (.-textContent element)))))))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (p/catch-error (fn [error] (is false (str error))))
+             (p/finally-do done))))
 (deftest local-state-props-fragments-and-argument-forwarding
   (async
     done
@@ -256,8 +257,8 @@
                     (is (= expected (.-textContent element))))
                   (await! (render! root [<empty-element> {}]))
                   (is (= 0 (.-length (.-childNodes (.-firstElementChild element))))))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 (deftest boundaries-isolate-errors-and-retry-with-current-args
   (async
     done
@@ -308,8 +309,8 @@
                                      (is (= "Recovered descendant" (.-textContent element))))))))
             (is (= 5 (count @*messages)))
             (is (every? #(= :error (first %)) @*messages)))))
-      (.catch (fn [error] (is false (str error))))
-      (.finally done))))
+      (p/catch-error (fn [error] (is false (str error))))
+      (p/finally-do done))))
 (deftest lifecycle-uses-current-spec-and-preserves-both-refs
   (async done
          (-> (go-promise
@@ -339,8 +340,8 @@
                  (is (nil? @*base-ref))
                  (is (nil? @*caller-ref))
                  (is (= [:init :latest-exit] @*events))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (p/catch-error (fn [error] (is false (str error))))
+             (p/finally-do done))))
 (deftest errors-after-mount-and-lifecycle-errors-remain-local
   (async
     done
@@ -376,8 +377,8 @@
                                      (.click (.querySelector element "button"))
                                      (await! (flush!))
                                      (is (= "Recovered own render" (.-textContent element))))))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 (deftest features-compose-in-order-and-disabled-features-do-not-mount
   (async
     done
@@ -407,8 +408,8 @@
                                   element
                                   "article[data-feature=outer] > section[data-feature=inner] > p")))
                           (is (empty? @*events)))))))))
-      (.catch (fn [error] (is false (str error))))
-      (.finally done))))
+      (p/catch-error (fn [error] (is false (str error))))
+      (p/finally-do done))))
 (defc <multi-arity> ([label] (<multi-arity> label "!")) ([label suffix] [:p (str label suffix)]))
 (defc <unfinished-stub> [])
 (deftest lean-components-preserve-render-arities-and-empty-stubs
@@ -423,8 +424,8 @@
                                                 (is (= "Second?" (.-textContent element)))
                                                 (await! (render! root [<unfinished-stub>]))
                                                 (is (nil? (.-firstElementChild element))))))))
-             (.catch (fn [error] (is false (str error))))
-             (.finally done))))
+             (p/catch-error (fn [error] (is false (str error))))
+             (p/finally-do done))))
 (defc <prefab-loading> {:loading-prefab :text, :loading-tag :span.loading-name} [] [<loading>])
 (defc <inferred-loading> {:depends []} [] [:article.card {:class "card-body"} "Ready"])
 (deftest loading-prefabs-and-inferred-root-are-declarative
@@ -442,8 +443,8 @@
                     (await! (render! root (component/loading-view options)))
                     (is (some? (.querySelector element "article.card.card-body[aria-busy=true]")))
                     (is (= "" (.-textContent element)))))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 (deftest hud-updates-retain-message-dom-and-own-the-appearance-feature
   (async done
     (-> (go-promise
@@ -463,5 +464,5 @@
                       (is (identical? message (.querySelector element ".hud-message"))
                           "Adding or updating notifications must not remount existing messages")
                       (is (= 2 (.-length (.querySelectorAll element ".hud-message")))))))))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))

@@ -11,12 +11,12 @@
             [website.modules.blog.data :as data]
             [website.supabase.realtime :as realtime]))
 
-(defn tick! [] (js/Promise. (fn [resolve _] (js/setTimeout resolve 0))))
+(defn tick! [] (a/delay! 0))
 
 (defn await-value! [reference predicate]
   ;; SDK completion queues a re-frame event. Observe the delivered value rather
   ;; than assuming that one zero-delay timer also commits that event.
-  (js/Promise.
+  (a/create
     (fn [resolve reject]
       (let [deadline (+ (.now js/performance) 2000)]
         (letfn [(check! []
@@ -30,7 +30,7 @@
 (defn mock-client []
   (let [*rows (atom {}) *selects (atom []) *filters (atom []) *channels (atom {})
         *removed (atom []) *auth-change (atom nil) *deferred (atom nil)
-        auth #js {:getSession #(js/Promise.resolve #js {:data #js {:session @client/*session}})
+        auth #js {:getSession #(a/resolved #js {:data #js {:session @client/*session}})
                   :onAuthStateChange (fn [callback]
                                        (reset! *auth-change callback)
                                        #js {:data #js {:subscription #js {:unsubscribe (fn [])}}})}
@@ -47,9 +47,9 @@
                              (fn [start end]
                                (swap! *selects conj [table start end])
                                (-> (or @*deferred
-                                       (js/Promise.resolve
+                                       (a/resolved
                                         (clj->js {:data (vec (take (inc (- end start)) (drop start (get @*rows table []))))})))
-                                   (.then (fn [reply]
+                                   (a/then (fn [reply]
                                             ;; PostgREST includes every selected column, including
                                             ;; SQL NULLs. Keep extra fields to test the allowlist.
                                             (let [result (js->clj reply :keywordize-keys true)]
@@ -64,7 +64,7 @@
                               (aset channel "subscribe" (fn [callback] (reset! *status callback) channel))
                               (swap! *channels assoc name {:channel channel :change *change :status *status})
                               channel))
-                 :removeChannel (fn [channel] (swap! *removed conj channel) (js/Promise.resolve "ok"))}]
+                 :removeChannel (fn [channel] (swap! *removed conj channel) (a/resolved "ok"))}]
     {:sdk sdk :rows *rows :filters *filters :selects *selects :channels *channels :removed *removed
      :auth-change *auth-change :deferred *deferred}))
 
@@ -121,12 +121,12 @@
         (is (empty? @(:selects mock)))
         (status! mock "store-site_users" "SUBSCRIBED")
         (-> (await-value! one #(= "Before" (get-in % [:data :name])))
-            (.then (fn []
+            (a/then (fn []
                      (is (= "Before" (get-in @one [:data :name])))
                      (is (nil? (get-in @one [:data :email])))
                      (change! mock "store-site_users" {:table "site_users" :eventType "UPDATE" :new {:id "u" :name "After"}})
                      (tick!)))
-            (.then (fn []
+            (a/then (fn []
                      (r/flush!)
                      (is (= "After" (get-in @r/*app-db [:store :snapshot :seed :users 0 :name])))
                      (is (= "After" (get-in @one [:data :name])))
@@ -134,7 +134,7 @@
                      (is (= 1 (count @(:selects mock))))
                      (change! mock "store-site_users" {:table "site_users" :eventType "DELETE" :old {:id "u"}})
                      (tick!)))
-            (.then (fn []
+            (a/then (fn []
                      (r/flush!)
                      (is (nil? @one))
                      (is (= [] (:docs @all)))
@@ -142,7 +142,7 @@
                      (reset! (:rows mock) {"site_users" [{:id "v" :name "Offline insert"}]})
                      (status! mock "store-site_users" "SUBSCRIBED")
                      (await-value! all #(= "v" (get-in % [:docs 0 :id])))))
-            (.then (fn []
+            (a/then (fn []
                      (r/flush!)
                      (is (= "v" (get-in @all [:docs 0 :id])))
                      (is (= 2 (count @(:selects mock))))
@@ -151,25 +151,25 @@
                      (r/dispose! all)
                      (is (= 1 (count @(:removed mock))))
                      (is (empty? @client/*tables))))
-            (.catch #(is false (str %)))
-            (.finally done))))))
+            (a/catch-error #(is false (str %)))
+            (a/finally-do done))))))
 
 (deftest writes-during-paginated-snapshots-are-replayed
   (async done
     (let [mock (mock-client) *resolve (atom nil)]
       (reset-client! mock)
-      (reset! (:deferred mock) (js/Promise. (fn [resolve _] (reset! *resolve resolve))))
+      (reset! (:deferred mock) (a/create (fn [resolve _] (reset! *resolve resolve))))
       (let [one (client/ensure-query! {:path-document [:users :u]})]
         (status! mock "store-site_users" "SUBSCRIBED")
         (change! mock "store-site_users" {:table "site_users" :eventType "UPDATE" :new {:id "u" :name "Live"}})
         (@*resolve #js {:data #js [#js {:id "u" :name "Stale snapshot"}]})
         (-> (tick!)
-            (.then (fn []
+            (a/then (fn []
                      (is (= "Live" (get-in @one [:data :name])))
                      (is (= 1 (count @(:selects mock))))
                      (r/dispose! one)))
-            (.catch #(is false (str %)))
-            (.finally done))))))
+            (a/catch-error #(is false (str %)))
+            (a/finally-do done))))))
 
 (deftest stable-pagination-loads-more-than-one-api-page
   (async done
@@ -179,28 +179,28 @@
       (let [all (client/ensure-query! {:path-collection [:users]})]
         (status! mock "store-site_users" "SUBSCRIBED")
         (-> (tick!)
-            (.then (fn []
+            (a/then (fn []
                      (is (= 501 (count (:docs @all))))
                      (is (= [["site_users" 0 499] ["site_users" 500 999]] @(:selects mock)))
                      (r/dispose! all)))
-            (.catch #(is false (str %)))
-            (.finally done))))))
+            (a/catch-error #(is false (str %)))
+            (a/finally-do done))))))
 
 (deftest removed-subscriptions-cannot-install-late-snapshots
   (async done
     (let [mock (mock-client) *resolve (atom nil)]
       (reset-client! mock)
-      (reset! (:deferred mock) (js/Promise. (fn [resolve _] (reset! *resolve resolve))))
+      (reset! (:deferred mock) (a/create (fn [resolve _] (reset! *resolve resolve))))
       (let [all (client/ensure-query! {:path-collection [:users]})]
         (status! mock "store-site_users" "SUBSCRIBED")
         (r/dispose! all)
         (@*resolve #js {:data #js [#js {:id "u" :name "Must not install"}]})
         (-> (tick!)
-            (.then (fn []
+            (a/then (fn []
                      (is (= [] (:users @client/*seed)))
                      (is (empty? @client/*loaded))))
-            (.catch #(is false (str %)))
-            (.finally done))))))
+            (a/catch-error #(is false (str %)))
+            (a/finally-do done))))))
 
 (deftest account-switch-clears-private-documents-and-rejects-late-responses
   (async done
@@ -210,17 +210,17 @@
       (reset-client! mock)
       (set! client/create-client! (fn [& _] (:sdk mock)))
       (client/init! {:url "https://example.invalid" :anon-key "public"} #(swap! profiles conj %) (fn [_]))
-      (reset! (:deferred mock) (js/Promise. (fn [resolve _] (reset! *resolve resolve))))
+      (reset! (:deferred mock) (a/create (fn [resolve _] (reset! *resolve resolve))))
       (let [private (client/ensure-query! {:path-collection [:gpt-threads]})]
         (is (empty? @(:channels mock)))
         (@(:auth-change mock) "SIGNED_IN" #js {:user #js {:id "a"}})
         (-> (tick!)
-            (.then (fn []
+            (a/then (fn []
                      (status! mock "store-user_documents" "SUBSCRIBED")
                      (swap! client/*seed assoc :store_documents [{:owner_id "a" :collection "gpt-threads" :doc_id "t" :data {:messages ["secret"]}}])
                      (swap! client/*loaded conj "user_documents")
                      (tick!)))
-            (.then (fn []
+            (a/then (fn []
                      (is (= 1 (count (:docs @private))))
                      (@(:auth-change mock) "SIGNED_OUT" nil)
                      (r/flush!)
@@ -228,26 +228,26 @@
                      (is (= [] (:store_documents @client/*seed)))
                      (@*resolve #js {:data #js [#js {:owner_id "a" :collection "gpt-threads" :doc_id "t" :data #js {:messages #js ["late secret"]}}]})
                      (tick!)))
-            (.then (fn []
+            (a/then (fn []
                      (is (= [] (:store_documents @client/*seed)))
                      (is (not (contains? @client/*loaded "user_documents")))
                      (r/dispose! private)))
-            (.catch #(is false (str %)))
-            (.finally (fn [] (set! client/create-client! sdk-before) (done))))))))
+            (a/catch-error #(is false (str %)))
+            (a/finally-do (fn [] (set! client/create-client! sdk-before) (done))))))))
 
 (deftest private-one-off-reads-do-not-return-after-an-account-switch
   (async done
     (let [mock (mock-client) *resolve (atom nil) *results (atom [])]
       (reset-client! mock)
       (reset! client/*session #js {:user #js {:id "a"}})
-      (reset! (:deferred mock) (js/Promise. (fn [resolve _] (reset! *resolve resolve))))
+      (reset! (:deferred mock) (a/create (fn [resolve _] (reset! *resolve resolve))))
       (client/read-once! {:path-collection [:gpt-threads]} #(swap! *results conj %) #(swap! *results conj %))
       (reset! client/*session #js {:user #js {:id "b"}})
       (@*resolve #js {:data #js [#js {:owner_id "a" :collection "gpt-threads" :doc_id "t" :data #js {:messages #js ["secret"]}}]})
       (-> (tick!)
-          (.then (fn [] (is (empty? @*results))))
-          (.catch #(is false (str %)))
-          (.finally done)))))
+          (a/then (fn [] (is (empty? @*results))))
+          (a/catch-error #(is false (str %)))
+          (a/finally-do done)))))
 
 (deftest authenticated-responses-cannot-cross-profile-link-changes
   (async done
@@ -279,8 +279,8 @@
                  ((finish @pending) (js/Error. "Stale"))
                  (await request)
                  (is (= [[:success :fresh]] @responses))))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (set! http/request! original) (done)))))))
+          (a/catch-error #(is false (str %)))
+          (a/finally-do (fn [] (set! http/request! original) (done)))))))
 
 (deftest stream-failure-reports-and-still-loads-http-content
   (async done
@@ -291,14 +291,14 @@
       (let [all (client/ensure-query! {:path-collection [:users]})]
         (status! mock "store-site_users" "TIMED_OUT")
         (-> (tick!)
-            (.then (fn []
+            (a/then (fn []
                      (is (contains? @status/*failures [:supabase-stream "site_users"]))
                      (is (= "Available over HTTP" (get-in @all [:docs 0 :data :name])))
                      (status! mock "store-site_users" "SUBSCRIBED")
                      (tick!)))
-            (.then (fn [] (is (empty? @status/*failures))))
-            (.catch #(is false (str %)))
-            (.finally (fn [] (r/dispose! all) (reset! status/*failures failures) (done))))))))
+            (a/then (fn [] (is (empty? @status/*failures))))
+            (a/catch-error #(is false (str %)))
+            (a/finally-do (fn [] (r/dispose! all) (reset! status/*failures failures) (done))))))))
 
 (deftest snapshot-error-notifies-retains-data-and-clears-after-recovery
   (async done
@@ -309,26 +309,26 @@
       (let [all (client/ensure-query! {:path-collection [:users]})]
         (status! mock "store-site_users" "SUBSCRIBED")
         (-> (tick!)
-            (.then (fn []
-                     (reset! (:deferred mock) (js/Promise.resolve #js {:error #js {:message "private upstream details"}}))
+            (a/then (fn []
+                     (reset! (:deferred mock) (a/resolved #js {:error #js {:message "private upstream details"}}))
                      (status! mock "store-site_users" "SUBSCRIBED")
                      (tick!)))
-            (.then (fn []
+            (a/then (fn []
                      (is (contains? @status/*failures [:supabase-load "site_users"]))
                      (is (= "Last good value" (get-in @all [:docs 0 :data :name])))
                      (reset! (:deferred mock) nil)
                      (status! mock "store-site_users" "SUBSCRIBED")
                      (tick!)))
-            (.then (fn [] (is (empty? @status/*failures))))
-            (.catch #(is false (str %)))
-            (.finally (fn [] (r/dispose! all) (reset! status/*failures failures) (done))))))))
+            (a/then (fn [] (is (empty? @status/*failures))))
+            (a/catch-error #(is false (str %)))
+            (a/finally-do (fn [] (r/dispose! all) (reset! status/*failures failures) (done))))))))
 
 (deftest stalled-service-request-rejects-within-deadline
   (async done
-    (-> (status/within! (js/Promise. (fn [_ _])) 10)
-        (.then (fn [_] (is false "A hung request must reject")))
-        (.catch (fn [error] (is (= "Service request timed out" (.-message error)))))
-        (.finally done))))
+    (-> (status/within! (a/create (fn [_ _])) 10)
+        (a/then (fn [_] (is false "A hung request must reject")))
+        (a/catch-error (fn [error] (is (= "Service request timed out" (.-message error)))))
+        (a/finally-do done))))
 
 (deftest auth-session-initialization-error-is-visible
   (async done
@@ -337,15 +337,15 @@
       (reset-client! mock)
       (reset! status/*failures {})
       (aset (.-auth ^js (:sdk mock)) "getSession"
-            #(js/Promise.resolve #js {:error #js {:message "Do not expose raw details"}}))
+            #(a/resolved #js {:error #js {:message "Do not expose raw details"}}))
       (set! client/create-client! (fn [& _] (:sdk mock)))
       (client/init! {:url "https://example.invalid" :anon-key "public"} (fn [_]) (fn [_]))
       (-> (tick!)
-          (.then (fn []
+          (a/then (fn []
                    (is (= "Supabase session unavailable" (get-in @status/*failures [:supabase-session :title])))
                    (is (not (.includes (pr-str @status/*failures) "Do not expose raw details")))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (set! client/create-client! before)
+          (a/catch-error #(is false (str %)))
+          (a/finally-do (fn [] (set! client/create-client! before)
                       (reset! status/*failures failures) (done)))))))
 
 (deftest preload-populates-subscription-cache-without-live-channels
@@ -357,7 +357,7 @@
         (is (identical? a b))
         (is (empty? @(:selects mock)))
         (-> a
-            (.then (fn [value]
+            (a/then (fn [value]
                      (is (= "Preloaded" (get-in value [:data :name])))
                      (is (= 1 (count @(:selects mock))))
                      (is (empty? @(:channels mock)))
@@ -365,13 +365,13 @@
                        (is (= "Preloaded" (get-in @subscription [:data :name])))
                        (r/dispose! subscription))
                      (tick!)))
-            (.then (fn [_]
+            (a/then (fn [_]
                      (is (empty? @(:channels mock)) "Disposed before the tick, so no channel starts")
                      (is (:ready? (client/cached-query opts)))
                      (client/preload-query! opts)))
-            (.then (fn [_] (is (= 1 (count @(:selects mock))) "Cache survives reader cleanup")))
-            (.catch #(is false (str %)))
-            (.finally done))))))
+            (a/then (fn [_] (is (= 1 (count @(:selects mock))) "Cache survives reader cleanup")))
+            (a/catch-error #(is false (str %)))
+            (a/finally-do done))))))
 
 (deftest bounded-comment-read-and-reply-counts-use-two-bulk-requests
   (async done

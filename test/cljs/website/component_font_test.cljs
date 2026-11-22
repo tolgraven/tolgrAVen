@@ -1,6 +1,7 @@
 (ns website.component-font-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.component]
@@ -34,7 +35,7 @@
        :close! #(do (support/unmount! root) (.remove element))})))
 (defn- phase [node] (.getAttribute node "data-font-phase"))
 (defn- until! [node value] (support/wait-for! #(= value (phase node))))
-(defn- tick! [ms] (js/Promise. (fn [resolve _] (js/setTimeout resolve ms))))
+(defn- tick! [ms] (p/delay! ms))
 (defn- ended! [node name]
   (.dispatchEvent node (js/AnimationEvent. "animationend" #js {:bubbles true, :animationName name})))
 (defn- options []
@@ -72,8 +73,8 @@
                 (is (= [2 6] [(.-selectionStart input) (.-selectionEnd input)]))
                 (is (nil? (.querySelector element ".font-text-stack"))))
               (finally (close!) (restore!) (.delete (.-fonts js/document) face)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest actual-font-load-crossfades-in-place-and-removes-original-text
   (async done
@@ -93,14 +94,14 @@
             (set! (.-rel monospace) "stylesheet")
             (set! (.-href monospace) "/css/website/modules/monospace.min.css")
             (try
-              (await! (js/Promise. (fn [resolve reject]
+              (await! (p/create (fn [resolve reject]
                                     (set! (.-onload monospace) resolve)
                                     (set! (.-onerror monospace) reject)
                                     (.appendChild (.-head js/document) monospace))))
               (reset! *adjusted?
                       (await! (-> (.load (.-fonts js/document) "1em 'Fira Code Fallback'")
-                                  (.then #(pos? (.-length %)))
-                                  (.catch (constantly false)))))
+                                  (p/then #(pos? (.-length %)))
+                                  (p/catch-error (constantly false)))))
               (r/with-framework-bindings [motion/reduced-motion? (constantly false)]
                 (await! (support/render! root
                           [:section [<sample> opts {:class [:caller "other"]
@@ -177,8 +178,8 @@
                       (is (= 1 (count @loads)) "No second acquisition or reveal")))))
               (finally (close!) (restore!)
                        (.delete (.-fonts js/document) face) (.remove sheet) (.remove monospace)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest failure-and-stale-completion-keep-fallback-readable
   (async done
@@ -206,8 +207,8 @@
                                 (vals (get (await! (support/state-at! [:fonts])) :instances)))
                       "Unmount removes transient ownership")))
               (finally (close!) (restore!) (.delete (.-fonts js/document) face)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest native-ready-and-disabled-owners-never-request-or-animate
   (async done
@@ -228,8 +229,8 @@
                 (is (nil? (phase (.querySelector element "pre"))))
                 (is (empty? @loads)))
               (finally (close!) (restore!) (.delete (.-fonts js/document) original)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest reduced-motion-upgrades-directly-and-unmounted-owner-is-not-revived
   (async done
@@ -263,8 +264,8 @@
                     (is (not-any? #(= opts (:options %))
                                   (vals (get (await! (support/state-at! [:fonts])) :instances)))))))
               (finally (close!) (restore!) (.delete (.-fonts js/document) face)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest search-text-crossfades-with-one-live-input-and-one-caret
   (async done
@@ -307,8 +308,8 @@
                   (is (nil? (.querySelector element ".font-text-next")))
                   (is (= "re-frame" (.-value input)))))
               (finally (close!) (restore!) (.delete (.-fonts js/document) face) (.remove sheet)))))
-        (.catch (fn [error] (is false (str error))))
-        (.finally done))))
+        (p/catch-error (fn [error] (is false (str error))))
+        (p/finally-do done))))
 
 (deftest history-font-completion-skips-the-reveal
   (async done
@@ -332,5 +333,5 @@
               (finally (close!) (restore!)
                        (reset! restore/*context before)
                        (.delete (.-fonts js/document) face)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))

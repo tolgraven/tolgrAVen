@@ -1,6 +1,7 @@
 (ns website.link-preview-fixture
   "Manual browser fixture using real preview components, isolated from Firebase."
-  (:require [website.react :as r]
+  (:require [website.async :as p]
+            [website.react :as r]
             [website.component.data :as data]
             [website.modules.link-preview.article :as article]
             [website.validation :as validation]
@@ -74,8 +75,8 @@
       {:load! (fn [{:keys [url]}]
                 (swap! *visual-reads conj url)
                 (if (= expected-url url)
-                  (js/Promise.resolve result)
-                  (js/Promise.reject (js/Error. "Unexpected readable preview fixture read"))))})))
+                  (p/resolved result)
+                  (p/rejected (js/Error. "Unexpected readable preview fixture read"))))})))
 
 (defn ^:export visual-read-count [] (count @*visual-reads))
 

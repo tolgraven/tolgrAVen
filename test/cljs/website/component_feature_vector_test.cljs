@@ -1,6 +1,7 @@
 (ns website.component-feature-vector-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.core.async]
+  (:require [website.async :as p]
+            [cljs.core.async]
             [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
 
@@ -128,8 +129,8 @@
                 (is (= "1" (.-textContent (.querySelector element "button"))))
                 (is (= "Four" (.-textContent (.querySelector element "p")))))
               (finally (support/unmount! root) (.remove element)))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))
 
 (deftest vector-spec-hydration-retains-server-nodes-and-attaches-events
   (async done
@@ -150,5 +151,5 @@
                 (await! (support/wait-for! #(= "1" (.-textContent button))))
                 (is (= "Hydrated" (.getAttribute article "data-title")))
                 (finally (r/unmount root) (.remove element))))))
-        (.catch #(is false (str %)))
-        (.finally done))))
+        (p/catch-error #(is false (str %)))
+        (p/finally-do done))))

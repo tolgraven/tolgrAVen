@@ -1,6 +1,7 @@
 (ns website.blog-draft-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [website.async :as p]
+            [cljs.test :refer-macros [deftest is async]]
             [cljs.reader :as reader]
             [website.react :as r]
             [website.component.storage :as storage]
@@ -58,8 +59,8 @@
             (r/dispatch-sync [:blog/load-draft owner])
             (await! (support/wait-for! #(= :restored (status))))
             (is (= "Original saved content" (get-in @r/*app-db (conj draft/form-path :text)))))
-          (.catch #(is false (str % " status=" (status))))
-          (.finally (fn [] (set! storage/read-disk! read-disk!)
+          (p/catch-error #(is false (str % " status=" (status))))
+          (p/finally-do (fn [] (set! storage/read-disk! read-disk!)
                       (storage/untrack! [:blog-editor/working :new]) (storage/untrack! draft/collection-id)
                       (storage/identity! identity) (swap! storage/*read-errors disj account)
                       (.removeItem (.-localStorage js/window) key)
@@ -164,13 +165,13 @@
               (await! (support/wait-for! ready?))
               (is (empty? (get-in @r/*app-db [:state :form-field :post-blog :text])))
               (is (empty? (get-in @r/*app-db [:state :blog-editor :draft :entries])))))
-          (.catch #(is false (str % " state=" (get-in @r/*app-db [:state :blog-editor :draft])
+          (p/catch-error #(is false (str % " state=" (get-in @r/*app-db [:state :blog-editor :draft])
                                   " form=" (get-in @r/*app-db draft/form-path)
                                   " projected=" (draft/projection @r/*app-db owner)
                                   " saved=" (saved)
                                   " owner=" @storage/*identity
                                   " tracked=" (keys @storage/*tracked))))
-          (.finally (fn []
+          (p/finally-do (fn []
                       (set! storage/write-disk! write-disk!)
                       (storage/untrack! [:blog-editor/working :new])
                       (storage/untrack! draft/collection-id)
