@@ -46,35 +46,35 @@
     (request! "nvim_exec_lua" [open-lua [path]])
     (a/rejected (js/Error. "Invalid import path"))))
 
-(defn write! [request! {:keys [path file]}]
-  (-> (.arrayBuffer file)
-      (a/then (fn [buffer]
-               (let [bytes (js/Uint8Array. buffer)
-                     starts (if (zero? (.-length bytes)) [0] (range 0 (.-length bytes) 32768))]
-                 (reduce (fn [pending start]
-                           (a/then pending
-                             (fn [_]
-                               (let [chunk (.subarray bytes start (min (.-length bytes) (+ start 32768)))
-                                     encoded (js/btoa (.apply (.-fromCharCode js/String) nil chunk))]
-                                 (request! "nvim_exec_lua" [write-lua [path encoded (zero? start)]])))))
-                         (a/resolved nil) starts))))))
+(def ^:private chunk-size 32768)
 
-(defn import! [request! file-list folder?]
-  (let [descriptors (mapv (fn [file]
-                            {:path (if folder? (.-webkitRelativePath file) (.-name file))
-                             :size (.-size file)
-                             :file file})
-                         (array-seq (js/Array.from file-list)))]
-    (if-let [message (plan-error descriptors)]
-      (a/rejected (js/Error. message))
-      (if (empty? descriptors)
-        (a/resolved [])
-        (-> (reduce (fn [pending descriptor] (a/then pending #(write! request! descriptor)))
-                    (a/resolved nil) descriptors)
-            (a/then (fn [_]
-                     (let [directory (if folder? (first (string/split (:path (first descriptors)) #"/")) "")]
-                       (request! "nvim_exec_lua"
+(defn- write-chunk! [request! path bytes start]
+  (let [chunk (.subarray bytes start (+ start chunk-size))
+        encoded (js/btoa (.apply (.-fromCharCode js/String) nil chunk))]
+    (request! "nvim_exec_lua" [write-lua [path encoded (zero? start)]])))
+
+(defn ^:async write! [request! {:keys [path file]}]
+  (let [bytes (js/Uint8Array. (await (.arrayBuffer file)))]
+    ;; Even an empty file needs one write to create or truncate it.
+    (loop [start 0]
+      (let [result (await (write-chunk! request! path bytes start))
+            offset (+ start chunk-size)]
+        (if (< offset (.-length bytes)) (recur offset) result)))))
+
+(defn ^:async import! [request! file-list folder?]
+  (let [describe (fn [file]
+                   {:path (if folder? (.-webkitRelativePath file) (.-name file))
+                    :size (.-size file)
+                    :file file})
+        descriptors (mapv describe (array-seq (js/Array.from file-list)))
+        paths (mapv :path descriptors)]
+    (when-let [message (plan-error descriptors)]
+      (throw (js/Error. message)))
+    (when-let [first-path (first paths)]
+      (doseq [descriptor descriptors] (await (write! request! descriptor)))
+      (let [directory (if folder? (first (string/split first-path #"/")) "")]
+        (await (request! "nvim_exec_lua"
                          ["local directory = ...; vim.cmd('cd ' .. vim.fn.fnameescape('/workspace/' .. directory))"
-                          [directory]]))))
-            (a/then #(open! request! (:path (first descriptors))))
-            (a/then #(mapv :path descriptors)))))))
+                          [directory]])))
+      (await (open! request! first-path)))
+    paths))

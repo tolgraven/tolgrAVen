@@ -1,5 +1,6 @@
 (ns website.neovim-test
-  (:require [cljs.test :refer-macros [deftest is testing]]
+  (:require [cljs.test :refer-macros [async deftest is testing]]
+            [website.async :as a]
             [website.modules.neovim.model :as model]
             [website.modules.neovim.policy :as policy]
             [website.modules.neovim.files :as files]
@@ -120,3 +121,29 @@
   (is (policy/document-navigation? true "/"))
   (is (not (policy/document-navigation? false "/blog")))
   (is (not (policy/document-navigation? true "/neovim"))))
+
+(defn- ^:async check-chunk-writes! []
+  (let [writes (atom [])
+        gate (a/deferred)
+        started (a/deferred)
+        rpc! (fn [_ [_ args]]
+               (swap! writes conj args)
+               (if (= 1 (count @writes))
+                 (do ((:resolve! started) nil) (:promise gate))
+                 (a/resolved :last-write)))
+        text (.repeat "x" 33000)
+        pending (files/write! rpc! {:path "notes" :file (js/Blob. #js [text])})]
+    (await (:promise started))
+    (is (= 1 (count @writes)) "Wait for the first RPC before appending the next chunk")
+    ((:resolve! gate) :first-write)
+    (is (= :last-write (await pending)))
+    (is (= [true false] (mapv last @writes)))
+    (is (= text (apply str (map #(js/atob (second %)) @writes))))
+    (reset! writes [])
+    (await (files/write! rpc! {:path "notes" :file (js/Blob. #js [""])}))
+    (is (= [["notes" "" true]] @writes) "Writing an empty file truncates the existing path")))
+
+(deftest writes-preserve-order-bytes-and-empty-files
+  (async done
+    (a/then (check-chunk-writes!) (fn [_] (done))
+            (fn [error] (is false (str error)) (done)))))

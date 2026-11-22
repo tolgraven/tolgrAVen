@@ -1,6 +1,6 @@
 (ns website.modules.neovim.document
   "Bounded, immutable source documents rendered by native Neovim windows."
-  (:require [website.async :as a]
+  (:require [clojure.string :as string]
             [website.modules.neovim.files :as files]))
 
 (def max-bytes (* 1024 1024))
@@ -17,7 +17,7 @@
       (some #(not (string? (:text %))) files) "Document text is missing."
       (some #(> (.-length (.encode (js/TextEncoder.) (:text %))) max-bytes) files)
       "Each source file must be at most 1 MiB."
-      (some #(.includes (:text %) "\u0000") files) "Binary files cannot be shown as a text diff.")))
+      (some #(string/includes? (:text %) "\u0000") files) "Binary files cannot be shown as a text diff.")))
 
 (def configure-lua
   "local mode, paths = ...
@@ -73,16 +73,16 @@
    vim.api.nvim_win_set_cursor(0, {1, 0})
    vim.cmd('silent normal! ggzt')")
 
-(defn open! [request! document]
-  (if-let [message (error document)]
-    (a/rejected (js/Error. message))
-    (-> (reduce (fn [pending {:keys [path text]}]
-                  (a/then pending #(files/write! request! {:path path, :file (js/Blob. #js [text])})))
-                (a/resolved nil) (:files document))
-        (a/catch-error (fn [error]
-                  (throw (js/Error. (str "Writing comparison files failed: " (.-message error))))))
-        (a/then (fn [_]
-                 (-> (request! "nvim_exec_lua"
-                               [configure-lua [(name (:mode document)) (mapv :path (:files document))]])
-                     (a/catch-error (fn [error]
-                               (throw (js/Error. (str "Preparing comparison windows failed: " (.-message error))))))))))))
+(defn ^:async open! [request! document]
+  (when-let [message (error document)]
+    (throw (js/Error. message)))
+  (try
+    (doseq [{:keys [path text]} (:files document)]
+      (await (files/write! request! {:path path :file (js/Blob. #js [text])})))
+    (catch :default cause
+      (throw (js/Error. (str "Writing comparison files failed: " (.-message cause))))))
+  (try
+    (await (request! "nvim_exec_lua"
+                     [configure-lua [(name (:mode document)) (mapv :path (:files document))]]))
+    (catch :default cause
+      (throw (js/Error. (str "Preparing comparison windows failed: " (.-message cause)))))))
