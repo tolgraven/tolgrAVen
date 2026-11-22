@@ -39,15 +39,16 @@
 (defn- ended! [node name]
   (.dispatchEvent node (js/AnimationEvent. "animationend" #js {:bubbles true, :animationName name})))
 
-(defn- end-fade-events! [node]
-  (let [dispatch! r/dispatch
-        events (volatile! [])
-        record! (fn [event]
-                  (vswap! events conj (first event))
-                  (dispatch! event))]
-    (r/with-framework-bindings [r/dispatch record!]
-      (ended! node "font-fade-in"))
-    @events))
+(defn- hold-fade-watchdogs! []
+  (let [schedule! (r/get-handler :fx :dispatch-later)
+        watchdogs (atom [])]
+    (r/reg-fx :dispatch-later
+      (fn [delays]
+        (let [delays (if (map? delays) [delays] delays)
+              {held true other false} (group-by #(= :font/done (first (:dispatch %))) delays)]
+          (swap! watchdogs into held)
+          (when (seq other) (schedule! other)))))
+    {:watchdogs watchdogs :restore! #(r/reg-fx :dispatch-later schedule!)}))
 
 (defn- pause-at-midpoint! [animation]
   (.pause animation)
@@ -97,6 +98,7 @@
     (-> (go-promise
           (let [{:keys [element root close!]} (await! (fixture!))
                 {:keys [loads original restore!]} (capture-loads!)
+                {watchdogs :watchdogs restore-watchdogs! :restore!} (hold-fade-watchdogs!)
                 opts (options)
                 face (js/FontFace. (:family opts) "url('/webfonts/FiraCode-Retina.woff2')")
                 sheet (.createElement js/document "link")
@@ -163,13 +165,14 @@
                       (is (< (abs (- 1 (+ old-opacity new-opacity))) 0.05)
                           "There is no transparent interval between the fonts")
                       (is (= "1" (.-opacity (js/getComputedStyle node)))))
-                    ;; React dispatches the bubbling event synchronously. Check the
-                    ;; owner here, before its independent timeout can also complete it.
-                    (is (empty? (end-fade-events! incoming-code))
-                        "A child's animationend does not request completion")
+                    ;; Keep the timer as a separate completion path while checking
+                    ;; which layer owns the bubbling native animation event.
+                    (is (= [250 250] (mapv :ms @watchdogs))
+                        "Both owners schedule their fallback after the native fade")
+                    (ended! incoming-code "font-fade-in")
+                    (await! (support/settle!))
                     (is (= "crossfade" (phase node)) "Child animation cannot finish the fade")
-                    (is (= [:font/done] (end-fade-events! incoming))
-                        "The incoming layer completes its own fade")
+                    (ended! incoming "font-fade-in")
                     (await! (until! node "ready"))
                     (is (not (.contains node outgoing)) "Old text is removed after fading out")
                     (is (identical? incoming-code (.querySelector node "code")))
@@ -195,7 +198,7 @@
                       (is (.includes (.-fontFamily (js/getComputedStyle (.querySelector returned "code")))
                                      (:family opts)))
                       (is (= 1 (count @loads)) "No second acquisition or reveal")))))
-              (finally (close!) (restore!)
+              (finally (close!) (restore!) (restore-watchdogs!)
                        (.delete (.-fonts js/document) face) (.remove sheet) (.remove monospace)))))
         (p/catch-error (fn [error] (is false (str error))))
         (p/finally-do done))))
