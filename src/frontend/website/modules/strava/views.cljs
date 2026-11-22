@@ -4,6 +4,7 @@
     [website.macros :as m :refer-macros [defc]]
     [website.react :as r]
 
+    [cljs.math :as math]
     [clojure.string :as string]
     [website.components.timer :as anim]
     [website.loader]
@@ -259,6 +260,13 @@
 ; zoom - controlling by what data is provided makes most sense I think
 ; but need support for displaying while selecting range to zoom into...
 ; could be a general "highlight area" tho...
+(defn- draw-cursor! [context x y color]
+  (set! (.-strokeStyle context) color)
+  (set! (.-lineWidth context) 2.5)
+  (.beginPath context)
+  (.arc context x y 4 0 (* 2 math/PI))
+  (.stroke context))
+
 (defn draw-graph
   [canvas id data cursor-pos & {:keys [colors zoom current-drag]
                                 :or {colors {:line "rgb(252,136,54)"
@@ -275,7 +283,8 @@
                   (- h (* h (if (= data-min data-max)
                               0.5
                               (util/rescale-to-frac point data-min data-max)))))
-        cursor-index (int (* size (/ (first @cursor-pos) w)))]
+        scale-x (fn [index] (* w (util/rescale-to-frac index 0 size)))
+        cursor-x (first @cursor-pos)]
     (.clearRect ctx 0 0 w h)
     (set! (.-strokeStyle ctx) (:line colors))
     (set! (.-fillStyle ctx) (:fill colors))
@@ -283,27 +292,15 @@
     (set! (.-shadowBlur ctx) 4)
     (set! (.-shadowOffsetX ctx) 1)
     (set! (.-shadowOffsetY ctx) 1)
-    (set! (.-shadowColor ctx) (:highlight colors));
+    (set! (.-shadowColor ctx) (:highlight colors))
     (.beginPath ctx)
     (.moveTo ctx 0 (scale-y (first data)))
-
-    (doall (map-indexed
-     (fn [i point]
-      (let [x (* w (util/rescale-to-frac i 0 size))
-            y (scale-y point)]
-        (.lineTo ctx x y)
-        (when (= i cursor-index)
-          (set! (.-strokeStyle ctx) (:highlight colors))
-          (set! (.-lineWidth ctx) 2.5)
-          (.arc ctx x y, 4, 0, 2 * js/Math.PI)
-          (.stroke ctx)
-          (set! (.-lineWidth ctx) 2.5)
-          (.moveTo ctx x y)
-          ; (.stroke ctx)
-          (set! (.-strokeStyle ctx) (:line colors))
-          (set! (.-lineWidth ctx) 1.5))))
-     data))
-    (.stroke ctx)))
+    (doseq [[i point] (map-indexed vector data)]
+      (.lineTo ctx (scale-x i) (scale-y point)))
+    (.stroke ctx)
+    (when (and (pos? size) (<= 0 cursor-x) (< cursor-x w))
+      (let [i (int (* size (/ cursor-x w)))]
+        (draw-cursor! ctx (scale-x i) (scale-y (nth data i)) (:highlight colors))))))
 
 (defc ^:private <graph-inner>
   {:features [[:appear "zoom-y slow"]]}

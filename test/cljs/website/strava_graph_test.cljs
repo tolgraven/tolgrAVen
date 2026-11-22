@@ -1,6 +1,7 @@
 (ns website.strava-graph-test
   (:require-macros [website.test-async :refer [go-promise await!]])
-  (:require [cljs.test :refer-macros [deftest is async]]
+  (:require [cljs.math :as math]
+            [cljs.test :refer-macros [deftest is async]]
             [website.react :as r]
             [website.render-context :as context]
             [clojure.string :as string]
@@ -9,6 +10,21 @@
             [website.subs]
             [website.modules.strava.views :as views]
             [website.test-support :as support]))
+
+(deftest cursor-outlines-one-circle-at-the-selected-sample
+  (let [arcs (atom [])
+        noop (fn [& _])
+        context #js {:clearRect noop :beginPath noop :moveTo noop :lineTo noop :stroke noop
+                     :arc (fn [& args] (swap! arcs conj (vec args)))}
+        canvas #js {:width 100 :height 40 :clientWidth 100 :clientHeight 40
+                    :getContext (fn [_] context)}
+        cursor (atom [55 20])]
+    (views/draw-graph canvas "Power" [0 10 5 7] cursor)
+    (is (= [[50 20 4 0 (* 2 math/PI)]] @arcs))
+    (doseq [x [-1 100]]
+      (reset! cursor [x 20])
+      (views/draw-graph canvas "Power" [0 10 5 7] cursor))
+    (is (= 1 (count @arcs)) "A cursor outside the plot draws no extra circle.")))
 
 (deftest native-graphs-paint-constant-series-and-retain-varying-coordinates
   (async done
