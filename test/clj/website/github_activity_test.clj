@@ -54,3 +54,15 @@
                 "<p>Sign in to GitHub</p>"]]
     (is (thrown? Exception (activity/parse-day html "2026-10-13"))))
   (is (every? zero? (vals (:types (activity/parse-day (public-day 0 "") "2026-10-13"))))))
+
+(deftest calendar-and-day-cache-their-own-first-response
+  (let [user (str "cache-" (subs (str (random-uuid)) 0 8))
+        date "2020-02-29"
+        reads (atom [])]
+    (with-redefs [activity/fetch-calendar! (fn [user] (swap! reads conj user) {:days []})
+                  activity/fetch-day! (fn [user date] (swap! reads conj [user date]) {:date date})]
+      (dotimes [_ 2]
+        (is (= {:status 200 :headers {"Cache-Control" "public, max-age=300"} :body {:days []}}
+               (activity/response! user)))
+        (is (= {:date date} (:body (activity/day-response! user date)))))
+      (is (= [user [user date]] @reads)))))
