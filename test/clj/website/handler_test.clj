@@ -5,6 +5,8 @@
     [website.handler :refer :all]
     [website.config :as config]
     [website.middleware :as middleware]
+    [website.modules.search.index :as search-index]
+    [website.modules.search.typesense :as typesense]
     [website.middleware.formats :as formats]
     [website.routes.services :as services]
     [website.supabase.integrations :as integrations]
@@ -107,18 +109,25 @@
 
 (deftest integration-query-contracts-coerce-and-reject-before-transport
   (let [calls (atom [])]
-    (with-redefs [integrations/search! (fn [collection params]
-                                        (swap! calls conj [collection params]) {:hits []})
+    (with-redefs [search-index/sources (constantly [{:kind "blog-post"}])
+                  typesense/search! (fn [params]
+                                      (swap! calls conj params)
+                                      {:found 0 :hits []})
                   integrations/strava! (fn [path] (swap! calls conj path) {})
                   integrations/strapi! (fn [path] (swap! calls conj path) {})
                   integrations/intervals! (fn [path] (swap! calls conj path) {})]
-      (is (= 200 (:status (app-routes (request :get "/api/integrations/search?collection=blog-posts&q=test&page=2&per_page=10")))))
-      (is (= ["blog-posts" {"collection" "blog-posts" "q" "test" "page" 2 "per_page" 10}]
-             (first @calls)))
+      (let [response (app-routes
+                       (request :get "/api/integrations/search?q=test&page=2&per_page=10&collection=private&filter_by=private"))]
+        (is (= 200 (:status response)))
+        (is (= {:query "test" :found 0 :page 2 :hits [] :suggestions []}
+               (m/decode-response-body response)))
+        (is (= [{:q "test" :page 2 :per_page 10 :filter_by "kind:=blog-post"}]
+               (mapv #(select-keys % [:q :page :per_page :collection :filter_by]) @calls))
+            "The server chooses the search scope and passes coerced paging to Typesense"))
       (reset! calls [])
-      (doseq [url ["/api/integrations/search?collection=private&q=test"
-                   "/api/integrations/search?collection=blog-posts&q=test&page=0"
-                   "/api/integrations/search?collection=blog-posts&q=test&per_page=101"
+      (doseq [url ["/api/integrations/search?q="
+                   "/api/integrations/search?q=test&page=0"
+                   "/api/integrations/search?q=test&per_page=101"
                    "/api/integrations/strava?path=athlete/../secrets"
                    "/api/integrations/strava?path=athlete/zones"
                    "/api/integrations/strava?path=prefix-athlete"

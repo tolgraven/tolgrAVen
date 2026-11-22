@@ -1,10 +1,12 @@
 (ns website.media-response-test
   (:require [clojure.java.io :as io]
+            [clojure.string :as string]
             [clojure.test :refer [deftest is testing]]
             [optimus.assets :as assets]
             [optimus.link :as link]
             [website.config :as config]
             [website.env :as env]
+            [website.fonts.icons :as icons]
             [website.middleware.asset-manifest :as manifest]
             [website.middleware :as middleware]))
 
@@ -74,29 +76,35 @@
               (is (= (vec (.readAllBytes expected))
                      (vec (.readAllBytes actual)))))))))))
 
-(deftest icon-font-bundle-rewrites-and-caches-its-fonts
+(deftest optimized-glyph-styles-retain-icon-selectors
   (with-redefs [config/env {:stage true}]
     (let [files (middleware/optimize-all
-                 (assets/load-bundle "public" "icons.css"
-                   ["/css/website/icons.min.css"]) {})
+                  (assets/load-bundle "public" "icons.css" ["/css/website/icons.min.css"]) {})
           request {:optimus-assets files}
-          css-path (first (link/bundle-paths request ["icons.css"]))
-          css (:contents (assets/get-asset-by-path request css-path))]
-      (is (re-matches #"/bundles/[a-f0-9]{12}/icons\.css" css-path))
-      (doseq [name ["fa-solid-900-core" "fa-brands-400-core"
-                   "fa-solid-900" "fa-brands-400"]]
-        (let [original (str "/webfonts/" name ".woff2")
-              path (link/file-path request original)
-              optimized (assets/get-asset-by-path request path)
-              plain (first (filter #(and (= original (:path %)) (:outdated %)) files))]
-          (is (not= original path))
-          (is (.contains css path))
-          (is (= "max-age=315360000" (get-in optimized [:headers "Cache-Control"])))
-          (is (nil? (get-in plain [:headers "Cache-Control"])))
-          (with-open [actual (io/input-stream (assets/get-contents optimized))
-                      expected (io/input-stream (io/resource (str "public" original)))]
-            (is (= (vec (.readAllBytes expected)) (vec (.readAllBytes actual)))))))
-      (is (.contains css "unicode-range:")))))
+          path (first (link/bundle-paths request ["icons.css"]))
+          css (:contents (assets/get-asset-by-path request path))]
+      (is (re-matches #"/bundles/[a-f0-9]{12}/icons\.css" path))
+      (doseq [glyph [".fa-github:before" ".fa-spinner:before"]]
+        (is (string/includes? css glyph)))
+      (is (not (string/includes? css "@font-face"))))))
+
+(deftest prepared-font-styles-reference-the-served-woff2-bytes
+  (with-redefs [icons/*prepared (atom {:assets {}})]
+    (let [{:keys [css]} (icons/prepare!)
+          fonts (re-seq #"url\(\"(/webfonts/icons/(fa-(?:brands-400|solid-900))-([a-f0-9]{64})\.woff2)\"\)" css)
+          handler (icons/wrap-assets (constantly {:status 404}))]
+      (is (= #{"fa-brands-400" "fa-solid-900"} (set (map #(nth % 2) fonts))))
+      (is (= 2 (count (re-seq #"unicode-range:U\+" css))))
+      (doseq [[_ url _ digest] fonts]
+        (let [{:keys [status headers body]} (handler {:uri url :request-method :get})]
+          (is (= 200 status))
+          (is (= "font/woff2" (get headers "Content-Type")))
+          (is (= "public, max-age=31536000, immutable" (get headers "Cache-Control")))
+          (with-open [input (io/input-stream body)]
+            (let [bytes (.readAllBytes input)]
+              (is (= "wOF2" (String. bytes 0 4 "US-ASCII")))
+              (is (= digest (manifest/digest bytes)))
+              (is (= (str (alength bytes)) (get headers "Content-Length"))))))))))
 
 (deftest immutable-media-filenames-cache-whole-and-range-responses
   (doseq [status [200 206]
