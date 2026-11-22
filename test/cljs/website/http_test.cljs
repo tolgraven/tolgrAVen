@@ -36,6 +36,17 @@
   (is (not (.has (:headers @seen) "x-csrf-token")))
   (is (not (.has (:headers @seen) "Content-Type"))))
 
+(defn- ^:async check-document-base! [seen]
+  (when (exists? js/document)
+    (let [base (.createElement js/document "base")]
+      (set! (.-href base) "https://assets.example.test/content/")
+      (.prepend (.-head js/document) base)
+      (try
+        (await (http/request! {:uri "pages/one"}))
+        (is (= "https://assets.example.test/content/pages/one" (.-href (:url @seen))))
+        (is (not (.has (:headers @seen) "x-csrf-token")))
+        (finally (.remove base))))))
+
 (defn- ^:async check-transit! [seen]
   (let [date (js/Date. "2026-10-10T23:04:05Z")
         value {:id :message :time date :items [nil false "text"]}
@@ -57,6 +68,7 @@
     (let [seen (atom nil)
           check! (fn ^:async check []
                    (await (check-query! seen))
+                   (await (check-document-base! seen))
                    (await (check-transit! seen))
                    (await (check-errors! seen)))]
       (complete! (with-fetch! (recording-fetch seen) check!) done))))

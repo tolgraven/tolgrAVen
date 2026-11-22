@@ -23,7 +23,9 @@
         :transit (transit/read (transit/reader :json time/read-options) text)))))
 
 (defn- request-url [uri params]
-  (let [url (if (exists? js/location) (js/URL. uri (.-href js/location)) (js/URL. uri))
+  (let [base (or (when (exists? js/document) (.-baseURI js/document))
+                 (when (exists? js/location) (.-href js/location)))
+        url (if base (js/URL. uri base) (js/URL. uri))
         query (.-searchParams url)]
     (doseq [[k value] params
             v (if (sequential? value) value [value])
