@@ -1,6 +1,7 @@
 (ns website.component.data
   "Shared, mount-independent resource loading. Adapters are registered separately."
-  (:require [website.async :as a]
+  (:require [website.clock :as clock]
+            [website.async :as a]
             [website.validation.runtime :as validation]
             [website.schema.declarations :as schemas]
             [website.react :as r]
@@ -84,8 +85,8 @@
         hydrated (when (:into resource) @(r/sub [:component-data/installed (:into resource)]))]
     (when (and (restore/skip-enter?) (:present? hydrated) (nil? (get @*entries key)))
       (swap! *entries assoc key {:resource resource :status :ready :value (:value hydrated)
-                                :expires-at (+ (.now js/Date) (or (:ttl-ms resource) 60000))
-                                :accessed-at (.now js/Date)}))
+                                :expires-at (+ (clock/epoch-ms) (or (:ttl-ms resource) 60000))
+                                :accessed-at (clock/epoch-ms)}))
     (when (and (nil? (get @*entries key)) (not (:ready? (ready-value resource))))
       (when-let [options (persistence resource)]
         (when-let [{:keys [value expires-at]} (storage/read! (snapshot-id resource) options)]
@@ -95,7 +96,7 @@
             (r/dispatch-sync [:component-data/install path value])
             (swap! *installed assoc path {:resource resource :value value}))
           (swap! *entries assoc key {:resource resource :status :ready :value value
-                                    :expires-at expires-at :accessed-at (.now js/Date)})
+                                    :expires-at expires-at :accessed-at (clock/epoch-ms)})
           true
           (catch :default _ (storage/remove! (snapshot-id resource) options) nil)))))))
 
@@ -133,7 +134,7 @@
       (swap! *installed assoc path {:resource resource :value value})))
   (swap! *entries update key merge
          {:status :ready :value value :installed? (boolean (:into resource))
-          :expires-at (+ (.now js/Date) (or (:ttl-ms resource) 60000)) :reject! nil})
+          :expires-at (+ (clock/epoch-ms) (or (:ttl-ms resource) 60000)) :reject! nil})
   (when-let [options (persistence resource)]
     (let [id (snapshot-id resource)
           read-current #(if-let [path (:into resource)]
@@ -197,7 +198,7 @@
           key (resource-key resource)
           ready (ready-value resource)
           existing (get @*entries key)
-          now (.now js/Date)]
+          now (clock/epoch-ms)]
       (cond
         (:ready? ready)
         (do (when (= :error (:status existing))

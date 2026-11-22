@@ -90,8 +90,9 @@ and response coercion out of components and feature handlers.
   registered domain events. Compose layer-2/3 subscriptions from their actual
   input subscriptions; keep derivations pure and narrow. Application state must
   remain visible in app-db and application IO in registered effects/source adapters.
-- Delayed application work uses event effects such as `:dispatch-later`. Native
-  Use `website.http/request!` or the re-frame `:http/fetch` effect for HTTP. Sequential async work uses `^:async` and `await`. `website.async` owns Promise interop for concurrent work and callback adapters. A local pointer gesture
+- Delayed application work uses event effects such as `:dispatch-later`.
+  Use `^:async` and `await` for sequential work and `website.async` for
+  concurrent work and callback adapters. A local pointer gesture
   can own a cancellable timer/ref when feeding every movement into app-db would
   add noise; explain that exception and dispatch the resulting application action.
 - Reach for modern React features only for a concrete lifecycle/interoperability

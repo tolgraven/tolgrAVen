@@ -1,7 +1,8 @@
 (ns website.ssr.local
   "Paired local HTML/state return snapshots. The service worker delivers an
    ordinary document; React owns its markup from hydration onward."
-  (:require [website.browser.location :as location]
+  (:require [website.clock :as clock]
+            [website.browser.location :as location]
             [website.async :as a]
             [website.http :as http]
             [cljs.reader :as reader]
@@ -128,7 +129,7 @@
           state (reader/read-string (:state-edn snapshot))]
       (when-not (and (map? state) (contract/valid? snapshot
                                    {:url url :build (.getAttribute (.getElementById js/document "app") "data-page-build")
-                                    :now (.now js/Date)}))
+                                    :now (clock/epoch-ms)}))
         (throw (js/Error. "Invalid local page snapshot")))
       ;; The cached document was rendered in restoration mode. This same mode
       ;; is required for its first render, even if it was reached via a reload.

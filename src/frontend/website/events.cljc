@@ -7,6 +7,7 @@
 
     [website.async :as a]
     [website.http :as http]
+    [website.browser.css :as css]
     ; [day8.re-frame.tracing :refer-macros [fn-traced]]
     [website.component.legacy-storage :as localstore]
     [website.component.storage :as storage]
@@ -438,9 +439,7 @@
   (fn [{:as cofx :keys [db css-var]} [_ state]]
     (let [open-height   (:header-with-menu-height css-var)
           closed-height (:header-height css-var) ;TODO should rather be set from here with data-attr? ideally depends on content
-          difference (->> (map js/parseFloat [open-height closed-height])
-                          (apply -)
-                          (* 0.5))]
+          difference (* 0.5 (- (css/magnitude open-height) (css/magnitude closed-height)))]
       {:db (assoc-in db [:state :menu] state)
        :dispatch-n
         [[:->css-var! "header-height-current"

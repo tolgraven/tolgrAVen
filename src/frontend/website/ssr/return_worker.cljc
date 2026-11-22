@@ -1,6 +1,7 @@
 (ns website.ssr.return-worker
   "Cache/Fetch adapters for local return documents. No asset or SPA interception."
-  #?(:cljs (:require [website.async :as a]
+  #?(:cljs (:require [website.clock :as clock]
+                     [website.async :as a]
                      [website.ssr.return-policy :as policy]
                      #?(:module/neovim [website.modules.neovim.policy :as neovim]))))
 
@@ -37,11 +38,11 @@
   (when-not (= message-build build)
     (throw (js/Error. "Incompatible return document build")))
   (let [cache (await (.open js/caches cache-name))]
-    (await (.put cache url (document-response url html (.now js/Date))))
+    (await (.put cache url (document-response url html (clock/epoch-ms))))
     (trim! cache)))
 
 (defn arm! [url]
-  (let [record (policy/arm-record url (.now js/Date))
+  (let [record (policy/arm-record url (clock/epoch-ms))
         json (js/JSON.stringify (clj->js record))]
     (-> (.open js/caches cache-name)
         (a/then #(.put % arm-url (js/Response. json))))))
@@ -63,7 +64,7 @@
 
 (defn- ^:async choose-response! [cache request saved armed]
   (let [{:keys [source returning?]}
-        (policy/navigation-plan (.-url request) (saved-at saved) armed (.now js/Date))]
+        (policy/navigation-plan (.-url request) (saved-at saved) armed (clock/epoch-ms))]
     (case source
       :cache (do
                ;; Consume once. The new page republishes current state.

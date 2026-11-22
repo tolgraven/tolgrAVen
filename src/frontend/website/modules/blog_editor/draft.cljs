@@ -1,6 +1,7 @@
 (ns website.modules.blog-editor.draft
   "Account-owned working/named drafts reuse the existing storage debounce and pagehide flush."
-  (:require [website.async :as a]
+  (:require [website.clock :as clock]
+            [website.async :as a]
             [clojure.string :as string]
             [website.react :as r]
             [website.component.storage :as storage]
@@ -114,7 +115,7 @@
       (storage/flush! :navigation)
       (when (false? (get (storage/drain!) @storage/*identity))
         (throw (js/Error. "The draft could not be saved. Browser storage may be full or unavailable.")))
-      (r/dispatch [:blog/draft-written owner account token (.now js/Date)])
+      (r/dispatch [:blog/draft-written owner account token (clock/epoch-ms)])
       (catch :default error (r/dispatch [:blog/draft-failed owner account token (.-message error)])))))
 
 (r/reg-event-fx :blog/load-draft

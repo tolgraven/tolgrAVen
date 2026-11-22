@@ -1,5 +1,6 @@
 (ns website.modules.strava.events
   (:require
+    [website.clock :as clock]
     [clojure.walk :as walk]
     [website.react :as r]
     [website.util :as util]))
@@ -119,7 +120,7 @@
 
 (r/reg-event-fx :intervals/fetch-summary
   (fn [{:keys [db]} [_ ]]
-    (let [now (js/Date.now)
+    (let [now (clock/epoch-ms)
           start (util/previous-month-date now)
           end (util/unix->ts now :date)]
       {:dispatch-n

@@ -1,5 +1,7 @@
 (ns website.modules.dev-console.views
-  (:require [cljs.reader :as reader]
+  (:require [cljs.math :as math]
+            [website.browser.css :as css]
+            [cljs.reader :as reader]
             [website.browser.clipboard :as clipboard]
             [website.components.validation :as validation]
             [clojure.string :as string]
@@ -106,13 +108,13 @@
   (str (+ 3 (min 36 (reduce max 1 (map #(count (pr-str (first %))) (take 40 (entries value)))))) "ch"))
 
 (defn duration-label [milliseconds]
-  (let [seconds? (>= (js/Math.abs milliseconds) 1000)
+  (let [seconds? (>= (abs milliseconds) 1000)
         value (if seconds? (/ milliseconds 1000) milliseconds)
-        rounded (/ (js/Math.round (* value 1000)) 1000)]
+        rounded (/ (math/round (* value 1000)) 1000)]
     (str rounded (if seconds? " s" " ms"))))
 
 (defn elapsed-label [milliseconds]
-  (let [total (max 0 (js/Math.round milliseconds))
+  (let [total (max 0 (math/round milliseconds))
         hours (quot total 3600000)
         minutes (mod (quot total 60000) 60)
         seconds (mod (quot total 1000) 60)
@@ -711,7 +713,7 @@
         (let [measure! (fn []
                          (if-let [element (element-for-instance instance)]
                            (let [rect (.getBoundingClientRect element)
-                                 unit (js/parseFloat (.-fontSize (js/getComputedStyle (.-documentElement js/document))))]
+                                 unit (css/font-size)]
                              (set-rect! {:left (str (/ (.-left rect) unit) "rem")
                                          :top (str (/ (.-top rect) unit) "rem")
                                          :width (str (/ (.-width rect) unit) "rem")

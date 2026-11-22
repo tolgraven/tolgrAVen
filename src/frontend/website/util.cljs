@@ -1,5 +1,6 @@
 (ns website.util
   (:require
+    [website.clock :as clock]
     [website.browser.css :as css]
     [cljs.math :as math]
     [website.react :as r]
@@ -110,7 +111,7 @@
 
 (defn timestamp
   "Use minutes ago, hours ago, then a UTC date. Optional now keeps this pure in tests."
-  ([ms] (timestamp ms (js/Date.now)))
+  ([ms] (timestamp ms (clock/epoch-ms)))
   ([ms now]
    (if (and (number? ms) (js/Number.isFinite ms))
      (let [mins (max 0 (math/floor (/ (- now ms) 60000)))]

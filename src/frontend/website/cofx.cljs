@@ -1,13 +1,14 @@
 (ns website.cofx
   (:require
+    [website.clock :as clock]
     [website.react :as r]
 
     [website.util :as util]))
 
 
-(r/reg-cofx :now         #(assoc % :now (js/Date.now)))
+(r/reg-cofx :now         #(assoc % :now (clock/epoch-ms)))
 ;; Legacy timer coeffect is also epoch milliseconds; its only consumers subtract.
-(r/reg-cofx :now-ct      #(assoc % :now-ct (js/Date.now)))
+(r/reg-cofx :now-ct      #(assoc % :now-ct (clock/epoch-ms)))
 
 (r/reg-cofx :user/gen-color
              #(assoc % :bg-color (util/css-str "hsla"

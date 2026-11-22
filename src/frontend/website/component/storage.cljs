@@ -1,6 +1,7 @@
 (ns website.component.storage
   "Opt-in snapshots, one disk envelope per owner. Components only touch memory."
   (:require
+    [website.clock :as clock]
     [website.async :as a]
     [cljs.reader :as reader]
     [clojure.string :as string]
@@ -133,7 +134,7 @@
   ;; Account writes and deletions queued during the disk read take precedence.
   (let [deleted (get @*deleted-paths account)
         removed? #(affected? % deleted)
-        now (.now js/Date)
+        now (clock/epoch-ms)
         expired? #(<= (:expires-at % 0) now)]
     (swap! *buckets update account #(merge (into {} (remove (comp removed? key)) migrated) %))
     (when (or (not= saved migrated) (some removed? (keys migrated)) (some expired? (vals migrated)))
@@ -199,7 +200,7 @@
       (schedule-write!))
     (when (and (= 1 (:version snapshot))
                (= (or (:version options) 1) (:schema snapshot))
-               (> (:expires-at snapshot 0) (.now js/Date))
+               (> (:expires-at snapshot 0) (clock/epoch-ms))
                (contains? snapshot :value))
       snapshot)))
 
@@ -210,11 +211,11 @@
           schema (or (:version options) 1)]
       ;; Repeated dumps do not serialize or extend expiry for unchanged data.
       (when-not (and (= schema (:schema previous)) (= value (:value previous))
-                     (> (:expires-at previous 0) (.now js/Date)))
+                     (> (:expires-at previous 0) (clock/epoch-ms)))
         (swap! *consumed update account disj id)
         (swap! *buckets assoc-in [account id]
                {:version 1 :schema schema
-                :expires-at (+ (.now js/Date) (or (:ttl-ms options) 1800000)) :value value})
+                :expires-at (+ (clock/epoch-ms) (or (:ttl-ms options) 1800000)) :value value})
         (swap! *dirty conj account)
         (schedule-write!))
       true)))
@@ -288,7 +289,7 @@
                  (try
                    (let [bucket (into {} (filter (fn [[id v]]
                                                   (and (not (contains? (get @*consumed account) id))
-                                                       (> (:expires-at v 0) (.now js/Date)))))
+                                                       (> (:expires-at v 0) (clock/epoch-ms)))))
                                       (get @*buckets account))
                          heavy? (or (contains? @*heavy-owners account)
                                     (contains? @*migrating account)

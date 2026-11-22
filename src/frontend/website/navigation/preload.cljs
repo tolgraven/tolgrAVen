@@ -1,6 +1,7 @@
 (ns website.navigation.preload
   "Idle, bounded acquisition of the same modules and managed dependencies used by pages."
-  (:require [website.async :as a]
+  (:require [website.clock :as clock]
+            [website.async :as a]
             [website.react :as r]
             [reitit.core :as reitit]
 
@@ -44,7 +45,7 @@
       (swap! *active conj key)
       (-> (acquire! match)
           (a/then (fn [_]
-                   (swap! *completed assoc key (.now js/Date))))
+                   (swap! *completed assoc key (clock/epoch-ms))))
           ;; Speculation must not prevent later navigation/retry.
           (a/catch-error (fn [_] nil))
           (a/finally-do (fn [] (swap! *active disj key) (drain!))))
@@ -52,7 +53,7 @@
 
 (defn enqueue! [paths]
   (when (speculation-allowed?)
-    (let [now (.now js/Date)]
+    (let [now (clock/epoch-ms)]
       (swap! *completed #(into {} (filter (fn [[_ at]] (< (- now at) 300000))) %))
       (doseq [[path match] (map (fn [path] [path (reitit/match-by-path routes/router path)])
                               (distinct paths))

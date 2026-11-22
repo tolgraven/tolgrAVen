@@ -116,7 +116,7 @@
                      "vmin" (/ (min (.-innerWidth js/window) (.-innerHeight js/window)) 100)
                      "vmax" (/ (max (.-innerWidth js/window) (.-innerHeight js/window)) 100)
                      1)
-        result (* (js/parseFloat number) multiplier)]
+        result (* (css/magnitude number) multiplier)]
     (if (optics/finite? result) (optics/clamp 0 (* 4 (max width height)) result) 0)))
 
 (defn- geometry [element options]

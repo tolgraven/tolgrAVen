@@ -1,6 +1,7 @@
 (ns website.modules.supabase.client
   (:require-macros [website.build.site :refer [when-enabled]])
-  (:require [website.async :as a]
+  (:require [website.clock :as clock]
+            [website.async :as a]
             ["@supabase/supabase-js" :as sdk]
             [website.supabase.state :as state]
             [website.validation.runtime :as validation]
@@ -168,7 +169,7 @@
       {:ready? true :value (result @*seed opts)}
       (and (= (:owner entry) (session-key @*session))
            (= (:generation entry) @*client-generation)
-           (> (:expires-at entry 0) (.now js/Date)))
+           (> (:expires-at entry 0) (clock/epoch-ms)))
       {:ready? true :value (:value entry)}
       :else {:ready? false})))
 
@@ -177,7 +178,7 @@
     (r/dispatch-sync [:store/scoped key value]))
   (r/dispatch-sync [:store/cache-query key
                     {:value value :owner owner :generation @*client-generation
-                     :expires-at (+ (.now js/Date) 60000)}]))
+                     :expires-at (+ (clock/epoch-ms) 60000)}]))
 
 (defn- ^:async read-preload! [opts [key owner client]]
   (let [current? #(and (identical? client @*client) (= owner (session-key @*session)))]

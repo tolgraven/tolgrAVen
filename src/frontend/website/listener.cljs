@@ -1,5 +1,6 @@
 (ns website.listener
   (:require
+    [website.clock :as clock]
     [website.browser.css :as css]
     [cljs.math :as math]
     [clojure.string :as string]
@@ -122,7 +123,7 @@
          last-direction (atom :up)
          accum-in-direction (atom 0)
          page-height (atom 0)
-         triggered-at (atom (js/Date.now))
+         triggered-at (atom (clock/epoch-ms))
          top-size (+ (util/rem-to-px (:header-height css-var))     ; distance from top to main is header-height + space-top above/below,
                      (* 2 (util/rem-to-px (:space-top css-var)))
                      (util/rem-to-px (:space-lg css-var)))
@@ -150,7 +151,7 @@
                                      (abs (- new-pos @scroll-pos))))
                           (when (and (or at-bottom?
                                          at-top?
-                                         (> (- (js/Date.now) @triggered-at) 150)) ; ensure "scroll" isn't due to content resizing
+                                         (> (- (clock/epoch-ms) @triggered-at) 150)) ; ensure "scroll" isn't due to content resizing
                                      (or (<= 150 @accum-in-direction) ; bit of debounce
                                           (and at-top?
                                                #_(= new-direction :up)
@@ -159,7 +160,7 @@
                                                (= new-direction :down)
                                                #_(= @last-direction :up)))) ; always post when at bottom, regardless of accum
                             (reset! accum-in-direction 0)
-                            (reset! triggered-at (js/Date.now))
+                            (reset! triggered-at (clock/epoch-ms))
                             (r/dispatch [:scroll/direction
                                           new-direction new-pos new-height at-top? at-bottom?]))
                           (reset! scroll-pos new-pos)
