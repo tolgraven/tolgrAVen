@@ -1,13 +1,10 @@
 (ns website.code-block-test
   (:require-macros [website.test-async :refer [go-promise await!]])
   (:require [cljs.test :refer-macros [deftest is async]]
+            [website.async :as a]
             [website.react :as r]
-
-
-
             [website.render-context :as context]
             [website.modules.highlight.module :as highlight]
-
             [website.modules.highlight.code-block :as code]
             [website.modules.highlight.views :as highlighter]
             [website.loader :as loader]
@@ -17,23 +14,32 @@
             [website.components.ui.action :as action]
             [website.test-support :as support]))
 
+(defn- stub-cold-highlight! [acquire!]
+  (let [cached loader/code-spec
+        acquire-code! loader/acquire-code!]
+    (set! loader/code-spec
+          (fn [module] (when-not (= module :highlight) (cached module))))
+    (set! loader/acquire-code!
+          (fn [module] (if (= module :highlight) (acquire! module) (acquire-code! module))))
+    (fn []
+      (set! loader/code-spec cached)
+      (set! loader/acquire-code! acquire-code!))))
+
 (deftest delayed-highlighting-reveals-once-after-a-real-fallback
   (async done
-    (let [old-acquire loader/acquire-code!
-          before @restore/*context
-          *release (atom nil)
-          pending (js/Promise. (fn [resolve _] (reset! *release resolve)))
+    (let [before @restore/*context
+          {pending :promise release! :resolve!} (a/deferred)
+          restore-loader! (stub-cold-highlight! (constantly pending))
           element (.createElement js/document "div")
           *root (atom nil)]
       (reset! restore/*context {:hydrate? false})
-      (set! loader/acquire-code! (fn [_] pending))
       (-> (go-promise
             (reset! *root (await! (support/create-root! element)))
             (await! (support/render! @*root [code/<code-block> "(inc 1)" :language "clojure"]))
             (await! (support/wait-for! #(.querySelector element "pre code")))
             (is (nil? (.querySelector element ".code-highlight-reveal"))
                 "Source remains readable while acquisition is pending")
-            (@*release highlight/spec)
+            (release! highlight/spec)
             (await! (support/wait-for! #(.querySelector element ".code-highlight-reveal > .font-text-stack")))
             (let [pre (.querySelector element "pre")
                   surface (.querySelector element ".code-highlight-reveal > .font-text-stack")]
@@ -51,25 +57,25 @@
               (await! (support/render! @*root [code/<code-block> "(inc 3)" :language "clojure"]))
               (is (nil? (.querySelector element ".code-highlight-reveal"))
                   "Settled code updates do not restart the entrance")))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (a/catch-error #(is false (str %)))
+          (a/finally-do (fn []
                       (when @*root (support/unmount! @*root))
-                      (set! loader/acquire-code! old-acquire)
+                      (restore-loader!)
                       (reset! restore/*context before)
                       (done)))))))
 
 (deftest spa-code-acquires-immediately-and-controls-preserve-content
   (async done
     (let [restore! (r/make-restore-fn)
-          old-acquire loader/acquire-code!
           before @restore/*context
           *calls (atom [])
-          *copied (atom nil)]
+          *copied (atom nil)
+          formatted (fn [text & _] [:pre [:code text]])
+          acquire! (fn [id]
+                     (swap! *calls conj id)
+                     (a/resolved {:view {:formatted-code formatted}}))
+          restore-loader! (stub-cold-highlight! acquire!)]
       (reset! restore/*context {:hydrate? false})
-      (set! loader/acquire-code!
-        (fn [id]
-          (swap! *calls conj id)
-          (js/Promise.resolve {:view {:formatted-code (fn [text & _] [:pre [:code text]])}})))
       (r/reg-fx :code-block/copy
         (fn [{:keys [text complete!]}] (reset! *copied text) (complete! "Copied")))
       (-> (go-promise
@@ -100,9 +106,12 @@
                 (is (= "(inc 2)" (.-textContent (.querySelector element "code"))))
                 (is (= [:highlight] @*calls) "Updating code reuses the acquired formatter")
                 (finally (support/unmount! root)))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (set! loader/acquire-code! old-acquire)
-                      (reset! restore/*context before) (restore!) (done)))))))
+          (a/catch-error #(is false (str %)))
+          (a/finally-do (fn []
+                          (restore-loader!)
+                          (reset! restore/*context before)
+                          (restore!)
+                          (done)))))))
 
 (deftest icon-labels-follow-hover-focus-feedback-and-owned-lifetime
   (async done
@@ -113,7 +122,7 @@
       (reset! restore/*context {:hydrate? false})
       (set! loader/acquire-code!
         (fn [_]
-          (js/Promise.resolve {:view {:formatted-code (fn [text & _] [:pre [:code text]])}})))
+          (a/resolved {:view {:formatted-code (fn [text & _] [:pre [:code text]])}})))
       (r/reg-fx :code-block/copy (fn [{:keys [complete!]}] (complete! "Copied")))
       (.appendChild (.-body js/document) element)
       (-> (go-promise
@@ -175,8 +184,8 @@
                 (finally (support/unmount! root)))
               (is (nil? (.querySelector js/document ".action-label")))
               (is (empty? (owners)) "Unmount releases every label listener")))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (a/catch-error #(is false (str %)))
+          (a/finally-do (fn []
                       (.remove element)
                       (set! loader/acquire-code! old-acquire)
                       (reset! restore/*context before)
@@ -205,8 +214,8 @@
                 (finally (support/unmount! root)))
               (is @*cancelled?)
               (is (identical? (r/batching-flush) before-flush))))
-          (.catch #(is false (str %)))
-          (.finally (fn [] (set! resources/after-page! old-after-page)
+          (a/catch-error #(is false (str %)))
+          (a/finally-do (fn [] (set! resources/after-page! old-after-page)
                       (set! loader/acquire-code! old-acquire)
                       (reset! restore/*context before) (done)))))))
 
@@ -228,8 +237,8 @@
                 (is (identical? (r/batching-flush) before-flush))
                 (finally (support/unmount! root)))
               (is (identical? (r/batching-flush) before-flush))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (a/catch-error #(is false (str %)))
+          (a/finally-do (fn []
                       (set! resources/after-page! old-after-page)
                       (reset! restore/*context before)
                       (done)))))))
@@ -252,7 +261,7 @@
           *copies (atom [])]
       (reset! restore/*context {:hydrate? false})
       (set! loader/acquire-code!
-        (fn [_] (js/Promise.resolve {:view {:formatted-code highlighter/<formatted-code>}})))
+        (fn [_] (a/resolved {:view {:formatted-code highlighter/<formatted-code>}})))
       (r/reg-fx :code-block/copy
         (fn [{:keys [text complete!]}] (swap! *copies conj text) (complete! "Copied")))
       (-> (go-promise
@@ -286,7 +295,7 @@
                   (pointer! token "pointerdown" 10 10)
                   (pointer! token "pointerup" 10 10)
                   (.dispatchEvent token (js/MouseEvent. "dblclick" #js {:bubbles true :detail 2}))
-                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 550))))
+                  (await! (a/delay! 550))
                   (is (= 1 (count @*copies)) "A double-click selection never copies either click")
                   (doseq [[kind pointer-type] [[:drag "mouse"] [:leave "mouse"] [:cancel "mouse"] [:drag "touch"] [:leave "touch"]]]
                     (pointer! token "pointerdown" 10 10 pointer-type)
@@ -297,7 +306,7 @@
                       :cancel (pointer! token "pointercancel" 10 10 pointer-type))
                     (pointer! token "pointerup" 10 10 pointer-type))
                   (await! (support/settle!))
-                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 550))))
+                  (await! (a/delay! 550))
                   (is (= 1 (count @*copies)) "Cancelled gestures remain cancelled after reentry")
                   (let [selection (.getSelection js/window)
                         range (.createRange js/document)]
@@ -323,8 +332,8 @@
                   (is (= "✓" (.-textContent button)))
                   (is (nil? (.querySelector element "pre"))))
                 (finally (support/unmount! root) (.remove element)))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (a/catch-error #(is false (str %)))
+          (a/finally-do (fn []
                       (set! loader/acquire-code! old-acquire)
                       (reset! restore/*context before)
                       (restore!) (done)))))))
@@ -345,7 +354,7 @@
       (set! loader/acquire-code!
         (fn [id]
           (swap! *calls conj id)
-          (js/Promise.resolve {:view {:formatted-code highlighter/<formatted-code>}})))
+          (a/resolved {:view {:formatted-code highlighter/<formatted-code>}})))
       (r/reg-fx :code-block/copy
         (fn [{:keys [text complete!]}] (swap! *copies conj text) (complete! "Copied")))
       (-> (go-promise
@@ -382,14 +391,14 @@
                             #(and (seq @*calls)
                                   (empty? (filter (fn [binding] (= :code-block (:owner binding)))
                                                   (vals @listener/*bindings))))))
-                  (await! (js/Promise. (fn [resolve _] (js/setTimeout resolve 550))))
+                  (await! (a/delay! 550))
                   (is (= ["(inc 1)" "(inc 1)"] @*copies) "Hydration never replays an already handled copy gesture")
                   (is (identical? token (.querySelector element "code span")))
                   (finally (r/unmount root) (.remove element)))
                 (is (empty? (filter #(= :code-block (:owner %)) (vals @listener/*bindings)))
                     "Unmount releases the native SSR pointer adapter"))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (a/catch-error #(is false (str %)))
+          (a/finally-do (fn []
                       (set! loader/acquire-code! old-acquire)
                       (set! resources/after-page! old-after-page)
                       (reset! context/*interactive? before-interactive)
@@ -404,7 +413,7 @@
           *requests (atom [])]
       (reset! restore/*context {:hydrate? false})
       (set! loader/acquire-code!
-        (fn [_] (js/Promise.resolve {:view {:formatted-code highlighter/<formatted-code>}})))
+        (fn [_] (a/resolved {:view {:formatted-code highlighter/<formatted-code>}})))
       (r/reg-fx :code-block/copy #(swap! *requests conj %))
       (-> (go-promise
             (let [element (.createElement js/document "div")
@@ -426,8 +435,8 @@
                 (await! (support/wait-for! #(= "Copy code" (.getAttribute (.querySelector element ".code-copy") "aria-label"))))
                 (is (= "" (.-textContent (.querySelector element "[role=status]"))))
                 (finally (support/unmount! root)))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (a/catch-error #(is false (str %)))
+          (a/finally-do (fn []
                       (set! loader/acquire-code! old-acquire)
                       (reset! restore/*context before)
                       (restore!) (done)))))))
@@ -435,7 +444,7 @@
 (defn ^:export show-controls! []
   (restore/begin! {:hydrate? false})
   (-> (support/create-root! (.getElementById js/document "code-controls"))
-      (.then #(support/render! %
+      (a/then #(support/render! %
                 [:main.code-controls-demo
                  [:h1 "Code actions"]
                  [:p "Inline source " [code/<code-block> "(inc 1)" :inline? true] " stays in the text flow."]
@@ -482,12 +491,10 @@
                            "The native action stylesheet did not load"))
                   (await! (.-ready (.-fonts js/document)))
                   (await! (support/settle!))
-                  (let [settle-motion! (fn []
-                                         (js/Promise.allSettled
-                                           (into-array
-                                             (map #(.-finished %)
-                                               (array-seq (.getAnimations (.querySelector element "section")
-                                                                         #js {:subtree true}))))))]
+                  (let [section (.querySelector element "section")
+                        settle-motion! #(->> (.getAnimations section #js {:subtree true})
+                                             (map (fn [animation] (.-finished animation)))
+                                             a/all-settled)]
                     (await! (settle-motion!))
                     (await! (support/settle!))
                     (let [initial-bottom (bottom)
@@ -509,35 +516,34 @@
                 (finally (support/unmount! root)))
               (is (not (some-> @*stylesheet .-isConnected))
                   "Unmount releases the test stylesheet as well as the label")))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (a/catch-error #(is false (str %)))
+          (a/finally-do (fn []
                       (.remove element)
                       (reset! restore/*context before)
                       (restore!)
                       (done)))))))
 
-(defn mount-reveal-fixture!
+(defn ^:async mount-reveal-fixture!
   "Controlled real formatter for native motion/layout inspection, without provider I/O."
   [element]
-  (let [old-acquire loader/acquire-code!
-        before @restore/*context
-        *release (atom nil)
-        *root (atom nil)
-        pending (js/Promise. (fn [resolve _] (reset! *release resolve)))
-        form (fn [source] [code/<code-block> source :language "clojure"])]
+  (let [before @restore/*context
+        form (fn [source] [code/<code-block> source :language "clojure"])
+        root (await (support/create-root! element))
+        {pending :promise release! :resolve!} (a/deferred)
+        restore-loader! (stub-cold-highlight! (constantly pending))
+        dispose! (fn []
+                   (support/unmount! root)
+                   (restore-loader!)
+                   (reset! restore/*context before))]
     (reset! restore/*context {:hydrate? false})
-    (set! loader/acquire-code! (fn [_] pending))
-    (-> (support/create-root! element)
-        (.then (fn [root]
-                 (reset! *root root)
-                 (support/render! root (form "(defn greet [name]\n  (str \"Hello, \" name))"))))
-        (.then (fn [_]
-                 #js {:release (fn [] (@*release highlight/spec))
-                      :update (fn [text] (support/render! @*root (form text)))
-                      :dispose (fn []
-                                 (when @*root (support/unmount! @*root))
-                                 (set! loader/acquire-code! old-acquire)
-                                 (reset! restore/*context before))})))))
+    (try
+      (await (support/render! root (form "(defn greet [name]\n  (str \"Hello, \" name))")))
+      #js {:release #(release! highlight/spec)
+           :update #(support/render! root (form %))
+           :dispose dispose!}
+      (catch :default error
+        (dispose!)
+        (throw error)))))
 
 (deftest cached-history-highlighting-never-mounts-a-plain-fallback
   (async done
@@ -560,8 +566,8 @@
                                             :language "clojure" :reveal? true]))
             (is (.querySelector element ".language-clojure"))
             (is (nil? (.querySelector element ".code-highlight-reveal"))))
-          (.catch #(is false (str %)))
-          (.finally (fn []
+          (a/catch-error #(is false (str %)))
+          (a/finally-do (fn []
                       (when @*root (support/unmount! @*root))
                       (set! loader/code-spec old-code-spec)
                       (set! loader/acquire-code! old-acquire)
