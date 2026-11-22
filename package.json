@@ -7,7 +7,7 @@
     "leaflet": "1.9.4",
     "lexical": "0.48.0",
     "lowlight": "3.3.0",
-    "mdast-util-from-markdown": "2.0.3",
+    "mdast-util-from-markdown": "2.1.0",
     "mdast-util-mdx-jsx": "3.2.0",
     "mdast-util-to-markdown": "2.2.0",
     "micromark-extension-mdx-jsx": "3.0.2",
