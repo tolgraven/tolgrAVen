@@ -18,7 +18,12 @@
                            (website.build.ssr/revision)]
              :devtools {:enabled false}
              :compiler-options {:reader-features #{:ssr :node}}
-             :prepend-js "globalThis.XMLHttpRequest = class { constructor() { throw new Error('SSR views must use supplied request data, not browser HTTP'); } };"
+             ;; Install the guard before a module can capture Node's native Fetch.
+             :prepend "{
+               const offline = () => new Error('SSR views must use supplied request data');
+               globalThis.fetch = async () => { throw offline(); };
+               globalThis.XMLHttpRequest = class { constructor() { throw offline(); } };
+             }"
              :main website.ssr.worker/main
              :output-to "target/ssr/site.js"
              :js-options {:js-provider :shadow :keep-native-requires true

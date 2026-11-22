@@ -92,7 +92,7 @@
   (await (rpc! "nvim_set_option_value" ["fixendofline" false {:buf 0}]))
   (rpc! "nvim_set_option_value" ["filetype" filetype {:buf 0}]))
 
-(defn- ^:async initialize! [session {:keys [cols rows document] :as options} configuring! publish!]
+(defn- ^:async initialize! [^js session {:keys [cols rows document] :as options} configuring! publish!]
   (let [rpc! #(request! session %1 %2)
         attach! #(rpc! "nvim_ui_attach" [cols rows {:rgb true :ext_linegrid true}])]
     (try

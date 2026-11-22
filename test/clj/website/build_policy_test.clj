@@ -1,5 +1,7 @@
 (ns website.build-policy-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.edn :as edn]
+            [clojure.java.shell :as shell]
+            [clojure.test :refer [deftest is]]
             [website.build.policy :as policy]))
 
 (deftest resolved-release-sources-exclude-development-inspectors
@@ -44,3 +46,20 @@
                            (policy/no-debug-tools state)))
       (is (= (assoc state :mode :dev)
              (policy/no-debug-tools (assoc state :mode :dev)))))))
+
+(deftest ssr-worker-keeps-browser-transports-offline
+  (let [preamble (get-in (edn/read-string (slurp "shadow-cljs.edn")) [:builds :ssr :prepend])
+        program (str "let deliveries = 0;
+                      globalThis.fetch = async () => { deliveries++; };
+                      globalThis.XMLHttpRequest = class { constructor() { deliveries++; } };
+"
+                     preamble
+                     "
+const assert = require('node:assert/strict');
+                      (async () => {
+                        await assert.rejects(fetch('https://example.test/data'), /supplied request data/);
+                        assert.throws(() => new XMLHttpRequest(), /supplied request data/);
+                        assert.equal(deliveries, 0);
+                      })().catch(error => { console.error(error); process.exitCode = 1; });")
+        {:keys [exit err]} (shell/sh "node" "--eval" program)]
+    (is (zero? exit) err)))
