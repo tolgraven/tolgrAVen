@@ -372,13 +372,23 @@
       "action": "document.querySelector('.blog-comment-collapsed-placeholder').click()"
     },
     {
+      "id": "comments-mount-offscreen",
+      "viewport": [
+        1440,
+        250
+      ],
+      "path": "/fixtures/visual.html?component=comments-edge",
+      "capture_assert": "const section = document.querySelector('.blog-comments');\nif (!section || section.getBoundingClientRect().top <= innerHeight) throw new Error('Comment mount case must start below the viewport');\nif (!section.classList.contains('appeared') || getComputedStyle(section).transform !== 'none') throw new Error('Comment section waited for scrolling instead of entering on mount');\nif (section.querySelector('.blog-comments-inner > .blog-comment-around.appear-wrapper')) throw new Error('Root comments acquired an extra entrance animation');"
+    },
+    {
       "id": "comments-owner-controls-wide",
       "viewport": [
         1440,
         1000
       ],
       "path": "/fixtures/visual.html?component=comments-auth",
-      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})"
+      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})",
+      "capture_assert": "const actions = [...document.querySelector('.blog-comment-actions').children];\nconst bounds = actions.map(action => action.getBoundingClientRect());\nconst fonts = actions.map(action => getComputedStyle(action).fontSize);\nif (bounds.some(box => Math.abs(box.width - bounds[0].width) > 0.1 || Math.abs(box.height - bounds[0].height) > 0.1) || fonts.some(size => size !== fonts[0])) throw new Error('Comment links and buttons lost their shared size');\nfor (let index = 0; index < actions.length; index++) {\n  const box = bounds[index], icon = actions[index].querySelector('i').getBoundingClientRect();\n  if (Math.abs(icon.x + icon.width / 2 - box.x - box.width / 2) > 0.1 || Math.abs(icon.y + icon.height / 2 - box.y - box.height / 2) > 0.1) throw new Error('Comment action icon is off center');\n}\nif (document.querySelector('.blog-comments-inner > .blog-comment-around.appear-wrapper')) throw new Error('Root comments acquired an extra entrance animation');"
     },
     {
       "id": "comments-owner-controls-narrow",
@@ -387,7 +397,8 @@
         800
       ],
       "path": "/fixtures/visual.html?component=comments-auth",
-      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})"
+      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Edit comment\"]').focus({preventScroll:true})",
+      "capture_assert": "const actions = [...document.querySelector('.blog-comment-actions').children];\nconst bounds = actions.map(action => action.getBoundingClientRect());\nconst fonts = actions.map(action => getComputedStyle(action).fontSize);\nif (bounds.some(box => Math.abs(box.width - bounds[0].width) > 0.1 || Math.abs(box.height - bounds[0].height) > 0.1) || fonts.some(size => size !== fonts[0])) throw new Error('Comment links and buttons lost their shared size');\nfor (let index = 0; index < actions.length; index++) {\n  const box = bounds[index], icon = actions[index].querySelector('i').getBoundingClientRect();\n  if (Math.abs(icon.x + icon.width / 2 - box.x - box.width / 2) > 0.1 || Math.abs(icon.y + icon.height / 2 - box.y - box.height / 2) > 0.1) throw new Error('Comment action icon is off center');\n}\nif (document.querySelector('.blog-comments-inner > .blog-comment-around.appear-wrapper')) throw new Error('Root comments acquired an extra entrance animation');"
     },
     {
       "id": "comments-standalone-narrow",
@@ -422,7 +433,8 @@
         1000
       ],
       "path": "/fixtures/visual.html?component=comments-reader",
-      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Reply\"]').focus({preventScroll:true})"
+      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Reply\"]').focus({preventScroll:true})",
+      "capture_assert": "const actions = [...document.querySelector('.blog-comment-actions').children];\nconst bounds = actions.map(action => action.getBoundingClientRect());\nconst fonts = actions.map(action => getComputedStyle(action).fontSize);\nif (bounds.some(box => Math.abs(box.width - bounds[0].width) > 0.1 || Math.abs(box.height - bounds[0].height) > 0.1) || fonts.some(size => size !== fonts[0])) throw new Error('Comment links and buttons lost their shared size');\nfor (let index = 0; index < actions.length; index++) {\n  const box = bounds[index], icon = actions[index].querySelector('i').getBoundingClientRect();\n  if (Math.abs(icon.x + icon.width / 2 - box.x - box.width / 2) > 0.1 || Math.abs(icon.y + icon.height / 2 - box.y - box.height / 2) > 0.1) throw new Error('Comment action icon is off center');\n}\nif (document.querySelector('.blog-comments-inner > .blog-comment-around.appear-wrapper')) throw new Error('Root comments acquired an extra entrance animation');"
     },
     {
       "id": "comments-reader-controls-narrow",
@@ -431,7 +443,8 @@
         800
       ],
       "path": "/fixtures/visual.html?component=comments-reader",
-      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Reply\"]').focus({preventScroll:true})"
+      "action": "document.querySelector('.blog-comment-actions [aria-label=\"Reply\"]').focus({preventScroll:true})",
+      "capture_assert": "const actions = [...document.querySelector('.blog-comment-actions').children];\nconst bounds = actions.map(action => action.getBoundingClientRect());\nconst fonts = actions.map(action => getComputedStyle(action).fontSize);\nif (bounds.some(box => Math.abs(box.width - bounds[0].width) > 0.1 || Math.abs(box.height - bounds[0].height) > 0.1) || fonts.some(size => size !== fonts[0])) throw new Error('Comment links and buttons lost their shared size');\nfor (let index = 0; index < actions.length; index++) {\n  const box = bounds[index], icon = actions[index].querySelector('i').getBoundingClientRect();\n  if (Math.abs(icon.x + icon.width / 2 - box.x - box.width / 2) > 0.1 || Math.abs(icon.y + icon.height / 2 - box.y - box.height / 2) > 0.1) throw new Error('Comment action icon is off center');\n}\nif (document.querySelector('.blog-comments-inner > .blog-comment-around.appear-wrapper')) throw new Error('Root comments acquired an extra entrance animation');"
     },
     {
       "id": "comments-label-above-short",
@@ -716,7 +729,8 @@
         1000
       ],
       "path": "/fixtures/visual.html?component=docs-index",
-      "action": "const deadline = performance.now() + 10000; while (!document.querySelector('.docs .codox .namespace-index')) { if (performance.now() > deadline) throw new Error('Native generated Codox document did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (!document.querySelector('.docs .codox .sidebar.primary') || [...document.querySelectorAll('.codox a[href]')].some(link => /^(?:\\.\\/)?[A-Za-z0-9_.-]+\\.html(?:[?#].*)?$/.test(link.getAttribute('href')))) throw new Error('Codox framing or native route links were lost');"
+      "action": "const deadline = performance.now() + 10000; while (!document.querySelector('.docs .codox .namespace-index')) { if (performance.now() > deadline) throw new Error('Native generated Codox document did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (!document.querySelector('.docs .codox .sidebar.primary') || [...document.querySelectorAll('.codox a[href]')].some(link => /^(?:\\.\\/)?[A-Za-z0-9_.-]+\\.html(?:[?#].*)?$/.test(link.getAttribute('href')))) throw new Error('Codox framing or native route links were lost');",
+      "capture_assert": "const links = [...document.querySelectorAll('.codox .topics a')];\nif (!links.length || links.some(link => getComputedStyle(link).fontStyle !== 'italic')) throw new Error('Docs links lost their production styling on a direct visit');\nif (document.querySelector('link[href*=\"/modules/test.\"]')) throw new Error('Docs styling must not depend on visiting the Test page');"
     },
     {
       "id": "docs-index-narrow",
@@ -725,7 +739,8 @@
         800
       ],
       "path": "/fixtures/visual.html?component=docs-index",
-      "action": "const deadline = performance.now() + 10000; while (!document.querySelector('.docs .codox .namespace-index')) { if (performance.now() > deadline) throw new Error('Native generated Codox document did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (!document.querySelector('.docs .codox .sidebar.primary') || [...document.querySelectorAll('.codox a[href]')].some(link => /^(?:\\.\\/)?[A-Za-z0-9_.-]+\\.html(?:[?#].*)?$/.test(link.getAttribute('href')))) throw new Error('Codox framing or native route links were lost');"
+      "action": "const deadline = performance.now() + 10000; while (!document.querySelector('.docs .codox .namespace-index')) { if (performance.now() > deadline) throw new Error('Native generated Codox document did not mount'); await new Promise(resolve => requestAnimationFrame(resolve)); } if (!document.querySelector('.docs .codox .sidebar.primary') || [...document.querySelectorAll('.codox a[href]')].some(link => /^(?:\\.\\/)?[A-Za-z0-9_.-]+\\.html(?:[?#].*)?$/.test(link.getAttribute('href')))) throw new Error('Codox framing or native route links were lost');",
+      "capture_assert": "const links = [...document.querySelectorAll('.codox .topics a')];\nif (!links.length || links.some(link => getComputedStyle(link).fontStyle !== 'italic')) throw new Error('Docs links lost their production styling on a direct visit');\nif (document.querySelector('link[href*=\"/modules/test.\"]')) throw new Error('Docs styling must not depend on visiting the Test page');"
     },
     {
       "id": "docs-topic-wide",
